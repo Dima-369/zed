@@ -13,14 +13,16 @@ pub use record::CaptureInput;
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd"
+    target_os = "freebsd",
+    target_os = "macos"
 )))]
 mod livekit_client;
 #[cfg(not(any(
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd"
+    target_os = "freebsd",
+    target_os = "macos"
 )))]
 pub use livekit_client::*;
 
@@ -33,21 +35,24 @@ pub use livekit_client::*;
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd"
+    target_os = "freebsd",
+    target_os = "macos"
 ))]
 mod mock_client;
 #[cfg(any(
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd"
+    target_os = "freebsd",
+    target_os = "macos"
 ))]
 pub mod test;
 #[cfg(any(
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd"
+    target_os = "freebsd",
+    target_os = "macos"
 ))]
 pub use mock_client::*;
 
