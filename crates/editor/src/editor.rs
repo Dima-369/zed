@@ -12276,7 +12276,7 @@ impl Editor {
         self.do_copy(false, cx);
     }
 
-    fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {
+    fn do_copy(&self, strip_trailing_newlines: bool, cx: &mut Context<Self>) {
         let selections = self.selections.all::<Point>(cx);
         let buffer = self.buffer.read(cx).read(cx);
         let mut text = String::new();
@@ -12294,61 +12294,39 @@ impl Editor {
                     end = cmp::min(max_point, Point::new(end.row + 1, 0));
                 }
 
-                let mut trimmed_selections = Vec::new();
-                if strip_leading_indents && end.row.saturating_sub(start.row) > 0 {
-                    let row = MultiBufferRow(start.row);
-                    let first_indent = buffer.indent_size_for_line(row);
-                    if first_indent.len == 0 || start.column > first_indent.len {
-                        trimmed_selections.push(start..end);
-                    } else {
-                        trimmed_selections.push(
-                            Point::new(row.0, first_indent.len)
-                                ..Point::new(row.0, buffer.line_len(row)),
-                        );
-                        for row in start.row + 1..=end.row {
-                            let mut line_len = buffer.line_len(MultiBufferRow(row));
-                            if row == end.row {
-                                line_len = end.column;
-                            }
-                            if line_len == 0 {
-                                trimmed_selections
-                                    .push(Point::new(row, 0)..Point::new(row, line_len));
-                                continue;
-                            }
-                            let row_indent_size = buffer.indent_size_for_line(MultiBufferRow(row));
-                            if row_indent_size.len >= first_indent.len {
-                                trimmed_selections.push(
-                                    Point::new(row, first_indent.len)..Point::new(row, line_len),
-                                );
-                            } else {
-                                trimmed_selections.clear();
-                                trimmed_selections.push(start..end);
-                                break;
-                            }
-                        }
-                    }
+                if is_first {
+                    is_first = false;
                 } else {
-                    trimmed_selections.push(start..end);
+                    text += "\n";
                 }
 
-                for trimmed_range in trimmed_selections {
-                    if is_first {
-                        is_first = false;
-                    } else {
-                        text += "\n";
-                    }
-                    let mut len = 0;
-                    for chunk in buffer.text_for_range(trimmed_range.start..trimmed_range.end) {
-                        text.push_str(chunk);
-                        len += chunk.len();
-                    }
-                    clipboard_selections.push(ClipboardSelection {
-                        len,
-                        is_entire_line,
-                        first_line_indent: buffer
-                            .indent_size_for_line(MultiBufferRow(trimmed_range.start.row))
-                            .len,
-                    });
+                let mut len = 0;
+                for chunk in buffer.text_for_range(start..end) {
+                    text.push_str(chunk);
+                    len += chunk.len();
+                }
+
+                clipboard_selections.push(ClipboardSelection {
+                    len,
+                    is_entire_line,
+                    first_line_indent: buffer.indent_size_for_line(MultiBufferRow(start.row)).len,
+                });
+            }
+        }
+
+        if strip_trailing_newlines {
+            let original_len = text.len();
+            let new_len = text.trim_end_matches('\n').len();
+
+            // Only modify things if truncation actually happened.
+            if new_len < original_len {
+                text.truncate(new_len);
+
+                // Correct the metadata for the last selection to reflect the truncation.
+                let bytes_removed = original_len - new_len;
+                if let Some(last_selection) = clipboard_selections.last_mut() {
+                    // Use saturating_sub to prevent underflow in edge cases.
+                    last_selection.len = last_selection.len.saturating_sub(bytes_removed);
                 }
             }
         }
