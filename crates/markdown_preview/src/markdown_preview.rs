@@ -13,6 +13,10 @@ actions!(
         MovePageUp,
         /// Scrolls down by one page in the markdown preview.
         MovePageDown,
+        /// Scrolls up by a quarter page in the markdown preview.
+        ScrollPageLittleUp,
+        /// Scrolls down by a quarter page in the markdown preview.
+        ScrollPageLittleDown,
         /// Opens a markdown preview for the current file.
         OpenPreview,
         /// Opens a markdown preview in a split pane.

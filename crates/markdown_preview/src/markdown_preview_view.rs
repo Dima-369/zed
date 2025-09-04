@@ -20,7 +20,7 @@ use workspace::{Pane, Workspace};
 use crate::markdown_elements::ParsedMarkdownElement;
 use crate::markdown_renderer::CheckboxClickedEvent;
 use crate::{
-    MovePageDown, MovePageUp, OpenFollowingPreview, OpenPreview, OpenPreviewToTheSide,
+    MovePageDown, MovePageUp, ScrollPageLittleDown, ScrollPageLittleUp, OpenFollowingPreview, OpenPreview, OpenPreviewToTheSide,
     markdown_elements::ParsedMarkdown,
     markdown_parser::parse_markdown,
     markdown_renderer::{RenderContext, render_markdown_block},
@@ -440,6 +440,28 @@ impl MarkdownPreviewView {
         self.list_state.scroll_by(viewport_height);
         cx.notify();
     }
+
+    fn scroll_page_little_up(&mut self, _: &ScrollPageLittleUp, _window: &mut Window, cx: &mut Context<Self>) {
+        let viewport_height = self.list_state.viewport_bounds().size.height;
+        if viewport_height.is_zero() {
+            return;
+        }
+
+        // Scroll by a quarter of the viewport height
+        self.list_state.scroll_by(-viewport_height / 4.0);
+        cx.notify();
+    }
+
+    fn scroll_page_little_down(&mut self, _: &ScrollPageLittleDown, _window: &mut Window, cx: &mut Context<Self>) {
+        let viewport_height = self.list_state.viewport_bounds().size.height;
+        if viewport_height.is_zero() {
+            return;
+        }
+
+        // Scroll by a quarter of the viewport height
+        self.list_state.scroll_by(viewport_height / 4.0);
+        cx.notify();
+    }
 }
 
 impl Focusable for MarkdownPreviewView {
@@ -492,6 +514,8 @@ impl Render for MarkdownPreviewView {
             .track_focus(&self.focus_handle(cx))
             .on_action(cx.listener(MarkdownPreviewView::scroll_page_up))
             .on_action(cx.listener(MarkdownPreviewView::scroll_page_down))
+            .on_action(cx.listener(MarkdownPreviewView::scroll_page_little_up))
+            .on_action(cx.listener(MarkdownPreviewView::scroll_page_little_down))
             .size_full()
             .bg(cx.theme().colors().editor_background)
             .p_4()

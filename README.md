@@ -5,6 +5,7 @@
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3 as a test
 - in vim mode, if entering insert mode, remember the location for the jump history
 - moving up/down in outline panel does not wrap around anymore
+- add `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scrolls quarter a page
 
 # Original README
 
