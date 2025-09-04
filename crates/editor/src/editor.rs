@@ -221,7 +221,7 @@ pub const FILE_HEADER_HEIGHT: u32 = 2;
 pub const MULTI_BUFFER_EXCERPT_HEADER_HEIGHT: u32 = 1;
 const CURSOR_BLINK_INTERVAL: Duration = Duration::from_millis(500);
 const MAX_LINE_LEN: usize = 1024;
-const MIN_NAVIGATION_HISTORY_ROW_DELTA: i64 = 10;
+const MIN_NAVIGATION_HISTORY_ROW_DELTA: i64 = 3;
 const MAX_SELECTION_HISTORY_LEN: usize = 1024;
 pub(crate) const CURSORS_VISIBLE_FOR: Duration = Duration::from_millis(2000);
 #[doc(hidden)]

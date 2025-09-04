@@ -2,6 +2,7 @@
 
 - disable `webrtc_sys` compilation which always fails locally for me on macOS
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines
+- lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3 as a test
 
 # Original README
 
