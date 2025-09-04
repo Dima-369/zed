@@ -4,6 +4,7 @@
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3 as a test
 - in vim mode, if entering insert mode, remember the location for the jump history
+- moving up/down in outline panel does not wrap around anymore
 
 # Original README
 

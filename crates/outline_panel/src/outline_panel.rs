@@ -1200,12 +1200,13 @@ impl OutlinePanel {
                 .cloned()
         }) {
             self.select_entry(entry_to_select, true, window, cx);
-        } else {
+            if let Some(selected_entry) = self.selected_entry().cloned() {
+                self.scroll_editor_to_entry(&selected_entry, true, false, window, cx);
+            }
+        } else if self.selected_entry().is_none() {
             self.select_first(&SelectFirst {}, window, cx)
         }
-        if let Some(selected_entry) = self.selected_entry().cloned() {
-            self.scroll_editor_to_entry(&selected_entry, true, false, window, cx);
-        }
+        // If we're at the last entry, do nothing (no wrapping)
     }
 
     fn select_previous(&mut self, _: &SelectPrevious, window: &mut Window, cx: &mut Context<Self>) {
@@ -1219,12 +1220,13 @@ impl OutlinePanel {
                 .cloned()
         }) {
             self.select_entry(entry_to_select, true, window, cx);
-        } else {
+            if let Some(selected_entry) = self.selected_entry().cloned() {
+                self.scroll_editor_to_entry(&selected_entry, true, false, window, cx);
+            }
+        } else if self.selected_entry().is_none() {
             self.select_last(&SelectLast, window, cx)
         }
-        if let Some(selected_entry) = self.selected_entry().cloned() {
-            self.scroll_editor_to_entry(&selected_entry, true, false, window, cx);
-        }
+        // If we're at the first entry, do nothing (no wrapping)
     }
 
     fn select_parent(&mut self, _: &SelectParent, window: &mut Window, cx: &mut Context<Self>) {
