@@ -246,14 +246,13 @@ impl CommandPaletteDelegate {
         }
     }
 
-    /// Hit count for each command in the palette.
-    /// We only account for commands triggered directly via command palette and not by e.g. keystrokes because
-    /// if a user already knows a keystroke for a command, they are unlikely to use a command palette to look for it.
-    fn hit_counts(&self) -> HashMap<String, u16> {
+    /// Last invocation time for each command in the palette.
+    /// Used for sorting by recency when the command palette is toggled.
+    fn last_invocation_times(&self) -> HashMap<String, time::OffsetDateTime> {
         if let Ok(commands) = COMMAND_PALETTE_HISTORY.list_commands_used() {
             commands
                 .into_iter()
-                .map(|command| (command.command_name, command.invocations))
+                .map(|command| (command.command_name, command.last_invoked))
                 .collect()
         } else {
             HashMap::new()
@@ -298,13 +297,13 @@ impl PickerDelegate for CommandPaletteDelegate {
         let (mut tx, mut rx) = postage::dispatch::channel(1);
         let task = cx.background_spawn({
             let mut commands = self.all_commands.clone();
-            let hit_counts = self.hit_counts();
+            let last_invocation_times = self.last_invocation_times();
             let executor = cx.background_executor().clone();
             let query = normalize_action_query(query.as_str());
             async move {
                 commands.sort_by_key(|action| {
                     (
-                        Reverse(hit_counts.get(&action.name).cloned()),
+                        Reverse(last_invocation_times.get(&action.name).cloned()),
                         action.name.clone(),
                     )
                 });

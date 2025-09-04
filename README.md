@@ -6,6 +6,7 @@
 - in vim mode, if entering insert mode, remember the location for the jump history
 - moving up/down in outline panel does not wrap around anymore
 - add `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scrolls quarter a page
+- changed `command palette: toggle` to always by recency instead of hit count
 
 # Original README
 
