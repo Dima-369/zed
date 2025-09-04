@@ -965,6 +965,14 @@ impl Vim {
         self.operator_stack.clear();
         self.selected_register.take();
         self.cancel_running_command(window, cx);
+        
+        // Create navigation history entry when entering insert mode from normal mode
+        if mode == Mode::Insert && last_mode != Mode::Insert && last_mode != Mode::Replace {
+            self.update_editor(cx, |_, editor, cx| {
+                editor.create_nav_history_entry(cx);
+            });
+        }
+        
         if mode == Mode::Normal || mode != last_mode {
             self.current_tx.take();
             self.current_anchor.take();
