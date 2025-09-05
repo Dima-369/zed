@@ -6,11 +6,11 @@ use settings::{Settings, SettingsSources, SettingsUi};
 use std::{fmt::Write, num::NonZeroU32, time::Duration};
 use text::{Point, Selection};
 use ui::{
-    ActiveTheme, Button, ButtonCommon, Clickable, Context, FluentBuilder, IntoElement, LabelSize,
-    ParentElement, Render, Tooltip, Window, div,
+    div, ActiveTheme, Button, ButtonCommon, Clickable, Context, FluentBuilder, IntoElement,
+    LabelSize, ParentElement, Render, Tooltip, Window,
 };
 use util::paths::FILE_ROW_COLUMN_DELIMITER;
-use workspace::{StatusItemView, Workspace, item::ItemHandle};
+use workspace::{item::ItemHandle, StatusItemView, Workspace};
 
 #[derive(Copy, Clone, Debug, Default, PartialOrd, PartialEq)]
 pub(crate) struct SelectionStats {
@@ -223,7 +223,6 @@ impl Render for CursorPosition {
 
             let context = self.context.clone();
             let mut button = Button::new("go-to-line-column", &text)
-                .label_size(LabelSize::Small)
                 .on_click(cx.listener(|this, _, window, cx| {
                     if let Some(workspace) = this.workspace.upgrade() {
                         workspace.update(cx, |workspace, cx| {
