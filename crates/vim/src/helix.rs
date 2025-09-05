@@ -203,7 +203,7 @@ impl Vim {
         cx: &mut Context<Self>,
     ) {
         match motion {
-            Motion::NextWordStart { ignore_punctuation } => {
+            Motion::NextWordStart { ignore_punctuation, stay_in_line: _ } => {
                 self.helix_find_range_forward(times, window, cx, |left, right, classifier| {
                     let left_kind = classifier.kind_with(left, ignore_punctuation);
                     let right_kind = classifier.kind_with(right, ignore_punctuation);

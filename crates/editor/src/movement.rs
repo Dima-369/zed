@@ -985,6 +985,27 @@ mod tests {
         assert("helloˇ.---..ˇtest", cx);
         assert("testˇ.--ˇ test", cx);
         assert("oneˇ,;:!?ˇtwo", cx);
+
+        // Test case for the bug: cursor at start of word at end of line
+        assert("ˇFOOˇ", cx);
+        assert("ˇFOOˇ\n", cx);
+        assert("FOˇOˇ", cx);
+        assert("FOˇOˇ\n", cx);
+
+        // Test edge case: cursor at second-to-last character
+        assert("FˇOOˇ", cx);
+        assert("FˇOOˇ\n", cx);
+
+        // Debug test: let's see what happens with a simple case
+        let (snapshot, _) = marked_display_snapshot("ˇFOO", cx);
+        let start_point = DisplayPoint::new(DisplayRow(0), 0);
+        let end_point = next_word_end(&snapshot, start_point);
+        println!("next_word_end from start of 'FOO': {:?} -> {:?}", start_point, end_point);
+
+        let (snapshot2, _) = marked_display_snapshot("ˇFOO\n", cx);
+        let start_point2 = DisplayPoint::new(DisplayRow(0), 0);
+        let end_point2 = next_word_end(&snapshot2, start_point2);
+        println!("next_word_end from start of 'FOO\\n': {:?} -> {:?}", start_point2, end_point2);
     }
 
     #[gpui::test]

@@ -2605,6 +2605,152 @@ fn test_delete_to_next_word_end_or_newline(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn test_delete_to_next_word_end_bug_reproduction(cx: &mut TestAppContext) {
+    init_test(cx, |_| {});
+
+    // Test the bug where delete_to_next_word_end leaves one character when deleting the last word on a line
+    let editor = cx.add_window(|window, cx| {
+        let buffer = MultiBuffer::build_simple("FOO", cx);
+        build_editor(buffer, window, cx)
+    });
+
+    _ = editor.update(cx, |editor, window, cx| {
+        // Place cursor at the beginning of "FOO"
+        editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+            s.select_display_ranges([
+                DisplayPoint::new(DisplayRow(0), 0)..DisplayPoint::new(DisplayRow(0), 0)
+            ])
+        });
+
+        // Delete to next word end - should delete all of "FOO"
+        editor.delete_to_next_word_end(
+            &DeleteToNextWordEnd {
+                ignore_newlines: false,
+            },
+            window,
+            cx,
+        );
+
+        // This should be empty, but the bug leaves "O"
+        let text = editor.buffer.read(cx).read(cx).text();
+        println!("Text after delete: '{}'", text);
+        assert_eq!(text, "", "Expected empty string, but got: '{}'", text);
+    });
+
+    // Test with cursor in the middle of the word
+    let editor2 = cx.add_window(|window, cx| {
+        let buffer = MultiBuffer::build_simple("FOO", cx);
+        build_editor(buffer, window, cx)
+    });
+
+    _ = editor2.update(cx, |editor, window, cx| {
+        // Place cursor at position 1 (between F and O)
+        editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+            s.select_display_ranges([
+                DisplayPoint::new(DisplayRow(0), 1)..DisplayPoint::new(DisplayRow(0), 1)
+            ])
+        });
+
+        // Delete to next word end - should delete "OO"
+        editor.delete_to_next_word_end(
+            &DeleteToNextWordEnd {
+                ignore_newlines: false,
+            },
+            window,
+            cx,
+        );
+
+        let text = editor.buffer.read(cx).read(cx).text();
+        println!("Text after delete from middle: '{}'", text);
+        assert_eq!(text, "F", "Expected 'F', but got: '{}'", text);
+    });
+
+    // Test with cursor at position 2 (at the last character)
+    let editor3 = cx.add_window(|window, cx| {
+        let buffer = MultiBuffer::build_simple("FOO", cx);
+        build_editor(buffer, window, cx)
+    });
+
+    _ = editor3.update(cx, |editor, window, cx| {
+        // Place cursor at position 2 (at the last O)
+        editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+            s.select_display_ranges([
+                DisplayPoint::new(DisplayRow(0), 2)..DisplayPoint::new(DisplayRow(0), 2)
+            ])
+        });
+
+        // Delete to next word end - should delete the last "O"
+        editor.delete_to_next_word_end(
+            &DeleteToNextWordEnd {
+                ignore_newlines: false,
+            },
+            window,
+            cx,
+        );
+
+        let text = editor.buffer.read(cx).read(cx).text();
+        println!("Text after delete from last char: '{}'", text);
+        assert_eq!(text, "FO", "Expected 'FO', but got: '{}'", text);
+    });
+
+    // Test with word followed by newline - this might be where the bug occurs
+    let editor4 = cx.add_window(|window, cx| {
+        let buffer = MultiBuffer::build_simple("FOO\n", cx);
+        build_editor(buffer, window, cx)
+    });
+
+    _ = editor4.update(cx, |editor, window, cx| {
+        // Place cursor at the beginning of "FOO"
+        editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+            s.select_display_ranges([
+                DisplayPoint::new(DisplayRow(0), 0)..DisplayPoint::new(DisplayRow(0), 0)
+            ])
+        });
+
+        // Delete to next word end - should delete all of "FOO"
+        editor.delete_to_next_word_end(
+            &DeleteToNextWordEnd {
+                ignore_newlines: false,
+            },
+            window,
+            cx,
+        );
+
+        let text = editor.buffer.read(cx).read(cx).text();
+        println!("Text after delete with newline: '{}'", text);
+        assert_eq!(text, "\n", "Expected newline only, but got: '{}'", text);
+    });
+
+    // Test with word followed by newline using ignore_newlines: true
+    let editor5 = cx.add_window(|window, cx| {
+        let buffer = MultiBuffer::build_simple("FOO\n", cx);
+        build_editor(buffer, window, cx)
+    });
+
+    _ = editor5.update(cx, |editor, window, cx| {
+        // Place cursor at the beginning of "FOO"
+        editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+            s.select_display_ranges([
+                DisplayPoint::new(DisplayRow(0), 0)..DisplayPoint::new(DisplayRow(0), 0)
+            ])
+        });
+
+        // Delete to next word end with ignore_newlines: true
+        editor.delete_to_next_word_end(
+            &DeleteToNextWordEnd {
+                ignore_newlines: true,
+            },
+            window,
+            cx,
+        );
+
+        let text = editor.buffer.read(cx).read(cx).text();
+        println!("Text after delete with ignore_newlines: '{}'", text);
+        assert_eq!(text, "\n", "Expected newline only, but got: '{}'", text);
+    });
+}
+
+#[gpui::test]
 fn test_newline(cx: &mut TestAppContext) {
     init_test(cx, |_| {});
 

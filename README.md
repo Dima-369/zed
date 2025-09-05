@@ -9,6 +9,7 @@
 - changed `command palette: toggle` to always by recency instead of hit count
 - allow AI completions in Zed's `settings.json` and `keymap.json`
 - added `search.match_active_background` to highlight the active search match
+- add `stay_in_line` boolean to `vim::NextWordStart` to circumvent bugs of `dw` and `editor::DeleteToNextWordEnd` misbehaving for last word in line
 
 # Original README
 

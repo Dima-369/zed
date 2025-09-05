@@ -42,7 +42,7 @@ impl Vim {
                 editor.change_selections(Default::default(), window, cx, |s| {
                     s.move_with(|map, selection| {
                         let kind = match motion {
-                            Motion::NextWordStart { ignore_punctuation }
+                            Motion::NextWordStart { ignore_punctuation, stay_in_line: _ }
                             | Motion::NextSubwordStart { ignore_punctuation } => {
                                 expand_changed_word_selection(
                                     map,
@@ -191,7 +191,7 @@ fn expand_changed_word_selection(
         let motion = if use_subword {
             Motion::NextSubwordStart { ignore_punctuation }
         } else {
-            Motion::NextWordStart { ignore_punctuation }
+            Motion::NextWordStart { ignore_punctuation, stay_in_line: false }
         };
         motion.expand_selection(map, selection, times, text_layout_details, false)
     }
