@@ -7,7 +7,7 @@ use std::{fmt::Write, num::NonZeroU32, time::Duration};
 use text::{Point, Selection};
 use ui::{
     div, ActiveTheme, Button, ButtonCommon, Clickable, Context, FluentBuilder, IntoElement,
-    LabelSize, ParentElement, Render, Tooltip, Window,
+    ParentElement, Render, Tooltip, Window,
 };
 use util::paths::FILE_ROW_COLUMN_DELIMITER;
 use workspace::{item::ItemHandle, StatusItemView, Workspace};
