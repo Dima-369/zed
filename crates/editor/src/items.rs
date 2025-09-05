@@ -50,6 +50,9 @@ use workspace::{
     OpenOptions,
     item::{Dedup, ItemSettings, SerializableItem, TabContentParams},
 };
+
+// Marker type for active search match highlighting
+struct ActiveSearchMatch;
 use workspace::{
     OpenVisible, Pane, WorkspaceSettings,
     item::{BreadcrumbText, FollowEvent, ProjectItemKind},
@@ -1482,10 +1485,13 @@ impl SearchableItem for Editor {
     }
 
     fn clear_matches(&mut self, _: &mut Window, cx: &mut Context<Self>) {
-        if self
+        let cleared_search = self
             .clear_background_highlights::<BufferSearchHighlights>(cx)
-            .is_some()
-        {
+            .is_some();
+        let cleared_active = self
+            .clear_background_highlights::<ActiveSearchMatch>(cx)
+            .is_some();
+        if cleared_search || cleared_active {
             cx.emit(SearchEvent::MatchesInvalidated);
         }
     }
@@ -1601,6 +1607,14 @@ impl SearchableItem for Editor {
     ) {
         self.unfold_ranges(&[matches[index].clone()], false, true, cx);
         let range = self.range_for_match(&matches[index]);
+        
+        // Highlight the active match with a different color
+        self.highlight_background::<ActiveSearchMatch>(
+            &[matches[index].clone()],
+            |theme| theme.colors().search_match_active_background,
+            cx,
+        );
+        
         self.change_selections(Default::default(), window, cx, |s| {
             s.select_ranges([range]);
         })

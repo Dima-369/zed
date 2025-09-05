@@ -8,6 +8,7 @@
 - add `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scrolls quarter a page
 - changed `command palette: toggle` to always by recency instead of hit count
 - allow AI completions in Zed's `settings.json` and `keymap.json`
+- added `search.match_active_background` to highlight the active search match
 
 # Original README
 
