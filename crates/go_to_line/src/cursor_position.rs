@@ -6,8 +6,8 @@ use settings::{Settings, SettingsSources, SettingsUi};
 use std::{fmt::Write, num::NonZeroU32, time::Duration};
 use text::{Point, Selection};
 use ui::{
-    Button, ButtonCommon, Clickable, Context, FluentBuilder, IntoElement, LabelSize, ParentElement,
-    Render, Tooltip, Window, div,
+    ActiveTheme, Button, ButtonCommon, Clickable, Context, FluentBuilder, IntoElement, LabelSize,
+    ParentElement, Render, Tooltip, Window, div,
 };
 use util::paths::FILE_ROW_COLUMN_DELIMITER;
 use workspace::{StatusItemView, Workspace, item::ItemHandle};
@@ -222,41 +222,43 @@ impl Render for CursorPosition {
             self.write_position(&mut text, cx);
 
             let context = self.context.clone();
+            let mut button = Button::new("go-to-line-column", &text)
+                .label_size(LabelSize::Small)
+                .on_click(cx.listener(|this, _, window, cx| {
+                    if let Some(workspace) = this.workspace.upgrade() {
+                        workspace.update(cx, |workspace, cx| {
+                            if let Some(editor) = workspace
+                                .active_item(cx)
+                                .and_then(|item| item.act_as::<Editor>(cx))
+                                && let Some((_, buffer, _)) = editor.read(cx).active_excerpt(cx)
+                            {
+                                workspace.toggle_modal(window, cx, |window, cx| {
+                                    crate::GoToLine::new(editor, buffer, window, cx)
+                                })
+                            }
+                        });
+                    }
+                }))
+                .tooltip(move |window, cx| match context.as_ref() {
+                    Some(context) => Tooltip::for_action_in(
+                        "Go to Line/Column",
+                        &editor::actions::ToggleGoToLine,
+                        context,
+                        window,
+                        cx,
+                    ),
+                    None => Tooltip::for_action(
+                        "Go to Line/Column",
+                        &editor::actions::ToggleGoToLine,
+                        window,
+                        cx,
+                    ),
+                });
 
-            el.child(
-                Button::new("go-to-line-column", text)
-                    .label_size(LabelSize::Small)
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        if let Some(workspace) = this.workspace.upgrade() {
-                            workspace.update(cx, |workspace, cx| {
-                                if let Some(editor) = workspace
-                                    .active_item(cx)
-                                    .and_then(|item| item.act_as::<Editor>(cx))
-                                    && let Some((_, buffer, _)) = editor.read(cx).active_excerpt(cx)
-                                {
-                                    workspace.toggle_modal(window, cx, |window, cx| {
-                                        crate::GoToLine::new(editor, buffer, window, cx)
-                                    })
-                                }
-                            });
-                        }
-                    }))
-                    .tooltip(move |window, cx| match context.as_ref() {
-                        Some(context) => Tooltip::for_action_in(
-                            "Go to Line/Column",
-                            &editor::actions::ToggleGoToLine,
-                            context,
-                            window,
-                            cx,
-                        ),
-                        None => Tooltip::for_action(
-                            "Go to Line/Column",
-                            &editor::actions::ToggleGoToLine,
-                            window,
-                            cx,
-                        ),
-                    }),
-            )
+            if text.contains("character") {
+                button = button.color(ui::Color::Custom(cx.theme().colors().text_accent))
+            }
+            el.child(button)
         })
     }
 }
