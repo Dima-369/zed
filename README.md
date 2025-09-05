@@ -7,6 +7,7 @@
 - moving up/down in outline panel does not wrap around anymore
 - add `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scrolls quarter a page
 - changed `command palette: toggle` to always by recency instead of hit count
+- allow AI completions in Zed's `settings.json` and `keymap.json`
 
 # Original README
 
