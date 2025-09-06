@@ -13,6 +13,7 @@
 - use `text_accent` in the bottom bar when a selection is active
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar
 - lower excessive tab height
+- the command palette sorting now sorts the same for `close work` and `work close`
 
 # Original README
 

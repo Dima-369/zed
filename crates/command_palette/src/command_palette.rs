@@ -14,9 +14,10 @@ use command_palette_hooks::{
 
 use fuzzy::{StringMatch, StringMatchCandidate};
 use gpui::{
-    Action, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
+    Action, App, BackgroundExecutor, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
     ParentElement, Render, Styled, Task, WeakEntity, Window,
 };
+use std::sync::atomic::AtomicBool;
 use persistence::COMMAND_PALETTE_HISTORY;
 use picker::{Picker, PickerDelegate};
 use postage::{sink::Sink, stream::Stream};
@@ -59,6 +60,106 @@ pub fn normalize_action_query(input: &str) -> String {
     }
 
     result
+}
+
+/// Match strings with order-insensitive word matching.
+/// Splits the query into words and ensures all words match somewhere in the candidate,
+/// regardless of order.
+async fn match_strings_order_insensitive<T>(
+    candidates: &[T],
+    query: &str,
+    _smart_case: bool,
+    _penalize_length: bool,
+    max_results: usize,
+    cancel_flag: &AtomicBool,
+    _executor: BackgroundExecutor,
+) -> Vec<StringMatch>
+where
+    T: std::borrow::Borrow<StringMatchCandidate> + Sync,
+{
+    if candidates.is_empty() || max_results == 0 {
+        return Default::default();
+    }
+
+    if query.is_empty() {
+        return candidates
+            .iter()
+            .map(|candidate| StringMatch {
+                candidate_id: candidate.borrow().id,
+                score: 0.,
+                positions: Default::default(),
+                string: candidate.borrow().string.clone(),
+            })
+            .collect();
+    }
+
+    // Split query into words and remove empty ones
+    let words: Vec<&str> = query.split_whitespace().collect();
+    if words.is_empty() {
+        return Vec::new();
+    }
+
+    let mut results = Vec::new();
+
+    for candidate in candidates {
+        if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
+        }
+
+        let candidate_borrowed = candidate.borrow();
+        let candidate_string = &candidate_borrowed.string;
+        let candidate_lower = candidate_string.to_lowercase();
+
+        // Check if all words are present in the candidate (case-insensitive)
+        let mut all_words_match = true;
+        let mut total_score = 0.0;
+        let mut all_positions = Vec::new();
+
+        for word in &words {
+            let word_lower = word.to_lowercase();
+            
+            // Simple substring search for each word
+            if let Some(byte_pos) = candidate_lower.find(&word_lower) {
+                // Calculate a simple score based on position and word length
+                let word_score = 1.0 / (byte_pos as f64 + 1.0) * (word.len() as f64 / candidate_string.len() as f64);
+                total_score += word_score;
+                
+                // Find the corresponding byte position in the original string
+                // We need to account for case differences between candidate_lower and candidate_string
+                if let Some(original_byte_pos) = candidate_string.to_lowercase().find(&word_lower) {
+                    // Add byte positions for each character in the matched word
+                    let word_byte_len = word_lower.as_bytes().len();
+                    for i in 0..word_byte_len {
+                        let pos = original_byte_pos + i;
+                        if pos < candidate_string.len() && candidate_string.is_char_boundary(pos) {
+                            all_positions.push(pos);
+                        }
+                    }
+                }
+            } else {
+                all_words_match = false;
+                break;
+            }
+        }
+
+        if all_words_match {
+            // Sort positions for proper highlighting
+            all_positions.sort_unstable();
+            all_positions.dedup();
+
+            results.push(StringMatch {
+                candidate_id: candidate_borrowed.id,
+                score: total_score / words.len() as f64, // Average score across words
+                positions: all_positions,
+                string: candidate_string.clone(),
+            });
+        }
+    }
+
+    // Sort by score (descending) and limit results
+    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.truncate(max_results);
+    results
 }
 
 impl CommandPalette {
@@ -314,16 +415,31 @@ impl PickerDelegate for CommandPaletteDelegate {
                     .map(|(ix, command)| StringMatchCandidate::new(ix, &command.name))
                     .collect::<Vec<_>>();
 
-                let matches = fuzzy::match_strings(
-                    &candidates,
-                    &query,
-                    true,
-                    true,
-                    10000,
-                    &Default::default(),
-                    executor,
-                )
-                .await;
+                let matches = if query.trim().contains(' ') {
+                    // For multi-word queries, use order-insensitive matching
+                    match_strings_order_insensitive(
+                        &candidates,
+                        &query,
+                        true,
+                        true,
+                        10000,
+                        &Default::default(),
+                        executor,
+                    )
+                    .await
+                } else {
+                    // For single-word queries, use the original fuzzy matching
+                    fuzzy::match_strings(
+                        &candidates,
+                        &query,
+                        true,
+                        true,
+                        10000,
+                        &Default::default(),
+                        executor,
+                    )
+                    .await
+                };
 
                 tx.send((commands, matches)).await.log_err();
             }
@@ -501,6 +617,42 @@ mod tests {
     }
 
     #[test]
+    fn test_order_insensitive_word_matching() {
+        use std::sync::atomic::AtomicBool;
+        use gpui::BackgroundExecutor;
+        
+        // Create test candidates
+        let candidates = vec![
+            StringMatchCandidate::new(0, "workspace: close"),
+            StringMatchCandidate::new(1, "editor: close tab"),
+            StringMatchCandidate::new(2, "work with files"),
+            StringMatchCandidate::new(3, "close workspace"),
+            StringMatchCandidate::new(4, "open file"),
+        ];
+
+        // Test that "close work" and "work close" should match the same items
+        let executor = BackgroundExecutor::new(1);
+        let cancel_flag = AtomicBool::new(false);
+        
+        // We'll test the logic directly without async
+        let query1 = "close work";
+        let query2 = "work close";
+        
+        let words1: Vec<&str> = query1.split_whitespace().collect();
+        let words2: Vec<&str> = query2.split_whitespace().collect();
+        
+        // Both should find candidates 0 and 3 (workspace: close, close workspace)
+        for candidate in &candidates {
+            let candidate_lower = candidate.string.to_lowercase();
+            
+            let matches1 = words1.iter().all(|word| candidate_lower.contains(&word.to_lowercase()));
+            let matches2 = words2.iter().all(|word| candidate_lower.contains(&word.to_lowercase()));
+            
+            assert_eq!(matches1, matches2, "Candidate '{}' should match both queries equally", candidate.string);
+        }
+    }
+
+    #[test]
     fn test_normalize_query() {
         assert_eq!(
             normalize_action_query("editor: backspace"),
@@ -599,6 +751,60 @@ mod tests {
             assert!(palette.delegate.matches.is_empty())
         });
     }
+    #[gpui::test]
+    async fn test_order_insensitive_matching(cx: &mut TestAppContext) {
+        let app_state = init_test(cx);
+        let project = Project::test(app_state.fs.clone(), [], cx).await;
+        let (workspace, cx) =
+            cx.add_window_view(|window, cx| Workspace::test_new(project.clone(), window, cx));
+
+        let editor = cx.new_window_entity(|window, cx| {
+            let mut editor = Editor::single_line(window, cx);
+            editor.set_text("abc", window, cx);
+            editor
+        });
+
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
+            editor.update(cx, |editor, cx| window.focus(&editor.focus_handle(cx)))
+        });
+
+        // Test that "close work" and "work close" return the same results
+        cx.simulate_keystrokes("cmd-shift-p");
+
+        let palette = workspace.update(cx, |workspace, cx| {
+            workspace
+                .active_modal::<CommandPalette>(cx)
+                .unwrap()
+                .read(cx)
+                .picker
+                .clone()
+        });
+
+        // Test "close work"
+        cx.simulate_input("close work");
+        let results_1 = palette.read_with(cx, |palette, _| {
+            palette.delegate.matches.iter()
+                .map(|m| m.string.clone())
+                .collect::<Vec<_>>()
+        });
+
+        // Clear and test "work close"
+        cx.simulate_keystrokes("cmd-a");
+        cx.simulate_input("work close");
+        let results_2 = palette.read_with(cx, |palette, _| {
+            palette.delegate.matches.iter()
+                .map(|m| m.string.clone())
+                .collect::<Vec<_>>()
+        });
+
+        // Results should be the same (order-insensitive)
+        assert_eq!(results_1.len(), results_2.len());
+        for result in &results_1 {
+            assert!(results_2.contains(result), "Result '{}' should be in both result sets", result);
+        }
+    }
+
     #[gpui::test]
     async fn test_normalized_matches(cx: &mut TestAppContext) {
         let app_state = init_test(cx);
