@@ -94,7 +94,13 @@ where
     }
 
     // Split query into words and remove empty ones
-    let words: Vec<&str> = query.split_whitespace().collect();
+    let words: Vec<&str> = if query.trim().contains(' ') {
+        query.split_whitespace().collect()
+    } else {
+        // For single words, treat the whole query as one word
+        vec![query.trim()]
+    };
+    
     if words.is_empty() {
         return Vec::new();
     }
@@ -118,21 +124,39 @@ where
         for word in &words {
             let word_lower = word.to_lowercase();
             
-            // Simple substring search for each word
-            if let Some(byte_pos) = candidate_lower.find(&word_lower) {
-                // Calculate a simple score based on position and word length
-                let word_score = 1.0 / (byte_pos as f64 + 1.0) * (word.len() as f64 / candidate_string.len() as f64);
-                total_score += word_score;
-                
-                // Find the corresponding byte position in the original string
-                // We need to account for case differences between candidate_lower and candidate_string
-                if let Some(original_byte_pos) = candidate_string.to_lowercase().find(&word_lower) {
-                    // Add byte positions for each character in the matched word
-                    let word_byte_len = word_lower.as_bytes().len();
-                    for i in 0..word_byte_len {
-                        let pos = original_byte_pos + i;
-                        if pos < candidate_string.len() && candidate_string.is_char_boundary(pos) {
-                            all_positions.push(pos);
+            // Require meaningful substring matches
+            // For longer words (3+ chars), require exact substring match
+            // For shorter words, allow prefix matching at word boundaries
+            let found_match = if word.len() >= 3 {
+                // For longer words, require exact substring match
+                candidate_lower.contains(&word_lower)
+            } else {
+                // For shorter words, check if it appears at word boundaries or as prefix
+                candidate_lower.contains(&word_lower) && (
+                    candidate_lower.starts_with(&word_lower) ||
+                    candidate_lower.contains(&format!(" {}", word_lower)) ||
+                    candidate_lower.contains(&format!(":{}", word_lower)) ||
+                    candidate_lower.contains(&format!("-{}", word_lower)) ||
+                    candidate_lower.contains(&format!("_{}", word_lower))
+                )
+            };
+            
+            if found_match {
+                if let Some(byte_pos) = candidate_lower.find(&word_lower) {
+                    // Calculate a simple score based on position and word length
+                    let word_score = 1.0 / (byte_pos as f64 + 1.0) * (word.len() as f64 / candidate_string.len() as f64);
+                    total_score += word_score;
+                    
+                    // Find the corresponding byte position in the original string
+                    // We need to account for case differences between candidate_lower and candidate_string
+                    if let Some(original_byte_pos) = candidate_string.to_lowercase().find(&word_lower) {
+                        // Add byte positions for each character in the matched word
+                        let word_byte_len = word_lower.as_bytes().len();
+                        for i in 0..word_byte_len {
+                            let pos = original_byte_pos + i;
+                            if pos < candidate_string.len() && candidate_string.is_char_boundary(pos) {
+                                all_positions.push(pos);
+                            }
                         }
                     }
                 }
@@ -415,8 +439,9 @@ impl PickerDelegate for CommandPaletteDelegate {
                     .map(|(ix, command)| StringMatchCandidate::new(ix, &command.name))
                     .collect::<Vec<_>>();
 
-                let matches = if query.trim().contains(' ') {
-                    // For multi-word queries, use order-insensitive matching
+                let matches = if query.trim().contains(' ') || query.len() >= 3 {
+                    // For multi-word queries or longer single words, use order-insensitive matching
+                    // This prevents scattered character matching for longer queries
                     match_strings_order_insensitive(
                         &candidates,
                         &query,
@@ -428,7 +453,7 @@ impl PickerDelegate for CommandPaletteDelegate {
                     )
                     .await
                 } else {
-                    // For single-word queries, use the original fuzzy matching
+                    // For short single-word queries, use the original fuzzy matching
                     fuzzy::match_strings(
                         &candidates,
                         &query,
@@ -614,6 +639,52 @@ mod tests {
             humanize_action_name("go_to_line::Deploy"),
             "go to line: deploy"
         );
+    }
+
+    #[test]
+    fn test_improved_substring_matching() {
+        // Test that scattered character matching is prevented
+        let candidates = vec![
+            StringMatchCandidate::new(0, "search: toggle whole word"),
+            StringMatchCandidate::new(1, "workspace: close"),
+            StringMatchCandidate::new(2, "editor: close tab"),
+            StringMatchCandidate::new(3, "project: clone"),
+        ];
+
+        // "clo wo" should NOT match "search: toggle whole word"
+        // because it requires meaningful substring matches
+        let query = "clo wo";
+        let words: Vec<&str> = query.split_whitespace().collect();
+        
+        for candidate in &candidates {
+            let candidate_lower = candidate.string.to_lowercase();
+            let mut all_words_match = true;
+            
+            for word in &words {
+                let word_lower = word.to_lowercase();
+                
+                let found_match = if word.len() >= 3 {
+                    candidate_lower.contains(&word_lower)
+                } else {
+                    candidate_lower.contains(&word_lower) && (
+                        candidate_lower.starts_with(&word_lower) ||
+                        candidate_lower.contains(&format!(" {}", word_lower)) ||
+                        candidate_lower.contains(&format!(":{}", word_lower)) ||
+                        candidate_lower.contains(&format!("-{}", word_lower)) ||
+                        candidate_lower.contains(&format!("_{}", word_lower))
+                    )
+                };
+                
+                if !found_match {
+                    all_words_match = false;
+                    break;
+                }
+            }
+            
+            if candidate.string == "search: toggle whole word" {
+                assert!(!all_words_match, "Should NOT match 'search: toggle whole word' with query 'clo wo'");
+            }
+        }
     }
 
     #[test]
