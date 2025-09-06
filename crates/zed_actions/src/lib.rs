@@ -362,6 +362,15 @@ pub struct OpenRecent {
     pub create_new_window: bool,
 }
 
+/// Opens the recent projects interface using zoxide.
+#[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
+#[action(namespace = projects)]
+#[serde(deny_unknown_fields)]
+pub struct OpenRecentZoxide {
+    #[serde(default)]
+    pub create_new_window: bool,
+}
+
 /// Creates a project from a selected template.
 #[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
 #[action(namespace = projects)]

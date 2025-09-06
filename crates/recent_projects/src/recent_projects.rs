@@ -27,7 +27,7 @@ use workspace::{
     CloseIntent, HistoryManager, ModalView, OpenOptions, PathList, SerializedWorkspaceLocation,
     WORKSPACE_DB, Workspace, WorkspaceId, with_active_or_new_workspace,
 };
-use zed_actions::{OpenRecent, OpenRemote};
+use zed_actions::{OpenRecent, OpenRecentZoxide, OpenRemote};
 
 pub fn init(cx: &mut App) {
     SshSettings::register(cx);
@@ -36,6 +36,21 @@ pub fn init(cx: &mut App) {
         with_active_or_new_workspace(cx, move |workspace, window, cx| {
             let Some(recent_projects) = workspace.active_modal::<RecentProjects>(cx) else {
                 RecentProjects::open(workspace, create_new_window, window, cx);
+                return;
+            };
+
+            recent_projects.update(cx, |recent_projects, cx| {
+                recent_projects
+                    .picker
+                    .update(cx, |picker, cx| picker.cycle_selection(window, cx))
+            });
+        });
+    });
+    cx.on_action(|open_recent_zoxide: &OpenRecentZoxide, cx| {
+        let create_new_window = open_recent_zoxide.create_new_window;
+        with_active_or_new_workspace(cx, move |workspace, window, cx| {
+            let Some(recent_projects) = workspace.active_modal::<RecentProjectsZoxide>(cx) else {
+                RecentProjectsZoxide::open(workspace, create_new_window, window, cx);
                 return;
             };
 
@@ -607,6 +622,338 @@ impl RecentProjectsDelegate {
         false
     }
 }
+
+pub struct RecentProjectsZoxide {
+    pub picker: Entity<Picker<RecentProjectsZoxideDelegate>>,
+    rem_width: f32,
+    _subscription: Subscription,
+}
+
+impl ModalView for RecentProjectsZoxide {}
+
+impl RecentProjectsZoxide {
+    fn new(
+        delegate: RecentProjectsZoxideDelegate,
+        rem_width: f32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
+        let _subscription = cx.subscribe(&picker, |_, _, _, cx| cx.emit(DismissEvent));
+        
+        // Load zoxide directories asynchronously
+        cx.spawn_in(window, async move |this, cx| {
+            let output = std::process::Command::new("zoxide")
+                .args(&["query", "--list"])
+                .output();
+            
+            let directories = match output {
+                Ok(output) if output.status.success() => {
+                    String::from_utf8_lossy(&output.stdout)
+                        .lines()
+                        .map(|line| line.trim().to_string())
+                        .filter(|line| !line.is_empty())
+                        .collect::<Vec<_>>()
+                }
+                _ => Vec::new(),
+            };
+            
+            this.update_in(cx, move |this, window, cx| {
+                this.picker.update(cx, move |picker, cx| {
+                    picker.delegate.set_directories(directories);
+                    picker.update_matches(picker.query(cx), window, cx)
+                })
+            })
+            .ok()
+        })
+        .detach();
+        
+        Self {
+            picker,
+            rem_width,
+            _subscription,
+        }
+    }
+
+    pub fn open(
+        workspace: &mut Workspace,
+        create_new_window: bool,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let weak = cx.entity().downgrade();
+        workspace.toggle_modal(window, cx, |window, cx| {
+            let delegate = RecentProjectsZoxideDelegate::new(weak, create_new_window);
+            Self::new(delegate, 34., window, cx)
+        })
+    }
+}
+
+impl EventEmitter<DismissEvent> for RecentProjectsZoxide {}
+
+impl Focusable for RecentProjectsZoxide {
+    fn focus_handle(&self, cx: &App) -> FocusHandle {
+        self.picker.focus_handle(cx)
+    }
+}
+
+impl Render for RecentProjectsZoxide {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        v_flex()
+            .key_context("RecentProjectsZoxide")
+            .w(rems(self.rem_width))
+            .child(self.picker.clone())
+            .on_mouse_down_out(cx.listener(|this, _, window, cx| {
+                this.picker.update(cx, |this, cx| {
+                    this.cancel(&Default::default(), window, cx);
+                })
+            }))
+    }
+}
+
+pub struct RecentProjectsZoxideDelegate {
+    workspace: WeakEntity<Workspace>,
+    directories: Vec<String>,
+    selected_match_index: usize,
+    matches: Vec<StringMatch>,
+    create_new_window: bool,
+    reset_selected_match_index: bool,
+}
+
+impl RecentProjectsZoxideDelegate {
+    fn new(workspace: WeakEntity<Workspace>, create_new_window: bool) -> Self {
+        Self {
+            workspace,
+            directories: Vec::new(),
+            selected_match_index: 0,
+            matches: Default::default(),
+            create_new_window,
+            reset_selected_match_index: true,
+        }
+    }
+
+    pub fn set_directories(&mut self, directories: Vec<String>) {
+        self.directories = directories;
+    }
+
+    fn format_path_for_display(&self, path: &str) -> String {
+        if let Some(home_dir) = std::env::var("HOME").ok() {
+            if path.starts_with(&home_dir) {
+                return path.replacen(&home_dir, "~", 1);
+            }
+        }
+        path.to_string()
+    }
+}
+
+impl EventEmitter<DismissEvent> for RecentProjectsZoxideDelegate {}
+
+impl PickerDelegate for RecentProjectsZoxideDelegate {
+    type ListItem = ListItem;
+
+    fn placeholder_text(&self, window: &mut Window, _: &mut App) -> Arc<str> {
+        let (create_window, reuse_window) = if self.create_new_window {
+            (
+                window.keystroke_text_for(&menu::Confirm),
+                window.keystroke_text_for(&menu::SecondaryConfirm),
+            )
+        } else {
+            (
+                window.keystroke_text_for(&menu::SecondaryConfirm),
+                window.keystroke_text_for(&menu::Confirm),
+            )
+        };
+        Arc::from(format!(
+            "{reuse_window} reuses this window, {create_window} opens a new one (zoxide)",
+        ))
+    }
+
+    fn match_count(&self) -> usize {
+        self.matches.len()
+    }
+
+    fn selected_index(&self) -> usize {
+        self.selected_match_index
+    }
+
+    fn set_selected_index(
+        &mut self,
+        ix: usize,
+        _window: &mut Window,
+        _cx: &mut Context<Picker<Self>>,
+    ) {
+        self.selected_match_index = ix;
+    }
+
+    fn update_matches(
+        &mut self,
+        query: String,
+        _: &mut Window,
+        cx: &mut Context<Picker<Self>>,
+    ) -> gpui::Task<()> {
+        let query = query.trim_start();
+        let smart_case = query.chars().any(|c| c.is_uppercase());
+        let candidates = self
+            .directories
+            .iter()
+            .enumerate()
+            .map(|(id, path)| StringMatchCandidate::new(id, path))
+            .collect::<Vec<_>>();
+        
+        self.matches = smol::block_on(fuzzy::match_strings(
+            candidates.as_slice(),
+            query,
+            smart_case,
+            true,
+            100,
+            &Default::default(),
+            cx.background_executor().clone(),
+        ));
+        
+        // Don't sort - preserve zoxide's order
+        self.matches.sort_unstable_by_key(|m| m.candidate_id);
+
+        if self.reset_selected_match_index {
+            self.selected_match_index = self
+                .matches
+                .iter()
+                .enumerate()
+                .rev()
+                .max_by_key(|(_, m)| OrderedFloat(m.score))
+                .map(|(ix, _)| ix)
+                .unwrap_or(0);
+        }
+        self.reset_selected_match_index = true;
+        Task::ready(())
+    }
+
+    fn confirm(&mut self, secondary: bool, window: &mut Window, cx: &mut Context<Picker<Self>>) {
+        if let Some((selected_match, workspace)) = self
+            .matches
+            .get(self.selected_index())
+            .zip(self.workspace.upgrade())
+        {
+            let directory_path = &self.directories[selected_match.candidate_id];
+            let path = std::path::PathBuf::from(directory_path);
+            
+            // Add to zoxide
+            let _ = std::process::Command::new("zoxide")
+                .args(&["add", directory_path])
+                .output();
+            
+            let replace_current_window = if self.create_new_window {
+                secondary
+            } else {
+                !secondary
+            };
+            
+            workspace
+                .update(cx, |workspace, cx| {
+                    let paths = vec![path];
+                    if replace_current_window {
+                        cx.spawn_in(window, async move |workspace, cx| {
+                            let continue_replacing = workspace
+                                .update_in(cx, |workspace, window, cx| {
+                                    workspace.prepare_to_close(
+                                        CloseIntent::ReplaceWindow,
+                                        window,
+                                        cx,
+                                    )
+                                })?
+                                .await?;
+                            if continue_replacing {
+                                workspace
+                                    .update_in(cx, |workspace, window, cx| {
+                                        workspace.open_workspace_for_paths(
+                                            true, paths, window, cx,
+                                        )
+                                    })?
+                                    .await
+                            } else {
+                                Ok(())
+                            }
+                        })
+                    } else {
+                        workspace.open_workspace_for_paths(false, paths, window, cx)
+                    }
+                })
+                .detach_and_log_err(cx);
+            cx.emit(DismissEvent);
+        }
+    }
+
+    fn dismissed(&mut self, _window: &mut Window, _: &mut Context<Picker<Self>>) {}
+
+    fn no_matches_text(&self, _window: &mut Window, _cx: &mut App) -> Option<SharedString> {
+        let text = if self.directories.is_empty() {
+            "No zoxide directories found. Make sure zoxide is installed and has been used.".into()
+        } else {
+            "No matches".into()
+        };
+        Some(text)
+    }
+
+    fn render_match(
+        &self,
+        ix: usize,
+        selected: bool,
+        window: &mut Window,
+        cx: &mut Context<Picker<Self>>,
+    ) -> Option<Self::ListItem> {
+        let hit = self.matches.get(ix)?;
+        let directory_path = self.directories.get(hit.candidate_id)?;
+        let display_path = self.format_path_for_display(directory_path);
+        
+        let highlighted_text = HighlightedMatch {
+            text: display_path.clone(),
+            highlight_positions: hit.positions.clone(),
+            char_count: display_path.chars().count(),
+            color: Color::Default,
+        };
+
+        let tooltip_text = display_path.clone();
+        Some(
+            ListItem::new(ix)
+                .toggle_state(selected)
+                .inset(true)
+                .spacing(ListItemSpacing::Sparse)
+                .child(
+                    h_flex()
+                        .flex_grow()
+                        .gap_3()
+                        .child(Icon::new(IconName::Folder).color(Color::Muted))
+                        .child(highlighted_text.render(window, cx)),
+                )
+                .tooltip(move |_, cx| {
+                    cx.new(|_| SimpleTooltip {
+                        text: tooltip_text.clone(),
+                    })
+                    .into()
+                }),
+        )
+    }
+
+    fn render_footer(
+        &self,
+        _window: &mut Window,
+        _cx: &mut Context<Picker<Self>>,
+    ) -> Option<AnyElement> {
+        None
+    }
+}
+
+struct SimpleTooltip {
+    text: String,
+}
+
+impl Render for SimpleTooltip {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        tooltip_container(window, cx, |div, _, _| {
+            div.child(self.text.clone())
+        })
+    }
+}
+
 struct MatchTooltip {
     highlighted_location: HighlightedMatchWithPaths,
 }
