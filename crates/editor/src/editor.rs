@@ -2673,7 +2673,7 @@ impl Editor {
             let buffer = create.await?;
             buffer.update(cx, |buffer, cx| {
                 buffer.edit([(0..0, content)], None, cx);
-            });
+            })?;
             workspace.update_in(cx, |workspace, window, cx| {
                 let editor =
                     cx.new(|cx| Editor::for_buffer(buffer, Some(project.clone()), window, cx));
