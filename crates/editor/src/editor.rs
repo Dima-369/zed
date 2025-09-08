@@ -150,18 +150,19 @@ use project::{
     BreakpointWithPosition, CodeAction, Completion, CompletionIntent, CompletionResponse,
     CompletionSource, DisableAiSettings, DocumentHighlight, InlayHint, Location, LocationLink,
     PrepareRenameResponse, Project, ProjectItem, ProjectPath, ProjectTransaction, TaskSourceKind,
-    debugger::breakpoint_store::Breakpoint,
     debugger::{
         breakpoint_store::{
-            BreakpointEditAction, BreakpointSessionState, BreakpointState, BreakpointStore,
-            BreakpointStoreEvent,
+            Breakpoint, BreakpointEditAction, BreakpointSessionState, BreakpointState,
+            BreakpointStore, BreakpointStoreEvent,
         },
         session::{Session, SessionEvent},
     },
     git_store::{GitStoreEvent, RepositoryEvent},
     lsp_store::{CompletionDocumentation, FormatTrigger, LspFormatTarget, OpenLspBufferHandle},
-    project_settings::{DiagnosticSeverity, GoToDiagnosticSeverityFilter},
-    project_settings::{GitGutterSetting, ProjectSettings},
+    project_settings::{
+        DiagnosticSeverity, GitGutterSetting, GoToDiagnosticSeverity, GoToDiagnosticSeverityFilter,
+        ProjectSettings,
+    },
 };
 use rand::{seq::SliceRandom, thread_rng};
 use rpc::{ErrorCode, ErrorExt, proto::PeerId};
@@ -15578,25 +15579,50 @@ impl Editor {
         }
 
         let snapshot = self.snapshot(window, cx);
-        let before = filtered(
+        let errors_only = GoToDiagnosticSeverityFilter::Only(GoToDiagnosticSeverity::Error);
+        let before_errors: Vec<_> = filtered(
             snapshot.clone(),
-            severity,
+            errors_only,
             buffer
                 .diagnostics_in_range(0..selection.start)
                 .filter(|entry| entry.range.start <= selection.start),
-        );
-        let after = filtered(
-            snapshot,
-            severity,
+        )
+        .collect();
+        let after_errors: Vec<_> = filtered(
+            snapshot.clone(),
+            errors_only,
             buffer
                 .diagnostics_in_range(selection.start..buffer.len())
                 .filter(|entry| entry.range.start >= selection.start),
-        );
+        )
+        .collect();
+
+        let (before, after) = if !before_errors.is_empty() || !after_errors.is_empty() {
+            (before_errors, after_errors)
+        } else {
+            (
+                filtered(
+                    snapshot.clone(),
+                    severity,
+                    buffer
+                        .diagnostics_in_range(0..selection.start)
+                        .filter(|entry| entry.range.start <= selection.start),
+                )
+                .collect(),
+                filtered(
+                    snapshot,
+                    severity,
+                    buffer
+                        .diagnostics_in_range(selection.start..buffer.len())
+                        .filter(|entry| entry.range.start >= selection.start),
+                )
+                .collect(),
+            )
+        };
 
         let mut found: Option<DiagnosticEntry<usize>> = None;
         if direction == Direction::Prev {
-            'outer: for prev_diagnostics in [before.collect::<Vec<_>>(), after.collect::<Vec<_>>()]
-            {
+            'outer: for prev_diagnostics in [before, after] {
                 for diagnostic in prev_diagnostics.into_iter().rev() {
                     if diagnostic.range.start != selection.start
                         || active_group_id
@@ -15608,7 +15634,7 @@ impl Editor {
                 }
             }
         } else {
-            for diagnostic in after.chain(before) {
+            for diagnostic in after.into_iter().chain(before.into_iter()) {
                 if diagnostic.range.start != selection.start
                     || active_group_id.is_some_and(|active| diagnostic.diagnostic.group_id > active)
                 {
