@@ -94,10 +94,26 @@ pub fn highlight_ranges(
     let mut highlights: Vec<(Range<usize>, HighlightStyle)> = Vec::new();
 
     while let Some(start_ix) = highlight_indices.next() {
+        // Skip invalid start indices
+        if start_ix >= text.len() {
+            continue;
+        }
+        
         let mut end_ix = start_ix;
 
         loop {
-            end_ix = end_ix + text[end_ix..].chars().next().unwrap().len_utf8();
+            // Check bounds before slicing and ensure we don't go past the end
+            if end_ix >= text.len() {
+                break;
+            }
+            
+            // Get the next character safely
+            if let Some(ch) = text[end_ix..].chars().next() {
+                end_ix = end_ix + ch.len_utf8();
+            } else {
+                break;
+            }
+            
             if let Some(&next_ix) = highlight_indices.peek()
                 && next_ix == end_ix
             {
@@ -108,7 +124,10 @@ pub fn highlight_ranges(
             break;
         }
 
-        highlights.push((start_ix..end_ix, style));
+        // Only add valid ranges
+        if start_ix < text.len() && end_ix <= text.len() && start_ix < end_ix {
+            highlights.push((start_ix..end_ix, style));
+        }
     }
 
     highlights

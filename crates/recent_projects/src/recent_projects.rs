@@ -640,24 +640,22 @@ impl RecentProjectsZoxide {
     ) -> Self {
         let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
         let _subscription = cx.subscribe(&picker, |_, _, _, cx| cx.emit(DismissEvent));
-        
+
         // Load zoxide directories asynchronously
         cx.spawn_in(window, async move |this, cx| {
             let output = std::process::Command::new("zoxide")
                 .args(&["query", "--list"])
                 .output();
-            
+
             let directories = match output {
-                Ok(output) if output.status.success() => {
-                    String::from_utf8_lossy(&output.stdout)
-                        .lines()
-                        .map(|line| line.trim().to_string())
-                        .filter(|line| !line.is_empty())
-                        .collect::<Vec<_>>()
-                }
+                Ok(output) if output.status.success() => String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .map(|line| line.trim().to_string())
+                    .filter(|line| !line.is_empty())
+                    .collect::<Vec<_>>(),
                 _ => Vec::new(),
             };
-            
+
             this.update_in(cx, move |this, window, cx| {
                 this.picker.update(cx, move |picker, cx| {
                     picker.delegate.set_directories(directories);
@@ -667,7 +665,7 @@ impl RecentProjectsZoxide {
             .ok()
         })
         .detach();
-        
+
         Self {
             picker,
             rem_width,
@@ -799,7 +797,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
             .enumerate()
             .map(|(id, path)| StringMatchCandidate::new(id, path))
             .collect::<Vec<_>>();
-        
+
         self.matches = smol::block_on(fuzzy::match_strings(
             candidates.as_slice(),
             query,
@@ -809,7 +807,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
             &Default::default(),
             cx.background_executor().clone(),
         ));
-        
+
         // Don't sort - preserve zoxide's order
         self.matches.sort_unstable_by_key(|m| m.candidate_id);
 
@@ -835,18 +833,18 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
         {
             let directory_path = &self.directories[selected_match.candidate_id];
             let path = std::path::PathBuf::from(directory_path);
-            
+
             // Add to zoxide
             let _ = std::process::Command::new("zoxide")
                 .args(&["add", directory_path])
                 .output();
-            
+
             let replace_current_window = if self.create_new_window {
                 secondary
             } else {
                 !secondary
             };
-            
+
             workspace
                 .update(cx, |workspace, cx| {
                     let paths = vec![path];
@@ -864,9 +862,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
                             if continue_replacing {
                                 workspace
                                     .update_in(cx, |workspace, window, cx| {
-                                        workspace.open_workspace_for_paths(
-                                            true, paths, window, cx,
-                                        )
+                                        workspace.open_workspace_for_paths(true, paths, window, cx)
                                     })?
                                     .await
                             } else {
@@ -903,10 +899,43 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
         let hit = self.matches.get(ix)?;
         let directory_path = self.directories.get(hit.candidate_id)?;
         let display_path = self.format_path_for_display(directory_path);
-        
+
+        // Adjust highlight positions if the path was shortened
+        let adjusted_positions = if display_path != *directory_path {
+            let display_chars: Vec<char> = display_path.chars().collect();
+
+            // Find the offset where the paths start to match
+            let mut offset = 0;
+            if let Some(home_dir) = std::env::var("HOME").ok() {
+                if directory_path.starts_with(&home_dir) && display_path.starts_with('~') {
+                    // The home directory was replaced with ~, so offset is home_dir.len() - 1
+                    offset = home_dir.chars().count().saturating_sub(1);
+                }
+            }
+
+            // Adjust positions and filter out any that are now out of bounds
+            hit.positions
+                .iter()
+                .filter_map(|&pos| {
+                    if pos >= offset {
+                        let adjusted_pos = pos - offset;
+                        if adjusted_pos < display_chars.len() {
+                            Some(adjusted_pos)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else {
+            hit.positions.clone()
+        };
+
         let highlighted_text = HighlightedMatch {
             text: display_path.clone(),
-            highlight_positions: hit.positions.clone(),
+            highlight_positions: adjusted_positions,
             char_count: display_path.chars().count(),
             color: Color::Default,
         };
@@ -948,9 +977,7 @@ struct SimpleTooltip {
 
 impl Render for SimpleTooltip {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        tooltip_container(window, cx, |div, _, _| {
-            div.child(self.text.clone())
-        })
+        tooltip_container(window, cx, |div, _, _| div.child(self.text.clone()))
     }
 }
 
