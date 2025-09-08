@@ -363,6 +363,7 @@ pub fn init(cx: &mut App) {
     cx.observe_new(
         |workspace: &mut Workspace, _: Option<&mut Window>, _cx: &mut Context<Workspace>| {
             workspace.register_action(Editor::new_file);
+            workspace.register_action(Editor::new_file_from_clipboard);
             workspace.register_action(Editor::new_file_vertical);
             workspace.register_action(Editor::new_file_horizontal);
             workspace.register_action(Editor::cancel_language_server_work);
@@ -380,6 +381,20 @@ pub fn init(cx: &mut App) {
                 cx,
                 |workspace, window, cx| {
                     Editor::new_file(workspace, &Default::default(), window, cx)
+                },
+            )
+            .detach();
+        }
+    });
+    cx.on_action(move |_: &workspace::NewFileFromClipboard, cx| {
+        let app_state = workspace::AppState::global(cx);
+        if let Some(app_state) = app_state.upgrade() {
+            workspace::open_new(
+                Default::default(),
+                app_state,
+                cx,
+                |workspace, window, cx| {
+                    Editor::new_file_from_clipboard(workspace, &Default::default(), window, cx)
                 },
             )
             .detach();
@@ -2612,8 +2627,42 @@ impl Editor {
         );
     }
 
+    pub fn new_file_from_clipboard(
+        workspace: &mut Workspace,
+        _: &workspace::NewFileFromClipboard,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let content = cx
+            .read_from_clipboard()
+            .and_then(|item| item.text())
+            .unwrap_or_default();
+
+        Self::new_in_workspace_with_content(workspace, content, window, cx).detach_and_prompt_err(
+            "Failed to create buffer",
+            window,
+            cx,
+            |e, _, _| match e.error_code() {
+                ErrorCode::RemoteUpgradeRequired => Some(format!(
+                "The remote instance of Zed does not support this yet. It must be upgraded to {}",
+                e.error_tag("required").unwrap_or("the latest version")
+            )),
+                _ => None,
+            },
+        );
+    }
+
     pub fn new_in_workspace(
         workspace: &mut Workspace,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) -> Task<Result<Entity<Editor>>> {
+        Self::new_in_workspace_with_content(workspace, String::new(), window, cx)
+    }
+
+    pub fn new_in_workspace_with_content(
+        workspace: &mut Workspace,
+        content: String,
         window: &mut Window,
         cx: &mut Context<Workspace>,
     ) -> Task<Result<Entity<Editor>>> {
@@ -2622,6 +2671,9 @@ impl Editor {
 
         cx.spawn_in(window, async move |workspace, cx| {
             let buffer = create.await?;
+            buffer.update(cx, |buffer, cx| {
+                buffer.edit([(0..0, content)], None, cx);
+            });
             workspace.update_in(cx, |workspace, window, cx| {
                 let editor =
                     cx.new(|cx| Editor::for_buffer(buffer, Some(project.clone()), window, cx));

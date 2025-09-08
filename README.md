@@ -16,6 +16,7 @@
 - the command palette sorting now sorts the same for `close work` and `work close`, and it does not search individual character matches like when you enter `clo wo`, it does not show `search: toggle whole word` because every individual character is contained
 - add `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering
 - go to next or previous diagnostic always first jumps to errors, and only if there are no errors, it jumps to warnings. Before, it was mixed
+- added `workspace::NewFileFromClipboard` which pastes in the clipboard contents
 
 # Original README
 

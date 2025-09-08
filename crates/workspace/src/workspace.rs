@@ -201,6 +201,8 @@ actions!(
         NewCenterTerminal,
         /// Creates a new file.
         NewFile,
+        /// Creates a new file from clipboard content.
+        NewFileFromClipboard,
         /// Creates a new file in a vertical split.
         NewFileSplitVertical,
         /// Creates a new file in a horizontal split.
