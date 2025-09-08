@@ -19,6 +19,7 @@ pub struct WorkspaceSettings {
     pub show_call_status_icon: bool,
     pub autosave: AutosaveSetting,
     pub restore_on_startup: RestoreOnStartupBehavior,
+    pub open_file_on_new_workspace: bool,
     pub restore_on_file_reopen: bool,
     pub drop_target_size: f32,
     pub use_system_path_prompts: bool,
@@ -214,6 +215,12 @@ pub struct WorkspaceSettingsContent {
     ///
     /// Default: true
     pub zoomed_padding: Option<bool>,
+    /// Whether to automatically open a file when creating a new workspace with no previous session.
+    /// When enabled, Zed will try to open a suitable file (README, then other text files) instead of showing an empty editor.
+    /// This helps avoid focus issues with empty workspaces.
+    ///
+    /// Default: true
+    pub open_file_on_new_workspace: Option<bool>,
 }
 
 #[derive(Deserialize)]

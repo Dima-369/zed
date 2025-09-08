@@ -1642,6 +1642,27 @@ impl Workspace {
 
             window
                 .update(cx, |workspace, window, cx| {
+                    if workspace.active_item(cx).is_none() {
+                        let settings = WorkspaceSettings::get_global(cx);
+                        if settings.open_file_on_new_workspace {
+                            if let Some(file_path) = find_initial_file_to_open(&workspace.project, cx) {
+                                let project_path = workspace
+                                    .project
+                                    .read(cx)
+                                    .worktrees(cx)
+                                    .next()
+                                    .and_then(|worktree| {
+                                        let worktree = worktree.read(cx);
+                                        Some((worktree.id(), file_path.as_path()))
+                                    });
+
+                                if let Some(project_path) = project_path {
+                                    workspace.open_path(project_path, None, true, window, cx).detach();
+                                }
+                            }
+                        }
+                    }
+
                     window.activate_window();
                     workspace.update_history(cx);
                 })
@@ -7228,11 +7249,9 @@ pub fn open_new(
 ) -> Task<anyhow::Result<()>> {
     let task = Workspace::new_local(Vec::new(), app_state, None, open_options.env, cx);
     cx.spawn(async move |cx| {
-        let (workspace, opened_paths) = task.await?;
+                let (workspace, _opened_paths) = task.await?;
         workspace.update(cx, |workspace, window, cx| {
-            if opened_paths.is_empty() {
-                init(workspace, window, cx)
-            }
+            init(workspace, window, cx)
         })?;
         Ok(())
     })
@@ -10668,5 +10687,126 @@ mod tests {
             item.is_dirty = true;
         });
         item
+    }
+}
+
+/// Find the first suitable file to open in a new workspace
+/// Priority order: README files, then any text-like files in root, then any files
+fn find_initial_file_to_open(
+    project: &Entity<project::Project>,
+    cx: &App,
+) -> Option<std::path::PathBuf> {
+    use std::path::Path;
+
+    let project = project.read(cx);
+
+    // Get the first worktree (root directory)
+    let worktree = project.worktrees(cx).next()?;
+    let worktree = worktree.read(cx);
+
+    let mut readme_files = Vec::new();
+    let mut text_files = Vec::new();
+    let mut other_files = Vec::new();
+
+    // Collect files from the root directory only
+    for entry in worktree.entries(false, 0) {
+        if entry.is_file() && entry.path.parent().map_or(true, |p| p == Path::new("")) {
+            let path = entry.path.as_ref();
+            let file_name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+
+            // Prioritize README files
+            if file_name.starts_with("readme") {
+                readme_files.push(path.to_path_buf());
+            }
+            // Then common text files
+            else if is_text_file(path) {
+                text_files.push(path.to_path_buf());
+            }
+            // Finally any other files
+            else {
+                other_files.push(path.to_path_buf());
+            }
+        }
+    }
+
+    // Sort each category
+    readme_files.sort();
+    text_files.sort();
+    other_files.sort();
+
+    // Return first available in priority order
+    readme_files
+        .into_iter()
+        .chain(text_files.into_iter())
+        .chain(other_files.into_iter())
+        .next()
+}
+
+fn is_text_file(path: &std::path::Path) -> bool {
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        matches!(
+            ext.to_lowercase().as_str(),
+            "md" | "txt"
+                | "rs"
+                | "js"
+                | "ts"
+                | "py"
+                | "rb"
+                | "go"
+                | "java"
+                | "c"
+                | "cpp"
+                | "h"
+                | "hpp"
+                | "css"
+                | "html"
+                | "xml"
+                | "json"
+                | "yaml"
+                | "yml"
+                | "toml"
+                | "ini"
+                | "cfg"
+                | "sh"
+                | "bash"
+                | "zsh"
+                | "fish"
+                | "ps1"
+                | "bat"
+                | "cmd"
+                | "dockerfile"
+                | "makefile"
+                | "gitignore"
+                | "gitattributes"
+                | "editorconfig"
+                | "license"
+                | "changelog"
+                | "todo"
+        )
+    } else {
+        // Check for common files without extensions
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            matches!(
+                name.to_lowercase().as_str(),
+                "makefile"
+                    | "dockerfile"
+                    | "license"
+                    | "changelog"
+                    | "todo"
+                    | "authors"
+                    | "contributors"
+                    | "copying"
+                    | "install"
+                    | "news"
+                    | "thanks"
+                    | "version"
+            )
+        } else {
+            false
+        }
     }
 }
