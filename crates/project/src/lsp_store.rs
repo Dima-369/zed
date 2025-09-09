@@ -10749,7 +10749,7 @@ impl LspStore {
         server_id: LanguageServerId,
         mut lsp_diagnostics: lsp::PublishDiagnosticsParams,
         disk_based_sources: &[String],
-        cx: &AppContext,
+        cx: &mut Context<Self>,
     ) -> DocumentDiagnostics {
         let mut diagnostics = Vec::default();
         let mut primary_diagnostic_group_ids = HashMap::default();
@@ -10764,7 +10764,7 @@ impl LspStore {
         // If merging is enabled, group diagnostics by range first
         if should_merge_same_range {
             let mut diagnostics_by_range: HashMap<lsp::Range, Vec<lsp::Diagnostic>> =
-                HashMap::new();
+                HashMap::default();
 
             for diagnostic in lsp_diagnostics.diagnostics {
                 diagnostics_by_range
@@ -10775,7 +10775,7 @@ impl LspStore {
 
             // Merge diagnostics with the same range
             let mut merged_diagnostics = Vec::new();
-            for (range, mut range_diagnostics) in diagnostics_by_range {
+            for (_range, mut range_diagnostics) in diagnostics_by_range {
                 if range_diagnostics.len() == 1 {
                     merged_diagnostics.push(range_diagnostics.into_iter().next().unwrap());
                 } else {
