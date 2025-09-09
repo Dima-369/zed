@@ -10722,17 +10722,6 @@ impl LspStore {
         let updates = lsp_diagnostics
             .into_iter()
             .filter_map(|update| {
-                """    pub fn merge_lsp_diagnostics(
-        &mut self,
-        source_kind: DiagnosticSourceKind,
-        lsp_diagnostics: Vec<DocumentDiagnosticsUpdate<lsp::PublishDiagnosticsParams>>,
-        merge: impl Fn(&Buffer, &Diagnostic, &App) -> bool + Clone,
-        cx: &mut Context<Self>,
-    ) -> Result<()> {
-        anyhow::ensure!(self.mode.is_local(), "called update_diagnostics on remote");
-        let updates = lsp_diagnostics
-            .into_iter()
-            .filter_map(|update| {
                 let abs_path = update.diagnostics.uri.to_file_path().ok()?;
                 Some(DocumentDiagnosticsUpdate {
                     diagnostics: self.lsp_to_document_diagnostics(
@@ -10770,20 +10759,20 @@ impl LspStore {
         let adapter = self.language_server_adapter_for_id(server_id);
 
         // Check if we should merge diagnostics with the same range
-        let should_merge_same_range =
-            ProjectSettings::get_global(cx).diagnostics.merge_same_range;""
+        let should_merge_same_range = ProjectSettings::get_global(cx).diagnostics.merge_same_range;
 
         // If merging is enabled, group diagnostics by range first
         if should_merge_same_range {
-            let mut diagnostics_by_range: HashMap<lsp::Range, Vec<lsp::Diagnostic>> = HashMap::new();
-            
+            let mut diagnostics_by_range: HashMap<lsp::Range, Vec<lsp::Diagnostic>> =
+                HashMap::new();
+
             for diagnostic in lsp_diagnostics.diagnostics {
                 diagnostics_by_range
                     .entry(diagnostic.range)
                     .or_default()
                     .push(diagnostic);
             }
-            
+
             // Merge diagnostics with the same range
             let mut merged_diagnostics = Vec::new();
             for (range, mut range_diagnostics) in diagnostics_by_range {
@@ -10791,18 +10780,19 @@ impl LspStore {
                     merged_diagnostics.push(range_diagnostics.into_iter().next().unwrap());
                 } else {
                     // Sort by severity to get the lowest (most severe) first
-                    range_diagnostics.sort_by_key(|d| d.severity.unwrap_or(lsp::DiagnosticSeverity::ERROR));
-                    
+                    range_diagnostics
+                        .sort_by_key(|d| d.severity.unwrap_or(lsp::DiagnosticSeverity::ERROR));
+
                     let primary_diagnostic = &range_diagnostics[0];
                     let merged_message = range_diagnostics
                         .iter()
                         .map(|d| d.message.trim())
                         .collect::<Vec<_>>()
                         .join("\n");
-                    
+
                     let mut merged_diagnostic = primary_diagnostic.clone();
                     merged_diagnostic.message = merged_message;
-                    
+
                     // Collect all related information from all diagnostics
                     let mut all_related_info = Vec::new();
                     for diagnostic in &range_diagnostics {
@@ -10813,11 +10803,11 @@ impl LspStore {
                     if !all_related_info.is_empty() {
                         merged_diagnostic.related_information = Some(all_related_info);
                     }
-                    
+
                     merged_diagnostics.push(merged_diagnostic);
                 }
             }
-            
+
             lsp_diagnostics.diagnostics = merged_diagnostics;
         }
 
