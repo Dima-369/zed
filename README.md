@@ -18,6 +18,7 @@
 - go to next or previous diagnostic always first jumps to errors, and only if there are no errors, it jumps to warnings. Before, it was mixed
 - added `workspace::NewFileFromClipboard` which pastes in the clipboard contents
 - added new setting: `diagnostics > merge_same_range` to merge diagnostics which have the same character range (I noticed this in Gleam's LSP: https://github.com/gleam-lang/gleam/issues/4946)
+- adjust `/Users/dima/Developer/zed/script/bundle-mac` to use `ln -s` to create a link from its `cli` into `"$HOME/.cargo/bin/zed"`
 
 # Original README
 
