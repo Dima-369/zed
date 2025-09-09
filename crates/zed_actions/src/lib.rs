@@ -164,6 +164,15 @@ pub mod workspace {
     );
 }
 
+/// Opens the recent files interface.
+#[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
+#[action(namespace = workspace)]
+#[serde(deny_unknown_fields)]
+pub struct OpenRecentFile {
+    #[serde(default)]
+    pub create_new_window: bool,
+}
+
 pub mod git {
     use gpui::actions;
 

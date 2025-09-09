@@ -31,6 +31,7 @@ use node_runtime::{NodeBinaryOptions, NodeRuntime};
 use parking_lot::Mutex;
 use project::project_settings::ProjectSettings;
 use recent_projects::{SshSettings, open_remote_project};
+use recent_files;
 use release_channel::{AppCommitSha, AppVersion, ReleaseChannel};
 use session::{AppSession, Session};
 use settings::{BaseKeymap, Settings, SettingsStore, watch_config_file};
@@ -592,6 +593,7 @@ pub fn main() {
             cx,
         );
         recent_projects::init(cx);
+        recent_files::init(cx);
 
         load_embedded_fonts(cx);
 

@@ -1,3 +1,5 @@
+Since I am using macOS, I am using this modified script `./script/bundle-mac -l -o -i` to compile the `Zed Dev.app`.
+
 # Fork changes
 
 - disable `webrtc_sys` compilation which always fails locally for me on macOS
@@ -18,7 +20,8 @@
 - go to next or previous diagnostic always first jumps to errors, and only if there are no errors, it jumps to warnings. Before, it was mixed
 - added `workspace::NewFileFromClipboard` which pastes in the clipboard contents
 - added new setting: `diagnostics > merge_same_range` to merge diagnostics which have the same character range (I noticed this in Gleam's LSP: https://github.com/gleam-lang/gleam/issues/4946)
-- adjust `/Users/dima/Developer/zed/script/bundle-mac` to use `ln -s` to create a link from its `cli` into `"$HOME/.cargo/bin/zed"`
+- adjust `script/bundle-mac` to use `ln -s` to create a link from its `cli` into `"$HOME/.cargo/bin/zed"`
+- implement new recent file functionality which tracks every opened buffer to quickly jump to file/open new workspace
 
 # Original README
 

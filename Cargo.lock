@@ -13265,6 +13265,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "recent_files"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "editor",
+ "fuzzy",
+ "gpui",
+ "log",
+ "menu",
+ "ordered-float 2.10.1",
+ "parking_lot",
+ "paths",
+ "picker",
+ "project",
+ "settings",
+ "smol",
+ "ui",
+ "util",
+ "workspace",
+ "zed_actions",
+]
+
+[[package]]
 name = "recent_projects"
 version = "0.1.0"
 dependencies = [
@@ -20493,6 +20516,7 @@ dependencies = [
  "project_symbols",
  "prompt_store",
  "proto",
+ "recent_files",
  "recent_projects",
  "release_channel",
  "remote",
