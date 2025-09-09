@@ -752,13 +752,13 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
     fn placeholder_text(&self, window: &mut Window, _: &mut App) -> Arc<str> {
         let (create_window, reuse_window) = if self.create_new_window {
             (
-                window.keystroke_text_for(&menu::Confirm),
                 window.keystroke_text_for(&menu::SecondaryConfirm),
+                window.keystroke_text_for(&menu::Confirm),
             )
         } else {
             (
-                window.keystroke_text_for(&menu::SecondaryConfirm),
                 window.keystroke_text_for(&menu::Confirm),
+                window.keystroke_text_for(&menu::SecondaryConfirm),
             )
         };
         Arc::from(format!(
@@ -840,9 +840,9 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
                 .output();
 
             let replace_current_window = if self.create_new_window {
-                secondary
-            } else {
                 !secondary
+            } else {
+                secondary
             };
 
             workspace

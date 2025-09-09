@@ -16,7 +16,7 @@ Since I am using macOS, I am using this modified script `./script/bundle-mac -l 
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar
 - lower excessive tab height
 - the command palette sorting now sorts the same for `close work` and `work close`, and it does not search individual character matches like when you enter `clo wo`, it does not show `search: toggle whole word` because every individual character is contained
-- add `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering
+- add `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window
 - go to next or previous diagnostic always first jumps to errors, and only if there are no errors, it jumps to warnings. Before, it was mixed
 - added `workspace::NewFileFromClipboard` which pastes in the clipboard contents
 - added new setting: `diagnostics > merge_same_range` to merge diagnostics which have the same character range (I noticed this in Gleam's LSP: https://github.com/gleam-lang/gleam/issues/4946)
