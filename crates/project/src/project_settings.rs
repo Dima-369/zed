@@ -181,6 +181,15 @@ pub struct DiagnosticsSettings {
 
     /// Settings for showing inline diagnostics.
     pub inline: InlineDiagnosticsSettings,
+
+    /// Whether to merge diagnostics with the same range into a single diagnostic.
+    /// When enabled, diagnostics from the same language server that have identical
+    /// ranges will be combined into one diagnostic with messages joined by newlines.
+    /// The lowest severity among the merged diagnostics will be used.
+    ///
+    /// Default: false
+    #[serde(default)]
+    pub merge_same_range: bool,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema)]
@@ -247,6 +256,7 @@ impl Default for DiagnosticsSettings {
             include_warnings: true,
             lsp_pull_diagnostics: LspPullDiagnosticsSettings::default(),
             inline: InlineDiagnosticsSettings::default(),
+            merge_same_range: false,
         }
     }
 }

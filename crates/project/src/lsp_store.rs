@@ -10730,6 +10730,7 @@ impl LspStore {
                         update.server_id,
                         update.diagnostics,
                         &update.disk_based_sources,
+                        cx,
                     ),
                     result_id: update.result_id,
                     server_id: update.server_id,
@@ -10748,6 +10749,7 @@ impl LspStore {
         server_id: LanguageServerId,
         mut lsp_diagnostics: lsp::PublishDiagnosticsParams,
         disk_based_sources: &[String],
+        cx: &mut Context<Self>,
     ) -> DocumentDiagnostics {
         let mut diagnostics = Vec::default();
         let mut primary_diagnostic_group_ids = HashMap::default();
@@ -10755,6 +10757,59 @@ impl LspStore {
         let mut supporting_diagnostics = HashMap::default();
 
         let adapter = self.language_server_adapter_for_id(server_id);
+
+        // Check if we should merge diagnostics with the same range
+        let should_merge_same_range = ProjectSettings::get_global(cx).diagnostics.merge_same_range;
+
+        // If merging is enabled, group diagnostics by range first
+        if should_merge_same_range {
+            let mut diagnostics_by_range: HashMap<lsp::Range, Vec<lsp::Diagnostic>> =
+                HashMap::default();
+
+            for diagnostic in lsp_diagnostics.diagnostics {
+                diagnostics_by_range
+                    .entry(diagnostic.range)
+                    .or_default()
+                    .push(diagnostic);
+            }
+
+            // Merge diagnostics with the same range
+            let mut merged_diagnostics = Vec::new();
+            for (_range, mut range_diagnostics) in diagnostics_by_range {
+                if range_diagnostics.len() == 1 {
+                    merged_diagnostics.push(range_diagnostics.into_iter().next().unwrap());
+                } else {
+                    // Sort by severity to get the lowest (most severe) first
+                    range_diagnostics
+                        .sort_by_key(|d| d.severity.unwrap_or(lsp::DiagnosticSeverity::ERROR));
+
+                    let primary_diagnostic = &range_diagnostics[0];
+                    let merged_message = range_diagnostics
+                        .iter()
+                        .map(|d| d.message.trim())
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
+                    let mut merged_diagnostic = primary_diagnostic.clone();
+                    merged_diagnostic.message = merged_message;
+
+                    // Collect all related information from all diagnostics
+                    let mut all_related_info = Vec::new();
+                    for diagnostic in &range_diagnostics {
+                        if let Some(related) = &diagnostic.related_information {
+                            all_related_info.extend(related.clone());
+                        }
+                    }
+                    if !all_related_info.is_empty() {
+                        merged_diagnostic.related_information = Some(all_related_info);
+                    }
+
+                    merged_diagnostics.push(merged_diagnostic);
+                }
+            }
+
+            lsp_diagnostics.diagnostics = merged_diagnostics;
+        }
 
         // Ensure that primary diagnostics are always the most severe
         lsp_diagnostics

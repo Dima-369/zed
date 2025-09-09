@@ -17,6 +17,7 @@
 - add `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering
 - go to next or previous diagnostic always first jumps to errors, and only if there are no errors, it jumps to warnings. Before, it was mixed
 - added `workspace::NewFileFromClipboard` which pastes in the clipboard contents
+- added new setting: `diagnostics > merge_same_range` to merge diagnostics which have the same character range (I noticed this in Gleam's LSP: https://github.com/gleam-lang/gleam/issues/4946)
 
 # Original README
 
