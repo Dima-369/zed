@@ -326,6 +326,11 @@
             "font_style": null,
             "font_weight": null
           },
+          "punctuation.markup": {
+            "color": "#83a598ff",
+            "font_style": null,
+            "font_weight": null
+          },
           "punctuation.special": {
             "color": "#e5d5adff",
             "font_style": null,
@@ -724,6 +729,11 @@
           },
           "punctuation.list_marker": {
             "color": "#ebdbb2ff",
+            "font_style": null,
+            "font_weight": null
+          },
+          "punctuation.markup": {
+            "color": "#83a598ff",
             "font_style": null,
             "font_weight": null
           },
@@ -1128,6 +1138,11 @@
             "font_style": null,
             "font_weight": null
           },
+          "punctuation.markup": {
+            "color": "#83a598ff",
+            "font_style": null,
+            "font_weight": null
+          },
           "punctuation.special": {
             "color": "#e5d5adff",
             "font_style": null,
@@ -1526,6 +1541,11 @@
           },
           "punctuation.list_marker": {
             "color": "#282828ff",
+            "font_style": null,
+            "font_weight": null
+          },
+          "punctuation.markup": {
+            "color": "#066578ff",
             "font_style": null,
             "font_weight": null
           },
@@ -1930,6 +1950,11 @@
             "font_style": null,
             "font_weight": null
           },
+          "punctuation.markup": {
+            "color": "#066578ff",
+            "font_style": null,
+            "font_weight": null
+          },
           "punctuation.special": {
             "color": "#413d3aff",
             "font_style": null,
@@ -2328,6 +2353,11 @@
           },
           "punctuation.list_marker": {
             "color": "#282828ff",
+            "font_style": null,
+            "font_weight": null
+          },
+          "punctuation.markup": {
+            "color": "#066578ff",
             "font_style": null,
             "font_weight": null
           },
