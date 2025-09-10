@@ -1,4 +1,12 @@
-Since I am using macOS, I am using this modified script `./script/bundle-mac -l -o -i` to compile the `Zed Dev.app`.
+# My installation
+
+Since I am only using macOS, those are the commands I use to install `Zed Dev.app`:
+
+```bash
+    ./script/bundle-mac -l -o -i && \
+    rm -f "$HOME/.cargo/bin/zed" && \
+    ln -s "/Applications/$bundle_name/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
+```
 
 # Fork changes
 
@@ -19,7 +27,6 @@ Since I am using macOS, I am using this modified script `./script/bundle-mac -l 
 - go to next or previous diagnostic always first jumps to errors, and only if there are no errors, it jumps to warnings. Before, it was mixed
 - added `workspace::NewFileFromClipboard` which pastes in the clipboard contents
 - added new setting: `diagnostics > merge_same_range` to merge diagnostics which have the same character range (I noticed this in Gleam's LSP: https://github.com/gleam-lang/gleam/issues/4946)
-- adjust `script/bundle-mac` to use `ln -s` to create a link from its `cli` into `"$HOME/.cargo/bin/zed"`
 - implement new recent file functionality which tracks every opened buffer to quickly jump to file/open new workspace
 - lower status bar height, see `impl Render for StatusBar`
 

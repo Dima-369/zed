@@ -292,10 +292,6 @@ function sign_app_binaries() {
                 echo "Opening /Applications/$bundle_name"
                 open "/Applications/$bundle_name"
             fi
-
-            echo "Creating symlink for zed binary in ~/.cargo/bin"
-            rm -f "$HOME/.cargo/bin/zed"
-            ln -s "/Applications/$bundle_name/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
         else
             if [ "$open_result" = true ]; then
                 echo "Opening $app_path"
