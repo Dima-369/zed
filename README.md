@@ -5,7 +5,7 @@ Since I am only using macOS, those are the commands I use to install `Zed Dev.ap
 ```bash
 ./script/bundle-mac -l -o -i && \
 rm -f "$HOME/.cargo/bin/zed" && \
-ln -s "/Applications/$bundle_name/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
+ln -s "/Applications/Zed Dev.app/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
 ```
 
 # Fork changes
