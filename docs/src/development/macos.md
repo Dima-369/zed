@@ -57,10 +57,6 @@ And to run the tests:
 cargo test --workspace
 ```
 
-### WebRTC Notice
-
-Currently, building `webrtc-sys` on macOS fails due to compilation issues with upstream dependencies. As a result, some collaboration features (audio calls and screensharing) that depend on WebRTC are temporarily disabled.
-
 ## Troubleshooting
 
 ### Error compiling metal shaders
