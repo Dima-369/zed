@@ -30,7 +30,7 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
 - implement new recent file functionality which tracks every opened buffer to quickly jump to file/open new workspace
 - lower status bar height, see `impl Render for StatusBar`
 - add new `editor::CreateNavHistoryEntry` action
-- switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer
+- switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
 
 # Original README
 
