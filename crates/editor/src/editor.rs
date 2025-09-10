@@ -415,6 +415,10 @@ pub fn init(cx: &mut App) {
             .detach();
         }
     });
+
+    cx.on_action(move |_: &CreateNavHistoryEntry, editor: &mut Editor, cx| {
+        editor.create_nav_history_entry(cx);
+    });
 }
 
 pub fn set_blame_renderer(renderer: impl BlameRenderer + 'static, cx: &mut App) {
