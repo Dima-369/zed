@@ -377,7 +377,7 @@ impl SystemWindowTabs {
 impl Render for SystemWindowTabs {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let use_system_window_tabs = WorkspaceSettings::get_global(cx).use_system_window_tabs;
-        let active_background_color = cx.theme().colors().title_bar_background;
+        let active_background_color = cx.theme().colors().tab_active_background;
         let inactive_background_color = cx.theme().colors().tab_bar_background;
         let entity = cx.entity();
 
