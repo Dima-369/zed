@@ -22,6 +22,7 @@ Since I am using macOS, I am using this modified script `./script/bundle-mac -l 
 - added new setting: `diagnostics > merge_same_range` to merge diagnostics which have the same character range (I noticed this in Gleam's LSP: https://github.com/gleam-lang/gleam/issues/4946)
 - adjust `script/bundle-mac` to use `ln -s` to create a link from its `cli` into `"$HOME/.cargo/bin/zed"`
 - implement new recent file functionality which tracks every opened buffer to quickly jump to file/open new workspace
+- lower status bar height, see `impl Render for StatusBar`
 
 # Original README
 
