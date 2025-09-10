@@ -3,9 +3,9 @@
 Since I am only using macOS, those are the commands I use to install `Zed Dev.app`:
 
 ```bash
-    ./script/bundle-mac -l -o -i && \
-    rm -f "$HOME/.cargo/bin/zed" && \
-    ln -s "/Applications/$bundle_name/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
+./script/bundle-mac -l -o -i && \
+rm -f "$HOME/.cargo/bin/zed" && \
+ln -s "/Applications/$bundle_name/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
 ```
 
 # Fork changes
