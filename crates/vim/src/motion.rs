@@ -1,6 +1,5 @@
 use editor::{
     Anchor, Bias, DisplayPoint, Editor, RowExt, ToOffset, ToPoint,
-    actions::{DeleteToNextWordEnd, DeleteToPreviousWordStart},
     display_map::{DisplayRow, DisplaySnapshot, FoldPoint, ToDisplayPoint},
     movement::{
         self, FindRange, TextLayoutDetails, find_boundary, find_preceding_boundary_display_point,
@@ -526,8 +525,21 @@ pub fn register(editor: &mut Editor, cx: &mut Context<Vim>) {
     Vim::action(
         editor,
         cx,
-        |vim, &NextWordStart { ignore_punctuation, stay_in_line }: &NextWordStart, window, cx| {
-            vim.motion(Motion::NextWordStart { ignore_punctuation, stay_in_line }, window, cx)
+        |vim,
+         &NextWordStart {
+             ignore_punctuation,
+             stay_in_line,
+         }: &NextWordStart,
+         window,
+         cx| {
+            vim.motion(
+                Motion::NextWordStart {
+                    ignore_punctuation,
+                    stay_in_line,
+                },
+                window,
+                cx,
+            )
         },
     );
     Vim::action(
@@ -587,89 +599,6 @@ pub fn register(editor: &mut Editor, cx: &mut Context<Vim>) {
             )
         },
     );
-
-    // Handle editor namespace delete actions with Vim logic
-    Vim::action(
-        editor,
-        cx,
-        |vim, action: &DeleteToNextWordEnd, window, cx| {
-            // Use Vim's delete logic with custom word movement that respects ignore_newlines
-            vim.update_editor(cx, |_vim, editor, cx| {
-                let _text_layout_details = editor.text_layout_details(window);
-                editor.transact(window, cx, |editor, window, cx| {
-                    editor.set_clip_at_line_ends(false, cx);
-                    editor.change_selections(Default::default(), window, cx, |s| {
-                        s.move_with(|map, selection| {
-                            if selection.is_empty() {
-                                let start = selection.head();
-                                let end = next_word_end(
-                                    map,
-                                    start,
-                                    false, // ignore_punctuation: false (default behavior)
-                                    1,     // times: 1
-                                    action.ignore_newlines, // allow_cross_newline
-                                    true,  // always_advance: true
-                                );
-                                // Create a selection from start to end (inclusive)
-                                selection.set_head(end, SelectionGoal::None);
-                                selection.set_tail(start, SelectionGoal::None);
-                            }
-                        });
-                    });
-                    editor.insert("", window, cx);
-
-                    // Fixup cursor position after the deletion
-                    editor.set_clip_at_line_ends(true, cx);
-                    editor.change_selections(Default::default(), window, cx, |s| {
-                        s.move_with(|map, selection| {
-                            let cursor = map.clip_point(selection.head(), Bias::Left);
-                            selection.collapse_to(cursor, selection.goal)
-                        });
-                    });
-                });
-            });
-        },
-    );
-    Vim::action(
-        editor,
-        cx,
-        |vim, _action: &DeleteToPreviousWordStart, window, cx| {
-            // Use Vim's delete logic for previous word start
-            vim.update_editor(cx, |_vim, editor, cx| {
-                let _text_layout_details = editor.text_layout_details(window);
-                editor.transact(window, cx, |editor, window, cx| {
-                    editor.set_clip_at_line_ends(false, cx);
-                    editor.change_selections(Default::default(), window, cx, |s| {
-                        s.move_with(|map, selection| {
-                            if selection.is_empty() {
-                                let start = selection.head();
-                                let end = previous_word_start(
-                                    map,
-                                    start,
-                                    false, // ignore_punctuation: false (default behavior)
-                                    1,     // times: 1
-                                );
-                                // Create a selection from end to start (inclusive)
-                                selection.set_head(start, SelectionGoal::None);
-                                selection.set_tail(end, SelectionGoal::None);
-                            }
-                        });
-                    });
-                    editor.insert("", window, cx);
-
-                    // Fixup cursor position after the deletion
-                    editor.set_clip_at_line_ends(true, cx);
-                    editor.change_selections(Default::default(), window, cx, |s| {
-                        s.move_with(|map, selection| {
-                            let cursor = map.clip_point(selection.head(), Bias::Left);
-                            selection.collapse_to(cursor, selection.goal)
-                        });
-                    });
-                });
-            });
-        },
-    );
-
     Vim::action(editor, cx, |vim, &NextLineStart, window, cx| {
         vim.motion(Motion::NextLineStart, window, cx)
     });
@@ -1059,7 +988,10 @@ impl Motion {
             } => up_display(map, point, goal, times, text_layout_details),
             Right => (right(map, point, times), SelectionGoal::None),
             WrappingRight => (wrapping_right(map, point, times), SelectionGoal::None),
-            NextWordStart { ignore_punctuation, stay_in_line } => (
+            NextWordStart {
+                ignore_punctuation,
+                stay_in_line,
+            } => (
                 next_word_start(map, point, *ignore_punctuation, times, !stay_in_line),
                 SelectionGoal::None,
             ),
