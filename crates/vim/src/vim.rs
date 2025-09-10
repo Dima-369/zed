@@ -1006,7 +1006,6 @@ impl Vim {
         self.operator_stack.clear();
         self.selected_register.take();
         self.cancel_running_command(window, cx);
-
         if mode == Mode::Normal || mode != last_mode {
             self.current_tx.take();
             self.current_anchor.take();
