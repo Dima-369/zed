@@ -29,6 +29,7 @@ ln -s "/Applications/$bundle_name/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
 - added new setting: `diagnostics > merge_same_range` to merge diagnostics which have the same character range (I noticed this in Gleam's LSP: https://github.com/gleam-lang/gleam/issues/4946)
 - implement new recent file functionality which tracks every opened buffer to quickly jump to file/open new workspace
 - lower status bar height, see `impl Render for StatusBar`
+- add new `editor::CreateNavHistoryEntry` action
 
 # Original README
 
