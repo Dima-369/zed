@@ -1,0 +1,19 @@
+[package]
+name = "file_path_picker"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-or-later"
+
+[lib]
+path = "src/file_path_picker.rs"
+
+[dependencies]
+anyhow.workspace = true
+gpui.workspace = true
+picker.workspace = true
+project.workspace = true
+ui.workspace = true
+util.workspace = true
+workspace.workspace = true
+zed_actions.workspace = true

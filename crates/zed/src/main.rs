@@ -593,6 +593,7 @@ pub fn main() {
         );
         recent_projects::init(cx);
         recent_files::init(cx);
+        file_path_picker::init(cx);
 
         load_embedded_fonts(cx);
 

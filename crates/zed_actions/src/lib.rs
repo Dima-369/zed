@@ -162,6 +162,8 @@ pub mod workspace {
             /// Opens the selected file with the system's default application.
             #[action(deprecated_aliases = ["project_panel::OpenWithSystem"])]
             OpenWithSystem,
+            /// Opens a picker to copy file paths in different formats.
+            CopyFilePaths,
         ]
     );
 }

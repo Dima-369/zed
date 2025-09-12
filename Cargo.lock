@@ -5767,6 +5767,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "file_path_picker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "gpui",
+ "picker",
+ "project",
+ "ui",
+ "util",
+ "workspace",
+ "zed_actions",
+]
+
+[[package]]
 name = "filedescriptor"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -20441,6 +20455,7 @@ dependencies = [
  "feature_flags",
  "feedback",
  "file_finder",
+ "file_path_picker",
  "fs",
  "futures 0.3.31",
  "git",

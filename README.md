@@ -1,6 +1,8 @@
-# My installation
+# My workflow for macOS
 
-Since I am only using macOS, those are the commands I use to install `Zed Dev.app`:
+To test modifications, I am only using `cargo run` to compile and start Zed in debug mode which is faster than building the release binaries.
+
+Once, I am satisfied with a batch of changes, I install Zed into `/Applications/Zed Dev.app` with this:
 
 ```bash
 ./script/bundle-mac -l -o -i && \
