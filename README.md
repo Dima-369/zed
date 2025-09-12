@@ -33,6 +33,7 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
 - lower status bar height, see `impl Render for StatusBar`
 - add new `editor::CreateNavHistoryEntry` action
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
+- add `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
 
 # Original README
 
