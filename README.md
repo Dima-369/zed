@@ -16,11 +16,10 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3 as a test
 - moving up/down in outline panel does not wrap around anymore
-- add `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scrolls quarter a page
-- changed `command palette: toggle` to always by recency instead of hit count
+- add `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scroll a quarter of a page
+- changed `command palette: toggle` to sort by recency instead of hit count
 - allow AI completions in Zed's `settings.json` and `keymap.json`
 - added `search.match_active_background` to highlight the active search match
-- add `stay_in_line` boolean to `vim::NextWordStart` to circumvent bugs of `dw` and `editor::DeleteToNextWordEnd` misbehaving for last word in line
 - use `text_accent` in the bottom bar when a selection is active
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar
 - lower excessive tab height
@@ -46,6 +45,14 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
   }
 ],
 ```
+
+- opening a workspace which has no tabs initially, will trigger `workspace::NewFile` for proper editor focus. Before, there seems to be a bug where the project panel does not have proper focus
+
+---
+
+Not sure if this is still relevant:
+
+- add `stay_in_line` boolean to `vim::NextWordStart` to circumvent bugs of `dw` and `editor::DeleteToNextWordEnd` misbehaving for last word in line
 
 # Original README
 

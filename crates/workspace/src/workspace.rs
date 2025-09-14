@@ -1668,6 +1668,8 @@ impl Workspace {
                 .await
                 .unwrap_or_default();
 
+
+
             window
                 .update(cx, |workspace, window, cx| {
                     window.activate_window();
@@ -7265,7 +7267,7 @@ pub fn open_paths(
 
             Ok((existing, open_task))
         } else {
-            cx.update(move |cx| {
+            let (workspace, opened_items) = cx.update(move |cx| {
                 Workspace::new_local(
                     abs_paths,
                     app_state.clone(),
@@ -7274,7 +7276,29 @@ pub fn open_paths(
                     cx,
                 )
             })?
-            .await
+            .await?;
+
+            // If no items were opened and the workspace has no existing items (including restored tabs),
+            // automatically create a new untitled file after a short delay to ensure proper editor
+            // state initialization and focus
+            let has_opened_items = opened_items.iter().any(|item| item.is_some());
+            if !has_opened_items {
+                let workspace_handle = workspace.clone();
+                cx.spawn(async move |cx| {
+                    // Small delay to ensure workspace is fully initialized
+                    cx.background_executor().timer(std::time::Duration::from_millis(50)).await;
+
+                    workspace_handle.update(cx, |workspace, window, cx| {
+                        // Only create a new file if the workspace is truly empty (no existing tabs/items)
+                        if workspace.items(cx).count() == 0 {
+                            // Dispatch the NewFile action to create a new untitled file
+                            window.dispatch_action(NewFile.boxed_clone(), cx)
+                        }
+                    }).log_err();
+                }).detach();
+            }
+
+            Ok((workspace, opened_items))
         }
     })
 }
