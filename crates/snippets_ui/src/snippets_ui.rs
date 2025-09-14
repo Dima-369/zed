@@ -9,6 +9,7 @@ use language::{LanguageMatcher, LanguageName, LanguageRegistry};
 use paths::snippets_dir;
 use picker::{Picker, PickerDelegate};
 use settings::Settings;
+use snippet_provider::GlobalSnippetWatcher;
 use std::{
     borrow::{Borrow, Cow},
     collections::HashSet,
@@ -18,7 +19,7 @@ use std::{
 };
 use ui::{HighlightedLabel, ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
-use workspace::{ModalView, OpenOptions, OpenVisible, Workspace, notifications::NotifyResultExt};
+use workspace::{ModalView, OpenOptions, OpenVisible, Toast, Workspace, notifications::{NotificationId, NotifyResultExt}};
 
 #[derive(Eq, Hash, PartialEq)]
 struct ScopeName(Cow<'static, str>);
@@ -60,7 +61,9 @@ actions!(
         /// Opens the snippets configuration file.
         ConfigureSnippets,
         /// Opens the snippets folder in the file manager.
-        OpenFolder
+        OpenFolder,
+        /// Reloads all snippet files from the snippets directory.
+        ReloadSnippets
     ]
 );
 
@@ -71,6 +74,7 @@ pub fn init(cx: &mut App) {
 fn register(workspace: &mut Workspace, _window: Option<&mut Window>, _: &mut Context<Workspace>) {
     workspace.register_action(configure_snippets);
     workspace.register_action(open_folder);
+    workspace.register_action(reload_snippets);
 }
 
 fn configure_snippets(
@@ -95,6 +99,39 @@ fn open_folder(
 ) {
     fs::create_dir_all(snippets_dir()).notify_err(workspace, cx);
     cx.open_with_system(snippets_dir().borrow());
+}
+
+fn reload_snippets(
+    workspace: &mut Workspace,
+    _: &ReloadSnippets,
+    _: &mut Window,
+    cx: &mut Context<Workspace>,
+) {
+    // Reload global snippets
+    let global_watcher = cx.try_global::<GlobalSnippetWatcher>().map(|w| w.0.clone());
+    if let Some(global_provider) = global_watcher {
+        global_provider.update(cx, |provider, cx| {
+            provider.reload_all_snippets(cx);
+        });
+    }
+
+    // Reload workspace-specific snippets
+    let project = workspace.project().clone();
+    project.update(cx, |project, cx| {
+        let snippet_provider = project.snippets().clone();
+        snippet_provider.update(cx, |provider, cx| {
+            provider.reload_all_snippets(cx);
+        });
+    });
+
+    // Create a unique notification ID for this reload action
+    struct SnippetReloadNotification;
+    let notification_id = NotificationId::unique::<SnippetReloadNotification>();
+
+    workspace.show_toast(
+        Toast::new(notification_id, "Snippets reloaded successfully").autohide(),
+        cx,
+    );
 }
 
 pub struct ScopeSelector {

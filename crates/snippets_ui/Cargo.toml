@@ -20,6 +20,7 @@ language.workspace = true
 paths.workspace = true
 picker.workspace = true
 settings.workspace = true
+snippet_provider.workspace = true
 ui.workspace = true
 util.workspace = true
 workspace-hack.workspace = true

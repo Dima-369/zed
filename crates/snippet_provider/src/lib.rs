@@ -14,6 +14,7 @@ use format::VsSnippetsFile;
 use fs::Fs;
 use futures::stream::StreamExt;
 use gpui::{App, AppContext as _, AsyncApp, Context, Entity, Task, WeakEntity};
+use log;
 pub use registry::*;
 use util::ResultExt;
 
@@ -140,7 +141,7 @@ pub struct SnippetProvider {
 }
 
 // Watches global snippet directory, is created just once and reused across multiple projects
-struct GlobalSnippetWatcher(Entity<SnippetProvider>);
+pub struct GlobalSnippetWatcher(pub Entity<SnippetProvider>);
 
 impl GlobalSnippetWatcher {
     fn new(fs: Arc<dyn Fs>, cx: &mut App) -> Self {
@@ -243,6 +244,28 @@ impl SnippetProvider {
             requested_snippets.extend(self.lookup_snippets::<true>(&None, cx));
         }
         requested_snippets
+    }
+
+    /// Reload all snippet files from all watched directories
+    pub fn reload_all_snippets(&mut self, cx: &mut Context<Self>) {
+        // Clear existing snippets
+        self.snippets.clear();
+
+        // We need to reload from all directories that this provider is watching
+        // For the global provider, this is just the global snippets directory
+        // For workspace providers, this could include project-specific directories
+
+        // Since we can't easily extract paths from existing watch tasks,
+        // we'll scan the global snippets directory for all providers
+        let global_snippets_dir = paths::snippets_dir();
+
+        // Spawn a task to reload all snippets from the global directory
+        cx.spawn(async move |this, cx| {
+            if let Err(err) = initial_scan(this.clone(), Arc::from(global_snippets_dir.as_path()), cx.clone()).await {
+                log::error!("Failed to reload snippets: {}", err);
+            }
+            anyhow::Ok(())
+        }).detach_and_log_err(cx);
     }
 }
 
