@@ -54,7 +54,6 @@ pub enum Motion {
     WrappingRight,
     NextWordStart {
         ignore_punctuation: bool,
-        stay_in_line: bool,
     },
     NextWordEnd {
         ignore_punctuation: bool,
@@ -184,8 +183,6 @@ enum IndentType {
 struct NextWordStart {
     #[serde(default)]
     ignore_punctuation: bool,
-    #[serde(default)]
-    stay_in_line: bool,
 }
 
 /// Moves to the end of the next word.
@@ -525,21 +522,8 @@ pub fn register(editor: &mut Editor, cx: &mut Context<Vim>) {
     Vim::action(
         editor,
         cx,
-        |vim,
-         &NextWordStart {
-             ignore_punctuation,
-             stay_in_line,
-         }: &NextWordStart,
-         window,
-         cx| {
-            vim.motion(
-                Motion::NextWordStart {
-                    ignore_punctuation,
-                    stay_in_line,
-                },
-                window,
-                cx,
-            )
+        |vim, &NextWordStart { ignore_punctuation }: &NextWordStart, window, cx| {
+            vim.motion(Motion::NextWordStart { ignore_punctuation }, window, cx)
         },
     );
     Vim::action(
@@ -988,11 +972,8 @@ impl Motion {
             } => up_display(map, point, goal, times, text_layout_details),
             Right => (right(map, point, times), SelectionGoal::None),
             WrappingRight => (wrapping_right(map, point, times), SelectionGoal::None),
-            NextWordStart {
-                ignore_punctuation,
-                stay_in_line,
-            } => (
-                next_word_start(map, point, *ignore_punctuation, times, !stay_in_line),
+            NextWordStart { ignore_punctuation } => (
+                next_word_start(map, point, *ignore_punctuation, times),
                 SelectionGoal::None,
             ),
             NextWordEnd { ignore_punctuation } => (
@@ -1395,7 +1376,6 @@ impl Motion {
 
         if let Motion::NextWordStart {
             ignore_punctuation: _,
-            stay_in_line: _,
         } = self
         {
             // Another special case: When using the "w" motion in combination with an
@@ -1709,7 +1689,6 @@ pub(crate) fn next_word_start(
     mut point: DisplayPoint,
     ignore_punctuation: bool,
     times: usize,
-    allow_cross_newline: bool,
 ) -> DisplayPoint {
     let classifier = map
         .buffer_snapshot
@@ -1717,19 +1696,10 @@ pub(crate) fn next_word_start(
         .ignore_punctuation(ignore_punctuation);
     for _ in 0..times {
         let mut crossed_newline = false;
-        let find_range = if allow_cross_newline {
-            FindRange::MultiLine
-        } else {
-            FindRange::SingleLine
-        };
-        let new_point = movement::find_boundary(map, point, find_range, |left, right| {
+        let new_point = movement::find_boundary(map, point, FindRange::MultiLine, |left, right| {
             let left_kind = classifier.kind(left);
             let right_kind = classifier.kind(right);
             let at_newline = right == '\n';
-
-            if !allow_cross_newline && at_newline {
-                return true; // Stop at newline when staying in line
-            }
 
             let found = (left_kind != right_kind && right_kind != CharKind::Whitespace)
                 || at_newline && crossed_newline
@@ -4388,19 +4358,5 @@ mod test {
         cx.shared_state().await.assert_eq(indoc! {"
         the quick brown foˇd over the lazy dog"});
         assert!(!cx.cx.forced_motion());
-    }
-
-    #[gpui::test]
-    async fn test_next_word_start_stay_in_line(cx: &mut gpui::TestAppContext) {
-        let mut cx = VimTestContext::new(cx, true).await;
-
-        // Test that normal word movement crosses newlines (default behavior)
-        cx.set_state("ˇword\nnext", Mode::Normal);
-        cx.simulate_keystrokes("w");
-        cx.assert_state("word\nˇnext", Mode::Normal);
-
-        // The stay_in_line parameter is tested through the action system
-        // when users bind keys with the stay_in_line parameter set to true
-        // This test verifies the basic word movement still works correctly
     }
 }
