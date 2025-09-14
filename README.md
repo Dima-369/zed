@@ -49,6 +49,7 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 - opening a workspace which has no tabs initially, will trigger `workspace::NewFile` for proper editor focus. Before, there seems to be a bug where the project panel does not have proper focus
 - middle clicking a system tab will close it, just like regular tabs
 - add `snippets::ReloadSnippets` action because auto-reloading snippets is not working for me
+- lower `toolbar.rs` height to make it as minimal as possible to save space, same in `breadcrumbs.rs`. This applies for terminals, as well
 
 # Original README
 
