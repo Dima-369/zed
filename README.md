@@ -33,7 +33,7 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 - add new `editor::CreateNavHistoryEntry` action
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
 - add `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
-- add `editor::MoveLinesSmooth` action which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released
+- add `editor::MoveLinesSmooth` action which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when the key is released
 
 ```json
 "v": [
