@@ -227,6 +227,18 @@ impl SystemWindowTabs {
                     window.activate_window();
                 });
             })
+            .on_mouse_down(
+                MouseButton::Middle,
+                move |_, window, cx| {
+                    if item.handle.window_id() == window.window_handle().window_id() {
+                        window.dispatch_action(Box::new(CloseWindow), cx);
+                    } else {
+                        let _ = item.handle.update(cx, |_, window, cx| {
+                            window.dispatch_action(Box::new(CloseWindow), cx);
+                        });
+                    }
+                },
+            )
             .child(label)
             .map(|this| match show_close_button {
                 ShowCloseButton::Hidden => this,
@@ -516,5 +528,22 @@ impl Render for DraggedWindowTab {
             .border_color(cx.theme().colors().border)
             .font(ui_font)
             .child(label)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::TestAppContext;
+
+    #[gpui::test]
+    async fn test_system_window_tabs_creation(cx: &mut TestAppContext) {
+        // Simple test to verify SystemWindowTabs can be created
+        let system_tabs = cx.new(|_| SystemWindowTabs::new());
+
+        // Verify the component was created successfully
+        cx.read(|cx| {
+            system_tabs.read(cx);
+        });
     }
 }
