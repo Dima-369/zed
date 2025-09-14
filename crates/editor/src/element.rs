@@ -217,6 +217,7 @@ impl EditorElement {
         register_action(editor, window, Editor::move_up);
         register_action(editor, window, Editor::move_up_by_lines);
         register_action(editor, window, Editor::select_up_by_lines);
+        register_action(editor, window, Editor::move_lines_smooth);
         register_action(editor, window, Editor::select_page_down);
         register_action(editor, window, Editor::select_page_up);
         register_action(editor, window, Editor::cancel);

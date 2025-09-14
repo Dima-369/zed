@@ -1196,6 +1196,10 @@ pub struct Editor {
     next_color_inlay_id: usize,
     colors: Option<LspColorData>,
     folding_newlines: Task<()>,
+    // Smooth movement state
+    smooth_movement_task: Option<Task<()>>,
+    smooth_movement_queue: VecDeque<(bool, u32)>, // (up, line_count) pairs
+    smooth_movement_last_direction: Option<bool>, // Last movement direction (up=true, down=false)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -2275,6 +2279,10 @@ impl Editor {
             mode,
             selection_drag_state: SelectionDragState::None,
             folding_newlines: Task::ready(()),
+            // Initialize smooth movement state
+            smooth_movement_task: None,
+            smooth_movement_queue: VecDeque::new(),
+            smooth_movement_last_direction: None,
         };
 
         if is_minimap {
@@ -12833,6 +12841,92 @@ impl Editor {
                 selection.collapse_to(cursor, goal);
             });
         })
+    }
+
+    pub fn move_lines_smooth(
+        &mut self,
+        action: &MoveLinesSmooth,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.take_rename(true, window, cx).is_some() {
+            return;
+        }
+
+        if self.mode.is_single_line() {
+            cx.propagate();
+            return;
+        }
+
+        // Check if direction changed - if so, clear the queue
+        if let Some(last_direction) = self.smooth_movement_last_direction {
+            if last_direction != action.up {
+                self.smooth_movement_queue.clear();
+                // Cancel existing task if direction changed
+                if let Some(task) = self.smooth_movement_task.take() {
+                    drop(task); // This cancels the task
+                }
+            }
+        }
+
+        // Update last direction
+        self.smooth_movement_last_direction = Some(action.up);
+
+        // Add to queue
+        self.smooth_movement_queue.push_back((action.up, action.line_count));
+
+        // If no task is running, start one
+        if self.smooth_movement_task.is_none() {
+            let delay_ms = action.delay_ms;
+
+            self.smooth_movement_task = Some(cx.spawn_in(window, async move |editor_handle, cx| {
+                loop {
+                    // Check if we should continue
+                    let should_continue = cx.update(|window, cx| {
+                        editor_handle.update(cx, |editor, cx| {
+                            if let Some((up, line_count)) = editor.smooth_movement_queue.pop_front() {
+                                // Perform one line movement
+                                let lines_to_move = 1.min(line_count);
+                                let remaining_lines = line_count.saturating_sub(lines_to_move);
+
+                                // Put back remaining lines if any
+                                if remaining_lines > 0 {
+                                    editor.smooth_movement_queue.push_front((up, remaining_lines));
+                                }
+
+                                // Perform the movement using the existing methods
+                                if up {
+                                    let action = MoveUpByLines { lines: lines_to_move };
+                                    editor.move_up_by_lines(&action, window, cx);
+                                } else {
+                                    let action = MoveDownByLines { lines: lines_to_move };
+                                    editor.move_down_by_lines(&action, window, cx);
+                                }
+
+                                // Continue if there are more items in queue
+                                !editor.smooth_movement_queue.is_empty()
+                            } else {
+                                false
+                            }
+                        }).unwrap_or(false)
+                    }).unwrap_or(false);
+
+                    if !should_continue {
+                        break;
+                    }
+
+                    // Wait for the specified delay
+                    cx.background_executor().timer(std::time::Duration::from_millis(delay_ms)).await;
+                }
+
+                // Clear the task when done
+                let _ = cx.update(|_, cx| {
+                    editor_handle.update(cx, |editor, _| {
+                        editor.smooth_movement_task = None;
+                    })
+                });
+            }));
+        }
     }
 
     pub fn select_down_by_lines(

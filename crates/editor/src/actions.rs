@@ -168,6 +168,30 @@ pub struct MoveDownByLines {
     pub(super) lines: u32,
 }
 
+/// Moves the cursor smoothly up or down by a specified number of lines with a delay between each line.
+#[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
+#[action(namespace = editor)]
+#[serde(deny_unknown_fields)]
+pub struct MoveLinesSmooth {
+    /// Whether to move up (true) or down (false).
+    #[serde(default)]
+    pub up: bool,
+    /// Number of lines to move.
+    #[serde(default = "default_line_count")]
+    pub line_count: u32,
+    /// Delay in milliseconds between each line movement.
+    #[serde(default = "default_delay_ms")]
+    pub delay_ms: u64,
+}
+
+fn default_line_count() -> u32 {
+    9
+}
+
+fn default_delay_ms() -> u64 {
+    10
+}
+
 /// Extends selection up by a specified number of lines.
 #[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
 #[action(namespace = editor)]
