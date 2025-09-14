@@ -33,7 +33,7 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 - add new `editor::CreateNavHistoryEntry` action
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
 - add `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
-- add `editor::MoveLinesSmooth` action which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when the key is released
+- add `editor::MoveLinesSmooth` action which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released
 
 ```json
 "v": [
@@ -49,12 +49,6 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 - opening a workspace which has no tabs initially, will trigger `workspace::NewFile` for proper editor focus. Before, there seems to be a bug where the project panel does not have proper focus
 - middle clicking a system tab will close it, just like regular tabs
 - add `snippets::ReloadSnippets` action because auto-reloading snippets is not working for me
-
----
-
-Not sure if this is still relevant:
-
-- add `stay_in_line` boolean to `vim::NextWordStart` to circumvent bugs of `dw` and `editor::DeleteToNextWordEnd` misbehaving for last word in line
 
 # Original README
 
