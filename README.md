@@ -7,7 +7,7 @@ Once, I am satisfied with a batch of changes, I install Zed into `/Applications/
 ```bash
 ./script/bundle-mac -l -o -i && \
 rm -f "$HOME/.cargo/bin/zed" && \
-ln -s "/Applications/Zed Dev.app/Contents/MacOS/zed" "$HOME/.cargo/bin/zed"
+ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 ```
 
 # Fork changes
