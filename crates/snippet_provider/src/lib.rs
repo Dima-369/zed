@@ -138,6 +138,7 @@ pub struct SnippetProvider {
     fs: Arc<dyn Fs>,
     snippets: HashMap<SnippetKind, BTreeMap<PathBuf, Vec<Arc<Snippet>>>>,
     watch_tasks: Vec<Task<Result<()>>>,
+    watched_directories: BTreeSet<PathBuf>,
 }
 
 // Watches global snippet directory, is created just once and reused across multiple projects
@@ -150,6 +151,7 @@ impl GlobalSnippetWatcher {
             fs,
             snippets: Default::default(),
             watch_tasks: vec![],
+            watched_directories: Default::default(),
         });
         provider.update(cx, |this, cx| this.watch_directory(global_snippets_dir, cx));
         Self(provider)
@@ -169,6 +171,7 @@ impl SnippetProvider {
                 fs,
                 watch_tasks: Vec::new(),
                 snippets: Default::default(),
+                watched_directories: Default::default(),
             };
 
             for dir in dirs_to_watch {
@@ -182,6 +185,9 @@ impl SnippetProvider {
     /// Add directory to be watched for content changes
     fn watch_directory(&mut self, path: &Path, cx: &Context<Self>) {
         let path: Arc<Path> = Arc::from(path);
+
+        // Track this directory
+        self.watched_directories.insert(path.to_path_buf());
 
         self.watch_tasks.push(cx.spawn(async move |this, cx| {
             let fs = this.read_with(cx, |this, _| this.fs.clone())?;
@@ -251,21 +257,23 @@ impl SnippetProvider {
         // Clear existing snippets
         self.snippets.clear();
 
-        // We need to reload from all directories that this provider is watching
-        // For the global provider, this is just the global snippets directory
-        // For workspace providers, this could include project-specific directories
+        // Reload from all directories that this provider is actually watching
+        let directories_to_scan = self.watched_directories.clone();
 
-        // Since we can't easily extract paths from existing watch tasks,
-        // we'll scan the global snippets directory for all providers
-        let global_snippets_dir = paths::snippets_dir();
+        if directories_to_scan.is_empty() {
+            // If this provider isn't watching any directories, there's nothing to reload
+            return;
+        }
 
-        // Spawn a task to reload all snippets from the global directory
-        cx.spawn(async move |this, cx| {
-            if let Err(err) = initial_scan(this.clone(), Arc::from(global_snippets_dir.as_path()), cx.clone()).await {
-                log::error!("Failed to reload snippets: {}", err);
-            }
-            anyhow::Ok(())
-        }).detach_and_log_err(cx);
+        // Spawn tasks to reload snippets from each watched directory
+        for directory in directories_to_scan {
+            cx.spawn(async move |this, cx| {
+                if let Err(err) = initial_scan(this.clone(), Arc::from(directory.as_path()), cx.clone()).await {
+                    log::error!("Failed to reload snippets from {}: {}", directory.display(), err);
+                }
+                anyhow::Ok(())
+            }).detach_and_log_err(cx);
+        }
     }
 }
 
