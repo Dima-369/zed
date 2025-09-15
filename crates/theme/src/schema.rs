@@ -340,10 +340,6 @@ pub struct ThemeColorsContent {
     #[serde(rename = "search.match_background")]
     pub search_match_background: Option<String>,
 
-    /// Background color for the currently active/selected search match
-    #[serde(rename = "search.match_active_background")]
-    pub search_match_active_background: Option<String>,
-
     #[serde(rename = "panel.background")]
     pub panel_background: Option<String>,
 
@@ -853,10 +849,6 @@ impl ThemeColorsContent {
                 .and_then(|color| try_parse_color(color).ok()),
             search_match_background: self
                 .search_match_background
-                .as_ref()
-                .and_then(|color| try_parse_color(color).ok()),
-            search_match_active_background: self
-                .search_match_active_background
                 .as_ref()
                 .and_then(|color| try_parse_color(color).ok()),
             panel_background,

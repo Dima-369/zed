@@ -54,7 +54,6 @@ I had to disable `webrtc_sys` compilation, otherwise I am not able to compile lo
 ## UI changes
 
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
-- added `search.match_active_background` to highlight the active search match
 - lower excessive tab height
 - lower status bar height, see `impl Render for StatusBar`
 - middle clicking a system tab will close it, just like regular tabs
