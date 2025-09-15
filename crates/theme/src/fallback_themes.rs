@@ -140,7 +140,6 @@ pub(crate) fn zed_default_dark() -> Theme {
                 tab_inactive_background: bg,
                 tab_active_background: editor,
                 search_match_background: bg,
-                search_match_active_background: bg,
 
                 editor_background: editor,
                 editor_gutter_background: editor,
