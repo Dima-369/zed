@@ -36,9 +36,10 @@ I had to disable `webrtc_sys` compilation, otherwise I am not able to compile lo
 - add `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window
 - add  `workspace::NewFileFromClipboard` which pastes in the clipboard contents
 - add `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
-- add `snippets::ReloadSnippets` action because auto-reloading snippets is not working for me
-- add new `editor::CreateNavHistoryEntry` action
-- add `editor::MoveLinesSmooth` action which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit
+- add `snippets::ReloadSnippets` because auto-reloading snippets is not working for me
+- add `editor::CreateNavHistoryEntry`
+- add `editor::CopyAll`
+- add `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit
 
 ```json
 "v": [
