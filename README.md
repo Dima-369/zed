@@ -59,6 +59,7 @@ I had to disable `webrtc_sys` compilation, otherwise I am not able to compile lo
 - middle clicking a system tab will close it, just like regular tabs
 - lower `toolbar.rs` height to make it as minimal as possible to save space, same in `breadcrumbs.rs`. This applies for terminals, as well
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
+- highlight the active search match with a different background color
 
 # Original README
 
