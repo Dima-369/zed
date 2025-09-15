@@ -424,6 +424,8 @@ actions!(
         ConvertToRot47,
         /// Copies selected text to the clipboard.
         Copy,
+        /// Copies the whole buffer to the clipboard.
+        CopyAll,
         /// Copies selected text to the clipboard with leading/trailing whitespace trimmed.
         CopyAndTrim,
         /// Copies the current file location to the clipboard.
