@@ -29,6 +29,124 @@ use workspace::{
 };
 use zed_actions::{OpenRecent, OpenRecentZoxide, OpenRemote};
 
+/// Match strings with order-insensitive word matching.
+/// Splits the query into words and ensures all words match somewhere in the candidate,
+/// regardless of order.
+async fn match_strings_order_insensitive<T>(
+    candidates: &[T],
+    query: &str,
+    smart_case: bool,
+    max_results: usize,
+    cancel_flag: &std::sync::atomic::AtomicBool,
+) -> Vec<StringMatch>
+where
+    T: std::borrow::Borrow<StringMatchCandidate> + Sync,
+{
+    if candidates.is_empty() || max_results == 0 {
+        return Default::default();
+    }
+
+    if query.is_empty() {
+        return candidates
+            .iter()
+            .map(|candidate| StringMatch {
+                candidate_id: candidate.borrow().id,
+                score: 0.,
+                positions: Default::default(),
+                string: candidate.borrow().string.clone(),
+            })
+            .collect();
+    }
+
+    // Split query into words and remove empty ones
+    let words: Vec<&str> = if query.trim().contains(' ') {
+        query.split_whitespace().collect()
+    } else {
+        // For single words, treat the whole query as one word
+        vec![query.trim()]
+    };
+    
+    if words.is_empty() {
+        return Vec::new();
+    }
+
+    let mut results = Vec::new();
+
+    for candidate in candidates {
+        if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
+        }
+
+        let candidate_borrowed = candidate.borrow();
+        let candidate_string = &candidate_borrowed.string;
+        let candidate_lower = candidate_string.to_lowercase();
+
+        // Check if all words are present in the candidate (case-insensitive)
+        let mut all_words_match = true;
+        let mut total_score = 0.0;
+        let mut all_positions = Vec::new();
+
+        for word in &words {
+            let word_lower = if smart_case {
+                word.to_string()
+            } else {
+                word.to_lowercase()
+            };
+            
+            let found_match = if smart_case {
+                candidate_string.contains(word)
+            } else {
+                candidate_lower.contains(&word_lower)
+            };
+            
+            if found_match {
+                if let Some(byte_pos) = if smart_case {
+                    candidate_string.find(word)
+                } else {
+                    candidate_lower.find(&word_lower)
+                } {
+                    // Calculate a simple score based on position and word length
+                    let word_score = 1.0 / (byte_pos as f64 + 1.0) * (word.len() as f64 / candidate_string.len() as f64);
+                    total_score += word_score;
+                    
+                    if let Some(original_byte_pos) = if smart_case {
+                        candidate_string.find(word)
+                    } else {
+                        candidate_string.to_lowercase().find(&word_lower)
+                    } {
+                        let word_byte_len = word.as_bytes().len();
+                        for i in 0..word_byte_len {
+                            let pos = original_byte_pos + i;
+                            if pos < candidate_string.len() && candidate_string.is_char_boundary(pos) {
+                                all_positions.push(pos);
+                            }
+                        }
+                    }
+                }
+            } else {
+                all_words_match = false;
+                break;
+            }
+        }
+
+        if all_words_match {
+            all_positions.sort_unstable();
+            all_positions.dedup();
+
+            results.push(StringMatch {
+                candidate_id: candidate_borrowed.id,
+                score: total_score / words.len() as f64, // Average score across words
+                positions: all_positions,
+                string: candidate_string.clone(),
+            });
+        }
+    }
+
+    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.truncate(max_results);
+    results
+}
+
 pub fn init(cx: &mut App) {
     SshSettings::register(cx);
     cx.on_action(|open_recent: &OpenRecent, cx| {
@@ -235,7 +353,7 @@ impl PickerDelegate for RecentProjectsDelegate {
         &mut self,
         ix: usize,
         _window: &mut Window,
-        _cx: &mut Context<Picker<Self>>,
+        cx: &mut Context<Picker<Self>>,
     ) {
         self.selected_match_index = ix;
     }
@@ -263,14 +381,12 @@ impl PickerDelegate for RecentProjectsDelegate {
                 StringMatchCandidate::new(id, &combined_string)
             })
             .collect::<Vec<_>>();
-        self.matches = smol::block_on(fuzzy::match_strings(
+        self.matches = smol::block_on(match_strings_order_insensitive(
             candidates.as_slice(),
             query,
             smart_case,
-            true,
             100,
             &Default::default(),
-            cx.background_executor().clone(),
         ));
         self.matches.sort_unstable_by_key(|m| m.candidate_id);
 
@@ -378,7 +494,7 @@ impl PickerDelegate for RecentProjectsDelegate {
 
     fn dismissed(&mut self, _window: &mut Window, _: &mut Context<Picker<Self>>) {}
 
-    fn no_matches_text(&self, _window: &mut Window, _cx: &mut App) -> Option<SharedString> {
+    fn no_matches_text(&self, _window: &mut Window, cx: &mut App) -> Option<SharedString> {
         let text = if self.workspaces.is_empty() {
             "Recently opened projects will show up here".into()
         } else {
@@ -778,7 +894,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
         &mut self,
         ix: usize,
         _window: &mut Window,
-        _cx: &mut Context<Picker<Self>>,
+        cx: &mut Context<Picker<Self>>,
     ) {
         self.selected_match_index = ix;
     }
@@ -798,14 +914,12 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
             .map(|(id, path)| StringMatchCandidate::new(id, path))
             .collect::<Vec<_>>();
 
-        self.matches = smol::block_on(fuzzy::match_strings(
+        self.matches = smol::block_on(match_strings_order_insensitive(
             candidates.as_slice(),
             query,
             smart_case,
-            true,
             100,
             &Default::default(),
-            cx.background_executor().clone(),
         ));
 
         // Don't sort - preserve zoxide's order
@@ -880,7 +994,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
 
     fn dismissed(&mut self, _window: &mut Window, _: &mut Context<Picker<Self>>) {}
 
-    fn no_matches_text(&self, _window: &mut Window, _cx: &mut App) -> Option<SharedString> {
+    fn no_matches_text(&self, _window: &mut Window, cx: &mut App) -> Option<SharedString> {
         let text = if self.directories.is_empty() {
             "No zoxide directories found. Make sure zoxide is installed and has been used.".into()
         } else {
@@ -965,7 +1079,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
     fn render_footer(
         &self,
         _window: &mut Window,
-        _cx: &mut Context<Picker<Self>>,
+        cx: &mut Context<Picker<Self>>,
     ) -> Option<AnyElement> {
         None
     }
