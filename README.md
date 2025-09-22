@@ -12,8 +12,6 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 
 # Fork changes
 
-I had to disable `webrtc_sys` compilation, otherwise I am not able to compile locally on macOS.
-
 ## General/editor changes
 
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines instead of leading indents
