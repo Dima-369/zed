@@ -353,7 +353,7 @@ impl PickerDelegate for RecentProjectsDelegate {
         &mut self,
         ix: usize,
         _window: &mut Window,
-        cx: &mut Context<Picker<Self>>,
+        _cx: &mut Context<Picker<Self>>,
     ) {
         self.selected_match_index = ix;
     }
@@ -494,7 +494,7 @@ impl PickerDelegate for RecentProjectsDelegate {
 
     fn dismissed(&mut self, _window: &mut Window, _: &mut Context<Picker<Self>>) {}
 
-    fn no_matches_text(&self, _window: &mut Window, cx: &mut App) -> Option<SharedString> {
+    fn no_matches_text(&self, _window: &mut Window, _cx: &mut App) -> Option<SharedString> {
         let text = if self.workspaces.is_empty() {
             "Recently opened projects will show up here".into()
         } else {
@@ -894,7 +894,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
         &mut self,
         ix: usize,
         _window: &mut Window,
-        cx: &mut Context<Picker<Self>>,
+        _cx: &mut Context<Picker<Self>>,
     ) {
         self.selected_match_index = ix;
     }
@@ -903,7 +903,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
         &mut self,
         query: String,
         _: &mut Window,
-        cx: &mut Context<Picker<Self>>,
+        _cx: &mut Context<Picker<Self>>,
     ) -> gpui::Task<()> {
         let query = query.trim_start();
         let smart_case = query.chars().any(|c| c.is_uppercase());
@@ -994,7 +994,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
 
     fn dismissed(&mut self, _window: &mut Window, _: &mut Context<Picker<Self>>) {}
 
-    fn no_matches_text(&self, _window: &mut Window, cx: &mut App) -> Option<SharedString> {
+    fn no_matches_text(&self, _window: &mut Window, _cx: &mut App) -> Option<SharedString> {
         let text = if self.directories.is_empty() {
             "No zoxide directories found. Make sure zoxide is installed and has been used.".into()
         } else {
@@ -1079,7 +1079,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
     fn render_footer(
         &self,
         _window: &mut Window,
-        cx: &mut Context<Picker<Self>>,
+        _cx: &mut Context<Picker<Self>>,
     ) -> Option<AnyElement> {
         None
     }
