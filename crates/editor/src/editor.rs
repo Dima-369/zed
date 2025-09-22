@@ -160,9 +160,8 @@ use project::{
     },
     git_store::{GitStoreEvent, RepositoryEvent},
     lsp_store::{CompletionDocumentation, FormatTrigger, LspFormatTarget, OpenLspBufferHandle},
-    project_settings::{DiagnosticSeverity, GoToDiagnosticSeverityFilter, ProjectSettings},
     project_settings::{
-        DiagnosticSeverity, GitGutterSetting, GoToDiagnosticSeverity, GoToDiagnosticSeverityFilter,
+        DiagnosticSeverity, GoToDiagnosticSeverity, GoToDiagnosticSeverityFilter,
         ProjectSettings,
     },
 };

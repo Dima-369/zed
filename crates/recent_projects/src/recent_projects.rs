@@ -1121,7 +1121,6 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
         let highlighted_text = HighlightedMatch {
             text: display_path.clone(),
             highlight_positions: adjusted_positions,
-            char_count: display_path.chars().count(),
             color: Color::Default,
         };
 

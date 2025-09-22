@@ -476,7 +476,6 @@ impl PickerDelegate for RecentFilesDelegate {
         let highlighted_match = HighlightedMatch {
             text: path_str,
             highlight_positions: hit.positions.clone(),
-            char_count: path.compact().as_os_str().to_string_lossy().chars().count(),
             color: ui::Color::Default,
         };
 
