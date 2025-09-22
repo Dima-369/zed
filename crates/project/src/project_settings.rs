@@ -389,6 +389,14 @@ pub struct DiagnosticsSettings {
 
     /// Settings for showing inline diagnostics.
     pub inline: InlineDiagnosticsSettings,
+
+    /// Whether to merge diagnostics with the same range into a single diagnostic.
+    /// When enabled, diagnostics from the same language server that have identical
+    /// ranges will be combined into one diagnostic with messages joined by newlines.
+    /// The lowest severity among the merged diagnostics will be used.
+    ///
+    /// Default: false
+    pub merge_same_range: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -500,6 +508,7 @@ impl Settings for ProjectSettings {
                     min_column: inline_diagnostics.min_column.unwrap(),
                     max_severity: inline_diagnostics.max_severity.map(Into::into),
                 },
+                merge_same_range: diagnostics.merge_same_range.unwrap(),
             },
             git: git_settings,
             node: content.node.clone().unwrap().into(),

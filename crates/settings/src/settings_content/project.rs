@@ -339,6 +339,8 @@ pub struct DiagnosticsSettingsContent {
 
     /// Settings for showing inline diagnostics.
     pub inline: Option<InlineDiagnosticsSettingsContent>,
+
+    pub merge_same_range: Option<bool>,
 }
 
 #[skip_serializing_none]
