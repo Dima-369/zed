@@ -47,8 +47,7 @@ pub mod test;
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd",
-    target_os = "macos"
+    target_os = "freebsd"
 ))]
 pub use mock_client::*;
 
