@@ -75,7 +75,6 @@
       "alt-delete": ["editor::DeleteToNextWordEnd", { "ignore_newlines": false, "ignore_brackets": false }],
       "cmd-x": "editor::Cut",
       "cmd-c": "editor::Copy",
-      "cmd-shift-c": "editor::CopyAll",
       "cmd-v": "editor::Paste",
       "cmd-z": "editor::Undo",
       "cmd-shift-z": "editor::Redo",
