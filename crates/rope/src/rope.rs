@@ -30,6 +30,76 @@ impl Rope {
         Self::default()
     }
 
+    pub fn is_char_boundary(&self, offset: usize) -> bool {
+        if self.chunks.is_empty() {
+            return offset == 0;
+        }
+        let mut cursor = self.chunks.cursor::<usize>(&());
+        cursor.seek(&offset, Bias::Left);
+        let chunk_offset = offset - cursor.start();
+        cursor
+            .item()
+            .map(|chunk| chunk.text.is_char_boundary(chunk_offset))
+            .unwrap_or(false)
+    }
+
+    pub fn floor_char_boundary(&self, index: usize) -> usize {
+        if index >= self.len() {
+            self.len()
+        } else {
+            #[inline]
+            pub(crate) const fn is_utf8_char_boundary(u8: u8) -> bool {
+                // This is bit magic equivalent to: b < 128 || b >= 192
+                (u8 as i8) >= -0x40
+            }
+
+            let mut cursor = self.chunks.cursor::<usize>(&());
+            cursor.seek(&index, Bias::Left);
+            let chunk_offset = index - cursor.start();
+            let lower_idx = cursor.item().map(|chunk| {
+                let lower_bound = chunk_offset.saturating_sub(3);
+                chunk
+                    .text
+                    .as_bytes()
+                    .get(lower_bound..=chunk_offset)
+                    .map(|it| {
+                        let new_idx = it
+                            .iter()
+                            .rposition(|&b| is_utf8_char_boundary(b))
+                            .unwrap_or(0);
+                        lower_bound + new_idx
+                    })
+                    .unwrap_or(chunk.text.len())
+            });
+            lower_idx.map_or_else(|| self.len(), |idx| cursor.start() + idx)
+        }
+    }
+
+    pub fn ceil_char_boundary(&self, index: usize) -> usize {
+        if index > self.len() {
+            self.len()
+        } else {
+            #[inline]
+            pub(crate) const fn is_utf8_char_boundary(u8: u8) -> bool {
+                // This is bit magic equivalent to: b < 128 || b >= 192
+                (u8 as i8) >= -0x40
+            }
+
+            let mut cursor = self.chunks.cursor::<usize>(&());
+            cursor.seek(&index, Bias::Left);
+            let chunk_offset = index - cursor.start();
+            let upper_idx = cursor.item().map(|chunk| {
+                let upper_bound = Ord::min(chunk_offset + 4, chunk.text.len());
+                chunk.text.as_bytes()[chunk_offset..upper_bound]
+                    .iter()
+                    .position(|&b| is_utf8_char_boundary(b))
+                    .map_or(upper_bound, |pos| pos + chunk_offset)
+            });
+
+            upper_idx.map_or_else(|| self.len(), |idx| cursor.start() + idx)
+        }
+    }
+
     pub fn append(&mut self, rope: Rope) {
         if let Some(chunk) = rope.chunks.first()
             && (self
@@ -389,26 +459,10 @@ impl Rope {
             })
     }
 
-    pub fn clip_offset(&self, mut offset: usize, bias: Bias) -> usize {
-        let mut cursor = self.chunks.cursor::<usize>(&());
-        cursor.seek(&offset, Bias::Left);
-        if let Some(chunk) = cursor.item() {
-            let mut ix = offset - cursor.start();
-            while !chunk.text.is_char_boundary(ix) {
-                match bias {
-                    Bias::Left => {
-                        ix -= 1;
-                        offset -= 1;
-                    }
-                    Bias::Right => {
-                        ix += 1;
-                        offset += 1;
-                    }
-                }
-            }
-            offset
-        } else {
-            self.summary().len
+    pub fn clip_offset(&self, offset: usize, bias: Bias) -> usize {
+        match bias {
+            Bias::Left => self.floor_char_boundary(offset),
+            Bias::Right => self.ceil_char_boundary(offset),
         }
     }
 
@@ -594,6 +648,15 @@ impl<'a> Cursor<'a> {
     }
 }
 
+pub struct ChunkBitmaps<'a> {
+    /// A slice of text up to 128 bytes in size
+    pub text: &'a str,
+    /// Bitmap of character locations in text. LSB ordered
+    pub chars: u128,
+    /// Bitmap of tab locations in text. LSB ordered
+    pub tabs: u128,
+}
+
 #[derive(Clone)]
 pub struct Chunks<'a> {
     chunks: sum_tree::Cursor<'a, Chunk, usize>,
@@ -757,6 +820,39 @@ impl<'a> Chunks<'a> {
         self.offset < initial_offset && self.offset == 0
     }
 
+    /// Returns bitmaps that represent character positions and tab positions
+    pub fn peek_with_bitmaps(&self) -> Option<ChunkBitmaps<'a>> {
+        if !self.offset_is_valid() {
+            return None;
+        }
+
+        let chunk = self.chunks.item()?;
+        let chunk_start = *self.chunks.start();
+        let slice_range = if self.reversed {
+            let slice_start = cmp::max(chunk_start, self.range.start) - chunk_start;
+            let slice_end = self.offset - chunk_start;
+            slice_start..slice_end
+        } else {
+            let slice_start = self.offset - chunk_start;
+            let slice_end = cmp::min(self.chunks.end(), self.range.end) - chunk_start;
+            slice_start..slice_end
+        };
+
+        // slice range has a bounds between 0 and 128 in non test builds
+        // We use a non wrapping sub because we want to overflow in the case where slice_range.end == 128
+        // because that represents a full chunk and the bitmask shouldn't remove anything
+        let bitmask = (1u128.unbounded_shl(slice_range.end as u32)).wrapping_sub(1);
+
+        let chars = (chunk.chars() & bitmask) >> slice_range.start;
+        let tabs = (chunk.tabs & bitmask) >> slice_range.start;
+
+        Some(ChunkBitmaps {
+            text: &chunk.text[slice_range],
+            chars,
+            tabs,
+        })
+    }
+
     pub fn peek(&self) -> Option<&'a str> {
         if !self.offset_is_valid() {
             return None;
@@ -775,6 +871,36 @@ impl<'a> Chunks<'a> {
         };
 
         Some(&chunk.text[slice_range])
+    }
+
+    pub fn peek_tabs(&self) -> Option<ChunkBitmaps<'a>> {
+        if !self.offset_is_valid() {
+            return None;
+        }
+
+        let chunk = self.chunks.item()?;
+        let chunk_start = *self.chunks.start();
+        let slice_range = if self.reversed {
+            let slice_start = cmp::max(chunk_start, self.range.start) - chunk_start;
+            let slice_end = self.offset - chunk_start;
+            slice_start..slice_end
+        } else {
+            let slice_start = self.offset - chunk_start;
+            let slice_end = cmp::min(self.chunks.end(), self.range.end) - chunk_start;
+            slice_start..slice_end
+        };
+        let chunk_start_offset = slice_range.start;
+        let slice_text = &chunk.text[slice_range];
+
+        // Shift the tabs to align with our slice window
+        let shifted_tabs = chunk.tabs >> chunk_start_offset;
+        let shifted_chars = chunk.chars() >> chunk_start_offset;
+
+        Some(ChunkBitmaps {
+            text: slice_text,
+            chars: shifted_chars,
+            tabs: shifted_tabs,
+        })
     }
 
     pub fn lines(self) -> Lines<'a> {
@@ -819,6 +945,30 @@ impl<'a> Chunks<'a> {
         }
 
         true
+    }
+}
+
+pub struct ChunkWithBitmaps<'a>(pub Chunks<'a>);
+
+impl<'a> Iterator for ChunkWithBitmaps<'a> {
+    /// text, chars bitmap, tabs bitmap
+    type Item = ChunkBitmaps<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let chunk_bitmaps = self.0.peek_with_bitmaps()?;
+        if self.0.reversed {
+            self.0.offset -= chunk_bitmaps.text.len();
+            if self.0.offset <= *self.0.chunks.start() {
+                self.0.chunks.prev();
+            }
+        } else {
+            self.0.offset += chunk_bitmaps.text.len();
+            if self.0.offset >= self.0.chunks.end() {
+                self.0.chunks.next();
+            }
+        }
+
+        Some(chunk_bitmaps)
     }
 }
 
@@ -1971,6 +2121,103 @@ mod tests {
         assert!(rope.reversed_chunks_in_range(0..0).equals_str(""));
         assert!(!rope.chunks_in_range(0..0).equals_str("foo"));
         assert!(!rope.reversed_chunks_in_range(0..0).equals_str("foo"));
+    }
+
+    #[test]
+    fn test_is_char_boundary() {
+        let fixture = "地";
+        let rope = Rope::from("地");
+        for b in 0..=fixture.len() {
+            assert_eq!(rope.is_char_boundary(b), fixture.is_char_boundary(b));
+        }
+        let fixture = "";
+        let rope = Rope::from("");
+        for b in 0..=fixture.len() {
+            assert_eq!(rope.is_char_boundary(b), fixture.is_char_boundary(b));
+        }
+        let fixture = "🔴🟠🟡🟢🔵🟣⚫️⚪️🟤\n🏳️‍⚧️🏁🏳️‍🌈🏴‍☠️⛳️📬📭🏴🏳️🚩";
+        let rope = Rope::from("🔴🟠🟡🟢🔵🟣⚫️⚪️🟤\n🏳️‍⚧️🏁🏳️‍🌈🏴‍☠️⛳️📬📭🏴🏳️🚩");
+        for b in 0..=fixture.len() {
+            assert_eq!(rope.is_char_boundary(b), fixture.is_char_boundary(b));
+        }
+    }
+
+    #[test]
+    fn test_floor_char_boundary() {
+        // polyfill of str::floor_char_boundary
+        fn floor_char_boundary(str: &str, index: usize) -> usize {
+            if index >= str.len() {
+                str.len()
+            } else {
+                let lower_bound = index.saturating_sub(3);
+                let new_index = str.as_bytes()[lower_bound..=index]
+                    .iter()
+                    .rposition(|b| (*b as i8) >= -0x40);
+
+                lower_bound + new_index.unwrap()
+            }
+        }
+
+        let fixture = "地";
+        let rope = Rope::from("地");
+        for b in 0..=fixture.len() {
+            assert_eq!(
+                rope.floor_char_boundary(b),
+                floor_char_boundary(&fixture, b)
+            );
+        }
+
+        let fixture = "";
+        let rope = Rope::from("");
+        for b in 0..=fixture.len() {
+            assert_eq!(
+                rope.floor_char_boundary(b),
+                floor_char_boundary(&fixture, b)
+            );
+        }
+
+        let fixture = "🔴🟠🟡🟢🔵🟣⚫️⚪️🟤\n🏳️‍⚧️🏁🏳️‍🌈🏴‍☠️⛳️📬📭🏴🏳️🚩";
+        let rope = Rope::from("🔴🟠🟡🟢🔵🟣⚫️⚪️🟤\n🏳️‍⚧️🏁🏳️‍🌈🏴‍☠️⛳️📬📭🏴🏳️🚩");
+        for b in 0..=fixture.len() {
+            assert_eq!(
+                rope.floor_char_boundary(b),
+                floor_char_boundary(&fixture, b)
+            );
+        }
+    }
+
+    #[test]
+    fn test_ceil_char_boundary() {
+        // polyfill of str::ceil_char_boundary
+        fn ceil_char_boundary(str: &str, index: usize) -> usize {
+            if index > str.len() {
+                str.len()
+            } else {
+                let upper_bound = Ord::min(index + 4, str.len());
+                str.as_bytes()[index..upper_bound]
+                    .iter()
+                    .position(|b| (*b as i8) >= -0x40)
+                    .map_or(upper_bound, |pos| pos + index)
+            }
+        }
+
+        let fixture = "地";
+        let rope = Rope::from("地");
+        for b in 0..=fixture.len() {
+            assert_eq!(rope.ceil_char_boundary(b), ceil_char_boundary(&fixture, b));
+        }
+
+        let fixture = "";
+        let rope = Rope::from("");
+        for b in 0..=fixture.len() {
+            assert_eq!(rope.ceil_char_boundary(b), ceil_char_boundary(&fixture, b));
+        }
+
+        let fixture = "🔴🟠🟡🟢🔵🟣⚫️⚪️🟤\n🏳️‍⚧️🏁🏳️‍🌈🏴‍☠️⛳️📬📭🏴🏳️🚩";
+        let rope = Rope::from("🔴🟠🟡🟢🔵🟣⚫️⚪️🟤\n🏳️‍⚧️🏁🏳️‍🌈🏴‍☠️⛳️📬📭🏴🏳️🚩");
+        for b in 0..=fixture.len() {
+            assert_eq!(rope.ceil_char_boundary(b), ceil_char_boundary(&fixture, b));
+        }
     }
 
     fn clip_offset(text: &str, mut offset: usize, bias: Bias) -> usize {

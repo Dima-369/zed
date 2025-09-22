@@ -2128,7 +2128,7 @@ impl BufferSnapshot {
         let row_end_offset = if row >= self.max_point().row {
             self.len()
         } else {
-            Point::new(row + 1, 0).to_offset(self) - 1
+            Point::new(row + 1, 0).to_previous_offset(self)
         };
         (row_end_offset - row_start_offset) as u32
     }
@@ -2400,6 +2400,17 @@ impl BufferSnapshot {
         } else if bias == Bias::Right && offset == self.len() {
             Anchor::MAX
         } else {
+            if !self.visible_text.is_char_boundary(offset) {
+                // find the character
+                let char_start = self.visible_text.floor_char_boundary(offset);
+                // `char_start` must be less than len and a char boundary
+                let ch = self.visible_text.chars_at(char_start).next().unwrap();
+                let char_range = char_start..char_start + ch.len_utf8();
+                panic!(
+                    "byte index {} is not a char boundary; it is inside {:?} (bytes {:?})",
+                    offset, ch, char_range,
+                );
+            }
             let mut fragment_cursor = self.fragments.cursor::<usize>(&None);
             fragment_cursor.seek(&offset, bias);
             let fragment = fragment_cursor.item().unwrap();
@@ -2592,6 +2603,38 @@ impl BufferSnapshot {
 
             last_old_end + new_offset.saturating_sub(last_new_end)
         })
+    }
+
+    /// Visually annotates a position or range with the `Debug` representation of a value. The
+    /// callsite of this function is used as a key - previous annotations will be removed.
+    #[cfg(debug_assertions)]
+    #[track_caller]
+    pub fn debug<R, V>(&self, ranges: &R, value: V)
+    where
+        R: debug::ToDebugRanges,
+        V: std::fmt::Debug,
+    {
+        self.debug_with_key(std::panic::Location::caller(), ranges, value);
+    }
+
+    /// Visually annotates a position or range with the `Debug` representation of a value. Previous
+    /// debug annotations with the same key will be removed. The key is also used to determine the
+    /// annotation's color.
+    #[cfg(debug_assertions)]
+    pub fn debug_with_key<K, R, V>(&self, key: &K, ranges: &R, value: V)
+    where
+        K: std::hash::Hash + 'static,
+        R: debug::ToDebugRanges,
+        V: std::fmt::Debug,
+    {
+        let ranges = ranges
+            .to_debug_ranges(self)
+            .into_iter()
+            .map(|range| self.anchor_after(range.start)..self.anchor_before(range.end))
+            .collect();
+        debug::GlobalDebugRanges::with_locked(|debug_ranges| {
+            debug_ranges.insert(key, ranges, format!("{value:?}").into());
+        });
     }
 }
 
@@ -3033,6 +3076,18 @@ impl operation_queue::Operation for Operation {
 
 pub trait ToOffset {
     fn to_offset(&self, snapshot: &BufferSnapshot) -> usize;
+    /// Turns this point into the next offset in the buffer that comes after this, respecting utf8 boundaries.
+    fn to_next_offset(&self, snapshot: &BufferSnapshot) -> usize {
+        snapshot
+            .visible_text
+            .ceil_char_boundary(self.to_offset(snapshot) + 1)
+    }
+    /// Turns this point into the previous offset in the buffer that comes before this, respecting utf8 boundaries.
+    fn to_previous_offset(&self, snapshot: &BufferSnapshot) -> usize {
+        snapshot
+            .visible_text
+            .floor_char_boundary(self.to_offset(snapshot).saturating_sub(1))
+    }
 }
 
 impl ToOffset for Point {
@@ -3046,7 +3101,7 @@ impl ToOffset for usize {
     fn to_offset(&self, snapshot: &BufferSnapshot) -> usize {
         assert!(
             *self <= snapshot.len(),
-            "offset {} is out of range, max allowed is {}",
+            "offset {} is out of range, snapshot length is {}",
             self,
             snapshot.len()
         );
@@ -3244,6 +3299,163 @@ impl LineEnding {
             replaced.into()
         } else {
             text
+        }
+    }
+}
+
+#[cfg(debug_assertions)]
+pub mod debug {
+    use super::*;
+    use parking_lot::Mutex;
+    use std::any::TypeId;
+    use std::hash::{Hash, Hasher};
+
+    static GLOBAL_DEBUG_RANGES: Mutex<Option<GlobalDebugRanges>> = Mutex::new(None);
+
+    pub struct GlobalDebugRanges {
+        pub ranges: Vec<DebugRange>,
+        key_to_occurrence_index: HashMap<Key, usize>,
+        next_occurrence_index: usize,
+    }
+
+    pub struct DebugRange {
+        key: Key,
+        pub ranges: Vec<Range<Anchor>>,
+        pub value: Arc<str>,
+        pub occurrence_index: usize,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    struct Key {
+        type_id: TypeId,
+        hash: u64,
+    }
+
+    impl GlobalDebugRanges {
+        pub fn with_locked<R>(f: impl FnOnce(&mut Self) -> R) -> R {
+            let mut state = GLOBAL_DEBUG_RANGES.lock();
+            if state.is_none() {
+                *state = Some(GlobalDebugRanges {
+                    ranges: Vec::new(),
+                    key_to_occurrence_index: HashMap::default(),
+                    next_occurrence_index: 0,
+                });
+            }
+            if let Some(global_debug_ranges) = state.as_mut() {
+                f(global_debug_ranges)
+            } else {
+                unreachable!()
+            }
+        }
+
+        pub fn insert<K: Hash + 'static>(
+            &mut self,
+            key: &K,
+            ranges: Vec<Range<Anchor>>,
+            value: Arc<str>,
+        ) {
+            let occurrence_index = *self
+                .key_to_occurrence_index
+                .entry(Key::new(key))
+                .or_insert_with(|| {
+                    let occurrence_index = self.next_occurrence_index;
+                    self.next_occurrence_index += 1;
+                    occurrence_index
+                });
+            let key = Key::new(key);
+            let existing = self
+                .ranges
+                .iter()
+                .enumerate()
+                .rfind(|(_, existing)| existing.key == key);
+            if let Some((existing_ix, _)) = existing {
+                self.ranges.remove(existing_ix);
+            }
+            self.ranges.push(DebugRange {
+                ranges,
+                key,
+                value,
+                occurrence_index,
+            });
+        }
+
+        pub fn remove<K: Hash + 'static>(&mut self, key: &K) {
+            self.remove_impl(&Key::new(key));
+        }
+
+        fn remove_impl(&mut self, key: &Key) {
+            let existing = self
+                .ranges
+                .iter()
+                .enumerate()
+                .rfind(|(_, existing)| &existing.key == key);
+            if let Some((existing_ix, _)) = existing {
+                self.ranges.remove(existing_ix);
+            }
+        }
+
+        pub fn remove_all_with_key_type<K: 'static>(&mut self) {
+            self.ranges
+                .retain(|item| item.key.type_id != TypeId::of::<K>());
+        }
+    }
+
+    impl Key {
+        fn new<K: Hash + 'static>(key: &K) -> Self {
+            let type_id = TypeId::of::<K>();
+            let mut hasher = collections::FxHasher::default();
+            key.hash(&mut hasher);
+            Key {
+                type_id,
+                hash: hasher.finish(),
+            }
+        }
+    }
+
+    pub trait ToDebugRanges {
+        fn to_debug_ranges(&self, snapshot: &BufferSnapshot) -> Vec<Range<usize>>;
+    }
+
+    impl<T: ToOffset> ToDebugRanges for T {
+        fn to_debug_ranges(&self, snapshot: &BufferSnapshot) -> Vec<Range<usize>> {
+            [self.to_offset(snapshot)].to_debug_ranges(snapshot)
+        }
+    }
+
+    impl<T: ToOffset + Clone> ToDebugRanges for Range<T> {
+        fn to_debug_ranges(&self, snapshot: &BufferSnapshot) -> Vec<Range<usize>> {
+            [self.clone()].to_debug_ranges(snapshot)
+        }
+    }
+
+    impl<T: ToOffset> ToDebugRanges for Vec<T> {
+        fn to_debug_ranges(&self, snapshot: &BufferSnapshot) -> Vec<Range<usize>> {
+            self.as_slice().to_debug_ranges(snapshot)
+        }
+    }
+
+    impl<T: ToOffset> ToDebugRanges for Vec<Range<T>> {
+        fn to_debug_ranges(&self, snapshot: &BufferSnapshot) -> Vec<Range<usize>> {
+            self.as_slice().to_debug_ranges(snapshot)
+        }
+    }
+
+    impl<T: ToOffset> ToDebugRanges for [T] {
+        fn to_debug_ranges(&self, snapshot: &BufferSnapshot) -> Vec<Range<usize>> {
+            self.iter()
+                .map(|item| {
+                    let offset = item.to_offset(snapshot);
+                    offset..offset
+                })
+                .collect()
+        }
+    }
+
+    impl<T: ToOffset> ToDebugRanges for [Range<T>] {
+        fn to_debug_ranges(&self, snapshot: &BufferSnapshot) -> Vec<Range<usize>> {
+            self.iter()
+                .map(|range| range.start.to_offset(snapshot)..range.end.to_offset(snapshot))
+                .collect()
         }
     }
 }

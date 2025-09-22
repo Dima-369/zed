@@ -13,6 +13,7 @@ use agent_ui::{AgentDiffToolbar, AgentPanelDelegate};
 use anyhow::Context as _;
 pub use app_menus::*;
 use assets::Assets;
+use audio::{AudioSettings, REPLAY_DURATION};
 use breadcrumbs::Breadcrumbs;
 use client::zed_urls;
 use collections::VecDeque;
@@ -59,7 +60,7 @@ use settings::{
     initial_local_debug_tasks_content, initial_project_settings_content, initial_tasks_content,
     update_settings_file,
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
@@ -128,8 +129,10 @@ actions!(
 actions!(
     dev,
     [
-        /// Record 10s of audio from your current microphone
-        CaptureAudio
+        /// Stores last 30s of audio from zed staff using the experimental rodio
+        /// audio system (including yourself) on the current call in a tar file
+        /// in the current working directory.
+        CaptureRecentAudio,
     ]
 );
 
@@ -724,9 +727,10 @@ fn register_actions(
             let fs = app_state.fs.clone();
             move |_, action: &zed_actions::IncreaseUiFontSize, _window, cx| {
                 if action.persist {
-                    update_settings_file::<ThemeSettings>(fs.clone(), cx, move |settings, cx| {
+                    update_settings_file(fs.clone(), cx, move |settings, cx| {
                         let ui_font_size = ThemeSettings::get_global(cx).ui_font_size(cx) + px(1.0);
                         let _ = settings
+                            .theme
                             .ui_font_size
                             .insert(theme::clamp_font_size(ui_font_size).0);
                     });
@@ -739,9 +743,10 @@ fn register_actions(
             let fs = app_state.fs.clone();
             move |_, action: &zed_actions::DecreaseUiFontSize, _window, cx| {
                 if action.persist {
-                    update_settings_file::<ThemeSettings>(fs.clone(), cx, move |settings, cx| {
+                    update_settings_file(fs.clone(), cx, move |settings, cx| {
                         let ui_font_size = ThemeSettings::get_global(cx).ui_font_size(cx) - px(1.0);
                         let _ = settings
+                            .theme
                             .ui_font_size
                             .insert(theme::clamp_font_size(ui_font_size).0);
                     });
@@ -754,8 +759,8 @@ fn register_actions(
             let fs = app_state.fs.clone();
             move |_, action: &zed_actions::ResetUiFontSize, _window, cx| {
                 if action.persist {
-                    update_settings_file::<ThemeSettings>(fs.clone(), cx, move |settings, _| {
-                        settings.ui_font_size = None;
+                    update_settings_file(fs.clone(), cx, move |settings, _| {
+                        settings.theme.ui_font_size = None;
                     });
                 } else {
                     theme::reset_ui_font_size(cx);
@@ -766,10 +771,11 @@ fn register_actions(
             let fs = app_state.fs.clone();
             move |_, action: &zed_actions::IncreaseBufferFontSize, _window, cx| {
                 if action.persist {
-                    update_settings_file::<ThemeSettings>(fs.clone(), cx, move |settings, cx| {
+                    update_settings_file(fs.clone(), cx, move |settings, cx| {
                         let buffer_font_size =
                             ThemeSettings::get_global(cx).buffer_font_size(cx) + px(1.0);
                         let _ = settings
+                            .theme
                             .buffer_font_size
                             .insert(theme::clamp_font_size(buffer_font_size).0);
                     });
@@ -782,10 +788,11 @@ fn register_actions(
             let fs = app_state.fs.clone();
             move |_, action: &zed_actions::DecreaseBufferFontSize, _window, cx| {
                 if action.persist {
-                    update_settings_file::<ThemeSettings>(fs.clone(), cx, move |settings, cx| {
+                    update_settings_file(fs.clone(), cx, move |settings, cx| {
                         let buffer_font_size =
                             ThemeSettings::get_global(cx).buffer_font_size(cx) - px(1.0);
                         let _ = settings
+                            .theme
                             .buffer_font_size
                             .insert(theme::clamp_font_size(buffer_font_size).0);
                     });
@@ -798,8 +805,8 @@ fn register_actions(
             let fs = app_state.fs.clone();
             move |_, action: &zed_actions::ResetBufferFontSize, _window, cx| {
                 if action.persist {
-                    update_settings_file::<ThemeSettings>(fs.clone(), cx, move |settings, _| {
-                        settings.buffer_font_size = None;
+                    update_settings_file(fs.clone(), cx, move |settings, _| {
+                        settings.theme.buffer_font_size = None;
                     });
                 } else {
                     theme::reset_buffer_font_size(cx);
@@ -910,8 +917,8 @@ fn register_actions(
                 }
             }
         })
-        .register_action(|workspace, _: &CaptureAudio, window, cx| {
-            capture_audio(workspace, window, cx);
+        .register_action(|workspace, _: &CaptureRecentAudio, window, cx| {
+            capture_recent_audio(workspace, window, cx);
         });
 
     #[cfg(not(target_os = "windows"))]
@@ -1109,10 +1116,15 @@ fn open_log_file(workspace: &mut Workspace, window: &mut Window, cx: &mut Contex
     const MAX_LINES: usize = 1000;
     workspace
         .with_local_workspace(window, cx, move |workspace, window, cx| {
-            let fs = workspace.app_state().fs.clone();
+            let app_state = workspace.app_state();
+            let languages = app_state.languages.clone();
+            let fs = app_state.fs.clone();
             cx.spawn_in(window, async move |workspace, cx| {
-                let (old_log, new_log) =
-                    futures::join!(fs.load(paths::old_log_file()), fs.load(paths::log_file()));
+                let (old_log, new_log, log_language) = futures::join!(
+                    fs.load(paths::old_log_file()),
+                    fs.load(paths::log_file()),
+                    languages.language_for_name("log")
+                );
                 let log = match (old_log, new_log) {
                     (Err(_), Err(_)) => None,
                     (old_log, new_log) => {
@@ -1135,6 +1147,7 @@ fn open_log_file(workspace: &mut Workspace, window: &mut Window, cx: &mut Contex
                         )
                     }
                 };
+                let log_language = log_language.ok();
 
                 workspace
                     .update_in(cx, |workspace, window, cx| {
@@ -1160,7 +1173,7 @@ fn open_log_file(workspace: &mut Workspace, window: &mut Window, cx: &mut Contex
                         };
                         let project = workspace.project().clone();
                         let buffer = project.update(cx, |project, cx| {
-                            project.create_local_buffer(&log, None, false, cx)
+                            project.create_local_buffer(&log, log_language, false, cx)
                         });
 
                         let buffer = cx
@@ -1845,50 +1858,39 @@ fn open_settings_file(
     .detach_and_log_err(cx);
 }
 
-fn capture_audio(workspace: &mut Workspace, _: &mut Window, cx: &mut Context<Workspace>) {
-    #[derive(Default)]
-    enum State {
-        Recording(livekit_client::CaptureInput),
-        Failed(String),
-        Finished(PathBuf),
-        // Used during state switch. Should never occur naturally.
-        #[default]
-        Invalid,
-    }
-
-    struct CaptureAudioNotification {
+fn capture_recent_audio(workspace: &mut Workspace, _: &mut Window, cx: &mut Context<Workspace>) {
+    struct CaptureRecentAudioNotification {
         focus_handle: gpui::FocusHandle,
-        start_time: Instant,
-        state: State,
+        save_result: Option<Result<(PathBuf, Duration), anyhow::Error>>,
+        _save_task: Task<anyhow::Result<()>>,
     }
 
-    impl gpui::EventEmitter<DismissEvent> for CaptureAudioNotification {}
-    impl gpui::EventEmitter<SuppressEvent> for CaptureAudioNotification {}
-    impl gpui::Focusable for CaptureAudioNotification {
+    impl gpui::EventEmitter<DismissEvent> for CaptureRecentAudioNotification {}
+    impl gpui::EventEmitter<SuppressEvent> for CaptureRecentAudioNotification {}
+    impl gpui::Focusable for CaptureRecentAudioNotification {
         fn focus_handle(&self, _cx: &App) -> gpui::FocusHandle {
             self.focus_handle.clone()
         }
     }
-    impl workspace::notifications::Notification for CaptureAudioNotification {}
+    impl workspace::notifications::Notification for CaptureRecentAudioNotification {}
 
-    const AUDIO_RECORDING_TIME_SECS: u64 = 10;
-
-    impl Render for CaptureAudioNotification {
+    impl Render for CaptureRecentAudioNotification {
         fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-            let elapsed = self.start_time.elapsed().as_secs();
-            let message = match &self.state {
-                State::Recording(capture) => format!(
-                    "Recording {} seconds of audio from input: '{}'",
-                    AUDIO_RECORDING_TIME_SECS - elapsed,
-                    capture.name,
+            let message = match &self.save_result {
+                None => format!(
+                    "Saving up to {} seconds of recent audio",
+                    REPLAY_DURATION.as_secs(),
                 ),
-                State::Failed(e) => format!("Error capturing audio: {e}"),
-                State::Finished(path) => format!("Audio recorded to {}", path.display()),
-                State::Invalid => "Error invalid state".to_string(),
+                Some(Ok((path, duration))) => format!(
+                    "Saved {} seconds of all audio to {}",
+                    duration.as_secs(),
+                    path.display(),
+                ),
+                Some(Err(e)) => format!("Error saving audio replays: {e:?}"),
             };
 
             NotificationFrame::new()
-                .with_title(Some("Recording Audio"))
+                .with_title(Some("Saved Audio"))
                 .show_suppress_button(false)
                 .on_close(cx.listener(|_, _, _, cx| {
                     cx.emit(DismissEvent);
@@ -1897,53 +1899,41 @@ fn capture_audio(workspace: &mut Workspace, _: &mut Window, cx: &mut Context<Wor
         }
     }
 
-    impl CaptureAudioNotification {
-        fn finish(&mut self) {
-            let state = std::mem::take(&mut self.state);
-            self.state = if let State::Recording(capture) = state {
-                match capture.finish() {
-                    Ok(path) => State::Finished(path),
-                    Err(e) => State::Failed(e.to_string()),
+    impl CaptureRecentAudioNotification {
+        fn new(cx: &mut Context<Self>) -> Self {
+            if AudioSettings::get_global(cx).rodio_audio {
+                let executor = cx.background_executor().clone();
+                let save_task = cx.default_global::<audio::Audio>().save_replays(executor);
+                let _save_task = cx.spawn(async move |this, cx| {
+                    let res = save_task.await;
+                    this.update(cx, |this, cx| {
+                        this.save_result = Some(res);
+                        cx.notify();
+                    })
+                });
+
+                Self {
+                    focus_handle: cx.focus_handle(),
+                    _save_task,
+                    save_result: None,
                 }
             } else {
-                state
-            };
-        }
-
-        fn new(cx: &mut Context<Self>) -> Self {
-            cx.spawn(async move |this, cx| {
-                for _ in 0..10 {
-                    cx.background_executor().timer(Duration::from_secs(1)).await;
-                    this.update(cx, |_, cx| {
-                        cx.notify();
-                    })?;
+                Self {
+                    focus_handle: cx.focus_handle(),
+                    _save_task: Task::ready(Ok(())),
+                    save_result: Some(Err(anyhow::anyhow!(
+                        "Capturing recent audio is only supported on the experimental rodio audio pipeline"
+                    ))),
                 }
-
-                this.update(cx, |this, cx| {
-                    this.finish();
-                    cx.notify();
-                })?;
-
-                anyhow::Ok(())
-            })
-            .detach();
-
-            let state = match livekit_client::CaptureInput::start() {
-                Ok(capture_input) => State::Recording(capture_input),
-                Err(err) => State::Failed(format!("Error starting audio capture: {}", err)),
-            };
-
-            Self {
-                focus_handle: cx.focus_handle(),
-                start_time: Instant::now(),
-                state,
             }
         }
     }
 
-    workspace.show_notification(NotificationId::unique::<CaptureAudio>(), cx, |cx| {
-        cx.new(CaptureAudioNotification::new)
-    });
+    workspace.show_notification(
+        NotificationId::unique::<CaptureRecentAudioNotification>(),
+        cx,
+        |cx| cx.new(CaptureRecentAudioNotification::new),
+    );
 }
 
 #[cfg(test)]
@@ -1958,7 +1948,7 @@ mod tests {
     };
     use language::{LanguageMatcher, LanguageRegistry};
     use pretty_assertions::{assert_eq, assert_ne};
-    use project::{Project, ProjectPath, WorktreeSettings, project_settings::ProjectSettings};
+    use project::{Project, ProjectPath};
     use serde_json::json;
     use settings::{SettingsStore, watch_config_file};
     use std::{
@@ -2263,8 +2253,11 @@ mod tests {
 
         cx.update(|cx| {
             SettingsStore::update_global(cx, |store, cx| {
-                store.update_user_settings::<ProjectSettings>(cx, |settings| {
-                    settings.session.restore_unsaved_buffers = false
+                store.update_user_settings(cx, |settings| {
+                    settings
+                        .session
+                        .get_or_insert_default()
+                        .restore_unsaved_buffers = Some(false)
                 });
             });
         });
@@ -2979,8 +2972,8 @@ mod tests {
         let app_state = init_test(cx);
         cx.update(|cx| {
             cx.update_global::<SettingsStore, _>(|store, cx| {
-                store.update_user_settings::<WorktreeSettings>(cx, |project_settings| {
-                    project_settings.file_scan_exclusions =
+                store.update_user_settings(cx, |project_settings| {
+                    project_settings.project.worktree.file_scan_exclusions =
                         Some(vec!["excluded_dir".to_string(), "**/.git".to_string()]);
                 });
             });
@@ -4512,6 +4505,7 @@ mod tests {
                 "search",
                 "settings_profile_selector",
                 "snippets",
+                "stash_picker",
                 "supermaven",
                 "svg",
                 "syntax_tree_view",
@@ -4609,6 +4603,7 @@ mod tests {
 
     #[gpui::test]
     async fn test_bundled_languages(cx: &mut TestAppContext) {
+        let fs = fs::FakeFs::new(cx.background_executor.clone());
         env_logger::builder().is_test(true).try_init().ok();
         let settings = cx.update(SettingsStore::test);
         cx.set_global(settings);
@@ -4616,7 +4611,7 @@ mod tests {
         let languages = Arc::new(languages);
         let node_runtime = node_runtime::NodeRuntime::unavailable();
         cx.update(|cx| {
-            languages::init(languages.clone(), node_runtime, cx);
+            languages::init(languages.clone(), fs, node_runtime, cx);
         });
         for name in languages.language_names() {
             languages
@@ -4807,8 +4802,9 @@ mod tests {
 
         // 3. Add .zed to file scan exclusions in user settings
         cx.update_global::<SettingsStore, _>(|store, cx| {
-            store.update_user_settings::<WorktreeSettings>(cx, |worktree_settings| {
-                worktree_settings.file_scan_exclusions = Some(vec![".zed".to_string()]);
+            store.update_user_settings(cx, |worktree_settings| {
+                worktree_settings.project.worktree.file_scan_exclusions =
+                    Some(vec![".zed".to_string()]);
             });
         });
 
@@ -4867,35 +4863,5 @@ mod tests {
             new_content_str.contains("UNIQUEVALUE"),
             "BUG FOUND: Project settings were overwritten when opening via command - original custom content was lost"
         );
-    }
-
-    #[gpui::test]
-    fn test_settings_defaults(cx: &mut TestAppContext) {
-        cx.update(|cx| {
-            settings::init(cx);
-            workspace::init_settings(cx);
-            title_bar::init(cx);
-            editor::init_settings(cx);
-            debugger_ui::init(cx);
-        });
-        let default_json =
-            cx.read(|cx| cx.global::<SettingsStore>().raw_default_settings().clone());
-
-        let all_paths = cx.read(|cx| settings_ui::SettingsUiTree::new(cx).all_paths(cx));
-        let mut failures = Vec::new();
-        for path in all_paths {
-            if settings_ui::read_settings_value_from_path(&default_json, &path).is_none() {
-                failures.push(path);
-            }
-        }
-        if !failures.is_empty() {
-            panic!(
-                "No default value found for paths: {:#?}",
-                failures
-                    .into_iter()
-                    .map(|path| path.join("."))
-                    .collect::<Vec<_>>()
-            );
-        }
     }
 }

@@ -11,8 +11,8 @@ use crate::{
     MouseMoveEvent, MouseUpEvent, Path, Pixels, PlatformAtlas, PlatformDisplay, PlatformInput,
     PlatformInputHandler, PlatformWindow, Point, PolychromeSprite, PromptButton, PromptLevel, Quad,
     Render, RenderGlyphParams, RenderImage, RenderImageParams, RenderSvgParams, Replay, ResizeEdge,
-    SMOOTH_SVG_SCALE_FACTOR, SUBPIXEL_VARIANTS, ScaledPixels, Scene, Shadow, SharedString, Size,
-    StrikethroughStyle, Style, SubscriberSet, Subscription, SystemWindowTab,
+    SMOOTH_SVG_SCALE_FACTOR, SUBPIXEL_VARIANTS_X, SUBPIXEL_VARIANTS_Y, ScaledPixels, Scene, Shadow,
+    SharedString, Size, StrikethroughStyle, Style, SubscriberSet, Subscription, SystemWindowTab,
     SystemWindowTabController, TabHandles, TaffyLayoutEngine, Task, TextStyle, TextStyleRefinement,
     TransformationMatrix, Underline, UnderlineStyle, WindowAppearance, WindowBackgroundAppearance,
     WindowBounds, WindowControls, WindowDecorations, WindowOptions, WindowParams, WindowTextSystem,
@@ -580,7 +580,7 @@ pub enum HitboxBehavior {
     /// For mouse handlers that check those hitboxes, this behaves the same as registering a
     /// bubble-phase handler for every mouse event type:
     ///
-    /// ```
+    /// ```ignore
     /// window.on_mouse_event(move |_: &EveryMouseEventTypeHere, phase, window, cx| {
     ///     if phase == DispatchPhase::Capture && hitbox.is_hovered(window) {
     ///         cx.stop_propagation();
@@ -604,7 +604,7 @@ pub enum HitboxBehavior {
     /// For mouse handlers that check those hitboxes, this behaves the same as registering a
     /// bubble-phase handler for every mouse event type **except** `ScrollWheelEvent`:
     ///
-    /// ```
+    /// ```ignore
     /// window.on_mouse_event(move |_: &EveryMouseEventTypeExceptScroll, phase, window, cx| {
     ///     if phase == DispatchPhase::Bubble && hitbox.should_handle_scroll(window) {
     ///         cx.stop_propagation();
@@ -2944,9 +2944,10 @@ impl Window {
         let element_opacity = self.element_opacity();
         let scale_factor = self.scale_factor();
         let glyph_origin = origin.scale(scale_factor);
+
         let subpixel_variant = Point {
-            x: (glyph_origin.x.0.fract() * SUBPIXEL_VARIANTS as f32).floor() as u8,
-            y: (glyph_origin.y.0.fract() * SUBPIXEL_VARIANTS as f32).floor() as u8,
+            x: (glyph_origin.x.0.fract() * SUBPIXEL_VARIANTS_X as f32).floor() as u8,
+            y: (glyph_origin.y.0.fract() * SUBPIXEL_VARIANTS_Y as f32).floor() as u8,
         };
         let params = RenderGlyphParams {
             font_id,
@@ -4957,6 +4958,12 @@ impl From<(&'static str, u32)> for ElementId {
 impl<T: Into<SharedString>> From<(ElementId, T)> for ElementId {
     fn from((id, name): (ElementId, T)) -> Self {
         ElementId::NamedChild(Box::new(id), name.into())
+    }
+}
+
+impl From<&'static core::panic::Location<'static>> for ElementId {
+    fn from(location: &'static core::panic::Location<'static>) -> Self {
+        ElementId::CodeLocation(*location)
     }
 }
 
