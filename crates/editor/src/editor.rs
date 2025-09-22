@@ -370,9 +370,7 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::toggle_focus);
             workspace.register_action(|workspace, action, window, cx| {
                 workspace.active_item_as::<Editor>(cx).map(|editor| {
-                    editor.update(cx, |editor, cx| {
-                        editor.copy_all(action, window, cx)
-                    })
+                    editor.update(cx, |editor, cx| editor.copy_all(action, window, cx))
                 });
             });
         },
@@ -422,8 +420,6 @@ pub fn init(cx: &mut App) {
             .detach();
         }
     });
-
-    
 }
 
 pub fn set_blame_renderer(renderer: impl BlameRenderer + 'static, cx: &mut App) {
@@ -2657,7 +2653,7 @@ impl Editor {
             .and_then(|item| item.text())
             .unwrap_or_default();
 
-        Self::new_in_workspace_with_content(workspace, content, window, cx).detach_and_prompt_err(
+        Self::new_in_workspace_with_content_and_language(workspace, content, Some("Markdown"), window, cx).detach_and_prompt_err(
             "Failed to create buffer",
             window,
             cx,
@@ -2685,13 +2681,40 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Workspace>,
     ) -> Task<Result<Entity<Editor>>> {
+        Self::new_in_workspace_with_content_and_language(workspace, content, None, window, cx)
+    }
+
+    pub fn new_in_workspace_with_content_and_language(
+        workspace: &mut Workspace,
+        content: String,
+        language_name: Option<&str>,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) -> Task<Result<Entity<Editor>>> {
         let project = workspace.project().clone();
         let create = project.update(cx, |project, cx| project.create_buffer(true, cx));
+        let language_name = language_name.map(|s| s.to_string());
 
         cx.spawn_in(window, async move |workspace, cx| {
             let buffer = create.await?;
             buffer.update(cx, |buffer, cx| {
                 buffer.edit([(0..0, content)], None, cx);
+
+                // Set the language if specified
+                if let Some(language_name) = language_name {
+                    let language_registry = project.read(cx).languages().clone();
+                    cx.spawn(async move |buffer, cx| {
+                        if let Ok(language) =
+                            language_registry.language_for_name(&language_name).await
+                        {
+                            buffer.update(cx, |buffer, cx| {
+                                buffer.set_language(Some(language), cx);
+                            })?;
+                        }
+                        anyhow::Ok(())
+                    })
+                    .detach();
+                }
             })?;
             workspace.update_in(cx, |workspace, window, cx| {
                 let editor =
@@ -12886,59 +12909,76 @@ impl Editor {
         self.smooth_movement_last_direction = Some(action.up);
 
         // Add to queue
-        self.smooth_movement_queue.push_back((action.up, action.line_count));
+        self.smooth_movement_queue
+            .push_back((action.up, action.line_count));
 
         // If no task is running, start one
         if self.smooth_movement_task.is_none() {
             let delay_ms = action.delay_ms;
 
-            self.smooth_movement_task = Some(cx.spawn_in(window, async move |editor_handle, cx| {
-                loop {
-                    // Check if we should continue
-                    let should_continue = cx.update(|window, cx| {
-                        editor_handle.update(cx, |editor, cx| {
-                            if let Some((up, line_count)) = editor.smooth_movement_queue.pop_front() {
-                                // Perform one line movement
-                                let lines_to_move = 1.min(line_count);
-                                let remaining_lines = line_count.saturating_sub(lines_to_move);
+            self.smooth_movement_task =
+                Some(cx.spawn_in(window, async move |editor_handle, cx| {
+                    loop {
+                        // Check if we should continue
+                        let should_continue = cx
+                            .update(|window, cx| {
+                                editor_handle
+                                    .update(cx, |editor, cx| {
+                                        if let Some((up, line_count)) =
+                                            editor.smooth_movement_queue.pop_front()
+                                        {
+                                            // Perform one line movement
+                                            let lines_to_move = 1.min(line_count);
+                                            let remaining_lines =
+                                                line_count.saturating_sub(lines_to_move);
 
-                                // Put back remaining lines if any
-                                if remaining_lines > 0 {
-                                    editor.smooth_movement_queue.push_front((up, remaining_lines));
-                                }
+                                            // Put back remaining lines if any
+                                            if remaining_lines > 0 {
+                                                editor
+                                                    .smooth_movement_queue
+                                                    .push_front((up, remaining_lines));
+                                            }
 
-                                // Perform the movement using the existing methods
-                                if up {
-                                    let action = MoveUpByLines { lines: lines_to_move };
-                                    editor.move_up_by_lines(&action, window, cx);
-                                } else {
-                                    let action = MoveDownByLines { lines: lines_to_move };
-                                    editor.move_down_by_lines(&action, window, cx);
-                                }
+                                            // Perform the movement using the existing methods
+                                            if up {
+                                                let action = MoveUpByLines {
+                                                    lines: lines_to_move,
+                                                };
+                                                editor.move_up_by_lines(&action, window, cx);
+                                            } else {
+                                                let action = MoveDownByLines {
+                                                    lines: lines_to_move,
+                                                };
+                                                editor.move_down_by_lines(&action, window, cx);
+                                            }
 
-                                // Continue if there are more items in queue
-                                !editor.smooth_movement_queue.is_empty()
-                            } else {
-                                false
-                            }
-                        }).unwrap_or(false)
-                    }).unwrap_or(false);
+                                            // Continue if there are more items in queue
+                                            !editor.smooth_movement_queue.is_empty()
+                                        } else {
+                                            false
+                                        }
+                                    })
+                                    .unwrap_or(false)
+                            })
+                            .unwrap_or(false);
 
-                    if !should_continue {
-                        break;
+                        if !should_continue {
+                            break;
+                        }
+
+                        // Wait for the specified delay
+                        cx.background_executor()
+                            .timer(std::time::Duration::from_millis(delay_ms))
+                            .await;
                     }
 
-                    // Wait for the specified delay
-                    cx.background_executor().timer(std::time::Duration::from_millis(delay_ms)).await;
-                }
-
-                // Clear the task when done
-                let _ = cx.update(|_, cx| {
-                    editor_handle.update(cx, |editor, _| {
-                        editor.smooth_movement_task = None;
-                    })
-                });
-            }));
+                    // Clear the task when done
+                    let _ = cx.update(|_, cx| {
+                        editor_handle.update(cx, |editor, _| {
+                            editor.smooth_movement_task = None;
+                        })
+                    });
+                }));
         }
     }
 
