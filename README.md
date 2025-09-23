@@ -14,6 +14,7 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 
 ## General/editor changes
 
+- add CDLA Permissive license to `LICENSE.md` to `zed-licenses.toml` in order to be able to compile
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines instead of leading indents
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3, from 10, as a test which seems fine
 - allow AI edit predictions in Zed's `settings.json` and `keymap.json`
