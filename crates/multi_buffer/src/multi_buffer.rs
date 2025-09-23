@@ -6130,12 +6130,6 @@ impl MultiBufferSnapshot {
                         text: item.text,
                         highlight_ranges: item.highlight_ranges,
                         name_ranges: item.name_ranges,
-                        signature_range: item.signature_range.and_then(|signature_range| {
-                            Some(
-                                self.anchor_in_excerpt(*excerpt_id, signature_range.start)?
-                                    ..self.anchor_in_excerpt(*excerpt_id, signature_range.end)?,
-                            )
-                        }),
                         body_range: item.body_range.and_then(|body_range| {
                             Some(
                                 self.anchor_in_excerpt(*excerpt_id, body_range.start)?
@@ -6162,8 +6156,9 @@ impl MultiBufferSnapshot {
         let anchor = self.anchor_before(offset);
         let excerpt_id = anchor.excerpt_id;
         let excerpt = self.excerpt(excerpt_id)?;
+        let buffer_id = excerpt.buffer_id;
         Some((
-            excerpt.buffer_id,
+            buffer_id,
             excerpt
                 .buffer
                 .symbols_containing(anchor.text_anchor, theme)
@@ -6171,28 +6166,15 @@ impl MultiBufferSnapshot {
                 .flat_map(|item| {
                     Some(OutlineItem {
                         depth: item.depth,
-                        range: self.anchor_in_excerpt(excerpt_id, item.range.start)?
-                            ..self.anchor_in_excerpt(excerpt_id, item.range.end)?,
+                        range: Anchor::range_in_buffer(excerpt_id, buffer_id, item.range),
                         text: item.text,
                         highlight_ranges: item.highlight_ranges,
                         name_ranges: item.name_ranges,
-                        signature_range: item.signature_range.and_then(|signature_range| {
-                            Some(
-                                self.anchor_in_excerpt(excerpt_id, signature_range.start)?
-                                    ..self.anchor_in_excerpt(excerpt_id, signature_range.end)?,
-                            )
+                        body_range: item.body_range.map(|body_range| {
+                            Anchor::range_in_buffer(excerpt_id, buffer_id, body_range)
                         }),
-                        body_range: item.body_range.and_then(|body_range| {
-                            Some(
-                                self.anchor_in_excerpt(excerpt_id, body_range.start)?
-                                    ..self.anchor_in_excerpt(excerpt_id, body_range.end)?,
-                            )
-                        }),
-                        annotation_range: item.annotation_range.and_then(|body_range| {
-                            Some(
-                                self.anchor_in_excerpt(excerpt_id, body_range.start)?
-                                    ..self.anchor_in_excerpt(excerpt_id, body_range.end)?,
-                            )
+                        annotation_range: item.annotation_range.map(|body_range| {
+                            Anchor::range_in_buffer(excerpt_id, buffer_id, body_range)
                         }),
                     })
                 })

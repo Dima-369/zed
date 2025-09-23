@@ -28,7 +28,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use settings::Settings;
 use std::sync::Arc;
-use zed_actions::outline::ToggleOutline;
+use zed_actions::{outline::ToggleOutline, workspace::CopyPath, workspace::CopyRelativePath};
 
 use ui::{
     BASE_REM_SIZE_IN_PX, IconButton, IconButtonShape, IconName, Tooltip, h_flex, prelude::*,
@@ -425,6 +425,16 @@ impl Render for BufferSearchBar {
                     active_searchable_item.relay_action(Box::new(ToggleOutline), window, cx);
                 }
             }))
+            .on_action(cx.listener(|this, _: &CopyPath, window, cx| {
+                if let Some(active_searchable_item) = &mut this.active_searchable_item {
+                    active_searchable_item.relay_action(Box::new(CopyPath), window, cx);
+                }
+            }))
+            .on_action(cx.listener(|this, _: &CopyRelativePath, window, cx| {
+                if let Some(active_searchable_item) = &mut this.active_searchable_item {
+                    active_searchable_item.relay_action(Box::new(CopyRelativePath), window, cx);
+                }
+            }))
             .when(replacement, |this| {
                 this.on_action(cx.listener(Self::toggle_replace))
                     .when(in_replace, |this| {
@@ -784,10 +794,13 @@ impl BufferSearchBar {
 
         if let Some(search) = search {
             cx.spawn_in(window, async move |this, cx| {
-                search.await?;
-                this.update_in(cx, |this, window, cx| {
-                    this.activate_current_match(window, cx)
-                })
+                if search.await.is_ok() {
+                    this.update_in(cx, |this, window, cx| {
+                        this.activate_current_match(window, cx)
+                    })
+                } else {
+                    Ok(())
+                }
             })
             .detach_and_log_err(cx);
         }
@@ -1047,10 +1060,13 @@ impl BufferSearchBar {
                 cx.notify();
 
                 cx.spawn_in(window, async move |this, cx| {
-                    search.await?;
-                    this.update_in(cx, |this, window, cx| {
-                        this.activate_current_match(window, cx)
-                    })
+                    if search.await.is_ok() {
+                        this.update_in(cx, |this, window, cx| {
+                            this.activate_current_match(window, cx)
+                        })
+                    } else {
+                        Ok(())
+                    }
                 })
                 .detach_and_log_err(cx);
             }

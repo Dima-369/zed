@@ -3756,11 +3756,9 @@ impl BufferSnapshot {
         theme: Option<&SyntaxTheme>,
     ) -> Vec<OutlineItem<Anchor>> {
         let position = position.to_offset(self);
-        let mut items = self.outline_items_containing(
-            position.saturating_sub(1)..self.len().min(position + 1),
-            false,
-            theme,
-        );
+        let start = self.clip_offset(position.saturating_sub(1), Bias::Left);
+        let end = self.clip_offset(position + 1, Bias::Right);
+        let mut items = self.outline_items_containing(start..end, false, theme);
         let mut prev_depth = None;
         items.retain(|item| {
             let result = prev_depth.is_none_or(|prev_depth| item.depth > prev_depth);
@@ -3894,9 +3892,6 @@ impl BufferSnapshot {
                 text: item.text,
                 highlight_ranges: item.highlight_ranges,
                 name_ranges: item.name_ranges,
-                signature_range: item
-                    .signature_range
-                    .map(|r| self.anchor_after(r.start)..self.anchor_before(r.end)),
                 body_range: item
                     .body_range
                     .map(|r| self.anchor_after(r.start)..self.anchor_before(r.end)),
@@ -3940,15 +3935,6 @@ impl BufferSnapshot {
         let mut open_point = None;
         let mut close_point = None;
 
-        let mut signature_start = None;
-        let mut signature_end = None;
-        let mut extend_signature_range = |node: tree_sitter::Node| {
-            if signature_start.is_none() {
-                signature_start = Some(Point::from_ts_point(node.start_position()));
-            }
-            signature_end = Some(Point::from_ts_point(node.end_position()));
-        };
-
         let mut buffer_ranges = Vec::new();
         let mut add_to_buffer_ranges = |node: tree_sitter::Node, node_is_name| {
             let mut range = node.start_byte()..node.end_byte();
@@ -3965,12 +3951,10 @@ impl BufferSnapshot {
         for capture in mat.captures {
             if capture.index == config.name_capture_ix {
                 add_to_buffer_ranges(capture.node, true);
-                extend_signature_range(capture.node);
             } else if Some(capture.index) == config.context_capture_ix
                 || (Some(capture.index) == config.extra_context_capture_ix && include_extra_context)
             {
                 add_to_buffer_ranges(capture.node, false);
-                extend_signature_range(capture.node);
             } else {
                 if Some(capture.index) == config.open_capture_ix {
                     open_point = Some(Point::from_ts_point(capture.node.end_position()));
@@ -4033,17 +4017,12 @@ impl BufferSnapshot {
             last_buffer_range_end = buffer_range.end;
         }
 
-        let signature_range = signature_start
-            .zip(signature_end)
-            .map(|(start, end)| start..end);
-
         Some(OutlineItem {
             depth: 0, // We'll calculate the depth later
             range: item_point_range,
             text,
             highlight_ranges,
             name_ranges,
-            signature_range,
             body_range: open_point.zip(close_point).map(|(start, end)| start..end),
             annotation_range: None,
         })
