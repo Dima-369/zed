@@ -365,7 +365,11 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::new_file_horizontal);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
-            workspace.register_action(Editor::flash);
+            workspace.register_action(|workspace, action, window, cx| {
+                workspace.active_item_as::<Editor>(cx).map(|editor| {
+                    editor.update(cx, |editor, cx| editor.flash(action, window, cx));
+                });
+            });
             workspace.register_action(|workspace, action, window, cx| {
                 workspace.active_item_as::<Editor>(cx).map(|editor| {
                     editor.update(cx, |editor, cx| editor.copy_all(action, window, cx))
