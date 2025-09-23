@@ -16,6 +16,10 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 git checkout main && git pull zed main && git checkout dima && git merge main
 ```
 
+## Compare my changes with Zed's main branch
+
+https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
+
 # Fork changes
 
 ## General/editor changes
