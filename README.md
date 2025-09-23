@@ -24,6 +24,8 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 - added new setting: `diagnostics > merge_same_range` to merge diagnostics which have the same character range (I noticed this in Gleam's LSP: https://github.com/gleam-lang/gleam/issues/4946)
 - go to next or previous diagnostic always first jumps to errors, and only if there are no errors, it jumps to warnings. Before, it was mixed
 - moving up/down in outline panel does not wrap around anymore
+- changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start
+
 
 ### Command palette
 
