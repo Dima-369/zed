@@ -702,6 +702,17 @@ impl Domain for WorkspaceDb {
         sql!(
             DROP TABLE ssh_connections;
         ),
+        // Add table for recent files
+        sql!(
+            CREATE TABLE recent_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                path TEXT NOT NULL UNIQUE,
+                last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) STRICT;
+        ),
+        sql!(
+            CREATE INDEX idx_recent_files_last_accessed ON recent_files(last_accessed DESC);
+        ),
     ];
 
     // Allow recovering from bad migration that was initially shipped to nightly
@@ -1631,6 +1642,35 @@ impl WorkspaceDb {
             SET session_id = ?2
             WHERE workspace_id = ?1
         }
+    }
+
+    pub async fn save_recent_file(&self, path: &Path) -> Result<()> {
+        let path_str = path.to_string_lossy().to_string();
+        self.write(move |conn| {
+            conn.exec_bound(sql!(
+                INSERT OR REPLACE INTO recent_files (path, last_accessed)
+                VALUES (?1, CURRENT_TIMESTAMP)
+            ))?(path_str)
+        })
+        .await
+    }
+
+    pub async fn get_recent_files(&self, limit: usize) -> Result<Vec<PathBuf>> {
+        self.select_bound::<usize, String>(sql!(
+            SELECT path FROM recent_files
+            ORDER BY last_accessed DESC
+            LIMIT ?1
+        ))?(limit)
+        .map(|paths| paths.into_iter().map(PathBuf::from).collect())
+    }
+
+    pub async fn clear_recent_files(&self) -> Result<()> {
+        self.write(move |conn| {
+            conn.exec_bound(sql!(
+                DELETE FROM recent_files
+            ))?(())
+        })
+        .await
     }
 
     pub async fn toolchain(
