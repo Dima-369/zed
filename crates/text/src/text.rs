@@ -2400,17 +2400,17 @@ impl BufferSnapshot {
         } else if bias == Bias::Right && offset == self.len() {
             Anchor::MAX
         } else {
-            if !self.visible_text.is_char_boundary(offset) {
-                // find the character
-                let char_start = self.visible_text.floor_char_boundary(offset);
-                // `char_start` must be less than len and a char boundary
-                let ch = self.visible_text.chars_at(char_start).next().unwrap();
-                let char_range = char_start..char_start + ch.len_utf8();
-                panic!(
-                    "byte index {} is not a char boundary; it is inside {:?} (bytes {:?})",
-                    offset, ch, char_range,
-                );
-            }
+            let offset = if !self.visible_text.is_char_boundary(offset) {
+                // Adjust offset to a valid character boundary based on bias
+                if bias == Bias::Left {
+                    self.visible_text.floor_char_boundary(offset)
+                } else {
+                    self.visible_text.ceil_char_boundary(offset)
+                }
+            } else {
+                offset
+            };
+
             let mut fragment_cursor = self.fragments.cursor::<usize>(&None);
             fragment_cursor.seek(&offset, bias);
             let fragment = fragment_cursor.item().unwrap();
