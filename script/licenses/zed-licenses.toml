@@ -13,7 +13,7 @@ accepted = [
     "NCSA",
     "Unicode-3.0",
     "OpenSSL",
-    "Zlib"
+    "Zlib",
 ]
 
 [procinfo.clarify]
