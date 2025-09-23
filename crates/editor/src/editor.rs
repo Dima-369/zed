@@ -2691,29 +2691,22 @@ impl Editor {
         cx: &mut Context<Workspace>,
     ) -> Task<Result<Entity<Editor>>> {
         let project = workspace.project().clone();
-        let create = project.update(cx, |project, cx| project.create_buffer(true, cx));
         let language_name = language_name.map(|s| s.to_string());
 
         cx.spawn_in(window, async move |workspace, cx| {
-            let buffer = create.await?;
-            buffer.update(cx, |buffer, cx| {
-                buffer.edit([(0..0, content)], None, cx);
+            let language = if let Some(language_name) = language_name {
+                let language_registry =
+                    project.update(cx, |project, _cx| project.languages().clone())?;
+                language_registry
+                    .language_for_name(&language_name)
+                    .await
+                    .ok()
+            } else {
+                None
+            };
 
-                // Set the language if specified
-                if let Some(language_name) = language_name {
-                    let language_registry = project.read(cx).languages().clone();
-                    cx.spawn(async move |buffer, cx| {
-                        if let Ok(language) =
-                            language_registry.language_for_name(&language_name).await
-                        {
-                            buffer.update(cx, |buffer, cx| {
-                                buffer.set_language(Some(language), cx);
-                            })?;
-                        }
-                        anyhow::Ok(())
-                    })
-                    .detach();
-                }
+            let buffer = project.update(cx, |project, cx| {
+                project.create_local_buffer(&content, language, true, cx)
             })?;
             workspace.update_in(cx, |workspace, window, cx| {
                 let editor =
