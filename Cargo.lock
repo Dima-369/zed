@@ -1333,25 +1333,6 @@ dependencies = [
 
 [[package]]
 name = "async-tungstenite"
-version = "0.29.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef0f7efedeac57d9b26170f72965ecfd31473ca52ca7a64e925b0b6f5f079886"
-dependencies = [
- "atomic-waker",
- "futures-core",
- "futures-io",
- "futures-task",
- "futures-util",
- "log",
- "pin-project-lite",
- "rustls-pki-types",
- "tokio",
- "tokio-rustls 0.26.3",
- "tungstenite 0.26.2",
-]
-
-[[package]]
-name = "async-tungstenite"
 version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee88b4c88ac8c9ea446ad43498955750a4bbe64c4392f21ccfe5d952865e318f"
@@ -1363,7 +1344,9 @@ dependencies = [
  "futures-util",
  "log",
  "pin-project-lite",
+ "rustls-pki-types",
  "tokio",
+ "tokio-rustls 0.26.3",
  "tungstenite 0.27.0",
 ]
 
@@ -3102,7 +3085,7 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-tungstenite 0.29.1",
+ "async-tungstenite",
  "base64 0.22.1",
  "chrono",
  "clock",
@@ -3331,7 +3314,7 @@ dependencies = [
  "assistant_context",
  "assistant_slash_command",
  "async-trait",
- "async-tungstenite 0.29.1",
+ "async-tungstenite",
  "audio",
  "aws-config",
  "aws-sdk-kinesis",
@@ -9454,7 +9437,7 @@ source = "git+https://github.com/ConradIrwin/runtimed?rev=7130c804216b6914355d15
 dependencies = [
  "anyhow",
  "async-trait",
- "async-tungstenite 0.31.0",
+ "async-tungstenite",
  "futures 0.3.31",
  "jupyter-protocol",
  "serde",
@@ -14308,7 +14291,7 @@ dependencies = [
  "alacritty_terminal",
  "anyhow",
  "async-dispatcher",
- "async-tungstenite 0.29.1",
+ "async-tungstenite",
  "base64 0.22.1",
  "client",
  "collections",
@@ -14654,7 +14637,7 @@ name = "rpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-tungstenite 0.29.1",
+ "async-tungstenite",
  "base64 0.22.1",
  "chrono",
  "collections",
@@ -18490,6 +18473,8 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.9.2",
+ "rustls 0.23.32",
+ "rustls-pki-types",
  "sha1",
  "thiserror 2.0.16",
  "utf-8",
@@ -20994,7 +20979,7 @@ dependencies = [
  "arrayvec",
  "async-compression",
  "async-std",
- "async-tungstenite 0.29.1",
+ "async-tungstenite",
  "aws-config",
  "aws-credential-types",
  "aws-runtime",
