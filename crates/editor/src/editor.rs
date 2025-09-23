@@ -161,8 +161,7 @@ use project::{
     git_store::{GitStoreEvent, RepositoryEvent},
     lsp_store::{CompletionDocumentation, FormatTrigger, LspFormatTarget, OpenLspBufferHandle},
     project_settings::{
-        DiagnosticSeverity, GoToDiagnosticSeverity, GoToDiagnosticSeverityFilter,
-        ProjectSettings,
+        DiagnosticSeverity, GoToDiagnosticSeverity, GoToDiagnosticSeverityFilter, ProjectSettings,
     },
 };
 use rand::seq::SliceRandom;
@@ -5237,31 +5236,26 @@ impl Editor {
         );
     }
 
-    pub fn flash(
-        &mut self,
-        _: &Flash,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn flash(&mut self, _: &Flash, cx: &mut Context<Self>) {
         // Clear any existing flash inlays
         let to_remove: Vec<InlayId> = self.flash_inlays.drain(..).collect();
-        
+
         // Get the current buffer snapshot
         let multi_buffer = self.buffer().read(cx);
         let multi_buffer_snapshot = multi_buffer.snapshot(cx);
-        
+
         // Collect all occurrences of 'a' or 'A' in the buffer
         let mut to_insert = Vec::new();
         let text = multi_buffer_snapshot.text();
-        
+
         for (index, ch) in text.char_indices() {
             if ch == 'a' || ch == 'A' {
                 // Convert byte index to offset
                 let offset = index;
-                
+
                 // Create an anchor at this position
                 let anchor = multi_buffer_snapshot.anchor_before(offset);
-                
+
                 // Create an inlay hint with a simple label
                 let hint_text = format!("•");
                 let inlay = Inlay::hint(
@@ -5277,12 +5271,13 @@ impl Editor {
                         resolve_state: project::ResolveState::Resolved,
                     },
                 );
-                
+
                 to_insert.push(inlay);
-                self.flash_inlays.push(InlayId::Hint(self.flash_inlays.len()));
+                self.flash_inlays
+                    .push(InlayId::Hint(self.flash_inlays.len()));
             }
         }
-        
+
         // Remove old inlays and insert new ones
         self.splice_inlays(&to_remove, to_insert, cx);
     }
@@ -23770,6 +23765,7 @@ impl Render for Editor {
                 show_underlines: self.diagnostics_enabled(),
             },
         )
+        .on_action(cx.listener(Self::flash))
     }
 }
 
