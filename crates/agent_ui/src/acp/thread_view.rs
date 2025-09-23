@@ -4392,6 +4392,11 @@ impl AcpThreadView {
             .app_state()
             .languages
             .language_for_name("Markdown");
+        let plain_text_language_task = workspace
+            .read(cx)
+            .app_state()
+            .languages
+            .language_for_name("Plain Text");
 
         let (thread_summary, markdown) = if let Some(thread) = self.thread() {
             let thread = thread.read(cx);
@@ -4401,7 +4406,11 @@ impl AcpThreadView {
         };
 
         window.spawn(cx, async move |cx| {
-            let markdown_language = markdown_language_task.await?;
+            let language = if markdown.lines().count() < 20000 {
+                markdown_language_task.await?
+            } else {
+                plain_text_language_task.await?
+            };
 
             workspace.update_in(cx, |workspace, window, cx| {
                 let project = workspace.project().clone();
@@ -4411,7 +4420,7 @@ impl AcpThreadView {
                 }
 
                 let buffer = project.update(cx, |project, cx| {
-                    project.create_local_buffer(&markdown, Some(markdown_language), true, cx)
+                    project.create_local_buffer(&markdown, Some(language), true, cx)
                 });
                 let buffer = cx.new(|cx| {
                     MultiBuffer::singleton(buffer, cx).with_title(thread_summary.clone())
@@ -4423,7 +4432,7 @@ impl AcpThreadView {
                     editor.set_breadcrumb_header(thread_summary);
                     editor
                 });
-                
+
                 // Position cursor at the end of the buffer
                 editor.update(cx, |editor, cx| {
                     let buffer = editor.buffer().read(cx).snapshot(cx);
@@ -4433,13 +4442,7 @@ impl AcpThreadView {
                     });
                 });
 
-                workspace.add_item_to_active_pane(
-                    Box::new(editor),
-                    None,
-                    true,
-                    window,
-                    cx,
-                );
+                workspace.add_item_to_active_pane(Box::new(editor), None, true, window, cx);
 
                 anyhow::Ok(())
             })??;
