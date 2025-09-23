@@ -4413,13 +4413,24 @@ impl AcpThreadView {
                     MultiBuffer::singleton(buffer, cx).with_title(thread_summary.clone())
                 });
 
+                let editor = cx.new(|cx| {
+                    let mut editor =
+                        Editor::for_multibuffer(buffer, Some(project.clone()), window, cx);
+                    editor.set_breadcrumb_header(thread_summary);
+                    editor
+                });
+                
+                // Position cursor at the end of the buffer
+                editor.update(cx, |editor, cx| {
+                    let buffer = editor.buffer().read(cx).snapshot(cx);
+                    let end_point = buffer.max_point();
+                    editor.change_selections(Default::default(), window, cx, |selections| {
+                        selections.select_ranges([end_point..end_point]);
+                    });
+                });
+
                 workspace.add_item_to_active_pane(
-                    Box::new(cx.new(|cx| {
-                        let mut editor =
-                            Editor::for_multibuffer(buffer, Some(project.clone()), window, cx);
-                        editor.set_breadcrumb_header(thread_summary);
-                        editor
-                    })),
+                    Box::new(editor),
                     None,
                     true,
                     window,
