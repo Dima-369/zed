@@ -707,7 +707,7 @@ impl Domain for WorkspaceDb {
             CREATE TABLE recent_files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 path TEXT NOT NULL UNIQUE,
-                last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_accessed TEXT DEFAULT CURRENT_TIMESTAMP
             ) STRICT;
         ),
         sql!(
