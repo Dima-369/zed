@@ -1202,6 +1202,8 @@ pub struct Editor {
     smooth_movement_task: Option<Task<()>>,
     smooth_movement_queue: VecDeque<(bool, u32)>, // (up, line_count) pairs
     smooth_movement_last_direction: Option<bool>, // Last movement direction (up=true, down=false)
+    // Flash navigation state
+    flash_inlays: Vec<InlayId>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -2286,6 +2288,8 @@ impl Editor {
             smooth_movement_task: None,
             smooth_movement_queue: VecDeque::new(),
             smooth_movement_last_direction: None,
+            // Flash navigation state
+            flash_inlays: Vec::new(),
         };
 
         if is_minimap {
@@ -5231,6 +5235,56 @@ impl Editor {
             InlayHintRefreshReason::Toggle(!self.inlay_hints_enabled()),
             cx,
         );
+    }
+
+    pub fn flash(
+        &mut self,
+        _: &Flash,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        // Clear any existing flash inlays
+        let to_remove: Vec<InlayId> = self.flash_inlays.drain(..).collect();
+        
+        // Get the current buffer snapshot
+        let multi_buffer = self.buffer().read(cx);
+        let multi_buffer_snapshot = multi_buffer.snapshot(cx);
+        
+        // Collect all occurrences of 'a' or 'A' in the buffer
+        let mut to_insert = Vec::new();
+        let text = multi_buffer_snapshot.text();
+        
+        for (index, ch) in text.char_indices() {
+            if ch == 'a' || ch == 'A' {
+                // Convert byte index to offset
+                let offset = index;
+                
+                // Create an anchor at this position
+                let anchor = multi_buffer_snapshot.anchor_before(offset);
+                
+                // Create an inlay hint with a simple label
+                let hint_text = format!("•");
+                let inlay = Inlay::hint(
+                    self.flash_inlays.len(), // Use the current length as a simple ID
+                    anchor,
+                    &project::InlayHint {
+                        label: project::InlayHintLabel::String(hint_text),
+                        position: language::Anchor::default(), // Not used when creating inlay
+                        padding_left: false,
+                        padding_right: false,
+                        tooltip: None,
+                        kind: None,
+                        resolve_state: project::ResolveState::Resolved,
+                    },
+                );
+                
+                to_insert.push(inlay);
+                self.flash_inlays.push(InlayId::Hint(self.flash_inlays.len()));
+            }
+        }
+        
+        // Remove old inlays and insert new ones
+        self.splice_inlays(&to_remove, to_insert, cx);
     }
 
     pub fn inlay_hints_enabled(&self) -> bool {

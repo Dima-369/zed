@@ -806,6 +806,8 @@ actions!(
         UniqueLinesCaseSensitive,
         UnwrapSyntaxNode,
         /// Wraps selections in tag specified by language.
-        WrapSelectionsInTag
+        WrapSelectionsInTag,
+        /// Flash navigation - highlights all occurrences of character 'a' with overlay hints.
+        Flash
     ]
 );
