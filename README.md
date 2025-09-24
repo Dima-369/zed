@@ -13,7 +13,7 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 ## Sync this fork's main branch with Zed's main branch and merge into my custom dima branch
 
 ```bash
-git checkout main && git pull zed main && git checkout dima && git merge main
+git checkout main && git pull zed main && git push && git checkout dima && git merge main
 ```
 
 ## Compare my changes with Zed's main branch
