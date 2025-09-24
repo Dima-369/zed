@@ -24,7 +24,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## General/editor changes
 
-- add `bundle-mac-without-licenses` which is faster than generating licenses
+- add `bundle-mac-without-licenses` which is faster than generating licenses, and skips the `sentry-cli` at end
 - try to fix panic in `anchor_at_offset` when buffer has Umlaute, seems to work, no idea if my fix has other consequences
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines instead of leading indents
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3, from 10, as a test which seems fine

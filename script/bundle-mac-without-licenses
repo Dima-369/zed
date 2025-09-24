@@ -377,11 +377,3 @@ function upload_debug_info() {
         echo "missing SENTRY_AUTH_TOKEN. skipping sentry upload."
     fi
 }
-
-if command -v sentry-cli >/dev/null 2>&1; then
-    upload_debug_info "aarch64-apple-darwin"
-    upload_debug_info "x86_64-apple-darwin"
-else
-    echo "sentry-cli not found. skipping sentry upload."
-    echo "install with: 'curl -sL https://sentry.io/get-cli | bash'"
-fi
