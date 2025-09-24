@@ -1244,6 +1244,18 @@ impl Vim {
             context.add("VimControl");
         }
         context.set("vim_mode", mode);
+
+        // Add new context to distinguish between different visual modes
+        if self.mode.is_visual() {
+            let visual_mode = match self.mode {
+                Mode::Visual => "normal",
+                Mode::VisualLine => "line",
+                Mode::VisualBlock => "block",
+                _ => unreachable!(), // We already checked that mode is visual
+            };
+            context.set("vim_visual", visual_mode);
+        }
+
         context.set("vim_operator", operator_id);
     }
 

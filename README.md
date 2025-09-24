@@ -35,6 +35,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - go to next or previous diagnostic always first jumps to errors, and only if there are no errors, it jumps to warnings. Before, it was mixed
 - moving up/down in outline panel does not wrap around anymore
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the second part is still untested)
+- add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
 
 ### Command palette
 
