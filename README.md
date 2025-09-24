@@ -5,7 +5,7 @@ To test modifications, I am only using `cargo run` to compile and start Zed in d
 Once, I am satisfied with a batch of changes, I install Zed into `/Applications/Zed Dev.app` with this:
 
 ```bash
-./script/bundle-mac -l -o -i && \
+./script/bundle-mac-without-licenses -l -o -i && \
 rm -f "$HOME/.cargo/bin/zed" && \
 ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 ```
@@ -24,6 +24,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## General/editor changes
 
+- add `bundle-mac-without-licenses` which is faster than generating licenses
 - try to fix panic in `anchor_at_offset` when buffer has Umlaute, seems to work, no idea if my fix has other consequences
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines instead of leading indents
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3, from 10, as a test which seems fine
