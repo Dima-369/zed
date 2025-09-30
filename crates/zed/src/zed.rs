@@ -87,8 +87,9 @@ use workspace::{
 };
 use workspace::{Pane, notifications::DetachAndPromptErr};
 use zed_actions::{
-    OpenAccountSettings, OpenBrowser, OpenDocs, OpenServerSettings, OpenSettings, OpenZedUrl, Quit,
+    DeeplTranslate, OpenAccountSettings, OpenBrowser, OpenDocs, OpenServerSettings, OpenSettings, OpenZedUrl, Quit,
 };
+use futures::AsyncReadExt;
 
 actions!(
     zed,
@@ -642,6 +643,190 @@ fn initialize_panels(
     .detach();
 }
 
+fn deepl_translate(
+    workspace: &mut Workspace,
+    action: &DeeplTranslate,
+    window: &mut Window,
+    cx: &mut Context<Workspace>,
+) {
+    use std::env;
+    use std::collections::HashMap;
+    
+    // Get the API key from environment variable
+    let api_key = match env::var("DEEPL_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            workspace.show_toast(
+                Toast::new(
+                    NotificationId::unique::<DeeplTranslate>(),
+                    "DEEPL_API_KEY environment variable not set".to_string(),
+                ),
+                cx,
+            );
+            return;
+        }
+    };
+
+    // Get selected text from the active editor
+    let editor = if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+        editor
+    } else {
+        workspace.show_toast(
+            Toast::new(
+                NotificationId::unique::<DeeplTranslate>(),
+                "No active editor found".to_string(),
+            ),
+            cx,
+        );
+        return;
+    };
+
+    let (selections, buffer_snapshot) = editor.update(cx, |editor, cx| {
+        let selections = editor.selections.all::<usize>(cx);
+        let buffer = editor.buffer().read(cx);
+        let snapshot = buffer.snapshot(cx);
+        (selections, snapshot)
+    });
+    
+    if selections.is_empty() {
+        workspace.show_toast(
+            Toast::new(
+                NotificationId::unique::<DeeplTranslate>(),
+                "No text selected".to_string(),
+            ),
+            cx,
+        );
+        return;
+    }
+
+    let mut selected_text = String::new();
+    for selection in &selections {
+        if selection.start != selection.end {
+            let text = buffer_snapshot.text_for_range(selection.start..selection.end).collect::<String>();
+            selected_text.push_str(&text);
+        }
+    }
+
+    if selected_text.is_empty() {
+        workspace.show_toast(
+            Toast::new(
+                NotificationId::unique::<DeeplTranslate>(),
+                "No text selected".to_string(),
+            ),
+            cx,
+        );
+        return;
+    }
+
+    let source_lang = action.source_lang.clone();
+    let target_lang = action.target_lang.clone();
+    let http_client = workspace.app_state().client.http_client().clone();
+
+    cx.spawn_in(window, async move |workspace, cx| {
+        // Prepare form data
+        let mut form_data = HashMap::new();
+        form_data.insert("auth_key", api_key);
+        form_data.insert("text", selected_text.clone());
+        form_data.insert("source_lang", source_lang);
+        form_data.insert("target_lang", target_lang);
+        form_data.insert("split_sentences", "1".to_string());
+        form_data.insert("preserve_formatting", "1".to_string());
+        form_data.insert("formality", "less".to_string());
+
+        // Build form-encoded body
+        let body = form_data
+            .iter()
+            .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+            .collect::<Vec<_>>()
+            .join("&");
+
+        // Make the API request
+        let request = http_client::Request::builder()
+            .method(http_client::Method::POST)
+            .uri("https://api-free.deepl.com/v2/translate")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Accept", "*/*")
+            .header("User-Agent", "Zed Editor")
+            .body(body.into())
+            .unwrap();
+
+        match http_client.send(request).await {
+            Ok(mut response) => {
+                let status = response.status();
+                let mut body = Vec::new();
+                response.body_mut().read_to_end(&mut body).await?;
+                
+                if status.is_success() {
+                    match serde_json::from_slice::<serde_json::Value>(&body) {
+                        Ok(json) => {
+                            if let Some(translations) = json.get("translations").and_then(|t| t.as_array()) {
+                                if let Some(translation) = translations.first() {
+                                    if let Some(translated_text) = translation.get("text").and_then(|t| t.as_str()) {
+                                        // Replace selected text with translation
+                                        workspace.update_in(cx, |workspace, window, cx| {
+                                            if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+                                                editor.update(cx, |editor, cx| {
+                                                    editor.insert(translated_text, window, cx);
+                                                });
+                                            }
+                                        })?;
+                                        return Ok(());
+                                    }
+                                }
+                            }
+                            
+                            workspace.update_in(cx, |workspace, _, cx| {
+                                workspace.show_toast(
+                                    Toast::new(
+                                        NotificationId::unique::<DeeplTranslate>(),
+                                        "Invalid response format from DeepL API".to_string(),
+                                    ),
+                                    cx,
+                                );
+                            })?;
+                        }
+                        Err(e) => {
+                            workspace.update_in(cx, |workspace, _, cx| {
+                                workspace.show_toast(
+                                    Toast::new(
+                                        NotificationId::unique::<DeeplTranslate>(),
+                                        format!("Failed to parse DeepL response: {}", e),
+                                    ),
+                                    cx,
+                                );
+                            })?;
+                        }
+                    }
+                } else {
+                    workspace.update_in(cx, |workspace, _, cx| {
+                        workspace.show_toast(
+                            Toast::new(
+                                NotificationId::unique::<DeeplTranslate>(),
+                                format!("DeepL API error: HTTP {}", status),
+                            ),
+                            cx,
+                        );
+                    })?;
+                }
+            }
+            Err(e) => {
+                workspace.update_in(cx, |workspace, _, cx| {
+                    workspace.show_toast(
+                        Toast::new(
+                            NotificationId::unique::<DeeplTranslate>(),
+                            format!("Failed to call DeepL API: {}", e),
+                        ),
+                        cx,
+                    );
+                })?;
+            }
+        }
+        
+        anyhow::Ok(())
+    })
+    .detach_and_log_err(cx);
+}
+
 fn register_actions(
     app_state: Arc<AppState>,
     workspace: &mut Workspace,
@@ -667,6 +852,7 @@ fn register_actions(
             })
         })
         .register_action(|_, action: &OpenBrowser, _window, cx| cx.open_url(&action.url))
+        .register_action(deepl_translate)
         .register_action(|workspace, _: &workspace::Open, window, cx| {
             telemetry::event!("Project Opened");
             let paths = workspace.prompt_for_open_path(

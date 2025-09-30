@@ -65,6 +65,18 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ],
 ```
 
+- ??? TODO real name `deepl::Translate` which translates the current selection or the current line, use like this:
+
+```json
+"v": [
+  "TODO",
+  {
+    "source_lang": "EN",
+    "target_lang": "DE",
+  }
+],
+```
+
 ## UI changes
 
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active

@@ -137,6 +137,15 @@ pub struct ResetUiFontSize {
     pub persist: bool,
 }
 
+/// Translates text using DeepL API.
+#[derive(PartialEq, Clone, Debug, Deserialize, JsonSchema, Action)]
+#[action(namespace = zed)]
+#[serde(deny_unknown_fields)]
+pub struct DeeplTranslate {
+    pub source_lang: String,
+    pub target_lang: String,
+}
+
 pub mod dev {
     use gpui::actions;
 
