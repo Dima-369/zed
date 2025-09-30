@@ -681,14 +681,15 @@ fn deepl_translate(
         return;
     };
 
-    let (selections, buffer_snapshot) = editor.update(cx, |editor, cx| {
+    let (selections, buffer_snapshot, replace_whole_line) = editor.update(cx, |editor, cx| {
         let selections = editor.selections.all::<usize>(cx);
         let buffer = editor.buffer().read(cx);
         let snapshot = buffer.snapshot(cx);
-        (selections, snapshot)
+        let has_selection = !selections.is_empty() && selections.iter().any(|s| s.start != s.end);
+        (selections, snapshot, !has_selection)
     });
     
-    let selected_text = if selections.is_empty() || selections.iter().all(|s| s.start == s.end) {
+    let (selected_text, line_range) = if replace_whole_line {
         // No text is selected, get the current line
         let cursor_pos = if let Some(selection) = selections.first() {
             selection.start
@@ -701,7 +702,7 @@ fn deepl_translate(
         let point = buffer_snapshot.offset_to_point(cursor_pos);
         let row = point.row;
         
-        // Get the text of the entire line
+        // Get the text of the entire line and calculate line range for replacement
         if row <= buffer_snapshot.max_point().row {
             let line_start = buffer_snapshot.point_to_offset(language::Point::new(row, 0));
             let line_end_offset = {
@@ -717,7 +718,8 @@ fn deepl_translate(
             let line_end = std::cmp::min(line_end_offset, buffer_snapshot.len());
             let mut line_text = buffer_snapshot.text_for_range(line_start..line_end).collect::<String>();
             
-            // Remove trailing newline if present
+            // Remove trailing newline if present for translation, but keep range for replacement
+            let original_line_text = line_text.clone();
             if line_text.ends_with('\n') || line_text.ends_with('\r') {
                 line_text.pop();
                 if line_text.ends_with('\r') {
@@ -725,9 +727,9 @@ fn deepl_translate(
                 }
             }
             
-            line_text
+            (line_text, Some((line_start, line_end, original_line_text.ends_with('\n') || original_line_text.ends_with("\r\n"))))
         } else {
-            String::new()
+            (String::new(), None)
         }
     } else {
         // Text is selected, use the selected text
@@ -738,7 +740,7 @@ fn deepl_translate(
                 text.push_str(&selection_text);
             }
         }
-        text
+        (text, None)
     };
 
     if selected_text.is_empty() {
@@ -796,11 +798,23 @@ fn deepl_translate(
                             if let Some(translations) = json.get("translations").and_then(|t| t.as_array()) {
                                 if let Some(translation) = translations.first() {
                                     if let Some(translated_text) = translation.get("text").and_then(|t| t.as_str()) {
-                                        // Replace selected text with translation
+                                        // Replace selected text or entire line with translation
                                         workspace.update_in(cx, |workspace, window, cx| {
                                             if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
                                                 editor.update(cx, |editor, cx| {
-                                                    editor.insert(translated_text, window, cx);
+                                                    if let Some((line_start, line_end, had_newline)) = line_range {
+                                                        // Replace entire line
+                                                        let mut replacement = translated_text.to_string();
+                                                        if had_newline {
+                                                            replacement.push('\n');
+                                                        }
+                                                        editor.buffer().update(cx, |buffer, cx| {
+                                                            buffer.edit([(line_start..line_end, replacement)], None, cx);
+                                                        });
+                                                    } else {
+                                                        // Replace selected text
+                                                        editor.insert(translated_text, window, cx);
+                                                    }
                                                 });
                                             }
                                         })?;
@@ -832,11 +846,31 @@ fn deepl_translate(
                         }
                     }
                 } else {
+                    // Include response body in error message for better debugging
+                    let error_body = String::from_utf8_lossy(&body);
+                    let error_msg = if error_body.is_empty() {
+                        format!("DeepL API error: HTTP {} {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
+                    } else {
+                        // Try to parse JSON error response
+                        match serde_json::from_slice::<serde_json::Value>(&body) {
+                            Ok(json) => {
+                                if let Some(message) = json.get("message").and_then(|m| m.as_str()) {
+                                    format!("DeepL API error: HTTP {} - {}", status.as_u16(), message)
+                                } else {
+                                    format!("DeepL API error: HTTP {} - {}", status.as_u16(), error_body.trim())
+                                }
+                            }
+                            Err(_) => {
+                                format!("DeepL API error: HTTP {} - {}", status.as_u16(), error_body.trim())
+                            }
+                        }
+                    };
+                    
                     workspace.update_in(cx, |workspace, _, cx| {
                         workspace.show_toast(
                             Toast::new(
                                 NotificationId::unique::<DeeplTranslate>(),
-                                format!("DeepL API error: HTTP {}", status),
+                                error_msg,
                             ),
                             cx,
                         );
