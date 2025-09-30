@@ -9,7 +9,7 @@ use zed_actions::toast;
 
 use crate::Workspace;
 
-const DEFAULT_TOAST_DURATION: Duration = Duration::from_secs(10);
+const DEFAULT_TOAST_DURATION: Duration = Duration::from_secs(5);
 const MINIMUM_RESUME_DURATION: Duration = Duration::from_millis(800);
 
 pub fn init(cx: &mut App) {

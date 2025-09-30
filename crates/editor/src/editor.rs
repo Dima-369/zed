@@ -12769,7 +12769,8 @@ impl Editor {
                                 Toast::new(
                                     NotificationId::unique::<CountTokensNotification>(),
                                     message,
-                                ),
+                                )
+                                .autohide(),
                                 cx,
                             );
                         }).ok();
@@ -12789,7 +12790,8 @@ impl Editor {
                                 Toast::new(
                                     NotificationId::unique::<CountTokensError>(),
                                     error_msg,
-                                ),
+                                )
+                                .autohide(),
                                 cx,
                             );
                         }).ok();
