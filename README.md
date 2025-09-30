@@ -65,7 +65,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ],
 ```
 
--  `zed::DeeplTranslate` which translates the current selection or the current line, bind like this:
+-  `zed::DeeplTranslate` which translates the current selection or the current line. It needs the `DEEPL_API_KEY` environment variable to be set. Bind like this:
 
 ```json
 "space c g": [
