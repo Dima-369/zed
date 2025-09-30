@@ -52,7 +52,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - `editor::CreateNavHistoryEntry`
 - `editor::CopyAll` to copy entire buffer content to clipboard
 - `editor::CountTokens` which counts the tokens in the current buffer using `o200k_base` via the `tiktoken` crate
-- `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit
+- `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit. Bind like this:
 
 ```json
 "v": [
@@ -65,11 +65,11 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ],
 ```
 
-- ??? TODO real name `deepl::Translate` which translates the current selection or the current line, use like this:
+-  `zed::DeeplTranslate` which translates the current selection or the current line, bind like this:
 
 ```json
-"v": [
-  "TODO",
+"space c g": [
+  "zed::DeeplTranslate",
   {
     "source_lang": "EN",
     "target_lang": "DE",
