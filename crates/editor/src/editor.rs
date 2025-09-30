@@ -12744,20 +12744,17 @@ impl Editor {
                 let token_count = tokens.len();
                 
                 // Format large numbers with commas (e.g., 1000 -> 1,000)
-                let formatted_count = format!("{}", token_count)
-                    .chars()
-                    .rev()
-                    .enumerate()
-                    .fold(String::new(), |acc, (i, c)| {
-                        if i != 0 && i % 3 == 0 {
-                            format!("{}{},", acc, c)
-                        } else {
-                            format!("{}{}", acc, c)
+                let formatted_count = {
+                    let s = token_count.to_string();
+                    let mut result = String::new();
+                    for (i, c) in s.chars().enumerate() {
+                        if i > 0 && (s.len() - i) % 3 == 0 {
+                            result.push(',');
                         }
-                    })
-                    .chars()
-                    .rev()
-                    .collect::<String>();
+                        result.push(c);
+                    }
+                    result
+                };
                 
                 // Show notification with formatted token count
                 let message = format!("Buffer contains {} tokens", formatted_count);

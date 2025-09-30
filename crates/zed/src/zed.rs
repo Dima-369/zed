@@ -688,30 +688,64 @@ fn deepl_translate(
         (selections, snapshot)
     });
     
-    if selections.is_empty() {
-        workspace.show_toast(
-            Toast::new(
-                NotificationId::unique::<DeeplTranslate>(),
-                "No text selected".to_string(),
-            ),
-            cx,
-        );
-        return;
-    }
-
-    let mut selected_text = String::new();
-    for selection in &selections {
-        if selection.start != selection.end {
-            let text = buffer_snapshot.text_for_range(selection.start..selection.end).collect::<String>();
-            selected_text.push_str(&text);
+    let selected_text = if selections.is_empty() || selections.iter().all(|s| s.start == s.end) {
+        // No text is selected, get the current line
+        let cursor_pos = if let Some(selection) = selections.first() {
+            selection.start
+        } else {
+            // If there are no selections at all, use cursor position 0
+            0
+        };
+        
+        // Get the line containing the cursor
+        let point = buffer_snapshot.offset_to_point(cursor_pos);
+        let row = point.row;
+        
+        // Get the text of the entire line
+        if row <= buffer_snapshot.max_point().row {
+            let line_start = buffer_snapshot.point_to_offset(language::Point::new(row, 0));
+            let line_end_offset = {
+                let max_point = buffer_snapshot.max_point();
+                if row < max_point.row {
+                    buffer_snapshot.point_to_offset(language::Point::new(row + 1, 0))
+                } else {
+                    buffer_snapshot.len()
+                }
+            };
+            
+            // Find the actual end of the current line (before line break)
+            let line_end = std::cmp::min(line_end_offset, buffer_snapshot.len());
+            let mut line_text = buffer_snapshot.text_for_range(line_start..line_end).collect::<String>();
+            
+            // Remove trailing newline if present
+            if line_text.ends_with('\n') || line_text.ends_with('\r') {
+                line_text.pop();
+                if line_text.ends_with('\r') {
+                    line_text.pop();
+                }
+            }
+            
+            line_text
+        } else {
+            String::new()
         }
-    }
+    } else {
+        // Text is selected, use the selected text
+        let mut text = String::new();
+        for selection in &selections {
+            if selection.start != selection.end {
+                let selection_text = buffer_snapshot.text_for_range(selection.start..selection.end).collect::<String>();
+                text.push_str(&selection_text);
+            }
+        }
+        text
+    };
 
     if selected_text.is_empty() {
         workspace.show_toast(
             Toast::new(
                 NotificationId::unique::<DeeplTranslate>(),
-                "No text selected".to_string(),
+                "No text to translate".to_string(),
             ),
             cx,
         );
