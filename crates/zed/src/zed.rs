@@ -756,6 +756,7 @@ fn deepl_translate(
 
     let source_lang = action.source_lang.clone();
     let target_lang = action.target_lang.clone();
+    let formality = action.formality.clone();
     let http_client = workspace.app_state().client.http_client().clone();
 
     cx.spawn_in(window, async move |workspace, cx| {
@@ -767,7 +768,11 @@ fn deepl_translate(
         form_data.insert("target_lang", target_lang);
         form_data.insert("split_sentences", "1".to_string());
         form_data.insert("preserve_formatting", "1".to_string());
-        form_data.insert("formality", "less".to_string());
+        
+        // Only add formality if provided
+        if let Some(formality_value) = formality {
+            form_data.insert("formality", formality_value);
+        }
 
         // Build form-encoded body
         let body = form_data

@@ -144,6 +144,8 @@ pub struct ResetUiFontSize {
 pub struct DeeplTranslate {
     pub source_lang: String,
     pub target_lang: String,
+    #[serde(default)]
+    pub formality: Option<String>,
 }
 
 pub mod dev {
