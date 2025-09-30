@@ -44,14 +44,15 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## New actions
 
-- add `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scroll a quarter of a page
-- add `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window
-- add  `workspace::NewFileFromClipboard` which pastes in the clipboard contents and sets `Markdown` language
-- add `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
-- add `snippets::ReloadSnippets` because auto-reloading snippets is not working for me
-- add `editor::CreateNavHistoryEntry`
-- add `editor::CopyAll`
-- add `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit
+- `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scroll a quarter of a page
+- `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window
+- `workspace::NewFileFromClipboard` which pastes in the clipboard contents and sets `Markdown` language
+- `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
+- `snippets::ReloadSnippets` because auto-reloading snippets is not working for me
+- `editor::CreateNavHistoryEntry`
+- `editor::CopyAll` to copy entire buffer content to clipboard
+- `editor::CountTokens` which counts the tokens in the current buffer using `o200k_base` via the `tiktoken` crate
+- `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit
 
 ```json
 "v": [

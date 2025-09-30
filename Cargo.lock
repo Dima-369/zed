@@ -5246,6 +5246,7 @@ dependencies = [
  "tempfile",
  "text",
  "theme",
+ "tiktoken-rs",
  "time",
  "tree-sitter-bash",
  "tree-sitter-c",

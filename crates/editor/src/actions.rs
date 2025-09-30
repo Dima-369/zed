@@ -498,6 +498,8 @@ actions!(
         ToggleFoldRecursive,
         /// Toggles all folds in a buffer or all excerpts in multibuffer.
         ToggleFoldAll,
+        /// Counts the number of tokens in the current buffer using the o200k_base model.
+        CountTokens,
         /// Formats the entire document.
         Format,
         /// Formats only the selected text.

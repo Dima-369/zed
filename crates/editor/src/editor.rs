@@ -194,6 +194,7 @@ use theme::{
     ActiveTheme, PlayerColor, StatusColors, SyntaxTheme, Theme, ThemeSettings,
     observe_buffer_font_size_adjustment,
 };
+use tiktoken_rs::o200k_base;
 use ui::{
     ButtonSize, ButtonStyle, ContextMenu, Disclosure, IconButton, IconButtonShape, IconName,
     IconSize, Indicator, Key, Tooltip, h_flex, prelude::*, scrollbars::ScrollbarAutoHide,
@@ -365,6 +366,11 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::new_file_horizontal);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
+            workspace.register_action(|workspace, action, window, cx| {
+                workspace.active_item_as::<Editor>(cx).map(|editor| {
+                    editor.update(cx, |editor, cx| editor.count_tokens(action, window, cx))
+                });
+            });
             workspace.register_action(|workspace, action, window, cx| {
                 workspace.active_item_as::<Editor>(cx).map(|editor| {
                     editor.update(cx, |editor, cx| editor.copy_all(action, window, cx))
@@ -12724,6 +12730,74 @@ impl Editor {
                         cx,
                     ),
                 _ => self.do_paste(&item.text().unwrap_or_default(), None, true, window, cx),
+            }
+        }
+    }
+
+    pub fn count_tokens(&mut self, _: &CountTokens, _window: &mut Window, cx: &mut Context<Self>) {
+        // Get the text first before accessing workspace to avoid borrowing conflicts
+        let text = self.buffer.read(cx).read(cx).text();
+        
+        match o200k_base() {
+            Ok(bpe) => {
+                let tokens = bpe.encode_with_special_tokens(&text);
+                let token_count = tokens.len();
+                
+                // Format large numbers with commas (e.g., 1000 -> 1,000)
+                let formatted_count = format!("{}", token_count)
+                    .chars()
+                    .rev()
+                    .enumerate()
+                    .fold(String::new(), |acc, (i, c)| {
+                        if i != 0 && i % 3 == 0 {
+                            format!("{}{},", acc, c)
+                        } else {
+                            format!("{}{}", acc, c)
+                        }
+                    })
+                    .chars()
+                    .rev()
+                    .collect::<String>();
+                
+                // Show notification with formatted token count
+                let message = format!("Buffer contains {} tokens", formatted_count);
+                
+                // Defer the notification to avoid double lease panic
+                if let Some(workspace) = self.workspace() {
+                    let workspace = workspace.downgrade();
+                    cx.defer(move |cx| {
+                        workspace.update(cx, |workspace, cx| {
+                            struct CountTokensNotification;
+                            workspace.show_toast(
+                                Toast::new(
+                                    NotificationId::unique::<CountTokensNotification>(),
+                                    message,
+                                ),
+                                cx,
+                            );
+                        }).ok();
+                    });
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to initialize tokenizer: {}", e);
+                // Defer the error notification to avoid double lease panic
+                if let Some(workspace) = self.workspace() {
+                    let workspace = workspace.downgrade();
+                    let error_msg = format!("Failed to count tokens: {}", e);
+                    cx.defer(move |cx| {
+                        workspace.update(cx, |workspace, cx| {
+                            struct CountTokensError;
+                            workspace.show_toast(
+                                Toast::new(
+                                    NotificationId::unique::<CountTokensError>(),
+                                    error_msg,
+                                ),
+                                cx,
+                            );
+                        }).ok();
+                    });
+                }
             }
         }
     }
