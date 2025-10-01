@@ -494,7 +494,7 @@ impl PickerDelegate for RecentFilesDelegate {
                 // Try to find a recent workspace that contains this file
                 let workspace_handle = workspace.clone();
                 cx.spawn_in(window, async move |_, cx| {
-                    if let Some((workspace_id, location, workspace_paths)) =
+                    if let Some((workspace_id, location, _workspace_paths)) =
                         find_workspace_for_file(&path).await
                     {
                         // Found a workspace that contains this file, open that workspace
@@ -509,18 +509,27 @@ impl PickerDelegate for RecentFilesDelegate {
                                 // Open the workspace that contains this file
                                 match location {
                                     SerializedWorkspaceLocation::Local => {
-                                        let paths = workspace_paths.paths().to_vec();
+                                        // We need to open the workspace with all its paths, but then
+                                        // also open the specific file. First get workspace paths.
+                                        let workspace_paths = _workspace_paths.paths().to_vec();
+
+                                        // Create a combined list: workspace paths + the specific file
+                                        let mut paths_to_open = workspace_paths;
+                                        if !paths_to_open.contains(&path) {
+                                            paths_to_open.push(path);
+                                        }
+
                                         workspace
                                             .open_workspace_for_paths(
                                                 create_new_window,
-                                                paths,
+                                                paths_to_open,
                                                 window,
                                                 cx,
                                             )
                                             .detach_and_log_err(cx);
                                     }
                                     SerializedWorkspaceLocation::Remote(_) => {
-                                        // For now, fall back to opening the file directly for remote workspaces
+                                        // For remote workspaces, fall back to opening the file directly
                                         workspace
                                             .open_workspace_for_paths(
                                                 create_new_window,
