@@ -361,7 +361,16 @@ impl Render for BufferSearchBar {
             .px_2()
             .when(!find_in_results, |this| {
                 let query_focus = self.query_editor.focus_handle(cx);
-                this.child(render_action_button(
+                this.child(div().min_w(rems_from_px(40.)).child(
+                    Label::new(match_text).size(LabelSize::Small).color(
+                        if self.active_match_index.is_some() {
+                            Color::Default
+                        } else {
+                            Color::Disabled
+                        },
+                    ),
+                ))
+                .child(render_action_button(
                     "buffer-search-nav-button",
                     ui::IconName::ChevronLeft,
                     self.active_match_index
@@ -370,15 +379,6 @@ impl Render for BufferSearchBar {
                     "Select Previous Match",
                     &SelectPreviousMatch,
                     query_focus.clone(),
-                ))
-                .child(div().min_w(rems_from_px(40.)).child(
-                    Label::new(match_text).size(LabelSize::Small).color(
-                        if self.active_match_index.is_some() {
-                            Color::Default
-                        } else {
-                            Color::Disabled
-                        },
-                    ),
                 ))
                 .child(render_action_button(
                     "buffer-search-nav-button",
