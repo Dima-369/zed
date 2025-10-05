@@ -9836,7 +9836,7 @@ impl EditorScrollbars {
                     // The horizontal viewport size differs from the space available for the
                     // horizontal scrollbar, so we have to manually stitch it together here.
                     editor_bounds.size.width - right_margin,
-                    scrollbar_width,
+                    scrollbar_width / 2.0,
                 ),
             ),
             ScrollbarAxis::Vertical => Bounds::from_corner_and_size(

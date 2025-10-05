@@ -37,6 +37,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the second part is still untested)
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
+- lower horizontal scroll bar height to half of vertical one (the default one is huge)
 
 ### Command palette
 
