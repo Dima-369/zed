@@ -1165,8 +1165,8 @@ struct SimpleTooltip {
 }
 
 impl Render for SimpleTooltip {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        tooltip_container(window, cx, |div, _, _| div.child(self.text.clone()))
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        tooltip_container(cx, |div, _| div.child(self.text.clone()))
     }
 }
 

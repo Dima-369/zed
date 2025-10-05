@@ -104,7 +104,7 @@ impl FilePathPickerDelegate {
 
                 // Get the absolute path
                 if let Some(worktree) = project.read(cx).worktree_for_id(project_path.worktree_id, cx) {
-                    let abs_path = worktree.read(cx).abs_path().join(&project_path.path);
+                    let abs_path = worktree.read(cx).abs_path().join(project_path.path.as_std_path());
 
                     // Collect all potential entries
                     let mut potential_entries = Vec::new();
@@ -176,7 +176,7 @@ impl FilePathPickerDelegate {
 
             // Get the absolute path of the file
             if let Some(worktree) = project.read(cx).worktree_for_id(project_path.worktree_id, cx) {
-                let abs_path = worktree.read(cx).abs_path().join(&project_path.path);
+                let abs_path = worktree.read(cx).abs_path().join(project_path.path.as_std_path());
                 if let Ok(relative_path) = abs_path.strip_prefix(git_root) {
                     return Some(relative_path.to_string_lossy().to_string());
                 }
