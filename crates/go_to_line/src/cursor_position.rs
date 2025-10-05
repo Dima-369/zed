@@ -9,7 +9,6 @@ use ui::{
 };
 use util::paths::FILE_ROW_COLUMN_DELIMITER;
 use workspace::{StatusBarSettings, StatusItemView, Workspace, item::ItemHandle};
-use workspace::{item::ItemHandle, StatusItemView, Workspace};
 
 #[derive(Copy, Clone, Debug, Default, PartialOrd, PartialEq)]
 pub(crate) struct SelectionStats {
