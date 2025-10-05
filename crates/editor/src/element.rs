@@ -1823,6 +1823,7 @@ impl EditorElement {
             editor_width,
             show_scrollbars,
             self.editor.read(cx).scroll_manager.active_scrollbar_state(),
+            self.editor.read(cx).soft_wrap_mode(cx) != language::language_settings::SoftWrap::None,
             window,
         ))
     }
@@ -9818,6 +9819,7 @@ impl EditorScrollbars {
         editor_width: Pixels,
         show_scrollbars: bool,
         scrollbar_state: Option<&ActiveScrollbarState>,
+        soft_wrap_enabled: bool,
         window: &mut Window,
     ) -> Self {
         let ScrollbarLayoutInformation {
@@ -9851,9 +9853,14 @@ impl EditorScrollbars {
             let scroll_range = scroll_range.along(axis);
 
             // We always want a vertical scrollbar track for scrollbar diagnostic visibility.
-            (show_scrollbar.along(axis)
-                && (axis == ScrollbarAxis::Vertical || scroll_range > viewport_size))
-                .then(|| {
+            // For horizontal scrollbar, also check if soft wrap is enabled (if so, don't show it).
+            let should_show = if axis == ScrollbarAxis::Horizontal {
+                show_scrollbar.along(axis) && scroll_range > viewport_size && !soft_wrap_enabled
+            } else {
+                show_scrollbar.along(axis)
+            };
+
+            (should_show).then(|| {
                     ScrollbarLayout::new(
                         window.insert_hitbox(scrollbar_bounds_for(axis), HitboxBehavior::Normal),
                         viewport_size,

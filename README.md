@@ -38,6 +38,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
 - lower horizontal scroll bar height to half of vertical one (the default one is huge)
+- hide horizontal scroll bar when soft wrap is enabled
 
 ### Command palette
 
