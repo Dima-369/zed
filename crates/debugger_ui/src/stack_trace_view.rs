@@ -181,7 +181,7 @@ impl StackTraceView {
 
                 let project_path = ProjectPath {
                     worktree_id: worktree.read_with(cx, |tree, _| tree.id())?,
-                    path: relative_path.into(),
+                    path: relative_path,
                 };
 
                 if let Some(buffer) = this
@@ -352,10 +352,6 @@ impl Item for StackTraceView {
         f: &mut dyn FnMut(gpui::EntityId, &dyn project::ProjectItem),
     ) {
         self.editor.for_each_project_item(cx, f)
-    }
-
-    fn is_singleton(&self, _: &App) -> bool {
-        false
     }
 
     fn set_nav_history(

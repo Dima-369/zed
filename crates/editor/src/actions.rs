@@ -806,6 +806,8 @@ actions!(
         UniqueLinesCaseInsensitive,
         /// Removes duplicate lines (case-sensitive).
         UniqueLinesCaseSensitive,
+        /// Removes the surrounding syntax node (for example brackets, or closures)
+        /// from the current selections.
         UnwrapSyntaxNode,
         /// Wraps selections in tag specified by language.
         WrapSelectionsInTag,

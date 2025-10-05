@@ -1,4 +1,4 @@
-use editor::{Editor, EditorSettings, MultiBufferSnapshot};
+use editor::{Editor, MultiBufferSnapshot};
 use gpui::{App, Entity, FocusHandle, Focusable, Subscription, Task, WeakEntity};
 use settings::Settings;
 use std::{fmt::Write, num::NonZeroU32, time::Duration};
@@ -8,6 +8,7 @@ use ui::{
     ParentElement, Render, Tooltip, Window,
 };
 use util::paths::FILE_ROW_COLUMN_DELIMITER;
+use workspace::{StatusBarSettings, StatusItemView, Workspace, item::ItemHandle};
 use workspace::{item::ItemHandle, StatusItemView, Workspace};
 
 #[derive(Copy, Clone, Debug, Default, PartialOrd, PartialEq)]
@@ -205,10 +206,7 @@ impl CursorPosition {
 
 impl Render for CursorPosition {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !EditorSettings::get_global(cx)
-            .status_bar
-            .cursor_position_button
-        {
+        if !StatusBarSettings::get_global(cx).cursor_position_button {
             return div();
         }
 

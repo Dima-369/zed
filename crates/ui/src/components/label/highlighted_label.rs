@@ -21,6 +21,14 @@ impl HighlightedLabel {
             highlight_indices,
         }
     }
+
+    pub fn text(&self) -> &str {
+        self.label.as_str()
+    }
+
+    pub fn highlight_indices(&self) -> &[usize] {
+        &self.highlight_indices
+    }
 }
 
 impl LabelCommon for HighlightedLabel {
@@ -98,30 +106,14 @@ pub fn highlight_ranges(
         if start_ix >= text.len() {
             continue;
         }
-        
+
         let mut end_ix = start_ix;
 
         loop {
-            // Check bounds before slicing and ensure we don't go past the end
-            if end_ix >= text.len() {
+            end_ix += text[end_ix..].chars().next().map_or(0, |c| c.len_utf8());
+            if highlight_indices.next_if(|&ix| ix == end_ix).is_none() {
                 break;
             }
-            
-            // Get the next character safely
-            if let Some(ch) = text[end_ix..].chars().next() {
-                end_ix = end_ix + ch.len_utf8();
-            } else {
-                break;
-            }
-            
-            if let Some(&next_ix) = highlight_indices.peek()
-                && next_ix == end_ix
-            {
-                end_ix = next_ix;
-                highlight_indices.next();
-                continue;
-            }
-            break;
         }
 
         // Only add valid ranges
