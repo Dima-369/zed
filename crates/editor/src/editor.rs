@@ -561,6 +561,7 @@ impl EditorMode {
 }
 
 #[derive(Copy, Clone, Debug)]
+#[derive(PartialEq)]
 pub enum SoftWrap {
     /// Prefer not to wrap at all.
     ///

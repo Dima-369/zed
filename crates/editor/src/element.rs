@@ -1823,7 +1823,7 @@ impl EditorElement {
             editor_width,
             show_scrollbars,
             self.editor.read(cx).scroll_manager.active_scrollbar_state(),
-            self.editor.read(cx).soft_wrap_mode(cx) != language::language_settings::SoftWrap::None,
+            self.editor.read(cx).soft_wrap_mode(cx) != SoftWrap::None,
             window,
         ))
     }
