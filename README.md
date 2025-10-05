@@ -36,10 +36,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - moving up/down in outline panel does not wrap around anymore
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the second part is still untested)
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
-- lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
-- lower horizontal scroll bar height to half of vertical one (the default one is huge)
-- hide horizontal scroll bar when soft wrap is enabled
-- move search bar hit count `1/30` below the search text field, above the replace text field because it is hard too see at very right
 
 ### Command palette
 
@@ -90,6 +86,10 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - lower `toolbar.rs` height to make it as minimal as possible to save space, same in `breadcrumbs.rs`. This applies for terminals, as well
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
 - highlight the active search match with a different background color. It is not trivial to set the foreground color to a fixed color, so I stopped trying
+- lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
+- lower horizontal scroll bar height to half of vertical one (the default one is huge)
+- hide horizontal scroll bar when soft wrap is enabled
+- move search bar hit count `1/30` below the search text field, above the replace text field because it is hard too see at very right
 
 # Original README
 
