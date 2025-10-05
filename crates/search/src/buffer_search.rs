@@ -363,30 +363,12 @@ impl Render for BufferSearchBar {
                 let query_focus = self.query_editor.focus_handle(cx);
                 this.child(render_action_button(
                     "buffer-search-nav-button",
-                    IconName::SelectAll,
-                    Default::default(),
-                    "Select All Matches",
-                    &SelectAllMatches,
-                    query_focus.clone(),
-                ))
-                .child(render_action_button(
-                    "buffer-search-nav-button",
                     ui::IconName::ChevronLeft,
                     self.active_match_index
                         .is_none()
                         .then_some(ActionButtonState::Disabled),
                     "Select Previous Match",
                     &SelectPreviousMatch,
-                    query_focus.clone(),
-                ))
-                .child(render_action_button(
-                    "buffer-search-nav-button",
-                    ui::IconName::ChevronRight,
-                    self.active_match_index
-                        .is_none()
-                        .then_some(ActionButtonState::Disabled),
-                    "Select Next Match",
-                    &SelectNextMatch,
                     query_focus.clone(),
                 ))
                 .child(div().min_w(rems_from_px(40.)).child(
@@ -397,6 +379,16 @@ impl Render for BufferSearchBar {
                             Color::Disabled
                         },
                     ),
+                ))
+                .child(render_action_button(
+                    "buffer-search-nav-button",
+                    ui::IconName::ChevronRight,
+                    self.active_match_index
+                        .is_none()
+                        .then_some(ActionButtonState::Disabled),
+                    "Select Next Match",
+                    &SelectNextMatch,
+                    query_focus.clone(),
                 ))
             });
 
