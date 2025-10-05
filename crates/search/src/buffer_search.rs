@@ -280,42 +280,6 @@ impl Render for BufferSearchBar {
             })
             .when(!find_in_results, |el| {
                 let query_focus = self.query_editor.focus_handle(cx);
-                let matches_column = h_flex()
-                    .pl_2()
-                    .ml_2()
-                    .border_l_1()
-                    .border_color(theme_colors.border_variant)
-                    .child(render_action_button(
-                        "buffer-search-nav-button",
-                        ui::IconName::ChevronLeft,
-                        self.active_match_index
-                            .is_none()
-                            .then_some(ActionButtonState::Disabled),
-                        "Select Previous Match",
-                        &SelectPreviousMatch,
-                        query_focus.clone(),
-                    ))
-                    .child(render_action_button(
-                        "buffer-search-nav-button",
-                        ui::IconName::ChevronRight,
-                        self.active_match_index
-                            .is_none()
-                            .then_some(ActionButtonState::Disabled),
-                        "Select Next Match",
-                        &SelectNextMatch,
-                        query_focus.clone(),
-                    ))
-                    .when(!narrow_mode, |this| {
-                        this.child(div().ml_2().min_w(rems_from_px(40.)).child(
-                            Label::new(match_text).size(LabelSize::Small).color(
-                                if self.active_match_index.is_some() {
-                                    Color::Default
-                                } else {
-                                    Color::Disabled
-                                },
-                            ),
-                        ))
-                    });
 
                 el.child(render_action_button(
                     "buffer-search-nav-button",
@@ -325,7 +289,6 @@ impl Render for BufferSearchBar {
                     &SelectAllMatches,
                     query_focus,
                 ))
-                .child(matches_column)
             })
             .when(find_in_results, |el| {
                 el.child(render_action_button(
@@ -393,6 +356,50 @@ impl Render for BufferSearchBar {
                 .ml_2()
         });
 
+        let matches_row = h_flex()
+            .gap_1()
+            .px_2()
+            .when(!find_in_results, |this| {
+                let query_focus = self.query_editor.focus_handle(cx);
+                this.child(render_action_button(
+                    "buffer-search-nav-button",
+                    IconName::SelectAll,
+                    Default::default(),
+                    "Select All Matches",
+                    &SelectAllMatches,
+                    query_focus.clone(),
+                ))
+                .child(render_action_button(
+                    "buffer-search-nav-button",
+                    ui::IconName::ChevronLeft,
+                    self.active_match_index
+                        .is_none()
+                        .then_some(ActionButtonState::Disabled),
+                    "Select Previous Match",
+                    &SelectPreviousMatch,
+                    query_focus.clone(),
+                ))
+                .child(render_action_button(
+                    "buffer-search-nav-button",
+                    ui::IconName::ChevronRight,
+                    self.active_match_index
+                        .is_none()
+                        .then_some(ActionButtonState::Disabled),
+                    "Select Next Match",
+                    &SelectNextMatch,
+                    query_focus.clone(),
+                ))
+                .child(div().min_w(rems_from_px(40.)).child(
+                    Label::new(match_text).size(LabelSize::Small).color(
+                        if self.active_match_index.is_some() {
+                            Color::Default
+                        } else {
+                            Color::Disabled
+                        },
+                    ),
+                ))
+            });
+
         let search_line =
             h_flex()
                 .relative()
@@ -457,6 +464,7 @@ impl Render for BufferSearchBar {
                 this.on_action(cx.listener(Self::toggle_selection))
             })
             .child(search_line)
+            .child(matches_row)
             .children(query_error_line)
             .children(replace_line)
     }

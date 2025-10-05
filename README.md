@@ -39,6 +39,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
 - lower horizontal scroll bar height to half of vertical one (the default one is huge)
 - hide horizontal scroll bar when soft wrap is enabled
+- move search bar hit count `1/30` below the search text field, above the replace text field because it is hard too see at very right
 
 ### Command palette
 
