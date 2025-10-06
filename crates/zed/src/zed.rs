@@ -652,7 +652,7 @@ fn deepl_translate(
 ) {
     use std::env;
     use std::collections::HashMap;
-    
+
     // Get the API key from environment variable
     let api_key = match env::var("DEEPL_API_KEY") {
         Ok(key) => key,
@@ -689,7 +689,7 @@ fn deepl_translate(
         let has_selection = !selections.is_empty() && selections.iter().any(|s| s.start != s.end);
         (selections, snapshot, !has_selection)
     });
-    
+
     let (selected_text, line_range) = if replace_whole_line {
         // No text is selected, get the current line
         let cursor_pos = if let Some(selection) = selections.first() {
@@ -698,11 +698,11 @@ fn deepl_translate(
             // If there are no selections at all, use cursor position 0
             0
         };
-        
+
         // Get the line containing the cursor
         let point = buffer_snapshot.offset_to_point(cursor_pos);
         let row = point.row;
-        
+
         // Get the text of the entire line and calculate line range for replacement
         if row <= buffer_snapshot.max_point().row {
             let line_start = buffer_snapshot.point_to_offset(language::Point::new(row, 0));
@@ -714,11 +714,11 @@ fn deepl_translate(
                     buffer_snapshot.len()
                 }
             };
-            
+
             // Find the actual end of the current line (before line break)
             let line_end = std::cmp::min(line_end_offset, buffer_snapshot.len());
             let mut line_text = buffer_snapshot.text_for_range(line_start..line_end).collect::<String>();
-            
+
             // Remove trailing newline if present for translation, but keep range for replacement
             let original_line_text = line_text.clone();
             if line_text.ends_with('\n') || line_text.ends_with('\r') {
@@ -727,7 +727,7 @@ fn deepl_translate(
                     line_text.pop();
                 }
             }
-            
+
             (line_text, Some((line_start, line_end, original_line_text.ends_with('\n') || original_line_text.ends_with("\r\n"))))
         } else {
             (String::new(), None)
@@ -769,7 +769,7 @@ fn deepl_translate(
         form_data.insert("target_lang", target_lang);
         form_data.insert("split_sentences", "1".to_string());
         form_data.insert("preserve_formatting", "1".to_string());
-        
+
         // Only add formality if provided
         if let Some(formality_value) = formality {
             form_data.insert("formality", formality_value);
@@ -797,7 +797,7 @@ fn deepl_translate(
                 let status = response.status();
                 let mut body = Vec::new();
                 response.body_mut().read_to_end(&mut body).await?;
-                
+
                 if status.is_success() {
                     match serde_json::from_slice::<serde_json::Value>(&body) {
                         Ok(json) => {
@@ -828,7 +828,7 @@ fn deepl_translate(
                                     }
                                 }
                             }
-                            
+
                             workspace.update_in(cx, |workspace, _, cx| {
                                 workspace.show_toast(
                                     Toast::new(
@@ -871,7 +871,7 @@ fn deepl_translate(
                             }
                         }
                     };
-                    
+
                     workspace.update_in(cx, |workspace, _, cx| {
                         workspace.show_toast(
                             Toast::new(
@@ -895,7 +895,7 @@ fn deepl_translate(
                 })?;
             }
         }
-        
+
         anyhow::Ok(())
     })
     .detach_and_log_err(cx);
