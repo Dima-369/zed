@@ -136,7 +136,7 @@ impl SelectionLayout {
         is_local: bool,
         user_name: Option<SharedString>,
     ) -> Self {
-        let point_selection = selection.map(|p| p.to_point(&map.buffer_snapshot));
+        let point_selection = selection.map(|p| p.to_point(map.buffer_snapshot()));
         let display_selection = point_selection.map(|p| p.to_display_point(map));
         let mut range = display_selection.range();
         let mut head = display_selection.head();
@@ -436,6 +436,15 @@ impl EditorElement {
         register_action(editor, window, Editor::open_selected_filename);
         register_action(editor, window, Editor::fold);
         register_action(editor, window, Editor::fold_at_level);
+        register_action(editor, window, Editor::fold_at_level_1);
+        register_action(editor, window, Editor::fold_at_level_2);
+        register_action(editor, window, Editor::fold_at_level_3);
+        register_action(editor, window, Editor::fold_at_level_4);
+        register_action(editor, window, Editor::fold_at_level_5);
+        register_action(editor, window, Editor::fold_at_level_6);
+        register_action(editor, window, Editor::fold_at_level_7);
+        register_action(editor, window, Editor::fold_at_level_8);
+        register_action(editor, window, Editor::fold_at_level_9);
         register_action(editor, window, Editor::fold_all);
         register_action(editor, window, Editor::fold_function_bodies);
         register_action(editor, window, Editor::fold_recursive);
@@ -1197,7 +1206,7 @@ impl EditorElement {
 
             if let Some((buffer_snapshot, file)) = position_map
                 .snapshot
-                .buffer_snapshot
+                .buffer_snapshot()
                 .buffer_for_excerpt(buffer_anchor.excerpt_id)
                 .and_then(|buffer| buffer.file().map(|file| (buffer, file)))
             {
@@ -1279,7 +1288,7 @@ impl EditorElement {
             if let Some(point) = point_for_position.as_valid() {
                 let anchor = position_map
                     .snapshot
-                    .buffer_snapshot
+                    .buffer_snapshot()
                     .anchor_before(point.to_offset(&position_map.snapshot, Bias::Left));
                 hover_at(editor, Some(anchor), window, cx);
                 Self::update_visible_cursor(editor, point, position_map, window, cx);
@@ -1316,10 +1325,10 @@ impl EditorElement {
         );
 
         let range = snapshot
-            .buffer_snapshot
+            .buffer_snapshot()
             .anchor_before(start.to_point(&snapshot.display_snapshot))
             ..snapshot
-                .buffer_snapshot
+                .buffer_snapshot()
                 .anchor_after(end.to_point(&snapshot.display_snapshot));
 
         let Some(selection) = snapshot.remote_selections_in_range(&range, hub, cx).next() else {
@@ -1410,11 +1419,11 @@ impl EditorElement {
                     && !hide_drop_cursor
                     && (drop_cursor
                         .start
-                        .cmp(&selection.start, &snapshot.buffer_snapshot)
+                        .cmp(&selection.start, &snapshot.buffer_snapshot())
                         .eq(&Ordering::Less)
                         || drop_cursor
                             .end
-                            .cmp(&selection.end, &snapshot.buffer_snapshot)
+                            .cmp(&selection.end, &snapshot.buffer_snapshot())
                             .eq(&Ordering::Greater))
                 {
                     let drag_cursor_layout = SelectionLayout::new(
@@ -1494,7 +1503,7 @@ impl EditorElement {
                 selections.extend(remote_selections.into_values());
             } else if !editor.is_focused(window) && editor.show_cursor_when_unfocused {
                 let layouts = snapshot
-                    .buffer_snapshot
+                    .buffer_snapshot()
                     .selections_in_range(&(start_anchor..end_anchor), true)
                     .map(move |(_, line_mode, cursor_shape, selection)| {
                         SelectionLayout::new(
@@ -1629,12 +1638,13 @@ impl EditorElement {
                             .map(|text| {
                                 let len = text.len();
 
-                                let font = cursor_row_layout
+                                let mut font = cursor_row_layout
                                     .font_id_for_index(cursor_column)
                                     .and_then(|cursor_font_id| {
                                         window.text_system().get_font_for_id(cursor_font_id)
                                     })
                                     .unwrap_or(self.style.text.font());
+                                font.features = self.style.text.font_features.clone();
 
                                 // Invert the text color for the block cursor. Ensure that the text
                                 // color is opaque enough to be visible against the background color.
@@ -1772,7 +1782,7 @@ impl EditorElement {
                 let editor = self.editor.read(cx);
                 let is_singleton = editor.buffer_kind(cx) == ItemBufferKind::Singleton;
                 // Git
-                (is_singleton && scrollbar_settings.git_diff && snapshot.buffer_snapshot.has_diff_hunks())
+                (is_singleton && scrollbar_settings.git_diff && snapshot.buffer_snapshot().has_diff_hunks())
                 ||
                 // Buffer Search Results
                 (is_singleton && scrollbar_settings.search_results && editor.has_background_highlights::<BufferSearchHighlights>())
@@ -1784,7 +1794,7 @@ impl EditorElement {
                 (is_singleton && scrollbar_settings.selected_symbol && (editor.has_background_highlights::<DocumentHighlightRead>() || editor.has_background_highlights::<DocumentHighlightWrite>()))
                 ||
                 // Diagnostics
-                (is_singleton && scrollbar_settings.diagnostics != ScrollbarDiagnostics::None && snapshot.buffer_snapshot.has_diagnostics())
+                (is_singleton && scrollbar_settings.diagnostics != ScrollbarDiagnostics::None && snapshot.buffer_snapshot().has_diagnostics())
                 ||
                 // Cursors out of sight
                 non_visible_cursors
@@ -2347,7 +2357,7 @@ impl EditorElement {
         // do not show code action for blank line with cursor
         let line_indent = snapshot
             .display_snapshot
-            .buffer_snapshot
+            .buffer_snapshot()
             .line_indent_for_row(MultiBufferRow(buffer_point.row));
         if line_indent.is_line_blank() {
             return None;
@@ -2358,7 +2368,7 @@ impl EditorElement {
 
         let excerpt_id = snapshot
             .display_snapshot
-            .buffer_snapshot
+            .buffer_snapshot()
             .excerpt_containing(buffer_point..buffer_point)
             .map(|excerpt| excerpt.id());
 
@@ -2379,7 +2389,7 @@ impl EditorElement {
                 };
                 let candidate_excerpt_id = snapshot
                     .display_snapshot
-                    .buffer_snapshot
+                    .buffer_snapshot()
                     .excerpt_containing(candidate_point..candidate_point)
                     .map(|excerpt| excerpt.id());
                 // move to other row if different excerpt
@@ -2389,7 +2399,7 @@ impl EditorElement {
             }
             let line_indent = snapshot
                 .display_snapshot
-                .buffer_snapshot
+                .buffer_snapshot()
                 .line_indent_for_row(MultiBufferRow(row_candidate));
             // use this row if it's blank
             if line_indent.is_line_blank() {
@@ -2398,7 +2408,7 @@ impl EditorElement {
                 // use this row if code starts after slot
                 let indent_size = snapshot
                     .display_snapshot
-                    .buffer_snapshot
+                    .buffer_snapshot()
                     .indent_size_for_line(MultiBufferRow(row_candidate));
                 indent_size.len >= INLINE_SLOT_CHAR_LIMIT
             }
@@ -2407,7 +2417,7 @@ impl EditorElement {
         let new_buffer_row = if is_valid_row(buffer_point.row) {
             Some(buffer_point.row)
         } else {
-            let max_row = snapshot.display_snapshot.buffer_snapshot.max_point().row;
+            let max_row = snapshot.display_snapshot.buffer_snapshot().max_point().row;
             (1..=MAX_ALTERNATE_DISTANCE).find_map(|offset| {
                 let row_above = buffer_point.row.saturating_sub(offset);
                 let row_below = buffer_point.row + offset;
@@ -2956,7 +2966,7 @@ impl EditorElement {
                 .tasks
                 .iter()
                 .filter_map(|(_, tasks)| {
-                    let multibuffer_point = tasks.offset.to_point(&snapshot.buffer_snapshot);
+                    let multibuffer_point = tasks.offset.to_point(&snapshot.buffer_snapshot());
                     if multibuffer_point < offset_range_start
                         || multibuffer_point > offset_range_end
                     {
@@ -2964,7 +2974,7 @@ impl EditorElement {
                     }
                     let multibuffer_row = MultiBufferRow(multibuffer_point.row);
                     let buffer_folded = snapshot
-                        .buffer_snapshot
+                        .buffer_snapshot()
                         .buffer_line_for_row(multibuffer_row)
                         .map(|(buffer_snapshot, _)| buffer_snapshot.remote_id())
                         .map(|buffer_id| editor.is_buffer_folded(buffer_id, cx))
@@ -3610,8 +3620,8 @@ impl EditorElement {
         let mut x_position = None;
         let mut element = match block {
             Block::Custom(custom) => {
-                let block_start = custom.start().to_point(&snapshot.buffer_snapshot);
-                let block_end = custom.end().to_point(&snapshot.buffer_snapshot);
+                let block_start = custom.start().to_point(&snapshot.buffer_snapshot());
+                let block_end = custom.end().to_point(&snapshot.buffer_snapshot());
                 if block.place_near() && snapshot.is_line_folded(MultiBufferRow(block_start.row)) {
                     return None;
                 }
@@ -6648,11 +6658,11 @@ impl EditorElement {
                     let scrollbar_size = scrollbar_layout.hitbox.size;
                     let scrollbar_markers = cx
                         .background_spawn(async move {
-                            let max_point = snapshot.display_snapshot.buffer_snapshot.max_point();
+                            let max_point = snapshot.display_snapshot.buffer_snapshot().max_point();
                             let mut marker_quads = Vec::new();
                             if scrollbar_settings.git_diff {
                                 let marker_row_ranges =
-                                    snapshot.buffer_snapshot.diff_hunks().map(|hunk| {
+                                    snapshot.buffer_snapshot().diff_hunks().map(|hunk| {
                                         let start_display_row =
                                             MultiBufferPoint::new(hunk.row_range.start.0, 0)
                                                 .to_display_point(&snapshot.display_snapshot)
@@ -6730,7 +6740,7 @@ impl EditorElement {
 
                             if scrollbar_settings.diagnostics != ScrollbarDiagnostics::None {
                                 let diagnostics = snapshot
-                                    .buffer_snapshot
+                                    .buffer_snapshot()
                                     .diagnostics_in_range::<Point>(Point::zero()..max_point)
                                     // Don't show diagnostics the user doesn't care about
                                     .filter(|diagnostic| {
@@ -7434,7 +7444,7 @@ impl EditorElement {
             if debug_ranges.ranges.is_empty() {
                 return;
             }
-            let buffer_snapshot = &display_snapshot.buffer_snapshot;
+            let buffer_snapshot = &display_snapshot.buffer_snapshot();
             for (buffer, buffer_range, excerpt_id) in
                 buffer_snapshot.range_to_buffer_ranges(anchor_range)
             {
@@ -8673,14 +8683,14 @@ impl Element for EditorElement {
                     let start_anchor = if start_row == Default::default() {
                         Anchor::min()
                     } else {
-                        snapshot.buffer_snapshot.anchor_before(
+                        snapshot.buffer_snapshot().anchor_before(
                             DisplayPoint::new(start_row, 0).to_offset(&snapshot, Bias::Left),
                         )
                     };
                     let end_anchor = if end_row > max_row {
                         Anchor::max()
                     } else {
-                        snapshot.buffer_snapshot.anchor_before(
+                        snapshot.buffer_snapshot().anchor_before(
                             DisplayPoint::new(end_row, 0).to_offset(&snapshot, Bias::Right),
                         )
                     };
@@ -8789,7 +8799,7 @@ impl Element for EditorElement {
 
                                         for selection in all_selections {
                                             for buffer_id in snapshot
-                                                .buffer_snapshot
+                                                .buffer_snapshot()
                                                 .buffer_ids_for_range(selection.range())
                                             {
                                                 if selected_buffer_ids.last() != Some(&buffer_id) {
@@ -9005,7 +9015,7 @@ impl Element for EditorElement {
 
                     let mut scroll_width = scrollbar_layout_information.scroll_range.width;
 
-                    let sticky_header_excerpt = if snapshot.buffer_snapshot.show_headers() {
+                    let sticky_header_excerpt = if snapshot.buffer_snapshot().show_headers() {
                         snapshot.sticky_header_excerpt(scroll_position.y)
                     } else {
                         None
@@ -9070,9 +9080,9 @@ impl Element for EditorElement {
                     });
 
                     let start_buffer_row =
-                        MultiBufferRow(start_anchor.to_point(&snapshot.buffer_snapshot).row);
+                        MultiBufferRow(start_anchor.to_point(&snapshot.buffer_snapshot()).row);
                     let end_buffer_row =
-                        MultiBufferRow(end_anchor.to_point(&snapshot.buffer_snapshot).row);
+                        MultiBufferRow(end_anchor.to_point(&snapshot.buffer_snapshot()).row);
 
                     let scroll_max: gpui::Point<ScrollPixelOffset> = point(
                         ScrollPixelOffset::from(

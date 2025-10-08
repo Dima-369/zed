@@ -409,6 +409,7 @@ impl TerminalBuilder {
             events_rx,
         })
     }
+
     pub fn new(
         working_directory: Option<PathBuf>,
         task: Option<TaskState>,
@@ -507,8 +508,10 @@ impl TerminalBuilder {
                 working_directory: working_directory.clone(),
                 drain_on_exit: true,
                 env: env.clone().into_iter().collect(),
+                // We do not want to escape arguments if we are using CMD as our shell.
+                // If we do we end up with too many quotes/escaped quotes for CMD to handle.
                 #[cfg(windows)]
-                escape_args: true,
+                escape_args: shell.shell_kind() != util::shell::ShellKind::Cmd,
             }
         };
 
@@ -616,10 +619,14 @@ impl TerminalBuilder {
             child_exited: None,
         };
 
-        if cfg!(not(target_os = "windows")) && !activation_script.is_empty() && no_task {
+        if !activation_script.is_empty() && no_task {
             for activation_script in activation_script {
                 terminal.input(activation_script.into_bytes());
-                terminal.write_to_pty(b"\n");
+                terminal.write_to_pty(if cfg!(windows) {
+                    b"\r\n" as &[_]
+                } else {
+                    b"\n"
+                });
             }
             terminal.clear();
         }
@@ -2131,12 +2138,8 @@ impl Terminal {
         self.vi_mode_enabled
     }
 
-    pub fn clone_builder(
-        &self,
-        cx: &App,
-        cwd: impl FnOnce() -> Option<PathBuf>,
-    ) -> Result<TerminalBuilder> {
-        let working_directory = self.working_directory().or_else(cwd);
+    pub fn clone_builder(&self, cx: &App, cwd: Option<PathBuf>) -> Result<TerminalBuilder> {
+        let working_directory = self.working_directory().or_else(|| cwd);
         TerminalBuilder::new(
             working_directory,
             None,
