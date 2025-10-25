@@ -380,6 +380,11 @@
     // Share your project when you are the first to join a channel
     "share_on_join": false
   },
+  // Settings related to jump navigation
+  "jump": {
+    // Whether to automatically jump when only one match is found
+    "autojump": false
+  },
   // Toolbar related settings
   "toolbar": {
     // Whether to show breadcrumbs.

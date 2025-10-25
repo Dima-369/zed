@@ -8643,6 +8643,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "jump"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "collections",
+ "editor",
+ "gpui",
+ "language",
+ "project",
+ "schemars 1.0.4",
+ "serde",
+ "settings",
+ "theme",
+ "ui",
+ "util",
+ "workspace",
+ "zed_actions",
+]
+
+[[package]]
 name = "jupyter-protocol"
 version = "0.6.0"
 source = "git+https://github.com/ConradIrwin/runtimed?rev=7130c804216b6914355d15d0b91ea91f6babd734#7130c804216b6914355d15d0b91ea91f6babd734"
@@ -21199,6 +21219,7 @@ dependencies = [
  "itertools 0.14.0",
  "journal",
  "json_schema_store",
+ "jump",
  "keymap_editor",
  "language",
  "language_extension",

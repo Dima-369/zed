@@ -49,6 +49,13 @@ pub mod test;
 
 pub(crate) use actions::*;
 pub use display_map::{ChunkRenderer, ChunkRendererContext, DisplayPoint, FoldPlaceholder};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct JumpLabel {
+    pub position: DisplayPoint,
+    pub label: String,
+    pub match_length: usize,
+}
 pub use edit_prediction::Direction;
 pub use editor_settings::{
     CurrentLineHighlight, DocumentColorsRenderMode, EditorSettings, HideMouseMode,
@@ -1153,6 +1160,7 @@ pub struct Editor {
     serialize_folds: Task<()>,
     mouse_cursor_hidden: bool,
     minimap: Option<Entity<Self>>,
+    pub jump_labels: Vec<JumpLabel>,
     hide_mouse_mode: HideMouseMode,
     pub change_list: ChangeList,
     inline_value_cache: InlineValueCache,
@@ -1724,7 +1732,13 @@ impl Editor {
         clone.scroll_manager.clone_state(&self.scroll_manager);
         clone.searchable = self.searchable;
         clone.read_only = self.read_only;
+        clone.jump_labels = self.jump_labels.clone();
         clone
+    }
+
+    pub fn set_jump_labels(&mut self, labels: Vec<JumpLabel>, cx: &mut Context<Self>) {
+        self.jump_labels = labels;
+        cx.notify();
     }
 
     pub fn new(
@@ -2228,6 +2242,7 @@ impl Editor {
             temporary_diff_override: false,
             mouse_cursor_hidden: false,
             minimap: None,
+            jump_labels: Vec::new(),
             hide_mouse_mode: EditorSettings::get_global(cx)
                 .hide_mouse
                 .unwrap_or_default(),

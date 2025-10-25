@@ -166,7 +166,8 @@
       "cmd->": "agent::AddSelectionToThread",
       "cmd-<": "assistant::InsertIntoEditor",
       "cmd-alt-e": "editor::SelectEnclosingSymbol",
-      "alt-enter": "editor::OpenSelectionsInMultibuffer"
+      "alt-enter": "editor::OpenSelectionsInMultibuffer",
+      "cmd-k j": "jump::Toggle"
     }
   },
   {

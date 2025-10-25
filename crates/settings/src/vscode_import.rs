@@ -190,6 +190,7 @@ impl VsCodeSettings {
             helix_mode: None,
             image_viewer: None,
             journal: None,
+            jump: None,
             language_models: None,
             line_indicator_format: None,
             log: None,
