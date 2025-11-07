@@ -524,7 +524,7 @@ impl Render for JumpBar {
                 .border_1()
                 .border_color(cx.theme().colors().border)
                 .rounded_md()
-                .bg(cx.theme().colors().editor_background)
+                .bg(cx.theme().colors().editor_background.opacity(0.5))
                 .shadow_lg()
                 .min_w_64()
                 .max_w_96()
