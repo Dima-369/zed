@@ -16386,7 +16386,6 @@ if add_trailing_newline {
 
         let errors_only = GoToDiagnosticSeverityFilter::Only(GoToDiagnosticSeverity::Error);
         let before_errors: Vec<_> = filtered(
-            snapshot.clone(),
             errors_only,
             buffer
                 .diagnostics_in_range(0..selection.start)
@@ -16394,7 +16393,6 @@ if add_trailing_newline {
         )
         .collect();
         let after_errors: Vec<_> = filtered(
-            snapshot.clone(),
             errors_only,
             buffer
                 .diagnostics_in_range(selection.start..buffer.len())

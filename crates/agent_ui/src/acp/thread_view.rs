@@ -4735,7 +4735,7 @@ impl AcpThreadView {
 
             buffer.update(cx, |buffer, cx| {
                 buffer.set_text(markdown, cx);
-                buffer.set_language(Some(markdown_language), cx);
+                buffer.set_language(Some(language), cx);
                 buffer.set_capability(language::Capability::ReadOnly, cx);
             })?;
 
