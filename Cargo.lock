@@ -32,6 +32,7 @@ dependencies = [
  "settings",
  "smol",
  "task",
+ "telemetry",
  "tempfile",
  "terminal",
  "ui",
@@ -39,6 +40,7 @@ dependencies = [
  "util",
  "uuid",
  "watch",
+ "zlog",
 ]
 
 [[package]]
@@ -79,6 +81,7 @@ dependencies = [
  "rand 0.9.2",
  "serde_json",
  "settings",
+ "telemetry",
  "text",
  "util",
  "watch",
@@ -1351,6 +1354,7 @@ dependencies = [
  "anyhow",
  "log",
  "simplelog",
+ "tempfile",
  "windows 0.61.3",
  "winresource",
 ]
@@ -3197,7 +3201,9 @@ dependencies = [
  "indoc",
  "ordered-float 2.10.1",
  "rustc-hash 2.1.1",
+ "schemars 1.0.4",
  "serde",
+ "serde_json",
  "strum 0.27.2",
 ]
 
@@ -4936,6 +4942,7 @@ dependencies = [
  "editor",
  "gpui",
  "indoc",
+ "itertools 0.14.0",
  "language",
  "log",
  "lsp",
@@ -5837,8 +5844,6 @@ name = "extension"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-compression",
- "async-tar",
  "async-trait",
  "collections",
  "dap",
@@ -6419,7 +6424,7 @@ dependencies = [
  "ignore",
  "libc",
  "log",
- "notify 8.0.0",
+ "notify 8.2.0",
  "objc",
  "parking_lot",
  "paths",
@@ -6976,7 +6981,7 @@ dependencies = [
 [[package]]
 name = "gh-workflow"
 version = "0.8.0"
-source = "git+https://github.com/zed-industries/gh-workflow?rev=0090c6b6ef82fff02bc8616645953e778d1acc08#0090c6b6ef82fff02bc8616645953e778d1acc08"
+source = "git+https://github.com/zed-industries/gh-workflow?rev=3eaa84abca0778eb54272f45a312cb24f9a0b435#3eaa84abca0778eb54272f45a312cb24f9a0b435"
 dependencies = [
  "async-trait",
  "derive_more 2.0.1",
@@ -6993,7 +6998,7 @@ dependencies = [
 [[package]]
 name = "gh-workflow-macros"
 version = "0.8.0"
-source = "git+https://github.com/zed-industries/gh-workflow?rev=0090c6b6ef82fff02bc8616645953e778d1acc08#0090c6b6ef82fff02bc8616645953e778d1acc08"
+source = "git+https://github.com/zed-industries/gh-workflow?rev=3eaa84abca0778eb54272f45a312cb24f9a0b435#3eaa84abca0778eb54272f45a312cb24f9a0b435"
 dependencies = [
  "heck 0.5.0",
  "quote",
@@ -7093,6 +7098,7 @@ dependencies = [
  "serde_json",
  "settings",
  "url",
+ "urlencoding",
  "util",
 ]
 
@@ -7105,7 +7111,6 @@ dependencies = [
  "askpass",
  "buffer_diff",
  "call",
- "chrono",
  "cloud_llm_client",
  "collections",
  "command_palette_hooks",
@@ -7131,6 +7136,8 @@ dependencies = [
  "picker",
  "pretty_assertions",
  "project",
+ "recent_projects",
+ "remote",
  "schemars 1.0.4",
  "serde",
  "serde_json",
@@ -9060,6 +9067,7 @@ dependencies = [
  "settings",
  "smol",
  "task",
+ "terminal",
  "text",
  "theme",
  "toml 0.8.23",
@@ -9707,6 +9715,7 @@ dependencies = [
  "settings",
  "theme",
  "ui",
+ "urlencoding",
  "util",
  "workspace",
 ]
@@ -10441,11 +10450,10 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "8.0.0"
-source = "git+https://github.com/zed-industries/notify.git?rev=bbb9ea5ae52b253e095737847e367c30653a2e96#bbb9ea5ae52b253e095737847e367c30653a2e96"
+version = "8.2.0"
+source = "git+https://github.com/zed-industries/notify.git?rev=b4588b2e5aee68f4c0e100f140e808cbce7b1419#b4588b2e5aee68f4c0e100f140e808cbce7b1419"
 dependencies = [
  "bitflags 2.9.4",
- "filetime",
  "fsevent-sys 4.1.0",
  "inotify 0.11.0",
  "kqueue",
@@ -10454,7 +10462,7 @@ dependencies = [
  "mio 1.1.0",
  "notify-types",
  "walkdir",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -10471,7 +10479,7 @@ dependencies = [
 [[package]]
 name = "notify-types"
 version = "2.0.0"
-source = "git+https://github.com/zed-industries/notify.git?rev=bbb9ea5ae52b253e095737847e367c30653a2e96#bbb9ea5ae52b253e095737847e367c30653a2e96"
+source = "git+https://github.com/zed-industries/notify.git?rev=b4588b2e5aee68f4c0e100f140e808cbce7b1419#b4588b2e5aee68f4c0e100f140e808cbce7b1419"
 
 [[package]]
 name = "now"
@@ -12751,12 +12759,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5da3b0203fd7ee5720aa0b5e790b591aa5d3f41c3ed2c34a3a393382198af2f7"
 
 [[package]]
-name = "pollster"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f3a9f18d041e6d0e102a0a46750538147e5e8992d3b4873aaafee2520b00ce3"
-
-[[package]]
 name = "portable-atomic"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12804,7 +12806,7 @@ dependencies = [
  "log",
  "parking_lot",
  "pin-project",
- "pollster 0.2.5",
+ "pollster",
  "static_assertions",
  "thiserror 1.0.69",
 ]
@@ -14032,6 +14034,7 @@ dependencies = [
  "gpui",
  "gpui_tokio",
  "http_client",
+ "image",
  "json_schema_store",
  "language",
  "language_extension",
@@ -14379,6 +14382,7 @@ dependencies = [
  "gpui",
  "log",
  "rand 0.9.2",
+ "rayon",
  "sum_tree",
  "unicode-segmentation",
  "util",
@@ -16306,7 +16310,6 @@ checksum = "2b2231b7c3057d5e4ad0156fb3dc807d900806020c5ffa3ee6ff2c8c76fb8520"
 name = "streaming_diff"
 version = "0.1.0"
 dependencies = [
- "gpui",
  "ordered-float 2.10.1",
  "rand 0.9.2",
  "rope",
@@ -16425,11 +16428,9 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "ctor",
- "futures 0.3.31",
- "itertools 0.14.0",
  "log",
- "pollster 0.4.0",
  "rand 0.9.2",
+ "rayon",
  "zlog",
 ]
 
@@ -18114,7 +18115,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-gomod"
 version = "1.1.1"
-source = "git+https://github.com/camdencheek/tree-sitter-go-mod?rev=6efb59652d30e0e9cd5f3b3a669afd6f1a926d3c#6efb59652d30e0e9cd5f3b3a669afd6f1a926d3c"
+source = "git+https://github.com/camdencheek/tree-sitter-go-mod?rev=2e886870578eeba1927a2dc4bd2e2b3f598c5f9a#2e886870578eeba1927a2dc4bd2e2b3f598c5f9a"
 dependencies = [
  "cc",
  "tree-sitter-language",
@@ -18683,6 +18684,7 @@ dependencies = [
  "itertools 0.14.0",
  "libc",
  "log",
+ "mach2 0.5.0",
  "nix 0.29.0",
  "pretty_assertions",
  "rand 0.9.2",
@@ -21016,6 +21018,7 @@ dependencies = [
  "gh-workflow",
  "indexmap 2.11.4",
  "indoc",
+ "serde",
  "toml 0.8.23",
  "toml_edit 0.22.27",
 ]
@@ -21200,7 +21203,7 @@ dependencies = [
 
 [[package]]
 name = "zed"
-version = "0.212.0"
+version = "0.213.0"
 dependencies = [
  "acp_tools",
  "activity_indicator",
@@ -21294,6 +21297,7 @@ dependencies = [
  "project_symbols",
  "prompt_store",
  "proto",
+ "rayon",
  "recent_files",
  "recent_projects",
  "release_channel",
@@ -21741,10 +21745,10 @@ dependencies = [
  "language_model",
  "log",
  "lsp",
+ "open_ai",
  "pretty_assertions",
  "project",
  "release_channel",
- "schemars 1.0.4",
  "serde",
  "serde_json",
  "settings",
@@ -21753,6 +21757,7 @@ dependencies = [
  "uuid",
  "workspace",
  "worktree",
+ "zlog",
 ]
 
 [[package]]
@@ -21809,6 +21814,7 @@ dependencies = [
  "futures 0.3.31",
  "gpui",
  "gpui_tokio",
+ "indoc",
  "language",
  "language_extension",
  "language_model",
@@ -21819,6 +21825,7 @@ dependencies = [
  "ordered-float 2.10.1",
  "paths",
  "polars",
+ "pretty_assertions",
  "project",
  "prompt_store",
  "pulldown-cmark 0.12.2",

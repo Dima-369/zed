@@ -19,12 +19,13 @@ use pet_core::python_environment::{PythonEnvironment, PythonEnvironmentKind};
 use pet_virtualenv::is_virtualenv_dir;
 use project::Fs;
 use project::lsp_store::language_server_settings;
-use rope::Rope;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use settings::Settings;
 use smol::lock::OnceCell;
 use std::cmp::Ordering;
 use std::env::consts;
+use terminal::terminal_settings::TerminalSettings;
 use util::command::new_smol_command;
 use util::fs::{make_file_executable, remove_matching};
 use util::rel_path::RelPath;
@@ -407,6 +408,7 @@ impl LspAdapter for PyrightLspAdapter {
         language: &Arc<language::Language>,
     ) -> Option<language::CodeLabel> {
         let label = &item.label;
+        let label_len = label.len();
         let grammar = language.grammar()?;
         let highlight_id = match item.kind? {
             lsp::CompletionItemKind::METHOD => grammar.highlight_id_for_name("function.method"),
@@ -428,9 +430,10 @@ impl LspAdapter for PyrightLspAdapter {
         }
         Some(language::CodeLabel::filtered(
             text,
+            label_len,
             item.filter_text.as_deref(),
             highlight_id
-                .map(|id| (0..label.len(), id))
+                .map(|id| (0..label_len, id))
                 .into_iter()
                 .collect(),
         ))
@@ -467,7 +470,7 @@ impl LspAdapter for PyrightLspAdapter {
         Some(language::CodeLabel::new(
             text[display_range.clone()].to_string(),
             filter_range,
-            language.highlight_text(&Rope::from_str_small(text.as_str()), display_range),
+            language.highlight_text(&text.as_str().into(), display_range),
         ))
     }
 
@@ -1170,7 +1173,7 @@ impl ToolchainLister for PythonToolchainProvider {
             .context("Could not convert a venv into a toolchain")
     }
 
-    fn activation_script(&self, toolchain: &Toolchain, shell: ShellKind) -> Vec<String> {
+    fn activation_script(&self, toolchain: &Toolchain, shell: ShellKind, cx: &App) -> Vec<String> {
         let Ok(toolchain) =
             serde_json::from_value::<PythonToolchainData>(toolchain.as_json.clone())
         else {
@@ -1183,10 +1186,34 @@ impl ToolchainLister for PythonToolchainProvider {
 
         match toolchain.environment.kind {
             Some(PythonEnvironmentKind::Conda) => {
+                let settings = TerminalSettings::get_global(cx);
+                let conda_manager = settings
+                    .detect_venv
+                    .as_option()
+                    .map(|venv| venv.conda_manager)
+                    .unwrap_or(settings::CondaManager::Auto);
+
+                let manager = match conda_manager {
+                    settings::CondaManager::Conda => "conda",
+                    settings::CondaManager::Mamba => "mamba",
+                    settings::CondaManager::Micromamba => "micromamba",
+                    settings::CondaManager::Auto => {
+                        // When auto, prefer the detected manager or fall back to conda
+                        toolchain
+                            .environment
+                            .manager
+                            .as_ref()
+                            .and_then(|m| m.executable.file_name())
+                            .and_then(|name| name.to_str())
+                            .filter(|name| matches!(*name, "conda" | "mamba" | "micromamba"))
+                            .unwrap_or("conda")
+                    }
+                };
+
                 if let Some(name) = &toolchain.environment.name {
-                    activation_script.push(format!("conda activate {name}"));
+                    activation_script.push(format!("{manager} activate {name}"));
                 } else {
-                    activation_script.push("conda activate".to_string());
+                    activation_script.push(format!("{manager} activate base"));
                 }
             }
             Some(PythonEnvironmentKind::Venv | PythonEnvironmentKind::VirtualEnv) => {
@@ -1211,13 +1238,14 @@ impl ToolchainLister for PythonToolchainProvider {
                 activation_script.extend(match shell {
                     ShellKind::Fish => Some(format!("\"{pyenv}\" shell - fish {version}")),
                     ShellKind::Posix => Some(format!("\"{pyenv}\" shell - sh {version}")),
-                    ShellKind::Nushell => Some(format!("\"{pyenv}\" shell - nu {version}")),
+                    ShellKind::Nushell => Some(format!("^\"{pyenv}\" shell - nu {version}")),
                     ShellKind::PowerShell => None,
                     ShellKind::Csh => None,
                     ShellKind::Tcsh => None,
                     ShellKind::Cmd => None,
                     ShellKind::Rc => None,
                     ShellKind::Xonsh => None,
+                    ShellKind::Elvish => None,
                 })
             }
             _ => {}
@@ -1467,6 +1495,7 @@ impl LspAdapter for PyLspAdapter {
         language: &Arc<language::Language>,
     ) -> Option<language::CodeLabel> {
         let label = &item.label;
+        let label_len = label.len();
         let grammar = language.grammar()?;
         let highlight_id = match item.kind? {
             lsp::CompletionItemKind::METHOD => grammar.highlight_id_for_name("function.method")?,
@@ -1477,6 +1506,7 @@ impl LspAdapter for PyLspAdapter {
         };
         Some(language::CodeLabel::filtered(
             label.clone(),
+            label_len,
             item.filter_text.as_deref(),
             vec![(0..label.len(), highlight_id)],
         ))
@@ -1512,7 +1542,7 @@ impl LspAdapter for PyLspAdapter {
         Some(language::CodeLabel::new(
             text[display_range.clone()].to_string(),
             filter_range,
-            language.highlight_text(&Rope::from_str_small(text.as_str()), display_range),
+            language.highlight_text(&text.as_str().into(), display_range),
         ))
     }
 
@@ -1742,6 +1772,7 @@ impl LspAdapter for BasedPyrightLspAdapter {
         language: &Arc<language::Language>,
     ) -> Option<language::CodeLabel> {
         let label = &item.label;
+        let label_len = label.len();
         let grammar = language.grammar()?;
         let highlight_id = match item.kind? {
             lsp::CompletionItemKind::METHOD => grammar.highlight_id_for_name("function.method"),
@@ -1763,6 +1794,7 @@ impl LspAdapter for BasedPyrightLspAdapter {
         }
         Some(language::CodeLabel::filtered(
             text,
+            label_len,
             item.filter_text.as_deref(),
             highlight_id
                 .map(|id| (0..label.len(), id))
@@ -1801,7 +1833,7 @@ impl LspAdapter for BasedPyrightLspAdapter {
         Some(language::CodeLabel::new(
             text[display_range.clone()].to_string(),
             filter_range,
-            language.highlight_text(&Rope::from_str_small(text.as_str()), display_range),
+            language.highlight_text(&text.as_str().into(), display_range),
         ))
     }
 

@@ -276,7 +276,7 @@ impl VsCodeSettings {
             }),
             redact_private_values: None,
             relative_line_numbers: self.read_enum("editor.lineNumbers", |s| match s {
-                "relative" => Some(true),
+                "relative" => Some(RelativeLineNumbers::Enabled),
                 _ => None,
             }),
             rounded_selection: self.read_bool("editor.roundedSelection"),
@@ -300,6 +300,7 @@ impl VsCodeSettings {
             toolbar: None,
             use_smartcase_search: self.read_bool("search.smartCase"),
             vertical_scroll_margin: self.read_f32("editor.cursorSurroundingLines"),
+            completion_menu_scrollbar: None,
         }
     }
 
@@ -876,6 +877,7 @@ impl VsCodeSettings {
                 })
                 .filter(|r| !r.is_empty()),
             private_files: None,
+            hidden_files: None,
         }
     }
 }
