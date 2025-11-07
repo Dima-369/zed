@@ -752,7 +752,7 @@ fn deepl_translate(
     };
 
     let (selections, buffer_snapshot, replace_whole_line) = editor.update(cx, |editor, cx| {
-        let selections = editor.selections.all::<usize>(cx);
+        let selections = editor.selections.all::<usize>(&editor.display_snapshot(cx));
         let buffer = editor.buffer().read(cx);
         let snapshot = buffer.snapshot(cx);
         let has_selection = !selections.is_empty() && selections.iter().any(|s| s.start != s.end);
