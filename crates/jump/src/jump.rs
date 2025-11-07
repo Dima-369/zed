@@ -139,10 +139,10 @@ impl JumpBar {
             return Vec::new();
         }
 
-        // Priority order: home row first, then top row, then bottom row
-        // Then uppercase versions of the same
-        let lowercase_priority = "asdfghjkl;weruioptyzxcvbnm,";
-        let uppercase_priority = "ASDFGHJKL:WERUIOPTYZXCVBNM<";
+        // my custom Dvorak Programmer keyboard layout
+        // first home row, then top row, then bottom row without pinky finger keys (s and l)
+        let lowercase_priority = "htndueoifgcrypzbmwvxkjq";
+        let uppercase_priority = "HTNDUEOIFGCRYPZBMWVXKJQ";
 
         let mut priority_chars: Vec<char> = lowercase_priority.chars().collect();
         priority_chars.extend(uppercase_priority.chars());
