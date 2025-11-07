@@ -8,9 +8,8 @@ use serde::{Deserialize, Serialize};
 
 pub use settings::AlternateScroll;
 use settings::{
-    CursorShapeContent, SettingsContent, ShowScrollbar, TerminalBlink, TerminalDockPosition,
-    TerminalLineHeight, TerminalSettingsContent, VenvSettings, WorkingDirectory,
-    merge_from::MergeFrom,
+    ShowScrollbar, TerminalBlink, TerminalDockPosition, TerminalLineHeight, VenvSettings,
+    WorkingDirectory, merge_from::MergeFrom,
 };
 use task::Shell;
 use theme::FontFamilyName;
@@ -31,7 +30,7 @@ pub struct TerminalSettings {
     pub font_weight: Option<FontWeight>,
     pub line_height: TerminalLineHeight,
     pub env: HashMap<String, String>,
-    pub cursor_shape: Option<CursorShape>,
+    pub cursor_shape: CursorShape,
     pub blinking: TerminalBlink,
     pub alternate_scroll: AlternateScroll,
     pub option_as_meta: bool,
@@ -67,7 +66,7 @@ fn settings_shell_to_task_shell(shell: settings::Shell) -> Shell {
         } => Shell::WithArguments {
             program,
             args,
-            title_override,
+            title_override: title_override.map(Into::into),
         },
     }
 }
@@ -95,7 +94,7 @@ impl settings::Settings for TerminalSettings {
             font_weight: user_content.font_weight.map(FontWeight),
             line_height: user_content.line_height.unwrap(),
             env: project_content.env.unwrap(),
-            cursor_shape: user_content.cursor_shape.map(Into::into),
+            cursor_shape: user_content.cursor_shape.unwrap().into(),
             blinking: user_content.blinking.unwrap(),
             alternate_scroll: user_content.alternate_scroll.unwrap(),
             option_as_meta: user_content.option_as_meta.unwrap(),
@@ -114,79 +113,6 @@ impl settings::Settings for TerminalSettings {
                 show: user_content.scrollbar.unwrap().show,
             },
             minimum_contrast: user_content.minimum_contrast.unwrap(),
-        }
-    }
-
-    fn import_from_vscode(vscode: &settings::VsCodeSettings, content: &mut SettingsContent) {
-        let mut default = TerminalSettingsContent::default();
-        let current = content.terminal.as_mut().unwrap_or(&mut default);
-        let name = |s| format!("terminal.integrated.{s}");
-
-        vscode.f32_setting(&name("fontSize"), &mut current.font_size);
-        if let Some(font_family) = vscode.read_string(&name("fontFamily")) {
-            current.font_family = Some(FontFamilyName(font_family.into()));
-        }
-        vscode.bool_setting(&name("copyOnSelection"), &mut current.copy_on_select);
-        vscode.bool_setting("macOptionIsMeta", &mut current.option_as_meta);
-        vscode.usize_setting("scrollback", &mut current.max_scroll_history_lines);
-        match vscode.read_bool(&name("cursorBlinking")) {
-            Some(true) => current.blinking = Some(TerminalBlink::On),
-            Some(false) => current.blinking = Some(TerminalBlink::Off),
-            None => {}
-        }
-        vscode.enum_setting(
-            &name("cursorStyle"),
-            &mut current.cursor_shape,
-            |s| match s {
-                "block" => Some(CursorShapeContent::Block),
-                "line" => Some(CursorShapeContent::Bar),
-                "underline" => Some(CursorShapeContent::Underline),
-                _ => None,
-            },
-        );
-        // they also have "none" and "outline" as options but just for the "Inactive" variant
-        if let Some(height) = vscode
-            .read_value(&name("lineHeight"))
-            .and_then(|v| v.as_f64())
-        {
-            current.line_height = Some(TerminalLineHeight::Custom(height as f32))
-        }
-
-        #[cfg(target_os = "windows")]
-        let platform = "windows";
-        #[cfg(target_os = "linux")]
-        let platform = "linux";
-        #[cfg(target_os = "macos")]
-        let platform = "osx";
-        #[cfg(target_os = "freebsd")]
-        let platform = "freebsd";
-
-        // TODO: handle arguments
-        let shell_name = format!("{platform}Exec");
-        if let Some(s) = vscode.read_string(&name(&shell_name)) {
-            current.project.shell = Some(settings::Shell::Program(s.to_owned()))
-        }
-
-        if let Some(env) = vscode
-            .read_value(&name(&format!("env.{platform}")))
-            .and_then(|v| v.as_object())
-        {
-            for (k, v) in env {
-                if v.is_null()
-                    && let Some(zed_env) = current.project.env.as_mut()
-                {
-                    zed_env.remove(k);
-                }
-                let Some(v) = v.as_str() else { continue };
-                if let Some(zed_env) = current.project.env.as_mut() {
-                    zed_env.insert(k.clone(), v.to_owned());
-                } else {
-                    current.project.env = Some([(k.clone(), v.to_owned())].into_iter().collect())
-                }
-            }
-        }
-        if content.terminal.is_none() && default != TerminalSettingsContent::default() {
-            content.terminal = Some(default)
         }
     }
 }

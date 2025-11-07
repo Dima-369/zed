@@ -5,8 +5,6 @@ use std::{
 
 use async_task::Runnable;
 use flume::Sender;
-use parking::Parker;
-use parking_lot::Mutex;
 use util::ResultExt;
 use windows::{
     System::Threading::{
@@ -24,7 +22,6 @@ use crate::{
 
 pub(crate) struct WindowsDispatcher {
     main_sender: Sender<Runnable>,
-    parker: Mutex<Parker>,
     main_thread_id: ThreadId,
     platform_window_handle: SafeHwnd,
     validation_number: usize,
@@ -36,13 +33,11 @@ impl WindowsDispatcher {
         platform_window_handle: HWND,
         validation_number: usize,
     ) -> Self {
-        let parker = Mutex::new(Parker::new());
         let main_thread_id = current().id();
         let platform_window_handle = platform_window_handle.into();
 
         WindowsDispatcher {
             main_sender,
-            parker,
             main_thread_id,
             platform_window_handle,
             validation_number,
@@ -85,15 +80,27 @@ impl PlatformDispatcher for WindowsDispatcher {
     }
 
     fn dispatch_on_main_thread(&self, runnable: Runnable) {
+        let was_empty = self.main_sender.is_empty();
         match self.main_sender.send(runnable) {
             Ok(_) => unsafe {
-                PostMessageW(
-                    Some(self.platform_window_handle.as_raw()),
-                    WM_GPUI_TASK_DISPATCHED_ON_MAIN_THREAD,
-                    WPARAM(self.validation_number),
-                    LPARAM(0),
-                )
-                .log_err();
+                // Only send a `WM_GPUI_TASK_DISPATCHED_ON_MAIN_THREAD` to the
+                // queue if we have no runnables queued up yet, otherwise we
+                // risk filling the message queue with gpui messages causing us
+                // to starve the message loop of system messages, resulting in a
+                // process hang.
+                //
+                // When the message loop receives a
+                // `WM_GPUI_TASK_DISPATCHED_ON_MAIN_THREAD` message we drain the
+                // runnable queue entirely.
+                if was_empty {
+                    PostMessageW(
+                        Some(self.platform_window_handle.as_raw()),
+                        WM_GPUI_TASK_DISPATCHED_ON_MAIN_THREAD,
+                        WPARAM(self.validation_number),
+                        LPARAM(0),
+                    )
+                    .log_err();
+                }
             },
             Err(runnable) => {
                 // NOTE: Runnable may wrap a Future that is !Send.
@@ -111,18 +118,5 @@ impl PlatformDispatcher for WindowsDispatcher {
 
     fn dispatch_after(&self, duration: Duration, runnable: Runnable) {
         self.dispatch_on_threadpool_after(runnable, duration);
-    }
-
-    fn park(&self, timeout: Option<Duration>) -> bool {
-        if let Some(timeout) = timeout {
-            self.parker.lock().park_timeout(timeout)
-        } else {
-            self.parker.lock().park();
-            true
-        }
-    }
-
-    fn unparker(&self) -> parking::Unparker {
-        self.parker.lock().unparker()
     }
 }

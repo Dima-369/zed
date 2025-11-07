@@ -23,5 +23,4 @@ settings.workspace = true
 snippet_provider.workspace = true
 ui.workspace = true
 util.workspace = true
-workspace-hack.workspace = true
 workspace.workspace = true
