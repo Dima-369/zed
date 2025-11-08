@@ -36,6 +36,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - moving up/down in outline panel does not wrap around anymore
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the second part is still untested)
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
+- modified `vim/.../delete_motion.rs` so `vim::DeleteRight` at end of line stays on the newline character
 
 ### Command palette
 

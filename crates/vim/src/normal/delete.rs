@@ -71,7 +71,6 @@ impl Vim {
                 editor.insert("", window, cx);
 
                 // Fixup cursor position after the deletion
-                editor.set_clip_at_line_ends(true, cx);
                 editor.change_selections(Default::default(), window, cx, |s| {
                     s.move_with(|map, selection| {
                         let mut cursor = selection.head();
@@ -80,10 +79,19 @@ impl Vim {
                         {
                             *cursor.column_mut() = *column
                         }
-                        cursor = map.clip_point(cursor, Bias::Left);
+
+                        // For character-wise deletions, allow cursor to be positioned at line end
+                        // This is important when deleting the last character of a line
+                        if kind.linewise() {
+                            cursor = map.clip_point(cursor, Bias::Left);
+                        } else {
+                            // For character-wise deletions, use Right bias to allow positioning at line end
+                            cursor = map.clip_point(cursor, Bias::Right);
+                        }
                         selection.collapse_to(cursor, selection.goal)
                     });
                 });
+                editor.set_clip_at_line_ends(true, cx);
                 editor.refresh_edit_prediction(true, false, window, cx);
             });
         });
