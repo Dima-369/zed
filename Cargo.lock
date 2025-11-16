@@ -3542,7 +3542,6 @@ dependencies = [
  "db",
  "editor",
  "env_logger 0.11.8",
- "fuzzy",
  "go_to_line",
  "gpui",
  "language",
