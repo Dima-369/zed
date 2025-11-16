@@ -820,9 +820,6 @@ mod tests {
 
     #[test]
     fn test_order_insensitive_word_matching() {
-        use gpui::BackgroundExecutor;
-        use std::sync::atomic::AtomicBool;
-
         // Create test candidates
         let candidates = vec![
             StringMatchCandidate::new(0, "workspace: close"),
@@ -833,9 +830,6 @@ mod tests {
         ];
 
         // Test that "close work" and "work close" should match the same items
-        let executor = BackgroundExecutor::new(1);
-        let cancel_flag = AtomicBool::new(false);
-
         // We'll test the logic directly without async
         let query1 = "close work";
         let query2 = "work close";
