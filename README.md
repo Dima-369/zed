@@ -44,7 +44,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - the command palette sorting now sorts the same for `close work` and `work close`, and it does not search individual character matches like when you enter `clo wo`, it does not show `search: toggle whole word` because every individual character is contained
 - changed `command palette: toggle` to sort by recency instead of hit count
-- removed `GlobalCommandPaletteInterceptor` usage which contains Vim things like `:exit`, `:write`, etc. because I do not use them. I removed them because it was hard to sort those by recency. I am not yet sure if this has other negative consequences.
+- removed `GlobalCommandPaletteInterceptor` usage which contains Vim things like `:delete, :edit, :help, :join, :quit, :sort, :write, :xit, :yank` because I do not use them. I removed them because it is hard to sort those by recency in combination with the other real editor action commands. I am not yet sure if this has other negative consequences.
 
 ## New actions
 
