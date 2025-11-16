@@ -438,6 +438,11 @@ impl PickerDelegate for CommandPaletteDelegate {
                 let first_ten_matches: Vec<String> = matches.iter().take(10).map(|m| m.string.clone()).collect();
                 log::info!("Command Palette: Found {} matches for input query '{}', First 10 matches: {:?}", matches.len(), query, first_ten_matches);
 
+                // Log the position of ":edit" candidate if it exists
+                if let Some(pos) = matches.iter().position(|m| m.string.contains(": edit")) {
+                    log::info!("Command Palette: ':edit' candidate found at position {} with score {} and candidate_id {}", pos, matches[pos].score, matches[pos].candidate_id);
+                }
+
                 // Re-sort to factor in recency as a tie-breaker.
                 // `candidate_id` is the index in the recency-sorted `commands` list.
                 matches.sort_by(|a, b| {
