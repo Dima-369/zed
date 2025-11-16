@@ -14,18 +14,17 @@ use command_palette_hooks::{
 };
 
 use gpui::{
-    Action, App, BackgroundExecutor, Context, DismissEvent, Entity, EventEmitter, FocusHandle,
+    Action, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle,
     Focusable, ParentElement, Render, Styled, Task, WeakEntity, Window,
 };
 use persistence::COMMAND_PALETTE_HISTORY;
 use picker::{Picker, PickerDelegate};
 use postage::{sink::Sink, stream::Stream};
 use settings::Settings;
-use std::sync::atomic::AtomicBool;
 use ui::{HighlightedLabel, KeyBinding, ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
 use workspace::{ModalView, Workspace, WorkspaceSettings};
-use zed_actions::{OpenZedUrl, command_palette::Toggle};
+use zed_actions::command_palette::Toggle;
 
 pub fn init(cx: &mut App) {
     command_palette_hooks::init(cx);
@@ -322,18 +321,18 @@ impl PickerDelegate for CommandPaletteDelegate {
 
         let workspace = self.workspace.clone();
 
-        let intercept_task = GlobalCommandPaletteInterceptor::intercept(&query, workspace, cx);
+        let _intercept_task = GlobalCommandPaletteInterceptor::intercept(&query, workspace, cx);
 
         let (mut tx, mut rx) = postage::dispatch::channel(1);
 
         let query_str = query.as_str();
-        let is_zed_link = parse_zed_link(query_str, cx).is_some();
+        let _is_zed_link = parse_zed_link(query_str, cx).is_some();
 
         let task = cx.background_spawn({
             let mut commands = self.all_commands.clone();
             let last_invocation_times = self.last_invocation_times();
             let query = normalize_action_query(query_str);
-            let query_for_link = query_str.to_string();
+            let _query_for_link = query_str.to_string();
             async move {
                 commands.sort_by_key(|action| {
                     (
@@ -398,25 +397,10 @@ impl PickerDelegate for CommandPaletteDelegate {
                     );
                 }
 
-                let intercept_result = if is_zed_link {
-                    CommandInterceptResult {
-                        results: vec![CommandInterceptItem {
-                            action: OpenZedUrl {
-                                url: query_for_link.clone(),
-                            }
-                            .boxed_clone(),
-                            string: query_for_link,
-                            positions: vec![],
-                        }],
-                        exclusive: false,
-                    }
-                } else if let Some(task) = intercept_task {
-                    task.await
-                } else {
-                    CommandInterceptResult::default()
-                };
+                // Always use an empty intercept result to prevent special commands from being injected.
+                let intercept_result = CommandInterceptResult::default();
 
-                tx.send((commands, matches, intercept_result)).await;
+                let _ = tx.send((commands, matches, intercept_result)).await;
             }
         });
 
