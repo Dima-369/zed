@@ -20,8 +20,9 @@ use serde::{Deserialize, Serialize};
 pub use settings::DirenvSettings;
 pub use settings::LspSettings;
 use settings::{
-    DapSettingsContent, InvalidSettingsError, LocalSettingsKind, RegisterSetting, Settings,
-    SettingsLocation, SettingsStore, parse_json_with_comments, watch_config_file,
+    DapSettingsContent, GitGutterSetting, GitHunkStyleSetting, InvalidSettingsError,
+    LocalSettingsKind, RegisterSetting, Settings, SettingsLocation, SettingsStore,
+    parse_json_with_comments, watch_config_file,
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use task::{DebugTaskFile, TaskTemplates, VsCodeDebugTaskFile, VsCodeTaskFile};
@@ -448,37 +449,41 @@ pub struct LspPullDiagnosticsSettings {
 impl Settings for ProjectSettings {
     fn from_settings(content: &settings::SettingsContent) -> Self {
         let project = &content.project.clone();
-        let diagnostics = content.diagnostics.as_ref().unwrap();
-        let lsp_pull_diagnostics = diagnostics.lsp_pull_diagnostics.as_ref().unwrap();
-        let inline_diagnostics = diagnostics.inline.as_ref().unwrap();
+        let diagnostics_default = settings::DiagnosticsSettingsContent::default();
+        let diagnostics = content.diagnostics.as_ref().unwrap_or(&diagnostics_default);
+        let lsp_pull_diagnostics_default = settings::LspPullDiagnosticsSettingsContent::default();
+        let lsp_pull_diagnostics = diagnostics.lsp_pull_diagnostics.as_ref().unwrap_or(&lsp_pull_diagnostics_default);
+        let inline_diagnostics_default = settings::InlineDiagnosticsSettingsContent::default();
+        let inline_diagnostics = diagnostics.inline.as_ref().unwrap_or(&inline_diagnostics_default);
 
-        let git = content.git.as_ref().unwrap();
+        let git_default = settings::GitSettings::default();
+        let git = content.git.as_ref().unwrap_or(&git_default);
         let git_settings = GitSettings {
-            git_gutter: git.git_gutter.unwrap(),
+            git_gutter: git.git_gutter.unwrap_or(GitGutterSetting::TrackedFiles),
             gutter_debounce: git.gutter_debounce.unwrap_or_default(),
             inline_blame: {
-                let inline = git.inline_blame.unwrap();
+                let inline = git.inline_blame.unwrap_or_default();
                 InlineBlameSettings {
-                    enabled: inline.enabled.unwrap(),
-                    delay_ms: inline.delay_ms.unwrap(),
-                    padding: inline.padding.unwrap(),
-                    min_column: inline.min_column.unwrap(),
-                    show_commit_summary: inline.show_commit_summary.unwrap(),
+                    enabled: inline.enabled.unwrap_or(true),
+                    delay_ms: inline.delay_ms.unwrap_or_default(),
+                    padding: inline.padding.unwrap_or(7),
+                    min_column: inline.min_column.unwrap_or(0),
+                    show_commit_summary: inline.show_commit_summary.unwrap_or(false),
                 }
             },
             blame: {
-                let blame = git.blame.unwrap();
+                let blame = git.blame.unwrap_or_default();
                 BlameSettings {
-                    show_avatar: blame.show_avatar.unwrap(),
+                    show_avatar: blame.show_avatar.unwrap_or(true),
                 }
             },
             branch_picker: {
-                let branch_picker = git.branch_picker.unwrap();
+                let branch_picker = git.branch_picker.unwrap_or_default();
                 BranchPickerSettings {
-                    show_author_name: branch_picker.show_author_name.unwrap(),
+                    show_author_name: branch_picker.show_author_name.unwrap_or(false),
                 }
             },
-            hunk_style: git.hunk_style.unwrap(),
+            hunk_style: git.hunk_style.unwrap_or(GitHunkStyleSetting::StagedHollow),
         };
         Self {
             context_servers: project
@@ -497,9 +502,8 @@ impl Settings for ProjectSettings {
                 button: content
                     .global_lsp_settings
                     .as_ref()
-                    .unwrap()
-                    .button
-                    .unwrap(),
+                    .map(|settings| settings.button.unwrap_or(true))
+                    .unwrap_or(true),
             },
             dap: project
                 .dap
@@ -508,26 +512,26 @@ impl Settings for ProjectSettings {
                 .map(|(key, value)| (DebugAdapterName(key.into()), DapSettings::from(value)))
                 .collect(),
             diagnostics: DiagnosticsSettings {
-                button: diagnostics.button.unwrap(),
-                include_warnings: diagnostics.include_warnings.unwrap(),
+                button: diagnostics.button.unwrap_or(true),
+                include_warnings: diagnostics.include_warnings.unwrap_or(true),
                 lsp_pull_diagnostics: LspPullDiagnosticsSettings {
-                    enabled: lsp_pull_diagnostics.enabled.unwrap(),
-                    debounce_ms: lsp_pull_diagnostics.debounce_ms.unwrap().0,
+                    enabled: lsp_pull_diagnostics.enabled.unwrap_or(true),
+                    debounce_ms: lsp_pull_diagnostics.debounce_ms.unwrap_or_default().0,
                 },
                 inline: InlineDiagnosticsSettings {
-                    enabled: inline_diagnostics.enabled.unwrap(),
-                    update_debounce_ms: inline_diagnostics.update_debounce_ms.unwrap().0,
-                    padding: inline_diagnostics.padding.unwrap(),
-                    min_column: inline_diagnostics.min_column.unwrap(),
+                    enabled: inline_diagnostics.enabled.unwrap_or(false),
+                    update_debounce_ms: inline_diagnostics.update_debounce_ms.unwrap_or_default().0,
+                    padding: inline_diagnostics.padding.unwrap_or(4),
+                    min_column: inline_diagnostics.min_column.unwrap_or(0),
                     max_severity: inline_diagnostics.max_severity.map(Into::into),
                 },
-                merge_same_range: diagnostics.merge_same_range.unwrap(),
+                merge_same_range: diagnostics.merge_same_range.unwrap_or(false),
             },
             git: git_settings,
-            node: content.node.clone().unwrap().into(),
-            load_direnv: project.load_direnv.clone().unwrap(),
+            node: content.node.clone().unwrap_or_default().into(),
+            load_direnv: project.load_direnv.clone().unwrap_or_default(),
             session: SessionSettings {
-                restore_unsaved_buffers: content.session.unwrap().restore_unsaved_buffers.unwrap(),
+                restore_unsaved_buffers: content.session.clone().unwrap_or_default().restore_unsaved_buffers.unwrap_or(true),
             },
         }
     }
