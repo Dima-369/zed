@@ -108,16 +108,16 @@ where
         let candidate_string = &candidate_borrowed.string;
         let candidate_lower = candidate_string.to_lowercase();
 
-        let mut total_score = 0.0;
         let mut all_positions = Vec::new();
         let mut all_words_found = true;
         for word in &words {
-            if let Some(pos) = candidate_lower.find(word) {
-                total_score += 1.0 / (pos as f64 + 1.0);
+            if candidate_lower.contains(word) {
+                // This logic is just for highlighting the matches, so it can stay.
                 for (start, matched_word) in candidate_lower.match_indices(word) {
                     all_positions.extend(start..(start + matched_word.len()));
                 }
             } else {
+                // If any word from the query isn't found, it's not a match.
                 all_words_found = false;
                 break;
             }
@@ -129,7 +129,7 @@ where
 
             results.push(StringMatch {
                 candidate_id: candidate_borrowed.id,
-                score: total_score,
+                score: 1.0, // Give all matches the same score to force recency sorting.
                 positions: all_positions,
                 string: candidate_string.clone(),
             });
@@ -426,30 +426,14 @@ impl PickerDelegate for CommandPaletteDelegate {
                 let first_ten_candidates: Vec<String> = candidates.iter().take(10).map(|c| c.string.clone()).collect();
                 log::info!("Command Palette: Input query = '{}', Total candidates = {}, First 10 candidates: {:?}", query, candidates.len(), first_ten_candidates);
 
-                let mut matches = if query.trim().contains(' ') {
-                    // For multi-word queries, use order-insensitive matching
-                    // This prevents scattered character matching for longer queries
-                    match_strings_order_insensitive(
-                        &candidates,
-                        &query,
-                        10000,
-                        &Default::default(),
-                        executor,
-                    )
-                    .await
-                } else {
-                    // For single-word queries, use the original fuzzy matching
-                    fuzzy::match_strings(
-                        &candidates,
-                        &query,
-                        true,
-                        false, // Disable penalize_length to reduce bias toward shorter commands
-                        10000,
-                        &Default::default(),
-                        executor,
-                    )
-                    .await
-                };
+                let mut matches = match_strings_order_insensitive(
+                    &candidates,
+                    &query,
+                    10000,
+                    &Default::default(),
+                    executor,
+                )
+                .await;
 
                 let first_ten_matches: Vec<String> = matches.iter().take(10).map(|m| m.string.clone()).collect();
                 log::info!("Command Palette: Found {} matches for input query '{}', First 10 matches: {:?}", matches.len(), query, first_ten_matches);
