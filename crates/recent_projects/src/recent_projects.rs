@@ -152,8 +152,6 @@ where
 }
 
 pub fn init(cx: &mut App) {
-    SshSettings::register(cx);
-
     #[cfg(target_os = "windows")]
     cx.on_action(|open_wsl: &zed_actions::wsl_actions::OpenFolderInWsl, cx| {
         let create_new_window = open_wsl.create_new_window;
@@ -1249,10 +1247,9 @@ impl Render for MatchTooltip {
 mod tests {
     use std::path::PathBuf;
 
-    use dap::debugger_settings::DebuggerSettings;
     use editor::Editor;
     use gpui::{TestAppContext, UpdateGlobal, WindowHandle};
-    use project::Project;
+
     use serde_json::json;
     use settings::SettingsStore;
     use util::path;
@@ -1398,12 +1395,8 @@ mod tests {
     fn init_test(cx: &mut TestAppContext) -> Arc<AppState> {
         cx.update(|cx| {
             let state = AppState::test(cx);
-            language::init(cx);
             crate::init(cx);
             editor::init(cx);
-            workspace::init_settings(cx);
-            DebuggerSettings::register(cx);
-            Project::init_settings(cx);
             state
         })
     }
