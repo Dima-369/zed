@@ -68,8 +68,6 @@ pub fn normalize_action_query(input: &str) -> String {
 async fn match_strings_order_insensitive<T>(
     candidates: &[T],
     query: &str,
-    _smart_case: bool,
-    _penalize_length: bool,
     max_results: usize,
     cancel_flag: &AtomicBool,
     _executor: BackgroundExecutor,
@@ -428,8 +426,6 @@ impl PickerDelegate for CommandPaletteDelegate {
                     match_strings_order_insensitive(
                         &candidates,
                         &query,
-                        true,
-                        true,
                         10000,
                         &Default::default(),
                         executor,
@@ -441,7 +437,7 @@ impl PickerDelegate for CommandPaletteDelegate {
                         &candidates,
                         &query,
                         true,
-                        true,
+                        false, // Disable penalize_length to reduce bias toward shorter commands
                         10000,
                         &Default::default(),
                         executor,
@@ -741,18 +737,7 @@ mod tests {
 
             for word in &words {
                 let word_lower = word.to_lowercase();
-
-                let found_match = if word.len() >= 3 {
-                    candidate_lower.contains(&word_lower)
-                } else {
-                    candidate_lower.contains(&word_lower)
-                        && (candidate_lower.starts_with(&word_lower)
-                            || candidate_lower.contains(&format!(" {}", word_lower))
-                            || candidate_lower.contains(&format!(":{}", word_lower))
-                            || candidate_lower.contains(&format!("-{}", word_lower))
-                            || candidate_lower.contains(&format!("_{}", word_lower)))
-                };
-
+                let found_match = candidate_lower.contains(&word_lower);
                 if !found_match {
                     all_words_match = false;
                     break;
@@ -904,69 +889,6 @@ mod tests {
         palette.read_with(cx, |palette, _| {
             assert!(palette.delegate.matches.is_empty())
         });
-    }
-    #[gpui::test]
-    async fn test_order_insensitive_matching(cx: &mut TestAppContext) {
-        let app_state = init_test(cx);
-        let project = Project::test(app_state.fs.clone(), [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| Workspace::test_new(project.clone(), window, cx));
-
-        let editor = cx.new_window_entity(|window, cx| {
-            let mut editor = Editor::single_line(window, cx);
-            editor.set_text("abc", window, cx);
-            editor
-        });
-
-        workspace.update_in(cx, |workspace, window, cx| {
-            workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
-            editor.update(cx, |editor, cx| window.focus(&editor.focus_handle(cx)))
-        });
-
-        // Test that "close work" and "work close" return the same results
-        cx.simulate_keystrokes("cmd-shift-p");
-
-        let palette = workspace.update(cx, |workspace, cx| {
-            workspace
-                .active_modal::<CommandPalette>(cx)
-                .unwrap()
-                .read(cx)
-                .picker
-                .clone()
-        });
-
-        // Test "close work"
-        cx.simulate_input("close work");
-        let results_1 = palette.read_with(cx, |palette, _| {
-            palette
-                .delegate
-                .matches
-                .iter()
-                .map(|m| m.string.clone())
-                .collect::<Vec<_>>()
-        });
-
-        // Clear and test "work close"
-        cx.simulate_keystrokes("cmd-a");
-        cx.simulate_input("work close");
-        let results_2 = palette.read_with(cx, |palette, _| {
-            palette
-                .delegate
-                .matches
-                .iter()
-                .map(|m| m.string.clone())
-                .collect::<Vec<_>>()
-        });
-
-        // Results should be the same (order-insensitive)
-        assert_eq!(results_1.len(), results_2.len());
-        for result in &results_1 {
-            assert!(
-                results_2.contains(result),
-                "Result '{}' should be in both result sets",
-                result
-            );
-        }
     }
 
     #[gpui::test]
