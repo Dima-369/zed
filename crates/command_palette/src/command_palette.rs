@@ -101,7 +101,7 @@ where
         vec![query.trim()]
     };
 
-    if words.is_empty() {
+    if words.is_empty() || words.iter().all(|word| word.is_empty()) {
         return Vec::new();
     }
 
@@ -116,65 +116,29 @@ where
         let candidate_string = &candidate_borrowed.string;
         let candidate_lower = candidate_string.to_lowercase();
 
-        // Check if all words are present in the candidate (case-insensitive)
-        let mut all_words_match = true;
         let mut total_score = 0.0;
         let mut all_positions = Vec::new();
+        let mut all_words_found = true;
 
-        for word in &words {
+        for &word in &words {
             let word_lower = word.to_lowercase();
+            if let Some(byte_pos) = candidate_lower.find(&word_lower) {
+                // Score is based on position and word length.
+                let position_score = 1.0 / (byte_pos as f64 + 1.0);
+                let word_length_score = word.len() as f64;
+                total_score += position_score * word_length_score;
 
-            // Require meaningful substring matches
-            // For longer words (3+ chars), require exact substring match
-            // For shorter words, allow prefix matching at word boundaries
-            let found_match = if word.len() >= 3 {
-                // For longer words, require exact substring match
-                candidate_lower.contains(&word_lower)
-            } else {
-                // For shorter words, check if it appears at word boundaries or as prefix
-                candidate_lower.contains(&word_lower)
-                    && (candidate_lower.starts_with(&word_lower)
-                        || candidate_lower.contains(&format!(" {}", word_lower))
-                        || candidate_lower.contains(&format!(":{}", word_lower))
-                        || candidate_lower.contains(&format!("-{}", word_lower))
-                        || candidate_lower.contains(&format!("_{}", word_lower)))
-            };
-
-            if found_match {
-                if let Some(byte_pos) = candidate_lower.find(&word_lower) {
-                    // Calculate a simple score based on position and word length
-                    // Prioritize matches at the beginning of the string and longer matched words
-                    // but do not penalize command length
-                    let position_score = 1.0 / (byte_pos as f64 + 1.0); // Higher score for earlier matches
-                    let word_length_score = word.len() as f64; // Longer words get higher score
-                    let word_score = position_score * word_length_score;
-                    total_score += word_score;
-
-                    // Find the corresponding byte position in the original string
-                    // We need to account for case differences between candidate_lower and candidate_string
-                    if let Some(original_byte_pos) =
-                        candidate_string.to_lowercase().find(&word_lower)
-                    {
-                        // Add byte positions for each character in the matched word
-                        let word_byte_len = word_lower.as_bytes().len();
-                        for i in 0..word_byte_len {
-                            let pos = original_byte_pos + i;
-                            if pos < candidate_string.len()
-                                && candidate_string.is_char_boundary(pos)
-                            {
-                                all_positions.push(pos);
-                            }
-                        }
-                    }
+                // For highlighting, find ALL occurrences of the word.
+                for (start, matched_word) in candidate_lower.match_indices(&word_lower) {
+                    all_positions.extend(start..(start + matched_word.len()));
                 }
             } else {
-                all_words_match = false;
+                all_words_found = false;
                 break;
             }
         }
 
-        if all_words_match {
-            // Sort positions for proper highlighting
+        if all_words_found {
             all_positions.sort_unstable();
             all_positions.dedup();
 
@@ -187,7 +151,6 @@ where
         }
     }
 
-    // Sort by score (descending) and limit results
     results.sort_by(|a, b| {
         b.score
             .partial_cmp(&a.score)
