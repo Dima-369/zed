@@ -7,10 +7,8 @@ use std::{
     time::Duration,
 };
 
-use client::parse_zed_link;
 use command_palette_hooks::{
     CommandInterceptItem, CommandInterceptResult, CommandPaletteFilter,
-    GlobalCommandPaletteInterceptor,
 };
 
 use gpui::{
@@ -162,7 +160,7 @@ pub struct CommandMatch {
 pub struct CommandPaletteDelegate {
     latest_query: String,
     command_palette: WeakEntity<CommandPalette>,
-    workspace: WeakEntity<Workspace>,
+    _workspace: WeakEntity<Workspace>,
     all_commands: Vec<Command>,
     commands: Vec<Command>,
     matches: Vec<CommandMatch>,
@@ -197,7 +195,7 @@ impl CommandPaletteDelegate {
     ) -> Self {
         Self {
             command_palette,
-            workspace,
+            _workspace: workspace,
             all_commands: commands.clone(),
             matches: vec![],
             commands,
@@ -319,20 +317,13 @@ impl PickerDelegate for CommandPaletteDelegate {
             query = alias.to_string();
         }
 
-        let workspace = self.workspace.clone();
-
-        let _intercept_task = GlobalCommandPaletteInterceptor::intercept(&query, workspace, cx);
-
         let (mut tx, mut rx) = postage::dispatch::channel(1);
 
         let query_str = query.as_str();
-        let _is_zed_link = parse_zed_link(query_str, cx).is_some();
-
         let task = cx.background_spawn({
             let mut commands = self.all_commands.clone();
             let last_invocation_times = self.last_invocation_times();
             let query = normalize_action_query(query_str);
-            let _query_for_link = query_str.to_string();
             async move {
                 commands.sort_by_key(|action| {
                     (
