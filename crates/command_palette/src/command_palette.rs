@@ -85,7 +85,7 @@ where
             .iter()
             .map(|candidate| StringMatch {
                 candidate_id: candidate.borrow().id,
-                score: 0.,
+                score: 1.0,
                 positions: Default::default(),
                 string: candidate.borrow().string.clone(),
             })
