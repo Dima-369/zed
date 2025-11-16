@@ -62,89 +62,6 @@ pub fn normalize_action_query(input: &str) -> String {
     result
 }
 
-/// Match strings with order-insensitive word matching.
-/// Splits the query into words and ensures all words match somewhere in the candidate,
-/// regardless of order.
-async fn match_strings_order_insensitive<T>(
-    candidates: &[T],
-    query: &str,
-    max_results: usize,
-    cancel_flag: &AtomicBool,
-    _executor: BackgroundExecutor,
-) -> Vec<StringMatch>
-where
-    T: std::borrow::Borrow<StringMatchCandidate> + Sync,
-{
-    if candidates.is_empty() || max_results == 0 {
-        return Default::default();
-    }
-
-    // Handle empty or whitespace-only queries by showing all candidates.
-    if query.trim().is_empty() {
-        return candidates
-            .iter()
-            .map(|candidate| StringMatch {
-                candidate_id: candidate.borrow().id,
-                score: 1.0,
-                positions: Default::default(),
-                string: candidate.borrow().string.clone(),
-            })
-            .collect();
-    }
-
-    let words: Vec<String> = query.split_whitespace().map(|s| s.to_lowercase()).collect();
-    if words.is_empty() {
-        return Vec::new();
-    }
-
-    let mut results = Vec::new();
-
-    for candidate in candidates {
-        if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
-            break;
-        }
-
-        let candidate_borrowed = candidate.borrow();
-        let candidate_string = &candidate_borrowed.string;
-        let candidate_lower = candidate_string.to_lowercase();
-
-        let mut all_positions = Vec::new();
-        let mut all_words_found = true;
-        for word in &words {
-            if candidate_lower.contains(word) {
-                // This logic is just for highlighting the matches, so it can stay.
-                for (start, matched_word) in candidate_lower.match_indices(word) {
-                    all_positions.extend(start..(start + matched_word.len()));
-                }
-            } else {
-                // If any word from the query isn't found, it's not a match.
-                all_words_found = false;
-                break;
-            }
-        }
-
-        if all_words_found {
-            all_positions.sort_unstable();
-            all_positions.dedup();
-
-            results.push(StringMatch {
-                candidate_id: candidate_borrowed.id,
-                score: 1.0, // Give all matches the same score to force recency sorting.
-                positions: all_positions,
-                string: candidate_string.clone(),
-            });
-        }
-    }
-
-    results.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    results.truncate(max_results);
-    results
-}
-
 impl CommandPalette {
     fn register(
         workspace: &mut Workspace,
@@ -406,7 +323,6 @@ impl PickerDelegate for CommandPaletteDelegate {
         let task = cx.background_spawn({
             let mut commands = self.all_commands.clone();
             let last_invocation_times = self.last_invocation_times();
-            let executor = cx.background_executor().clone();
             let query = normalize_action_query(query_str);
             let query_for_link = query_str.to_string();
             async move {
@@ -417,23 +333,49 @@ impl PickerDelegate for CommandPaletteDelegate {
                     )
                 });
 
-                let candidates = commands
-                    .iter()
-                    .enumerate()
-                    .map(|(ix, command)| StringMatchCandidate::new(ix, &command.name))
-                    .collect::<Vec<_>>();
+                let first_ten_candidates: Vec<String> = commands.iter().take(10).map(|c| c.name.clone()).collect();
+                log::info!("Command Palette: Input query = '{}', Total candidates = {}, First 10 candidates: {:?}", query, commands.len(), first_ten_candidates);
 
-                let first_ten_candidates: Vec<String> = candidates.iter().take(10).map(|c| c.string.clone()).collect();
-                log::info!("Command Palette: Input query = '{}', Total candidates = {}, First 10 candidates: {:?}", query, candidates.len(), first_ten_candidates);
+                let matches = if query.trim().is_empty() {
+                    // If query is empty, show all commands in their sorted order.
+                    commands
+                        .iter()
+                        .enumerate()
+                        .map(|(ix, command)| StringMatch {
+                            candidate_id: ix,
+                            score: 0.0, // Score is irrelevant now
+                            positions: Default::default(),
+                            string: command.name.clone(),
+                        })
+                        .collect()
+                } else {
+                    // If there is a query, filter the commands while preserving order.
+                    let words: Vec<String> = query.split_whitespace().map(|s| s.to_lowercase()).collect();
+                    let mut results = Vec::new();
 
-                let mut matches = match_strings_order_insensitive(
-                    &candidates,
-                    &query,
-                    10000,
-                    &Default::default(),
-                    executor,
-                )
-                .await;
+                    for (ix, command) in commands.iter().enumerate() {
+                        let candidate_lower = command.name.to_lowercase();
+                        if words.iter().all(|word| candidate_lower.contains(word)) {
+                            // Find positions for highlighting
+                            let mut positions = Vec::new();
+                            for word in &words {
+                                for (start, matched_word) in candidate_lower.match_indices(word) {
+                                    positions.extend(start..(start + matched_word.len()));
+                                }
+                            }
+                            positions.sort_unstable();
+                            positions.dedup();
+
+                            results.push(StringMatch {
+                                candidate_id: ix, // `ix` is the index in the recency-sorted list
+                                score: 0.0, // Score is irrelevant
+                                positions,
+                                string: command.name.clone(),
+                            });
+                        }
+                    }
+                    results
+                };
 
                 let first_ten_matches: Vec<String> = matches.iter().take(10).map(|m| m.string.clone()).collect();
                 log::info!("Command Palette: Found {} matches for input query '{}', First 10 matches: {:?}", matches.len(), query, first_ten_matches);
@@ -442,15 +384,6 @@ impl PickerDelegate for CommandPaletteDelegate {
                 if let Some(pos) = matches.iter().position(|m| m.string.contains(": edit")) {
                     log::info!("Command Palette: ':edit' candidate found at position {} with score {} and candidate_id {}", pos, matches[pos].score, matches[pos].candidate_id);
                 }
-
-                // Re-sort to factor in recency as a tie-breaker.
-                // `candidate_id` is the index in the recency-sorted `commands` list.
-                matches.sort_by(|a, b| {
-                    b.score
-                        .partial_cmp(&a.score)
-                        .unwrap_or(cmp::Ordering::Equal)
-                        .then_with(|| a.candidate_id.cmp(&b.candidate_id))
-                });
 
                 let intercept_result = if is_zed_link {
                     CommandInterceptResult {
