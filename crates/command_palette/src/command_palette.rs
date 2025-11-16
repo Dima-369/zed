@@ -81,7 +81,8 @@ where
         return Default::default();
     }
 
-    if query.is_empty() {
+    // Handle empty or whitespace-only queries by showing all candidates.
+    if query.trim().is_empty() {
         return candidates
             .iter()
             .map(|candidate| StringMatch {
@@ -93,15 +94,8 @@ where
             .collect();
     }
 
-    // Split query into words and remove empty ones
-    let words: Vec<&str> = if query.trim().contains(' ') {
-        query.split_whitespace().collect()
-    } else {
-        // For single words, treat the whole query as one word
-        vec![query.trim()]
-    };
-
-    if words.is_empty() || words.iter().all(|word| word.is_empty()) {
+    let words: Vec<String> = query.split_whitespace().map(|s| s.to_lowercase()).collect();
+    if words.is_empty() {
         return Vec::new();
     }
 
@@ -119,17 +113,10 @@ where
         let mut total_score = 0.0;
         let mut all_positions = Vec::new();
         let mut all_words_found = true;
-
-        for &word in &words {
-            let word_lower = word.to_lowercase();
-            if let Some(byte_pos) = candidate_lower.find(&word_lower) {
-                // Score is based on position and word length.
-                let position_score = 1.0 / (byte_pos as f64 + 1.0);
-                let word_length_score = word.len() as f64;
-                total_score += position_score * word_length_score;
-
-                // For highlighting, find ALL occurrences of the word.
-                for (start, matched_word) in candidate_lower.match_indices(&word_lower) {
+        for word in &words {
+            if let Some(pos) = candidate_lower.find(word) {
+                total_score += 1.0 / (pos as f64 + 1.0);
+                for (start, matched_word) in candidate_lower.match_indices(word) {
                     all_positions.extend(start..(start + matched_word.len()));
                 }
             } else {
@@ -144,7 +131,7 @@ where
 
             results.push(StringMatch {
                 candidate_id: candidate_borrowed.id,
-                score: total_score / words.len() as f64, // Average score across words
+                score: total_score,
                 positions: all_positions,
                 string: candidate_string.clone(),
             });
