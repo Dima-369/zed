@@ -15,14 +15,14 @@ use command_palette_hooks::{
 
 use fuzzy::{StringMatch, StringMatchCandidate};
 use gpui::{
-    Action, App, BackgroundExecutor, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    ParentElement, Render, Styled, Task, WeakEntity, Window,
+    Action, App, BackgroundExecutor, Context, DismissEvent, Entity, EventEmitter, FocusHandle,
+    Focusable, ParentElement, Render, Styled, Task, WeakEntity, Window,
 };
-use std::sync::atomic::AtomicBool;
 use persistence::COMMAND_PALETTE_HISTORY;
 use picker::{Picker, PickerDelegate};
 use postage::{sink::Sink, stream::Stream};
 use settings::Settings;
+use std::sync::atomic::AtomicBool;
 use ui::{HighlightedLabel, KeyBinding, ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
 use workspace::{ModalView, Workspace, WorkspaceSettings};
@@ -100,7 +100,7 @@ where
         // For single words, treat the whole query as one word
         vec![query.trim()]
     };
-    
+
     if words.is_empty() {
         return Vec::new();
     }
@@ -123,7 +123,7 @@ where
 
         for word in &words {
             let word_lower = word.to_lowercase();
-            
+
             // Require meaningful substring matches
             // For longer words (3+ chars), require exact substring match
             // For shorter words, allow prefix matching at word boundaries
@@ -132,29 +132,36 @@ where
                 candidate_lower.contains(&word_lower)
             } else {
                 // For shorter words, check if it appears at word boundaries or as prefix
-                candidate_lower.contains(&word_lower) && (
-                    candidate_lower.starts_with(&word_lower) ||
-                    candidate_lower.contains(&format!(" {}", word_lower)) ||
-                    candidate_lower.contains(&format!(":{}", word_lower)) ||
-                    candidate_lower.contains(&format!("-{}", word_lower)) ||
-                    candidate_lower.contains(&format!("_{}", word_lower))
-                )
+                candidate_lower.contains(&word_lower)
+                    && (candidate_lower.starts_with(&word_lower)
+                        || candidate_lower.contains(&format!(" {}", word_lower))
+                        || candidate_lower.contains(&format!(":{}", word_lower))
+                        || candidate_lower.contains(&format!("-{}", word_lower))
+                        || candidate_lower.contains(&format!("_{}", word_lower)))
             };
-            
+
             if found_match {
                 if let Some(byte_pos) = candidate_lower.find(&word_lower) {
                     // Calculate a simple score based on position and word length
-                    let word_score = 1.0 / (byte_pos as f64 + 1.0) * (word.len() as f64 / candidate_string.len() as f64);
+                    // Prioritize matches at the beginning of the string and longer matched words
+                    // but do not penalize command length
+                    let position_score = 1.0 / (byte_pos as f64 + 1.0); // Higher score for earlier matches
+                    let word_length_score = word.len() as f64; // Longer words get higher score
+                    let word_score = position_score * word_length_score;
                     total_score += word_score;
-                    
+
                     // Find the corresponding byte position in the original string
                     // We need to account for case differences between candidate_lower and candidate_string
-                    if let Some(original_byte_pos) = candidate_string.to_lowercase().find(&word_lower) {
+                    if let Some(original_byte_pos) =
+                        candidate_string.to_lowercase().find(&word_lower)
+                    {
                         // Add byte positions for each character in the matched word
                         let word_byte_len = word_lower.as_bytes().len();
                         for i in 0..word_byte_len {
                             let pos = original_byte_pos + i;
-                            if pos < candidate_string.len() && candidate_string.is_char_boundary(pos) {
+                            if pos < candidate_string.len()
+                                && candidate_string.is_char_boundary(pos)
+                            {
                                 all_positions.push(pos);
                             }
                         }
@@ -181,7 +188,11 @@ where
     }
 
     // Sort by score (descending) and limit results
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     results.truncate(max_results);
     results
 }
@@ -461,8 +472,8 @@ impl PickerDelegate for CommandPaletteDelegate {
                     .map(|(ix, command)| StringMatchCandidate::new(ix, &command.name))
                     .collect::<Vec<_>>();
 
-                let matches = if query.trim().contains(' ') || query.len() >= 3 {
-                    // For multi-word queries or longer single words, use order-insensitive matching
+                let mut matches = if query.trim().contains(' ') {
+                    // For multi-word queries, use order-insensitive matching
                     // This prevents scattered character matching for longer queries
                     match_strings_order_insensitive(
                         &candidates,
@@ -475,7 +486,7 @@ impl PickerDelegate for CommandPaletteDelegate {
                     )
                     .await
                 } else {
-                    // For short single-word queries, use the original fuzzy matching
+                    // For single-word queries, use the original fuzzy matching
                     fuzzy::match_strings(
                         &candidates,
                         &query,
@@ -487,6 +498,15 @@ impl PickerDelegate for CommandPaletteDelegate {
                     )
                     .await
                 };
+
+                // Re-sort to factor in recency as a tie-breaker.
+                // `candidate_id` is the index in the recency-sorted `commands` list.
+                matches.sort_by(|a, b| {
+                    b.score
+                        .partial_cmp(&a.score)
+                        .unwrap_or(cmp::Ordering::Equal)
+                        .then_with(|| a.candidate_id.cmp(&b.candidate_id))
+                });
 
                 let intercept_result = if is_zed_link {
                     CommandInterceptResult {
@@ -764,43 +784,45 @@ mod tests {
         // because it requires meaningful substring matches
         let query = "clo wo";
         let words: Vec<&str> = query.split_whitespace().collect();
-        
+
         for candidate in &candidates {
             let candidate_lower = candidate.string.to_lowercase();
             let mut all_words_match = true;
-            
+
             for word in &words {
                 let word_lower = word.to_lowercase();
-                
+
                 let found_match = if word.len() >= 3 {
                     candidate_lower.contains(&word_lower)
                 } else {
-                    candidate_lower.contains(&word_lower) && (
-                        candidate_lower.starts_with(&word_lower) ||
-                        candidate_lower.contains(&format!(" {}", word_lower)) ||
-                        candidate_lower.contains(&format!(":{}", word_lower)) ||
-                        candidate_lower.contains(&format!("-{}", word_lower)) ||
-                        candidate_lower.contains(&format!("_{}", word_lower))
-                    )
+                    candidate_lower.contains(&word_lower)
+                        && (candidate_lower.starts_with(&word_lower)
+                            || candidate_lower.contains(&format!(" {}", word_lower))
+                            || candidate_lower.contains(&format!(":{}", word_lower))
+                            || candidate_lower.contains(&format!("-{}", word_lower))
+                            || candidate_lower.contains(&format!("_{}", word_lower)))
                 };
-                
+
                 if !found_match {
                     all_words_match = false;
                     break;
                 }
             }
-            
+
             if candidate.string == "search: toggle whole word" {
-                assert!(!all_words_match, "Should NOT match 'search: toggle whole word' with query 'clo wo'");
+                assert!(
+                    !all_words_match,
+                    "Should NOT match 'search: toggle whole word' with query 'clo wo'"
+                );
             }
         }
     }
 
     #[test]
     fn test_order_insensitive_word_matching() {
-        use std::sync::atomic::AtomicBool;
         use gpui::BackgroundExecutor;
-        
+        use std::sync::atomic::AtomicBool;
+
         // Create test candidates
         let candidates = vec![
             StringMatchCandidate::new(0, "workspace: close"),
@@ -813,22 +835,30 @@ mod tests {
         // Test that "close work" and "work close" should match the same items
         let executor = BackgroundExecutor::new(1);
         let cancel_flag = AtomicBool::new(false);
-        
+
         // We'll test the logic directly without async
         let query1 = "close work";
         let query2 = "work close";
-        
+
         let words1: Vec<&str> = query1.split_whitespace().collect();
         let words2: Vec<&str> = query2.split_whitespace().collect();
-        
+
         // Both should find candidates 0 and 3 (workspace: close, close workspace)
         for candidate in &candidates {
             let candidate_lower = candidate.string.to_lowercase();
-            
-            let matches1 = words1.iter().all(|word| candidate_lower.contains(&word.to_lowercase()));
-            let matches2 = words2.iter().all(|word| candidate_lower.contains(&word.to_lowercase()));
-            
-            assert_eq!(matches1, matches2, "Candidate '{}' should match both queries equally", candidate.string);
+
+            let matches1 = words1
+                .iter()
+                .all(|word| candidate_lower.contains(&word.to_lowercase()));
+            let matches2 = words2
+                .iter()
+                .all(|word| candidate_lower.contains(&word.to_lowercase()));
+
+            assert_eq!(
+                matches1, matches2,
+                "Candidate '{}' should match both queries equally",
+                candidate.string
+            );
         }
     }
 
@@ -964,7 +994,10 @@ mod tests {
         // Test "close work"
         cx.simulate_input("close work");
         let results_1 = palette.read_with(cx, |palette, _| {
-            palette.delegate.matches.iter()
+            palette
+                .delegate
+                .matches
+                .iter()
                 .map(|m| m.string.clone())
                 .collect::<Vec<_>>()
         });
@@ -973,7 +1006,10 @@ mod tests {
         cx.simulate_keystrokes("cmd-a");
         cx.simulate_input("work close");
         let results_2 = palette.read_with(cx, |palette, _| {
-            palette.delegate.matches.iter()
+            palette
+                .delegate
+                .matches
+                .iter()
                 .map(|m| m.string.clone())
                 .collect::<Vec<_>>()
         });
@@ -981,7 +1017,11 @@ mod tests {
         // Results should be the same (order-insensitive)
         assert_eq!(results_1.len(), results_2.len());
         for result in &results_1 {
-            assert!(results_2.contains(result), "Result '{}' should be in both result sets", result);
+            assert!(
+                results_2.contains(result),
+                "Result '{}' should be in both result sets",
+                result
+            );
         }
     }
 
