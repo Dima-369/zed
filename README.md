@@ -44,6 +44,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - the command palette sorting now sorts the same for `close work` and `work close`, and it does not search individual character matches like when you enter `clo wo`, it does not show `search: toggle whole word` because every individual character is contained
 - changed `command palette: toggle` to sort by recency instead of hit count
+- removed `GlobalCommandPaletteInterceptor` usage which contains Vim things like `:exit`, `:write`, etc. because I do not use them. I removed them because it was hard to sort those by recency. I am not yet sure if this has other negative consequences.
 
 ## New actions
 
@@ -86,7 +87,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
 - lower excessive tab height
 - lower status bar height, see `impl Render for StatusBar`
-- middle clicking a system tab will close it, just like regular tabs
 - lower `toolbar.rs` height to make it as minimal as possible to save space, same in `breadcrumbs.rs`. This applies for terminals, as well
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
 - highlight the active search match with a different background color. It is not trivial to set the foreground color to a fixed color, so I stopped trying

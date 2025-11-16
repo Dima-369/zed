@@ -7,18 +7,14 @@ use std::{
     time::Duration,
 };
 
-use client::parse_zed_link;
 use command_palette_hooks::{
     CommandInterceptItem, CommandInterceptResult, CommandPaletteFilter,
-    GlobalCommandPaletteInterceptor,
 };
 
-use fuzzy::{StringMatch, StringMatchCandidate};
 use gpui::{
-    Action, App, BackgroundExecutor, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    ParentElement, Render, Styled, Task, WeakEntity, Window,
+    Action, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle,
+    Focusable, ParentElement, Render, Styled, Task, WeakEntity, Window,
 };
-use std::sync::atomic::AtomicBool;
 use persistence::COMMAND_PALETTE_HISTORY;
 use picker::{Picker, PickerDelegate};
 use postage::{sink::Sink, stream::Stream};
@@ -26,7 +22,7 @@ use settings::Settings;
 use ui::{HighlightedLabel, KeyBinding, ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
 use workspace::{ModalView, Workspace, WorkspaceSettings};
-use zed_actions::{OpenZedUrl, command_palette::Toggle};
+use zed_actions::command_palette::Toggle;
 
 pub fn init(cx: &mut App) {
     command_palette_hooks::init(cx);
@@ -60,130 +56,6 @@ pub fn normalize_action_query(input: &str) -> String {
     }
 
     result
-}
-
-/// Match strings with order-insensitive word matching.
-/// Splits the query into words and ensures all words match somewhere in the candidate,
-/// regardless of order.
-async fn match_strings_order_insensitive<T>(
-    candidates: &[T],
-    query: &str,
-    _smart_case: bool,
-    _penalize_length: bool,
-    max_results: usize,
-    cancel_flag: &AtomicBool,
-    _executor: BackgroundExecutor,
-) -> Vec<StringMatch>
-where
-    T: std::borrow::Borrow<StringMatchCandidate> + Sync,
-{
-    if candidates.is_empty() || max_results == 0 {
-        return Default::default();
-    }
-
-    if query.is_empty() {
-        return candidates
-            .iter()
-            .map(|candidate| StringMatch {
-                candidate_id: candidate.borrow().id,
-                score: 0.,
-                positions: Default::default(),
-                string: candidate.borrow().string.clone(),
-            })
-            .collect();
-    }
-
-    // Split query into words and remove empty ones
-    let words: Vec<&str> = if query.trim().contains(' ') {
-        query.split_whitespace().collect()
-    } else {
-        // For single words, treat the whole query as one word
-        vec![query.trim()]
-    };
-    
-    if words.is_empty() {
-        return Vec::new();
-    }
-
-    let mut results = Vec::new();
-
-    for candidate in candidates {
-        if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
-            break;
-        }
-
-        let candidate_borrowed = candidate.borrow();
-        let candidate_string = &candidate_borrowed.string;
-        let candidate_lower = candidate_string.to_lowercase();
-
-        // Check if all words are present in the candidate (case-insensitive)
-        let mut all_words_match = true;
-        let mut total_score = 0.0;
-        let mut all_positions = Vec::new();
-
-        for word in &words {
-            let word_lower = word.to_lowercase();
-            
-            // Require meaningful substring matches
-            // For longer words (3+ chars), require exact substring match
-            // For shorter words, allow prefix matching at word boundaries
-            let found_match = if word.len() >= 3 {
-                // For longer words, require exact substring match
-                candidate_lower.contains(&word_lower)
-            } else {
-                // For shorter words, check if it appears at word boundaries or as prefix
-                candidate_lower.contains(&word_lower) && (
-                    candidate_lower.starts_with(&word_lower) ||
-                    candidate_lower.contains(&format!(" {}", word_lower)) ||
-                    candidate_lower.contains(&format!(":{}", word_lower)) ||
-                    candidate_lower.contains(&format!("-{}", word_lower)) ||
-                    candidate_lower.contains(&format!("_{}", word_lower))
-                )
-            };
-            
-            if found_match {
-                if let Some(byte_pos) = candidate_lower.find(&word_lower) {
-                    // Calculate a simple score based on position and word length
-                    let word_score = 1.0 / (byte_pos as f64 + 1.0) * (word.len() as f64 / candidate_string.len() as f64);
-                    total_score += word_score;
-                    
-                    // Find the corresponding byte position in the original string
-                    // We need to account for case differences between candidate_lower and candidate_string
-                    if let Some(original_byte_pos) = candidate_string.to_lowercase().find(&word_lower) {
-                        // Add byte positions for each character in the matched word
-                        let word_byte_len = word_lower.as_bytes().len();
-                        for i in 0..word_byte_len {
-                            let pos = original_byte_pos + i;
-                            if pos < candidate_string.len() && candidate_string.is_char_boundary(pos) {
-                                all_positions.push(pos);
-                            }
-                        }
-                    }
-                }
-            } else {
-                all_words_match = false;
-                break;
-            }
-        }
-
-        if all_words_match {
-            // Sort positions for proper highlighting
-            all_positions.sort_unstable();
-            all_positions.dedup();
-
-            results.push(StringMatch {
-                candidate_id: candidate_borrowed.id,
-                score: total_score / words.len() as f64, // Average score across words
-                positions: all_positions,
-                string: candidate_string.clone(),
-            });
-        }
-    }
-
-    // Sort by score (descending) and limit results
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
-    results.truncate(max_results);
-    results
 }
 
 impl CommandPalette {
@@ -275,18 +147,28 @@ impl Render for CommandPalette {
     }
 }
 
+/// A command that matched the user's query.
+pub struct CommandMatch {
+    /// The index of the command in the `CommandPaletteDelegate::commands` vec.
+    pub candidate_id: usize,
+    /// The name of the command.
+    pub name: String,
+    /// The character indices to highlight in the UI.
+    pub positions: Vec<usize>,
+}
+
 pub struct CommandPaletteDelegate {
     latest_query: String,
     command_palette: WeakEntity<CommandPalette>,
-    workspace: WeakEntity<Workspace>,
+    _workspace: WeakEntity<Workspace>,
     all_commands: Vec<Command>,
     commands: Vec<Command>,
-    matches: Vec<StringMatch>,
+    matches: Vec<CommandMatch>,
     selected_ix: usize,
     previous_focus_handle: FocusHandle,
     updating_matches: Option<(
         Task<()>,
-        postage::dispatch::Receiver<(Vec<Command>, Vec<StringMatch>, CommandInterceptResult)>,
+        postage::dispatch::Receiver<(Vec<Command>, Vec<CommandMatch>, CommandInterceptResult)>,
     )>,
 }
 
@@ -313,7 +195,7 @@ impl CommandPaletteDelegate {
     ) -> Self {
         Self {
             command_palette,
-            workspace,
+            _workspace: workspace,
             all_commands: commands.clone(),
             matches: vec![],
             commands,
@@ -328,7 +210,7 @@ impl CommandPaletteDelegate {
         &mut self,
         query: String,
         mut commands: Vec<Command>,
-        mut matches: Vec<StringMatch>,
+        mut matches: Vec<CommandMatch>,
         intercept_result: CommandInterceptResult,
         _: &mut Context<Picker<Self>>,
     ) {
@@ -353,11 +235,10 @@ impl CommandPaletteDelegate {
                 name: string.clone(),
                 action,
             });
-            new_matches.push(StringMatch {
+            new_matches.push(CommandMatch {
                 candidate_id: commands.len() - 1,
-                string,
+                name: string,
                 positions,
-                score: 0.0,
             })
         }
         if !intercept_result.exclusive {
@@ -370,6 +251,10 @@ impl CommandPaletteDelegate {
         } else {
             self.selected_ix = cmp::min(self.selected_ix, self.matches.len() - 1);
         }
+
+        let first_ten_displayed: Vec<String> =
+            self.matches.iter().take(10).map(|m| m.name.clone()).collect();
+        log::info!("Command Palette: Current {} displayed candidates with entered input string '{}', First 10 candidates: {:?}", self.matches.len(), self.latest_query, first_ten_displayed);
     }
 
     /// Last invocation time for each command in the palette.
@@ -432,21 +317,13 @@ impl PickerDelegate for CommandPaletteDelegate {
             query = alias.to_string();
         }
 
-        let workspace = self.workspace.clone();
-
-        let intercept_task = GlobalCommandPaletteInterceptor::intercept(&query, workspace, cx);
-
         let (mut tx, mut rx) = postage::dispatch::channel(1);
 
         let query_str = query.as_str();
-        let is_zed_link = parse_zed_link(query_str, cx).is_some();
-
         let task = cx.background_spawn({
             let mut commands = self.all_commands.clone();
             let last_invocation_times = self.last_invocation_times();
-            let executor = cx.background_executor().clone();
             let query = normalize_action_query(query_str);
-            let query_for_link = query_str.to_string();
             async move {
                 commands.sort_by_key(|action| {
                     (
@@ -455,60 +332,66 @@ impl PickerDelegate for CommandPaletteDelegate {
                     )
                 });
 
-                let candidates = commands
-                    .iter()
-                    .enumerate()
-                    .map(|(ix, command)| StringMatchCandidate::new(ix, &command.name))
-                    .collect::<Vec<_>>();
+                let first_ten_candidates: Vec<String> = commands.iter().take(10).map(|c| c.name.clone()).collect();
+                log::info!("Command Palette: Input query = '{}', Total candidates = {}, First 10 candidates: {:?}", query, commands.len(), first_ten_candidates);
 
-                let matches = if query.trim().contains(' ') || query.len() >= 3 {
-                    // For multi-word queries or longer single words, use order-insensitive matching
-                    // This prevents scattered character matching for longer queries
-                    match_strings_order_insensitive(
-                        &candidates,
-                        &query,
-                        true,
-                        true,
-                        10000,
-                        &Default::default(),
-                        executor,
-                    )
-                    .await
+                let matches = if query.trim().is_empty() {
+                    // If query is empty, show all commands in their sorted order.
+                    commands
+                        .iter()
+                        .enumerate()
+                        .map(|(ix, command)| CommandMatch {
+                            candidate_id: ix,
+                            positions: Default::default(),
+                            name: command.name.clone(),
+                        })
+                        .collect()
                 } else {
-                    // For short single-word queries, use the original fuzzy matching
-                    fuzzy::match_strings(
-                        &candidates,
-                        &query,
-                        true,
-                        true,
-                        10000,
-                        &Default::default(),
-                        executor,
-                    )
-                    .await
-                };
+                    // If there is a query, filter the commands while preserving order.
+                    let words: Vec<String> =
+                        query.split_whitespace().map(|s| s.to_lowercase()).collect();
+                    let mut results = Vec::new();
 
-                let intercept_result = if is_zed_link {
-                    CommandInterceptResult {
-                        results: vec![CommandInterceptItem {
-                            action: OpenZedUrl {
-                                url: query_for_link.clone(),
+                    for (ix, command) in commands.iter().enumerate() {
+                        let candidate_lower = command.name.to_lowercase();
+                        if words.iter().all(|word| candidate_lower.contains(word)) {
+                            // Find positions for highlighting
+                            let mut positions = Vec::new();
+                            for word in &words {
+                                for (start, matched_word) in candidate_lower.match_indices(word) {
+                                    positions.extend(start..(start + matched_word.len()));
+                                }
                             }
-                            .boxed_clone(),
-                            string: query_for_link,
-                            positions: vec![],
-                        }],
-                        exclusive: false,
+                            positions.sort_unstable();
+                            positions.dedup();
+
+                            results.push(CommandMatch {
+                                candidate_id: ix, // `ix` is the index in the recency-sorted list
+                                positions,
+                                name: command.name.clone(),
+                            });
+                        }
                     }
-                } else if let Some(task) = intercept_task {
-                    task.await
-                } else {
-                    CommandInterceptResult::default()
+                    results
                 };
 
-                tx.send((commands, matches, intercept_result))
-                    .await
-                    .log_err();
+                let first_ten_matches: Vec<String> =
+                    matches.iter().take(10).map(|m| m.name.clone()).collect();
+                log::info!("Command Palette: Found {} matches for input query '{}', First 10 matches: {:?}", matches.len(), query, first_ten_matches);
+
+                // Log the position of ":edit" candidate if it exists
+                if let Some(pos) = matches.iter().position(|m| m.name.contains(": edit")) {
+                    log::info!(
+                        "Command Palette: ':edit' candidate found at position {} with candidate_id {}",
+                        pos,
+                        matches[pos].candidate_id
+                    );
+                }
+
+                // Always use an empty intercept result to prevent special commands from being injected.
+                let intercept_result = CommandInterceptResult::default();
+
+                let _ = tx.send((commands, matches, intercept_result)).await;
             }
         });
 
@@ -545,6 +428,9 @@ impl PickerDelegate for CommandPaletteDelegate {
             .block_with_timeout(duration, rx.clone().recv())
         {
             Ok(Some((commands, matches, interceptor_result))) => {
+                let first_ten_matches: Vec<String> =
+                    matches.iter().take(10).map(|m| m.name.clone()).collect();
+                log::info!("Command Palette: Finalizing {} candidates with input query '{}', First 10 matches: {:?}", matches.len(), query, first_ten_matches);
                 self.matches_updated(query, commands, matches, interceptor_result, cx);
                 true
             }
@@ -754,81 +640,74 @@ mod tests {
     fn test_improved_substring_matching() {
         // Test that scattered character matching is prevented
         let candidates = vec![
-            StringMatchCandidate::new(0, "search: toggle whole word"),
-            StringMatchCandidate::new(1, "workspace: close"),
-            StringMatchCandidate::new(2, "editor: close tab"),
-            StringMatchCandidate::new(3, "project: clone"),
+            "search: toggle whole word",
+            "workspace: close",
+            "editor: close tab",
+            "project: clone",
         ];
 
         // "clo wo" should NOT match "search: toggle whole word"
         // because it requires meaningful substring matches
         let query = "clo wo";
         let words: Vec<&str> = query.split_whitespace().collect();
-        
-        for candidate in &candidates {
-            let candidate_lower = candidate.string.to_lowercase();
+
+        for candidate_string in &candidates {
+            let candidate_lower = candidate_string.to_lowercase();
             let mut all_words_match = true;
-            
+
             for word in &words {
                 let word_lower = word.to_lowercase();
-                
-                let found_match = if word.len() >= 3 {
-                    candidate_lower.contains(&word_lower)
-                } else {
-                    candidate_lower.contains(&word_lower) && (
-                        candidate_lower.starts_with(&word_lower) ||
-                        candidate_lower.contains(&format!(" {}", word_lower)) ||
-                        candidate_lower.contains(&format!(":{}", word_lower)) ||
-                        candidate_lower.contains(&format!("-{}", word_lower)) ||
-                        candidate_lower.contains(&format!("_{}", word_lower))
-                    )
-                };
-                
+                let found_match = candidate_lower.contains(&word_lower);
                 if !found_match {
                     all_words_match = false;
                     break;
                 }
             }
-            
-            if candidate.string == "search: toggle whole word" {
-                assert!(!all_words_match, "Should NOT match 'search: toggle whole word' with query 'clo wo'");
+
+            if *candidate_string == "search: toggle whole word" {
+                assert!(
+                    !all_words_match,
+                    "Should NOT match 'search: toggle whole word' with query 'clo wo'"
+                );
             }
         }
     }
 
     #[test]
     fn test_order_insensitive_word_matching() {
-        use std::sync::atomic::AtomicBool;
-        use gpui::BackgroundExecutor;
-        
         // Create test candidates
         let candidates = vec![
-            StringMatchCandidate::new(0, "workspace: close"),
-            StringMatchCandidate::new(1, "editor: close tab"),
-            StringMatchCandidate::new(2, "work with files"),
-            StringMatchCandidate::new(3, "close workspace"),
-            StringMatchCandidate::new(4, "open file"),
+            "workspace: close",
+            "editor: close tab",
+            "work with files",
+            "close workspace",
+            "open file",
         ];
 
         // Test that "close work" and "work close" should match the same items
-        let executor = BackgroundExecutor::new(1);
-        let cancel_flag = AtomicBool::new(false);
-        
         // We'll test the logic directly without async
         let query1 = "close work";
         let query2 = "work close";
-        
+
         let words1: Vec<&str> = query1.split_whitespace().collect();
         let words2: Vec<&str> = query2.split_whitespace().collect();
-        
+
         // Both should find candidates 0 and 3 (workspace: close, close workspace)
-        for candidate in &candidates {
-            let candidate_lower = candidate.string.to_lowercase();
-            
-            let matches1 = words1.iter().all(|word| candidate_lower.contains(&word.to_lowercase()));
-            let matches2 = words2.iter().all(|word| candidate_lower.contains(&word.to_lowercase()));
-            
-            assert_eq!(matches1, matches2, "Candidate '{}' should match both queries equally", candidate.string);
+        for candidate_string in &candidates {
+            let candidate_lower = candidate_string.to_lowercase();
+
+            let matches1 = words1
+                .iter()
+                .all(|word| candidate_lower.contains(&word.to_lowercase()));
+            let matches2 = words2
+                .iter()
+                .all(|word| candidate_lower.contains(&word.to_lowercase()));
+
+            assert_eq!(
+                matches1, matches2,
+                "Candidate '{}' should match both queries equally",
+                candidate_string
+            );
         }
     }
 
@@ -930,59 +809,6 @@ mod tests {
         palette.read_with(cx, |palette, _| {
             assert!(palette.delegate.matches.is_empty())
         });
-    }
-    #[gpui::test]
-    async fn test_order_insensitive_matching(cx: &mut TestAppContext) {
-        let app_state = init_test(cx);
-        let project = Project::test(app_state.fs.clone(), [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| Workspace::test_new(project.clone(), window, cx));
-
-        let editor = cx.new_window_entity(|window, cx| {
-            let mut editor = Editor::single_line(window, cx);
-            editor.set_text("abc", window, cx);
-            editor
-        });
-
-        workspace.update_in(cx, |workspace, window, cx| {
-            workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
-            editor.update(cx, |editor, cx| window.focus(&editor.focus_handle(cx)))
-        });
-
-        // Test that "close work" and "work close" return the same results
-        cx.simulate_keystrokes("cmd-shift-p");
-
-        let palette = workspace.update(cx, |workspace, cx| {
-            workspace
-                .active_modal::<CommandPalette>(cx)
-                .unwrap()
-                .read(cx)
-                .picker
-                .clone()
-        });
-
-        // Test "close work"
-        cx.simulate_input("close work");
-        let results_1 = palette.read_with(cx, |palette, _| {
-            palette.delegate.matches.iter()
-                .map(|m| m.string.clone())
-                .collect::<Vec<_>>()
-        });
-
-        // Clear and test "work close"
-        cx.simulate_keystrokes("cmd-a");
-        cx.simulate_input("work close");
-        let results_2 = palette.read_with(cx, |palette, _| {
-            palette.delegate.matches.iter()
-                .map(|m| m.string.clone())
-                .collect::<Vec<_>>()
-        });
-
-        // Results should be the same (order-insensitive)
-        assert_eq!(results_1.len(), results_2.len());
-        for result in &results_1 {
-            assert!(results_2.contains(result), "Result '{}' should be in both result sets", result);
-        }
     }
 
     #[gpui::test]
