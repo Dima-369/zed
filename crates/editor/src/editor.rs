@@ -17214,7 +17214,10 @@ if add_trailing_newline {
                     if !split
                         && Some(&target_buffer) == editor.buffer.read(cx).as_singleton().as_ref()
                     {
-                        editor.go_to_singleton_buffer_range(range, window, cx);
+                        // For navigation purposes, just position the cursor without selection
+                        // to avoid triggering vim's visual mode
+                        let cursor_point = range.start..range.start;
+                        editor.go_to_singleton_buffer_range(cursor_point, window, cx);
                     } else {
                         let pane = workspace.read(cx).active_pane().clone();
                         window.defer(cx, move |window, cx| {
@@ -17239,7 +17242,10 @@ if add_trailing_newline {
                                 // When selecting a definition in a different buffer, disable the nav history
                                 // to avoid creating a history entry at the previous cursor location.
                                 pane.update(cx, |pane, _| pane.disable_history());
-                                target_editor.go_to_singleton_buffer_range(range, window, cx);
+                                // For navigation purposes, just position the cursor without selection
+                                // to avoid triggering vim's visual mode
+                                let cursor_point = range.start..range.start;
+                                target_editor.go_to_singleton_buffer_range(cursor_point, window, cx);
                                 pane.update(cx, |pane, _| pane.enable_history());
                             });
                         });
