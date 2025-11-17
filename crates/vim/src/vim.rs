@@ -1758,16 +1758,11 @@ impl Vim {
                 });
             }
         } else if self.mode == Mode::Normal && newest.start != newest.end {
-            // Instead of switching to visual mode, collapse the selection to cursor at start position
-            // This prevents entering visual mode while maintaining the cursor position
-            self.update_editor(cx, |_, editor, cx| {
-                editor.change_selections(SelectionEffects::default(), window, cx, |s| {
-                    let mut selection = s.newest_anchor().clone();
-                    selection.start = newest.start;
-                    selection.end = newest.start;
-                    s.select_anchors(vec![selection]);
-                })
-            });
+            if matches!(newest.goal, SelectionGoal::HorizontalRange { .. }) {
+                self.switch_mode(Mode::VisualBlock, false, window, cx);
+            } else {
+                self.switch_mode(Mode::Visual, false, window, cx)
+            }
         } else if newest.start == newest.end
             && !is_multicursor
             && [Mode::Visual, Mode::VisualLine, Mode::VisualBlock].contains(&self.mode)
