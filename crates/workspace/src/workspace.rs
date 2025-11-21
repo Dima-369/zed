@@ -1849,7 +1849,7 @@ impl Workspace {
     pub fn recent_navigation_history_iter(
         &self,
         cx: &App,
-    ) -> impl Iterator<Item = (ProjectPath, Option<PathBuf>)> {
+    ) -> impl Iterator<Item = (ProjectPath, Option<PathBuf>)> + use<> {
         let mut abs_paths_opened: HashMap<PathBuf, HashSet<ProjectPath>> = HashMap::default();
         let mut history: HashMap<ProjectPath, (Option<PathBuf>, usize)> = HashMap::default();
 
@@ -2873,7 +2873,7 @@ impl Workspace {
 
     pub fn active_item_as<I: 'static>(&self, cx: &App) -> Option<Entity<I>> {
         let item = self.active_item(cx)?;
-        item.to_any().downcast::<I>().ok()
+        item.to_any_view().downcast::<I>().ok()
     }
 
     fn active_project_path(&self, cx: &App) -> Option<ProjectPath> {
@@ -7310,14 +7310,9 @@ pub fn join_channel(
 ) -> Task<Result<()>> {
     let active_call = ActiveCall::global(cx);
     cx.spawn(async move |cx| {
-        let result = join_channel_internal(
-            channel_id,
-            &app_state,
-            requesting_window,
-            &active_call,
-             cx,
-        )
-            .await;
+        let result =
+            join_channel_internal(channel_id, &app_state, requesting_window, &active_call, cx)
+                .await;
 
         // join channel succeeded, and opened a window
         if matches!(result, Ok(true)) {
@@ -7325,8 +7320,7 @@ pub fn join_channel(
         }
 
         // find an existing workspace to focus and show call controls
-        let mut active_window =
-            requesting_window.or_else(|| activate_any_workspace_window( cx));
+        let mut active_window = requesting_window.or_else(|| activate_any_workspace_window(cx));
         if active_window.is_none() {
             // no open workspaces, make one to show the error in (blergh)
             let (window_handle, _) = cx
@@ -7338,7 +7332,8 @@ pub fn join_channel(
             if result.is_ok() {
                 cx.update(|cx| {
                     cx.dispatch_action(&OpenChannelNotes);
-                }).log_err();
+                })
+                .log_err();
             }
 
             active_window = Some(window_handle);
@@ -7350,19 +7345,25 @@ pub fn join_channel(
                 active_window
                     .update(cx, |_, window, cx| {
                         let detail: SharedString = match err.error_code() {
-                            ErrorCode::SignedOut => {
-                                "Please sign in to continue.".into()
+                            ErrorCode::SignedOut => "Please sign in to continue.".into(),
+                            ErrorCode::UpgradeRequired => concat!(
+                                "Your are running an unsupported version of Zed. ",
+                                "Please update to continue."
+                            )
+                            .into(),
+                            ErrorCode::NoSuchChannel => concat!(
+                                "No matching channel was found. ",
+                                "Please check the link and try again."
+                            )
+                            .into(),
+                            ErrorCode::Forbidden => concat!(
+                                "This channel is private, and you do not have access. ",
+                                "Please ask someone to add you and try again."
+                            )
+                            .into(),
+                            ErrorCode::Disconnected => {
+                                "Please check your internet connection and try again.".into()
                             }
-                            ErrorCode::UpgradeRequired => {
-                                "Your are running an unsupported version of Zed. Please update to continue.".into()
-                            }
-                            ErrorCode::NoSuchChannel => {
-                                "No matching channel was found. Please check the link and try again.".into()
-                            }
-                            ErrorCode::Forbidden => {
-                                "This channel is private, and you do not have access. Please ask someone to add you and try again.".into()
-                            }
-                            ErrorCode::Disconnected => "Please check your internet connection and try again.".into(),
                             _ => format!("{}\n\nPlease try again.", err).into(),
                         };
                         window.prompt(
@@ -7370,7 +7371,8 @@ pub fn join_channel(
                             "Failed to join channel",
                             Some(&detail),
                             &["Ok"],
-                        cx)
+                            cx,
+                        )
                     })?
                     .await
                     .ok();
@@ -11238,7 +11240,7 @@ mod tests {
 
             // Now we can check if the handle we got back errored or not
             assert_eq!(
-                handle.to_any().entity_type(),
+                handle.to_any_view().entity_type(),
                 TypeId::of::<TestPngItemView>()
             );
 
@@ -11251,7 +11253,7 @@ mod tests {
                 .unwrap();
 
             assert_eq!(
-                handle.to_any().entity_type(),
+                handle.to_any_view().entity_type(),
                 TypeId::of::<TestIpynbItemView>()
             );
 
@@ -11300,7 +11302,7 @@ mod tests {
 
             // This _must_ be the second item registered
             assert_eq!(
-                handle.to_any().entity_type(),
+                handle.to_any_view().entity_type(),
                 TypeId::of::<TestAlternatePngItemView>()
             );
 

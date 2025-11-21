@@ -272,6 +272,17 @@ pub mod command_palette {
     );
 }
 
+pub mod project_panel {
+    use gpui::actions;
+
+    actions!(
+        project_panel,
+        [
+            /// Toggles focus on the project panel.
+            ToggleFocus
+        ]
+    );
+}
 pub mod feedback {
     use gpui::actions;
 
@@ -562,6 +573,18 @@ actions!(
         OpenProjectDebugTasks,
     ]
 );
+
+pub mod vim {
+    use gpui::actions;
+
+    actions!(
+        vim,
+        [
+            /// Opens the default keymap file.
+            OpenDefaultKeymap
+        ]
+    );
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WslConnectionOptions {
