@@ -18,7 +18,7 @@ use breadcrumbs::Breadcrumbs;
 use client::zed_urls;
 use collections::VecDeque;
 use debugger_ui::debugger_panel::DebugPanel;
-use editor::{Editor, MultiBuffer};
+use editor::{Editor, MultiBuffer, MultiBufferOffset};
 use extension_host::ExtensionStore;
 use feature_flags::{FeatureFlagAppExt, PanicFeatureFlag};
 use fs::Fs;
@@ -796,7 +796,7 @@ fn deepl_translate(
     };
 
     let (selections, buffer_snapshot, replace_whole_line) = editor.update(cx, |editor, cx| {
-        let selections = editor.selections.all::<usize>(&editor.display_snapshot(cx));
+        let selections = editor.selections.all::<MultiBufferOffset>(&editor.display_snapshot(cx));
         let buffer = editor.buffer().read(cx);
         let snapshot = buffer.snapshot(cx);
         let has_selection = !selections.is_empty() && selections.iter().any(|s| s.start != s.end);
@@ -809,7 +809,7 @@ fn deepl_translate(
             selection.start
         } else {
             // If there are no selections at all, use cursor position 0
-            0
+            MultiBufferOffset(0)
         };
 
         // Get the line containing the cursor

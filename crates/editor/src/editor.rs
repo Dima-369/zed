@@ -16643,7 +16643,7 @@ if add_trailing_newline {
         let before_errors: Vec<_> = filtered(
             errors_only,
             buffer
-                .diagnostics_in_range(0..selection.start)
+                .diagnostics_in_range(MultiBufferOffset(0)..selection.start)
                 .filter(|entry| entry.range.start <= selection.start),
         )
         .collect();
@@ -21179,6 +21179,21 @@ if add_trailing_newline {
         let text_highlights = self
             .background_highlights
             .remove(&HighlightKey::Type(TypeId::of::<T>()))?;
+        if !text_highlights.1.is_empty() {
+            self.scrollbar_marker_state.dirty = true;
+            cx.notify();
+        }
+        Some(text_highlights)
+    }
+
+    pub fn clear_background_highlight_key<T: 'static>(
+        &mut self,
+        key: usize,
+        cx: &mut Context<Self>,
+    ) -> Option<BackgroundHighlight> {
+        let text_highlights = self
+            .background_highlights
+            .remove(&HighlightKey::TypePlus(TypeId::of::<T>(), key))?;
         if !text_highlights.1.is_empty() {
             self.scrollbar_marker_state.dirty = true;
             cx.notify();

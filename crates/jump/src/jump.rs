@@ -1,6 +1,6 @@
 mod jump_settings;
 
-use editor::{DisplayPoint, Editor, EditorEvent, JumpLabel, ToPoint, display_map::ToDisplayPoint};
+use editor::{DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset, ToPoint, display_map::ToDisplayPoint};
 use gpui::{
     Action, App, Context, DismissEvent, Entity, EventEmitter, Focusable, IntoElement, Render,
     Styled, Window, div,
@@ -373,25 +373,26 @@ impl JumpBar {
                 let bytes = text.as_bytes();
 
                 // Only search within the visible range
-                for offset in start_offset..end_offset {
+                for offset_usize in start_offset.0..end_offset.0 {
+                    let offset = MultiBufferOffset(offset_usize);
                     // Skip if remaining text is shorter than query
                     if offset + query_len > end_offset {
                         break;
                     }
 
                     // Check first character quickly to skip most positions
-                    let c = bytes[offset] as char;
+                    let c = bytes[offset_usize] as char;
                     if c != query_first_lower && c != query_first_upper {
                         continue;
                     }
 
                     // Extract slice safely and compare case-insensitively
-                    if !text.is_char_boundary(offset) || !text.is_char_boundary(offset + query_len)
+                    if !text.is_char_boundary(offset_usize) || !text.is_char_boundary(offset_usize + query_len)
                     {
                         continue;
                     }
 
-                    let slice = &text[offset..offset + query_len];
+                    let slice = &text[offset_usize..offset_usize + query_len];
                     if slice.eq_ignore_ascii_case(query_str) {
                         let point = buffer_snapshot.offset_to_point(offset);
                         let display_point = display_snapshot
@@ -409,9 +410,9 @@ impl JumpBar {
 
                         // Get the next character after the match
                         let next_char = if offset + query_len < buffer_snapshot.len() {
-                            let next_offset = offset + query_len;
-                            if text.is_char_boundary(next_offset) {
-                                text[next_offset..].chars().next()
+                            let next_offset_usize = offset_usize + query_len;
+                            if text.is_char_boundary(next_offset_usize) {
+                                text[next_offset_usize..].chars().next()
                             } else {
                                 None
                             }

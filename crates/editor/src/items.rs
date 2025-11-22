@@ -53,7 +53,6 @@ use workspace::{
     OpenOptions,
     item::{Dedup, ItemSettings, SerializableItem, TabContentParams},
 };
-
 use workspace::{
     OpenVisible, Pane, WorkspaceSettings,
     item::{BreadcrumbText, FollowEvent, ProjectItemKind},
@@ -1474,8 +1473,7 @@ impl Editor {
 }
 
 pub(crate) enum BufferSearchHighlights {}
-pub(crate) enum ActiveSearchHighlight {}
-
+const ACTIVE_SEARCH_MATCH_KEY: usize = 0;
 impl SearchableItem for Editor {
     type Match = Range<Anchor>;
 
@@ -1488,16 +1486,15 @@ impl SearchableItem for Editor {
     }
 
     fn clear_matches(&mut self, _: &mut Window, cx: &mut Context<Self>) {
-        let cleared_search = self
+        if self
             .clear_background_highlights::<BufferSearchHighlights>(cx)
-            .is_some();
-        let cleared_active = self
-            .clear_background_highlights::<ActiveSearchHighlight>(cx)
-            .is_some();
-
-        if cleared_search || cleared_active {
+            .is_some()
+        {
             cx.emit(SearchEvent::MatchesInvalidated);
         }
+
+        let _ = self
+            .clear_background_highlight_key::<BufferSearchHighlights>(ACTIVE_SEARCH_MATCH_KEY, cx);
     }
 
     fn update_matches(
@@ -1512,7 +1509,6 @@ impl SearchableItem for Editor {
             .map(|(_, range)| range.as_ref());
         let updated = existing_range != Some(matches);
 
-        // Find the active match index
         let active_ix = active_match_index(
             Direction::Next,
             matches,
@@ -1520,31 +1516,41 @@ impl SearchableItem for Editor {
             &self.buffer().read(cx).snapshot(cx),
         );
 
-        // Split matches into active and non-active
-        let mut active_matches = Vec::new();
-        let mut non_active_matches = Vec::new();
+        let non_active_matches: Vec<_> = matches
+            .iter()
+            .enumerate()
+            .filter_map(|(i, m)| {
+                if Some(i) == active_ix {
+                    None
+                } else {
+                    Some(m.clone())
+                }
+            })
+            .collect();
 
-        for (i, range) in matches.iter().enumerate() {
-            if Some(i) == active_ix {
-                active_matches.push(range.clone());
-            } else {
-                non_active_matches.push(range.clone());
-            }
-        }
-
-        // Highlight non-active matches with regular search background
         self.highlight_background::<BufferSearchHighlights>(
             &non_active_matches,
             |theme| theme.colors().search_match_background,
             cx,
         );
 
-        // Highlight active match with selection background
-        self.highlight_background::<ActiveSearchHighlight>(
-            &active_matches,
-            |theme| theme.colors().element_selection_background,
-            cx,
-        );
+        match active_ix {
+            Some(ix) => {
+                let range = &matches[ix];
+                self.highlight_background_key::<BufferSearchHighlights>(
+                    ACTIVE_SEARCH_MATCH_KEY,
+                    std::slice::from_ref(range),
+                    |theme| theme.colors().search_active_match_background,
+                    cx,
+                );
+            }
+            None => {
+                let _ = self.clear_background_highlight_key::<BufferSearchHighlights>(
+                    ACTIVE_SEARCH_MATCH_KEY,
+                    cx,
+                );
+            }
+        }
 
         if updated {
             cx.emit(SearchEvent::MatchesInvalidated);
@@ -1652,30 +1658,10 @@ impl SearchableItem for Editor {
         self.change_selections(SelectionEffects::scroll(autoscroll), window, cx, |s| {
             s.select_ranges([range]);
         });
-
-        // Update highlights to reflect the new active match
-        let mut active_matches = Vec::new();
-        let mut non_active_matches = Vec::new();
-
-        for (i, range) in matches.iter().enumerate() {
-            if i == index {
-                active_matches.push(range.clone());
-            } else {
-                non_active_matches.push(range.clone());
-            }
-        }
-
-        // Highlight non-active matches with regular search background
-        self.highlight_background::<BufferSearchHighlights>(
-            &non_active_matches,
-            |theme| theme.colors().search_match_background,
-            cx,
-        );
-
-        // Highlight active match with selection background
-        self.highlight_background::<ActiveSearchHighlight>(
-            &active_matches,
-            |theme| theme.colors().element_selection_background,
+        self.highlight_background_key::<BufferSearchHighlights>(
+            ACTIVE_SEARCH_MATCH_KEY,
+            std::slice::from_ref(&matches[index]),
+            |theme| theme.colors().search_active_match_background,
             cx,
         );
     }
