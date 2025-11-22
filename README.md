@@ -16,6 +16,8 @@ ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 git checkout main && git pull zed main && git push && git checkout dima && git merge main
 ```
 
+If there are merge conflicts, I resolve them via IntelliJ IDEA.
+
 ## Compare my changes with Zed's main branch
 
 https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
