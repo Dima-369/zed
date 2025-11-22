@@ -474,7 +474,6 @@ pub struct CallSettingsContent {
 }
 
 /// Configuration of jump navigation in Zed.
-#[skip_serializing_none]
 #[derive(Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema, MergeFrom, Debug)]
 pub struct JumpSettingsContent {
     /// Whether to automatically jump when only one match is found.

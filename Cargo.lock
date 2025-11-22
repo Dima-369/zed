@@ -8657,7 +8657,7 @@ dependencies = [
  "gpui",
  "language",
  "project",
- "schemars 1.0.4",
+ "schemars",
  "serde",
  "settings",
  "theme",
