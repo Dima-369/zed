@@ -16643,7 +16643,7 @@ if add_trailing_newline {
         let before_errors: Vec<_> = filtered(
             errors_only,
             buffer
-                .diagnostics_in_range(0..selection.start)
+                .diagnostics_in_range(MultiBufferOffset(0)..selection.start)
                 .filter(|entry| entry.range.start <= selection.start),
         )
         .collect();
