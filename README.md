@@ -44,7 +44,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - the command palette sorting now sorts the same for `close work` and `work close`, and it does not search individual character matches anymore, like when you enter `bsp`, it would show `editor: backspace` before. I do not like that behavior, so I removed that
 - changed `command palette: toggle` to sort by recency instead of hit count
-- removed `GlobalCommandPaletteInterceptor` usage which contains Vim things like `:delete, :edit, :help, :join, :quit, :sort, :write, :xit, :yank` because I do not use them. I removed them because it is hard to sort those by recency in combination with the other real editor action commands. I am not yet sure if this has other negative consequences.
+- removed `GlobalCommandPaletteInterceptor` usage which contains Vim things like `:delete, :edit, :help, :join, :quit, :sort, :write, :xit, :yank` because I do not use them. Apparently, this also removed the ability to jump to a line via `:144`. I still removed this behavior because it is hard to sort those dynamic actions by recency in combination with the other real editor action commands.
 
 ## New actions
 
