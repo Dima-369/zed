@@ -11,6 +11,7 @@ pub struct TabBar {
     children: SmallVec<[AnyElement; 2]>,
     end_children: SmallVec<[AnyElement; 2]>,
     scroll_handle: Option<ScrollHandle>,
+    vertical_stacking: bool,
 }
 
 impl TabBar {
@@ -21,11 +22,17 @@ impl TabBar {
             children: SmallVec::new(),
             end_children: SmallVec::new(),
             scroll_handle: None,
+            vertical_stacking: false,
         }
     }
 
     pub fn track_scroll(mut self, scroll_handle: ScrollHandle) -> Self {
         self.scroll_handle = Some(scroll_handle);
+        self
+    }
+
+    pub fn vertical_stacking(mut self, enabled: bool) -> Self {
+        self.vertical_stacking = enabled;
         self
     }
 
@@ -97,7 +104,8 @@ impl RenderOnce for TabBar {
             .flex()
             .flex_none()
             .w_full()
-            .h(Tab::container_height(cx))
+            .when(self.vertical_stacking, |this| this.min_h(Tab::container_height(cx)))
+            .when(!self.vertical_stacking, |this| this.h(Tab::container_height(cx)))
             .bg(cx.theme().colors().tab_bar_background)
             .when(!self.start_children.is_empty(), |this| {
                 this.child(
@@ -127,12 +135,20 @@ impl RenderOnce for TabBar {
                             .border_color(cx.theme().colors().border),
                     )
                     .child(
-                        h_flex()
+                        div()
                             .id("tabs")
                             .flex_grow()
-                            .overflow_x_scroll()
-                            .when_some(self.scroll_handle, |cx, scroll_handle| {
-                                cx.track_scroll(&scroll_handle)
+                            .when(self.vertical_stacking, |this| {
+                                this.flex()
+                                    .flex_wrap()
+                                    .overflow_hidden()
+                            })
+                            .when(!self.vertical_stacking, |this| {
+                                this.h_flex()
+                                    .overflow_x_scroll()
+                                    .when_some(self.scroll_handle, |cx, scroll_handle| {
+                                        cx.track_scroll(&scroll_handle)
+                                    })
                             })
                             .children(self.children),
                     ),

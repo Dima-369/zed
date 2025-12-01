@@ -637,6 +637,7 @@ impl VsCodeSettings {
             show_tab_bar_buttons: self
                 .read_str("workbench.editor.editorActionsLocation")
                 .and_then(|str| if str == "hidden" { Some(false) } else { None }),
+            vertical_stacking: None,
         })
     }
 

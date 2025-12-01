@@ -3075,7 +3075,10 @@ impl Pane {
         let unpinned_tabs = tab_items.split_off(self.pinned_tab_count);
         let pinned_tabs = tab_items;
 
+        let tab_bar_settings = TabBarSettings::get_global(cx);
+        let vertical_stacking = tab_bar_settings.vertical_stacking;
         TabBar::new("tab_bar")
+            .vertical_stacking(vertical_stacking)
             .when(
                 self.display_nav_history_buttons.unwrap_or_default(),
                 |tab_bar| {
@@ -3112,14 +3115,22 @@ impl Pane {
                     })
             }))
             .child(
-                h_flex()
+                div()
                     .id("unpinned tabs")
-                    .overflow_x_scroll()
                     .w_full()
-                    .track_scroll(&self.tab_bar_scroll_handle)
-                    .on_scroll_wheel(cx.listener(|this, _, _, _| {
-                        this.suppress_scroll = true;
-                    }))
+                    .when(vertical_stacking, |this| {
+                        this.flex()
+                            .flex_wrap()
+                            .overflow_hidden()
+                    })
+                    .when(!vertical_stacking, |this| {
+                        this.h_flex()
+                            .overflow_x_scroll()
+                            .track_scroll(&self.tab_bar_scroll_handle)
+                            .on_scroll_wheel(cx.listener(|this, _, _, _| {
+                                this.suppress_scroll = true;
+                            }))
+                    })
                     .children(unpinned_tabs)
                     .child(
                         div()
@@ -6900,6 +6911,26 @@ mod tests {
                 settings.workspace.max_tabs = value.map(|v| NonZero::new(v).unwrap())
             });
         });
+    }
+
+    #[test]
+    fn test_vertical_stacking_setting() {
+        let mut cx = TestAppContext::new();
+        init_test(&mut cx);
+
+        // Test default setting (should be false)
+        let default_setting = cx.read(|cx| TabBarSettings::get_global(cx).vertical_stacking);
+        assert_eq!(default_setting, false);
+
+        // Test updating the setting
+        cx.update_global(|store: &mut SettingsStore, cx| {
+            store.update_user_settings(cx, |settings| {
+                settings.tab_bar.vertical_stacking = Some(true);
+            });
+        });
+
+        let updated_setting = cx.read(|cx| TabBarSettings::get_global(cx).vertical_stacking);
+        assert_eq!(updated_setting, true);
     }
 
     fn add_labeled_item(

@@ -389,6 +389,11 @@ pub struct TabBarSettingsContent {
     ///
     /// Default: true
     pub show_tab_bar_buttons: Option<bool>,
+    /// Whether to stack tabs vertically in multiple rows instead of horizontal scrolling.
+    /// When enabled, tabs will wrap to new rows when they exceed the available width.
+    ///
+    /// Default: false
+    pub vertical_stacking: Option<bool>,
 }
 
 #[with_fallible_options]

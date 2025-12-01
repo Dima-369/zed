@@ -1060,7 +1060,10 @@
     // Whether or not to show the navigation history buttons.
     "show_nav_history_buttons": true,
     // Whether or not to show the tab bar buttons.
-    "show_tab_bar_buttons": true
+    "show_tab_bar_buttons": true,
+    // Whether to stack tabs vertically in multiple rows instead of horizontal scrolling.
+    // When enabled, tabs will wrap to new rows when they exceed the available width.
+    "vertical_stacking": false
   },
   // Settings related to the editor's tabs
   "tabs": {

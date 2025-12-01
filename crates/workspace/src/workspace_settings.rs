@@ -58,6 +58,7 @@ pub struct TabBarSettings {
     pub show: bool,
     pub show_nav_history_buttons: bool,
     pub show_tab_bar_buttons: bool,
+    pub vertical_stacking: bool,
 }
 
 impl Settings for WorkspaceSettings {
@@ -118,6 +119,7 @@ impl Settings for TabBarSettings {
             show: tab_bar.show.unwrap(),
             show_nav_history_buttons: tab_bar.show_nav_history_buttons.unwrap(),
             show_tab_bar_buttons: tab_bar.show_tab_bar_buttons.unwrap(),
+            vertical_stacking: tab_bar.vertical_stacking.unwrap(),
         }
     }
 }
