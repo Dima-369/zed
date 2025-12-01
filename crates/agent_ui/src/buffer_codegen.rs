@@ -271,7 +271,7 @@ impl CodegenAlternative {
             let mut buffer = Buffer::local_normalized(text, line_ending, cx);
             buffer.set_language(language, cx);
             if let Some(language_registry) = language_registry {
-                buffer.set_language_registry(language_registry)
+                buffer.set_language_registry(language_registry);
             }
             buffer
         });
@@ -423,6 +423,7 @@ impl CodegenAlternative {
                 role: Role::User,
                 content: Vec::new(),
                 cache: false,
+                reasoning_details: None,
             };
 
             if let Some(context) = context_task.await {

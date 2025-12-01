@@ -1358,6 +1358,8 @@
   //      "load_direnv": "direct"
   // 2. Load direnv configuration through the shell hook, works for POSIX shells and fish.
   //      "load_direnv": "shell_hook"
+  // 3. Don't load direnv configuration at all.
+  //      "load_direnv": "disabled"
   "load_direnv": "direct",
   "edit_predictions": {
     // A list of globs representing files that edit predictions should be disabled for.
@@ -1446,7 +1448,7 @@
     "default_height": 320,
     // What working directory to use when launching the terminal.
     // May take 4 values:
-    // 1. Use the current file's project directory.  Will Fallback to the
+    // 1. Use the current file's project directory. Fallback to the
     //    first project directory strategy if unsuccessful
     //      "working_directory": "current_project_directory"
     // 2. Use the first project in this workspace's directory
@@ -1894,7 +1896,7 @@
       }
     },
     "PHP": {
-      "language_servers": ["phpactor", "!intelephense", "..."],
+      "language_servers": ["phpactor", "!intelephense", "!phptools", "..."],
       "prettier": {
         "allowed": true,
         "plugins": ["@prettier/plugin-php"],
@@ -2143,7 +2145,7 @@
   "windows": {
     "languages": {
       "PHP": {
-        "language_servers": ["intelephense", "!phpactor", "..."]
+        "language_servers": ["intelephense", "!phpactor", "!phptools", "..."]
       }
     }
   },
