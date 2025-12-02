@@ -97,6 +97,8 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 }
 ```
 
+It always places pinned tabs in an own row, and if there are only pinned tabs, the second row will be blank and take space away (little bug). But otherwise, it is nice.
+
 - lower `toolbar.rs` height to make it as minimal as possible to save space, same in `breadcrumbs.rs`. This applies for terminals, as well
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
 - highlight the active search match with a different background color. From https://github.com/zed-industries/zed/pull/35931
