@@ -51,7 +51,7 @@ jobs:
         mkdir -p /tmp/ext-output
         ./zed-extension --source-dir . --scratch-dir /tmp/ext-scratch --output-dir /tmp/ext-output
       shell: bash -euxo pipefail {0}
-    timeout-minutes: 1
+    timeout-minutes: 2
   check_bump_needed:
     if: (github.repository_owner == 'zed-industries' || github.repository_owner == 'zed-extensions')
     runs-on: namespace-profile-2x4-ubuntu-2404
@@ -114,21 +114,18 @@ jobs:
       run: |
         OLD_VERSION="${{ needs.check_bump_needed.outputs.current_version }}"
 
-        cat <<EOF > .bumpversion.cfg
-        [bumpversion]
-        current_version = "$OLD_VERSION"
+        BUMP_FILES=("extension.toml")
+        if [[ -f "Cargo.toml" ]]; then
+            BUMP_FILES+=("Cargo.toml")
+        fi
 
-        [bumpversion:file:Cargo.toml]
+        bump2version --verbose --current-version "$OLD_VERSION" --no-configured-files ${{ inputs.bump-type }} "${BUMP_FILES[@]}"
 
-        [bumpversion:file:extension.toml]
+        if [[ -f "Cargo.toml" ]]; then
+            cargo update --workspace
+        fi
 
-        EOF
-
-        bump2version --verbose ${{ inputs.bump-type }}
         NEW_VERSION="$(sed -n 's/version = \"\(.*\)\"/\1/p' < extension.toml)"
-        cargo update --workspace
-
-        rm .bumpversion.cfg
 
         echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
       shell: bash -euxo pipefail {0}

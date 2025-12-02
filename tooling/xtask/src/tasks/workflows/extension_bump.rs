@@ -5,20 +5,12 @@ use crate::tasks::workflows::{
     extension_release::extension_workflow_secrets,
     extension_tests::{self},
     runners,
-    steps::{self, CommonJobConditions, DEFAULT_REPOSITORY_OWNER_GUARD, NamedJob, named},
+    steps::{
+        self, CommonJobConditions, DEFAULT_REPOSITORY_OWNER_GUARD, FluentBuilder, NamedJob, named,
+    },
     vars::{
         JobOutput, StepOutput, WorkflowInput, WorkflowSecret, one_workflow_per_non_main_branch,
     },
-};
-
-const BUMPVERSION_CONFIG: &str = indoc! {r#"
-    [bumpversion]
-    current_version = "$OLD_VERSION"
-
-    [bumpversion:file:Cargo.toml]
-
-    [bumpversion:file:extension.toml]
-    "#
 };
 
 const VERSION_CHECK: &str = r#"sed -n 's/version = \"\(.*\)\"/\1/p' < extension.toml"#;
@@ -113,7 +105,7 @@ fn create_version_label(
     app_id: &WorkflowSecret,
     app_secret: &WorkflowSecret,
 ) -> NamedJob {
-    let (generate_token, generated_token) = generate_token(app_id, app_secret);
+    let (generate_token, generated_token) = generate_token(app_id, app_secret, None);
     let job = steps::dependant_job(dependencies)
         .cond(Expression::new(format!(
             "{DEFAULT_REPOSITORY_OWNER_GUARD} && github.event_name == 'push' && github.ref == 'refs/heads/main' && {} == 'false'",
@@ -193,7 +185,7 @@ fn bump_extension_version(
     app_id: &WorkflowSecret,
     app_secret: &WorkflowSecret,
 ) -> NamedJob {
-    let (generate_token, generated_token) = generate_token(app_id, app_secret);
+    let (generate_token, generated_token) = generate_token(app_id, app_secret, None);
     let (bump_version, new_version) = bump_version(current_version, bump_type);
 
     let job = steps::dependant_job(dependencies)
@@ -216,13 +208,24 @@ fn bump_extension_version(
 pub(crate) fn generate_token(
     app_id: &WorkflowSecret,
     app_secret: &WorkflowSecret,
+    repository_target: Option<RepositoryTarget>,
 ) -> (Step<Use>, StepOutput) {
     let step = named::uses("actions", "create-github-app-token", "v2")
         .id("generate-token")
         .add_with(
             Input::default()
                 .add("app-id", app_id.to_string())
-                .add("private-key", app_secret.to_string()),
+                .add("private-key", app_secret.to_string())
+                .when_some(
+                    repository_target,
+                    |input,
+                     RepositoryTarget {
+                         owner,
+                         repositories,
+                     }| {
+                        input.add("owner", owner).add("repositories", repositories)
+                    },
+                ),
         );
 
     let generated_token = StepOutput::new(&step, "token");
@@ -239,20 +242,23 @@ fn bump_version(current_version: &JobOutput, bump_type: &WorkflowInput) -> (Step
         indoc! {r#"
             OLD_VERSION="{}"
 
-            cat <<EOF > .bumpversion.cfg
-            {}
-            EOF
+            BUMP_FILES=("extension.toml")
+            if [[ -f "Cargo.toml" ]]; then
+                BUMP_FILES+=("Cargo.toml")
+            fi
 
-            bump2version --verbose {}
+            bump2version --verbose --current-version "$OLD_VERSION" --no-configured-files {} "${{BUMP_FILES[@]}}"
+
+            if [[ -f "Cargo.toml" ]]; then
+                cargo update --workspace
+            fi
+
             NEW_VERSION="$({})"
-            cargo update --workspace
-
-            rm .bumpversion.cfg
 
             echo "new_version=${{NEW_VERSION}}" >> "$GITHUB_OUTPUT"
             "#
         },
-        current_version, BUMPVERSION_CONFIG, bump_type, VERSION_CHECK
+        current_version, bump_type, VERSION_CHECK
     ))
     .id("bump-version");
 
@@ -287,4 +293,18 @@ fn create_pull_request(new_version: StepOutput, generated_token: StepOutput) -> 
             .add("token", generated_token.to_string())
             .add("sign-commits", true),
     )
+}
+
+pub(crate) struct RepositoryTarget {
+    owner: String,
+    repositories: String,
+}
+
+impl RepositoryTarget {
+    pub fn new<T: ToString>(owner: T, repositories: &[&str]) -> Self {
+        Self {
+            owner: owner.to_string(),
+            repositories: repositories.join("\n"),
+        }
+    }
 }
