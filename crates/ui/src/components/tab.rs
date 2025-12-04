@@ -81,7 +81,7 @@ impl Tab {
     }
 
     pub fn container_height(cx: &App) -> Pixels {
-        DynamicSpacing::Base32.px(cx) - px(8.)
+        DynamicSpacing::Base32.px(cx) - px(4.)
     }
 }
 
