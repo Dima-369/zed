@@ -143,8 +143,6 @@ impl RenderOnce for Tab {
 
         self.div
             .h(Tab::container_height(cx))
-            .flex()
-            .items_center()
             .bg(tab_bg)
             .border_color(cx.theme().colors().border)
             .map(|this| match self.position {
@@ -171,6 +169,9 @@ impl RenderOnce for Tab {
                 h_flex()
                     .group("")
                     .relative()
+                    .h(Tab::content_height(cx))
+                    .px(DynamicSpacing::Base04.px(cx))
+                    .gap(DynamicSpacing::Base04.rems(cx))
                     .text_color(text_color)
                     .child(start_slot)
                     .children(self.children)
