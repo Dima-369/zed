@@ -447,14 +447,6 @@ pub struct DiagnosticsSettings {
 
     /// Settings for showing inline diagnostics.
     pub inline: InlineDiagnosticsSettings,
-
-    /// Whether to merge diagnostics with the same range into a single diagnostic.
-    /// When enabled, diagnostics from the same language server that have identical
-    /// ranges will be combined into one diagnostic with messages joined by newlines.
-    /// The lowest severity among the merged diagnostics will be used.
-    ///
-    /// Default: false
-    pub merge_same_range: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -502,9 +494,15 @@ impl Settings for ProjectSettings {
         let diagnostics_default = settings::DiagnosticsSettingsContent::default();
         let diagnostics = content.diagnostics.as_ref().unwrap_or(&diagnostics_default);
         let lsp_pull_diagnostics_default = settings::LspPullDiagnosticsSettingsContent::default();
-        let lsp_pull_diagnostics = diagnostics.lsp_pull_diagnostics.as_ref().unwrap_or(&lsp_pull_diagnostics_default);
+        let lsp_pull_diagnostics = diagnostics
+            .lsp_pull_diagnostics
+            .as_ref()
+            .unwrap_or(&lsp_pull_diagnostics_default);
         let inline_diagnostics_default = settings::InlineDiagnosticsSettingsContent::default();
-        let inline_diagnostics = diagnostics.inline.as_ref().unwrap_or(&inline_diagnostics_default);
+        let inline_diagnostics = diagnostics
+            .inline
+            .as_ref()
+            .unwrap_or(&inline_diagnostics_default);
 
         let git_default = settings::GitSettings::default();
         let git = content.git.as_ref().unwrap_or(&git_default);
@@ -576,13 +574,17 @@ impl Settings for ProjectSettings {
                     min_column: inline_diagnostics.min_column.unwrap_or(0),
                     max_severity: inline_diagnostics.max_severity.map(Into::into),
                 },
-                merge_same_range: diagnostics.merge_same_range.unwrap_or(false),
             },
             git: git_settings,
             node: content.node.clone().unwrap_or_default().into(),
             load_direnv: project.load_direnv.clone().unwrap_or_default(),
             session: SessionSettings {
-                restore_unsaved_buffers: content.session.clone().unwrap_or_default().restore_unsaved_buffers.unwrap_or(true),
+                restore_unsaved_buffers: content
+                    .session
+                    .clone()
+                    .unwrap_or_default()
+                    .restore_unsaved_buffers
+                    .unwrap_or(true),
             },
         }
     }
