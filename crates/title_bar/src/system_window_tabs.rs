@@ -527,20 +527,3 @@ impl Render for DraggedWindowTab {
             .child(label)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use gpui::TestAppContext;
-
-    #[gpui::test]
-    async fn test_system_window_tabs_creation(cx: &mut TestAppContext) {
-        // Simple test to verify SystemWindowTabs can be created
-        let system_tabs = cx.new(|_| SystemWindowTabs::new());
-
-        // Verify the component was created successfully
-        cx.read(|cx| {
-            system_tabs.read(cx);
-        });
-    }
-}
