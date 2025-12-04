@@ -101,7 +101,7 @@ It always places pinned tabs in an own row, and if there are only pinned tabs, t
 
 - lower `toolbar.rs` height to make it as minimal as possible to save space, same in `breadcrumbs.rs`. This applies for terminals, as well
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
-- highlight the active search match with a different background color. From https://github.com/zed-industries/zed/pull/35931
+- highlight the active search match with a different background color. It is not trivial to set the foreground color to a fixed color, so I stopped trying
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
 - lower horizontal scroll bar height to half of vertical one (the default one is huge)
 - hide horizontal scroll bar when soft wrap is enabled
