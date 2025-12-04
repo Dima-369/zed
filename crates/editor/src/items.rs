@@ -1464,7 +1464,6 @@ impl Editor {
 }
 
 pub(crate) enum BufferSearchHighlights {}
-const ACTIVE_SEARCH_MATCH_KEY: usize = 0;
 impl SearchableItem for Editor {
     type Match = Range<Anchor>;
 
@@ -1483,9 +1482,6 @@ impl SearchableItem for Editor {
         {
             cx.emit(SearchEvent::MatchesInvalidated);
         }
-
-        let _ = self
-            .clear_background_highlight_key::<BufferSearchHighlights>(ACTIVE_SEARCH_MATCH_KEY, cx);
     }
 
     fn update_matches(
@@ -1499,50 +1495,11 @@ impl SearchableItem for Editor {
             .get(&HighlightKey::Type(TypeId::of::<BufferSearchHighlights>()))
             .map(|(_, range)| range.as_ref());
         let updated = existing_range != Some(matches);
-
-        let active_ix = active_match_index(
-            Direction::Next,
-            matches,
-            &self.selections.newest_anchor().head(),
-            &self.buffer().read(cx).snapshot(cx),
-        );
-
-        let non_active_matches: Vec<_> = matches
-            .iter()
-            .enumerate()
-            .filter_map(|(i, m)| {
-                if Some(i) == active_ix {
-                    None
-                } else {
-                    Some(m.clone())
-                }
-            })
-            .collect();
-
         self.highlight_background::<BufferSearchHighlights>(
-            &non_active_matches,
+            matches,
             |theme| theme.colors().search_match_background,
             cx,
         );
-
-        match active_ix {
-            Some(ix) => {
-                let range = &matches[ix];
-                self.highlight_background_key::<BufferSearchHighlights>(
-                    ACTIVE_SEARCH_MATCH_KEY,
-                    std::slice::from_ref(range),
-                    |theme| theme.colors().search_active_match_background,
-                    cx,
-                );
-            }
-            None => {
-                let _ = self.clear_background_highlight_key::<BufferSearchHighlights>(
-                    ACTIVE_SEARCH_MATCH_KEY,
-                    cx,
-                );
-            }
-        }
-
         if updated {
             cx.emit(SearchEvent::MatchesInvalidated);
         }
@@ -1648,13 +1605,7 @@ impl SearchableItem for Editor {
         };
         self.change_selections(SelectionEffects::scroll(autoscroll), window, cx, |s| {
             s.select_ranges([range]);
-        });
-        self.highlight_background_key::<BufferSearchHighlights>(
-            ACTIVE_SEARCH_MATCH_KEY,
-            std::slice::from_ref(&matches[index]),
-            |theme| theme.colors().search_active_match_background,
-            cx,
-        );
+        })
     }
 
     fn select_matches(
