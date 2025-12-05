@@ -15953,7 +15953,10 @@ if add_trailing_newline {
         let selection_height = end_row - start_row + 1;
         let scroll_margin_rows = self.vertical_scroll_margin() as u32;
 
-        let fits_on_the_screen = visible_row_count >= selection_height + scroll_margin_rows * 2;
+        // Limit the scroll margin used for fit calculation to prevent large margins
+        // from always forcing cursor-top/bottom scrolling behavior
+        let effective_scroll_margin = scroll_margin_rows.min(visible_row_count / 4);
+        let fits_on_the_screen = visible_row_count >= selection_height + effective_scroll_margin * 2;
         let scroll_behavior = if fits_on_the_screen {
             self.request_autoscroll(Autoscroll::fit(), cx);
             SelectSyntaxNodeScrollBehavior::FitSelection

@@ -40,6 +40,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
 - modified `vim/.../delete_motion.rs` so `vim::DeleteRight` at end of line stays on the newline character
 - modified `editor::GoToDefinition` to not enter Vim visual mode when jumping to a definition
+- fixed that a large `vertical_scroll_margin` in `settings.json` to have a centered cursor jumps buffer scrolls around (https://github.com/zed-industries/zed/issues/42155)
 
 ### Command palette
 
