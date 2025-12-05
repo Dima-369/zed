@@ -3059,6 +3059,10 @@ impl Editor {
         self.in_project_search = in_project_search;
     }
 
+    pub fn in_project_search(&self) -> bool {
+        self.in_project_search
+    }
+
     pub fn set_custom_context_menu(
         &mut self,
         f: impl 'static

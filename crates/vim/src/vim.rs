@@ -1420,6 +1420,8 @@ impl Vim {
             && self.mode == Mode::Normal
             // When following someone, don't switch vim mode.
             && editor.leader_id().is_none()
+            // Don't switch to visual mode for project search results editors
+            && !editor.in_project_search()
         {
             if preserve_selection {
                 self.switch_mode(Mode::Visual, true, window, cx);
@@ -1767,10 +1769,14 @@ impl Vim {
                 });
             }
         } else if self.mode == Mode::Normal && newest.start != newest.end {
-            if matches!(newest.goal, SelectionGoal::HorizontalRange { .. }) {
-                self.switch_mode(Mode::VisualBlock, false, window, cx);
-            } else {
-                self.switch_mode(Mode::Visual, false, window, cx)
+            // Don't switch to visual mode for project search results editors
+            let should_switch_to_visual = editor.update(cx, |editor, _| !editor.in_project_search());
+            if should_switch_to_visual {
+                if matches!(newest.goal, SelectionGoal::HorizontalRange { .. }) {
+                    self.switch_mode(Mode::VisualBlock, false, window, cx);
+                } else {
+                    self.switch_mode(Mode::Visual, false, window, cx)
+                }
             }
         } else if newest.start == newest.end
             && !is_multicursor
