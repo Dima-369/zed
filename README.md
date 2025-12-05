@@ -85,6 +85,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## UI changes
 
+- on macOS, the unsaved changes model uses the native macOS dialog instead of Zed's custom one which has bad keyboard support, so `unsaved_changes_model.rs` was created which allows keyboard navigation (and just looks nicer)
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
 - lower excessive tab height
 - lower status bar height, see `impl Render for StatusBar`

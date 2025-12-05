@@ -11,6 +11,7 @@ use crate::{
     move_item,
     notifications::NotifyResultExt,
     toolbar::Toolbar,
+    unsaved_changes_modal::UnsavedChangesModal,
     workspace_settings::{AutosaveSetting, TabBarSettings, WorkspaceSettings},
 };
 use anyhow::Result;
@@ -20,7 +21,7 @@ use gpui::{
     Action, AnyElement, App, AsyncWindowContext, ClickEvent, ClipboardItem, Context, Corner, Div,
     DragMoveEvent, Entity, EntityId, EventEmitter, ExternalPaths, FocusHandle, FocusOutEvent,
     Focusable, KeyContext, MouseButton, MouseDownEvent, NavigationDirection, Pixels, Point,
-    PromptLevel, Render, ScrollHandle, Subscription, Task, WeakEntity, WeakFocusHandle, Window,
+    Render, ScrollHandle, Subscription, Task, WeakEntity, WeakFocusHandle, Window,
     actions, anchored, deferred, prelude::*,
 };
 use itertools::Itertools;
@@ -1794,20 +1795,21 @@ impl Pane {
             })?;
 
             if save_intent == SaveIntent::Close && dirty_items.len() > 1 {
-                let answer = pane.update_in(cx, |_, window, cx| {
+                let answer = workspace.update_in(cx, |workspace, window, cx| {
                     let detail = Self::file_names_for_prompt(&mut dirty_items.iter(), cx);
-                    window.prompt(
-                        PromptLevel::Warning,
+                    UnsavedChangesModal::show(
+                        workspace,
                         "Do you want to save changes to the following files?",
-                        Some(&detail),
-                        &["Save all", "Discard all", "Cancel"],
+                        Some(detail),
+                        vec!["Save all", "Discard all", "Cancel"],
+                        window,
                         cx,
                     )
                 })?;
                 match answer.await {
-                    Ok(0) => save_intent = SaveIntent::SaveAll,
-                    Ok(1) => save_intent = SaveIntent::Skip,
-                    Ok(2) => return Ok(()),
+                    Some(0) => save_intent = SaveIntent::SaveAll,
+                    Some(1) => save_intent = SaveIntent::Skip,
+                    Some(2) => return Ok(()),
                     _ => {}
                 }
             }
@@ -1832,22 +1834,23 @@ impl Pane {
                             }
                         }
                         Err(err) => {
-                            let answer = pane.update_in(cx, |_, window, cx| {
+                            let answer = workspace.update_in(cx, |workspace, window, cx| {
                                 let detail = Self::file_names_for_prompt(
                                     &mut [&item_to_close].into_iter(),
                                     cx,
                                 );
-                                window.prompt(
-                                    PromptLevel::Warning,
-                                    &format!("Unable to save file: {}", &err),
-                                    Some(&detail),
-                                    &["Close Without Saving", "Cancel"],
+                                UnsavedChangesModal::show(
+                                    workspace,
+                                    format!("Unable to save file: {}", &err),
+                                    Some(detail),
+                                    vec!["Close Without Saving", "Cancel"],
+                                    window,
                                     cx,
                                 )
                             })?;
                             match answer.await {
-                                Ok(0) => {}
-                                Ok(1..) | Err(_) => break,
+                                Some(0) => {}
+                                Some(1..) | None => break,
                             }
                         }
                     }
@@ -2094,16 +2097,23 @@ impl Pane {
             if has_deleted_file && is_singleton {
                 let answer = pane.update_in(cx, |pane, window, cx| {
                     pane.activate_item(item_ix, true, true, window, cx);
-                    window.prompt(
-                        PromptLevel::Warning,
-                        DELETED_MESSAGE,
-                        None,
-                        &["Save", "Close", "Cancel"],
-                        cx,
-                    )
+                    if let Some(workspace) = pane.workspace.upgrade() {
+                        workspace.update(cx, |workspace, cx| {
+                            UnsavedChangesModal::show(
+                                workspace,
+                                DELETED_MESSAGE,
+                                None::<String>,
+                                vec!["Save", "Close", "Cancel"],
+                                window,
+                                cx,
+                            )
+                        })
+                    } else {
+                        Task::ready(None)
+                    }
                 })?;
                 match answer.await {
-                    Ok(0) => {
+                    Some(0) => {
                         pane.update_in(cx, |_, window, cx| {
                             item.save(
                                 SaveOptions {
@@ -2117,7 +2127,7 @@ impl Pane {
                         })?
                         .await?
                     }
-                    Ok(1) => {
+                    Some(1) => {
                         pane.update_in(cx, |pane, window, cx| {
                             pane.remove_item(item.item_id(), false, true, window, cx)
                         })?;
@@ -2128,16 +2138,23 @@ impl Pane {
             } else {
                 let answer = pane.update_in(cx, |pane, window, cx| {
                     pane.activate_item(item_ix, true, true, window, cx);
-                    window.prompt(
-                        PromptLevel::Warning,
-                        CONFLICT_MESSAGE,
-                        None,
-                        &["Overwrite", "Discard", "Cancel"],
-                        cx,
-                    )
+                    if let Some(workspace) = pane.workspace.upgrade() {
+                        workspace.update(cx, |workspace, cx| {
+                            UnsavedChangesModal::show(
+                                workspace,
+                                CONFLICT_MESSAGE,
+                                None::<String>,
+                                vec!["Overwrite", "Discard", "Cancel"],
+                                window,
+                                cx,
+                            )
+                        })
+                    } else {
+                        Task::ready(None)
+                    }
                 })?;
                 match answer.await {
-                    Ok(0) => {
+                    Some(0) => {
                         pane.update_in(cx, |_, window, cx| {
                             item.save(
                                 SaveOptions {
@@ -2151,7 +2168,7 @@ impl Pane {
                         })?
                         .await?
                     }
-                    Ok(1) => {
+                    Some(1) => {
                         pane.update_in(cx, |_, window, cx| item.reload(project, window, cx))?
                             .await?
                     }
@@ -2170,13 +2187,20 @@ impl Pane {
                         if pane.save_modals_spawned.insert(item_id) {
                             pane.activate_item(item_ix, true, true, window, cx);
                             let prompt = dirty_message_for(item.project_path(cx), path_style);
-                            Some(window.prompt(
-                                PromptLevel::Warning,
-                                &prompt,
-                                None,
-                                &["Save", "Don't Save", "Cancel"],
-                                cx,
-                            ))
+                            if let Some(workspace) = pane.workspace.upgrade() {
+                                Some(workspace.update(cx, |workspace, cx| {
+                                    UnsavedChangesModal::show(
+                                        workspace,
+                                        prompt,
+                                        None::<String>,
+                                        vec!["Save", "Don't Save", "Cancel"],
+                                        window,
+                                        cx,
+                                    )
+                                }))
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
@@ -2191,8 +2215,8 @@ impl Pane {
                             }
                         })?;
                         match answer {
-                            Ok(0) => {}
-                            Ok(1) => {
+                            Some(0) => {}
+                            Some(1) => {
                                 // Don't save this file
                                 pane.update_in(cx, |pane, _, cx| {
                                     if pane.is_tab_pinned(item_ix) && !item.can_save(cx) {
