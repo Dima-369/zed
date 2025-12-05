@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     JoinLines,
     code_context_menus::CodeContextMenu,
-    edit_prediction_tests::FakeEditPredictionProvider,
+    edit_prediction_tests::FakeEditPredictionDelegate,
     element::StickyHeader,
     linked_editing_ranges::LinkedEditingRanges,
     scroll::scroll_amount::ScrollAmount,
@@ -8636,7 +8636,7 @@ async fn test_undo_edit_prediction_scrolls_to_edit_pos(cx: &mut TestAppContext) 
 
     let mut cx = EditorTestContext::new(cx).await;
 
-    let provider = cx.new(|_| FakeEditPredictionProvider::default());
+    let provider = cx.new(|_| FakeEditPredictionDelegate::default());
     cx.update_editor(|editor, window, cx| {
         editor.set_edit_prediction_provider(Some(provider.clone()), window, cx);
     });
@@ -8659,7 +8659,7 @@ async fn test_undo_edit_prediction_scrolls_to_edit_pos(cx: &mut TestAppContext) 
 
     cx.update(|_, cx| {
         provider.update(cx, |provider, _| {
-            provider.set_edit_prediction(Some(edit_prediction::EditPrediction::Local {
+            provider.set_edit_prediction(Some(edit_prediction_types::EditPrediction::Local {
                 id: None,
                 edits: vec![(edit_position..edit_position, "X".into())],
                 edit_preview: None,
@@ -27496,6 +27496,65 @@ async fn test_paste_url_from_other_app_creates_markdown_link_over_selected_text(
     cx.assert_editor_state(&format!(
         "Hello, [editor]({url})ˇ.\nZed is [great]({url})ˇ (see this link: {url}ˇ)"
     ));
+}
+
+#[gpui::test]
+async fn test_markdown_list_indent_with_multi_cursor(cx: &mut gpui::TestAppContext) {
+    init_test(cx, |_| {});
+
+    let markdown_language = languages::language("markdown", tree_sitter_md::LANGUAGE.into());
+    let mut cx = EditorTestContext::new(cx).await;
+
+    cx.update_buffer(|buffer, cx| buffer.set_language(Some(markdown_language), cx));
+
+    cx.set_state(&indoc! {"
+        - [ ] Item 1
+            - [ ] Item 1.a
+        - [ˇ] Item 2
+            - [ˇ] Item 2.a
+            - [ˇ] Item 2.b
+        "
+    });
+
+    cx.update_editor(|editor, window, cx| {
+        editor.handle_input("X", window, cx);
+    });
+
+    cx.assert_editor_state(indoc! {"
+        - [ ] Item 1
+            - [ ] Item 1.a
+        - [Xˇ] Item 2
+            - [Xˇ] Item 2.a
+            - [Xˇ] Item 2.b
+        "
+    });
+}
+
+#[gpui::test]
+async fn test_markdown_list_indent_with_newline(cx: &mut gpui::TestAppContext) {
+    init_test(cx, |_| {});
+
+    let markdown_language = languages::language("markdown", tree_sitter_md::LANGUAGE.into());
+    let mut cx = EditorTestContext::new(cx).await;
+
+    cx.update_buffer(|buffer, cx| buffer.set_language(Some(markdown_language), cx));
+
+    cx.set_state(indoc! {"
+        - [x] list item
+          - [x] sub list itemˇ
+        "
+    });
+
+    cx.update_editor(|editor, window, cx| {
+        editor.newline(&Newline, window, cx);
+    });
+
+    cx.assert_editor_state(indoc! {"
+        - [x] list item
+          - [x] sub list item
+          ˇ
+        "
+    });
 }
 
 #[gpui::test]

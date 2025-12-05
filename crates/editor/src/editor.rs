@@ -58,7 +58,7 @@ pub struct JumpLabel {
     pub label: String,
     pub match_length: usize,
 }
-pub use edit_prediction::Direction;
+pub use edit_prediction_types::Direction;
 pub use editor_settings::{
     CurrentLineHighlight, DocumentColorsRenderMode, EditorSettings, HideMouseMode,
     ScrollBeyondLastLine, ScrollbarAxes, SearchSettings, ShowMinimap,
@@ -99,7 +99,7 @@ use collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use convert_case::{Case, Casing};
 use dap::TelemetrySpawnLocation;
 use display_map::*;
-use edit_prediction::{EditPredictionProvider, EditPredictionProviderHandle};
+use edit_prediction_types::{EditPredictionDelegate, EditPredictionDelegateHandle};
 use editor_settings::{GoToDefinitionFallback, Minimap as MinimapSettings};
 use element::{AcceptEditPredictionBinding, LineWithInvisibles, PositionMap, layout_line};
 use futures::{
@@ -1115,6 +1115,7 @@ pub struct Editor {
     show_breakpoints: Option<bool>,
     show_wrap_guides: Option<bool>,
     show_indent_guides: Option<bool>,
+    buffers_with_disabled_indent_guides: HashSet<BufferId>,
     highlight_order: usize,
     highlighted_rows: HashMap<TypeId, Vec<RowHighlight>>,
     background_highlights: HashMap<HighlightKey, BackgroundHighlight>,
@@ -1155,7 +1156,7 @@ pub struct Editor {
     pending_mouse_down: Option<Rc<RefCell<Option<MouseDownEvent>>>>,
     gutter_hovered: bool,
     hovered_link_state: Option<HoveredLinkState>,
-    edit_prediction_provider: Option<RegisteredEditPredictionProvider>,
+    edit_prediction_provider: Option<RegisteredEditPredictionDelegate>,
     code_action_providers: Vec<Rc<dyn CodeActionProvider>>,
     active_edit_prediction: Option<EditPredictionState>,
     /// Used to prevent flickering as the user types while the menu is open
@@ -1602,8 +1603,8 @@ pub struct RenameState {
 
 struct InvalidationStack<T>(Vec<T>);
 
-struct RegisteredEditPredictionProvider {
-    provider: Arc<dyn EditPredictionProviderHandle>,
+struct RegisteredEditPredictionDelegate {
+    provider: Arc<dyn EditPredictionDelegateHandle>,
     _subscription: Subscription,
 }
 
@@ -2251,6 +2252,7 @@ impl Editor {
             show_breakpoints: None,
             show_wrap_guides: None,
             show_indent_guides,
+            buffers_with_disabled_indent_guides: HashSet::default(),
             highlight_order: 0,
             highlighted_rows: HashMap::default(),
             background_highlights: HashMap::default(),
@@ -3099,9 +3101,9 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) where
-        T: EditPredictionProvider,
+        T: EditPredictionDelegate,
     {
-        self.edit_prediction_provider = provider.map(|provider| RegisteredEditPredictionProvider {
+        self.edit_prediction_provider = provider.map(|provider| RegisteredEditPredictionDelegate {
             _subscription: cx.observe_in(&provider, window, |this, _, window, cx| {
                 if this.focus_handle.is_focused(window) {
                     this.update_visible_edit_prediction(window, cx);
@@ -7505,7 +7507,7 @@ impl Editor {
             && self
                 .edit_prediction_provider
                 .as_ref()
-                .is_some_and(|provider| provider.provider.show_completions_in_menu());
+                .is_some_and(|provider| provider.provider.show_predictions_in_menu());
 
         let preview_requires_modifier =
             all_language_settings(file, cx).edit_predictions_mode() == EditPredictionsMode::Subtle;
@@ -8206,12 +8208,12 @@ impl Editor {
         let edit_prediction = provider.suggest(&buffer, cursor_buffer_position, cx)?;
 
         let (completion_id, edits, edit_preview) = match edit_prediction {
-            edit_prediction::EditPrediction::Local {
+            edit_prediction_types::EditPrediction::Local {
                 id,
                 edits,
                 edit_preview,
             } => (id, edits, edit_preview),
-            edit_prediction::EditPrediction::Jump {
+            edit_prediction_types::EditPrediction::Jump {
                 id,
                 snapshot,
                 target,
@@ -8352,7 +8354,7 @@ impl Editor {
         Some(())
     }
 
-    pub fn edit_prediction_provider(&self) -> Option<Arc<dyn EditPredictionProviderHandle>> {
+    pub fn edit_prediction_provider(&self) -> Option<Arc<dyn EditPredictionDelegateHandle>> {
         Some(self.edit_prediction_provider.as_ref()?.provider.clone())
     }
 
@@ -9674,7 +9676,7 @@ impl Editor {
         editor_bg_color.blend(accent_color.opacity(0.6))
     }
     fn get_prediction_provider_icon_name(
-        provider: &Option<RegisteredEditPredictionProvider>,
+        provider: &Option<RegisteredEditPredictionDelegate>,
     ) -> IconName {
         match provider {
             Some(provider) => match provider.provider.name() {
@@ -20388,6 +20390,20 @@ if add_trailing_newline {
 
     fn should_show_indent_guides(&self) -> Option<bool> {
         self.show_indent_guides
+    }
+
+    pub fn disable_indent_guides_for_buffer(
+        &mut self,
+        buffer_id: BufferId,
+        cx: &mut Context<Self>,
+    ) {
+        self.buffers_with_disabled_indent_guides.insert(buffer_id);
+        cx.notify();
+    }
+
+    pub fn has_indent_guides_disabled_for_buffer(&self, buffer_id: BufferId) -> bool {
+        self.buffers_with_disabled_indent_guides
+            .contains(&buffer_id)
     }
 
     pub fn toggle_line_numbers(
