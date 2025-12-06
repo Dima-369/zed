@@ -6029,6 +6029,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "file_explorer"
+version = "0.1.0"
+dependencies = [
+ "ctor",
+ "file_icons",
+ "gpui",
+ "menu",
+ "picker",
+ "project",
+ "search",
+ "serde_json",
+ "settings",
+ "theme",
+ "ui",
+ "util",
+ "workspace",
+ "worktree",
+ "zlog",
+]
+
+[[package]]
 name = "file_finder"
 version = "0.1.0"
 dependencies = [
@@ -20562,6 +20583,7 @@ dependencies = [
  "extensions_ui",
  "feature_flags",
  "feedback",
+ "file_explorer",
  "file_finder",
  "file_path_picker",
  "fs",
