@@ -21590,7 +21590,13 @@ if add_trailing_newline {
         theme: &Theme,
     ) -> Vec<(Range<DisplayPoint>, Hsla)> {
         let mut results = Vec::new();
-        for (color_fetcher, ranges) in self.background_highlights.values() {
+
+        // Process highlights in priority order to ensure search highlights have precedence
+        // over document highlights when they overlap
+        let mut search_highlights = Vec::new();
+        let mut other_highlights = Vec::new();
+
+        for (key, (color_fetcher, ranges)) in self.background_highlights.iter() {
             let start_ix = match ranges.binary_search_by(|probe| {
                 let cmp = probe
                     .end
@@ -21603,6 +21609,8 @@ if add_trailing_newline {
             }) {
                 Ok(i) | Err(i) => i,
             };
+
+            // Classify highlights by type for priority processing
             for (index, range) in ranges[start_ix..].iter().enumerate() {
                 if range
                     .start
@@ -21615,9 +21623,21 @@ if add_trailing_newline {
                 let color = color_fetcher(&(start_ix + index), theme);
                 let start = range.start.to_display_point(display_snapshot);
                 let end = range.end.to_display_point(display_snapshot);
-                results.push((start..end, color))
+
+                // Check if this is a search highlight
+                if *key == HighlightKey::Type(TypeId::of::<items::BufferSearchHighlights>()) {
+                    search_highlights.push((start..end, color));
+                } else {
+                    other_highlights.push((start..end, color));
+                }
             }
         }
+
+        // Add other highlights first (document highlights, etc.)
+        results.extend(other_highlights);
+        // Add search highlights last so they have visual priority when blended
+        results.extend(search_highlights);
+
         results
     }
 
