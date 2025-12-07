@@ -36,6 +36,7 @@ use std::{
     ops::{Not, Range},
     pin::pin,
     sync::Arc,
+    time::Duration,
 };
 use ui::{IconButtonShape, KeyBinding, Toggleable, Tooltip, prelude::*, utils::SearchInputWidth};
 use util::{ResultExt as _, paths::PathMatcher, rel_path::RelPath};
@@ -236,6 +237,8 @@ pub struct ProjectSearchView {
     regex_language: Option<Arc<Language>>,
     results_collapsed: bool,
     _subscriptions: Vec<Subscription>,
+    search_debounce: Option<Task<()>>,
+    prevent_focus_results: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -894,6 +897,9 @@ impl ProjectSearchView {
                         this.toggle_search_option(SearchOptions::CASE_SENSITIVE, cx);
                     }
                 }
+                if let EditorEvent::Edited { .. } = event {
+                    this.debounced_search(cx);
+                }
                 cx.emit(ViewEvent::EditorEvent(event.clone()))
             }),
         );
@@ -998,6 +1004,8 @@ impl ProjectSearchView {
             regex_language: None,
             results_collapsed: false,
             _subscriptions: subscriptions,
+            search_debounce: None,
+            prevent_focus_results: false,
         };
 
         this.entity_changed(window, cx);
@@ -1244,6 +1252,25 @@ impl ProjectSearchView {
         };
         if let Some(query) = self.build_search_query(cx, open_buffers) {
             self.entity.update(cx, |model, cx| model.search(query, cx));
+        }
+    }
+
+    fn debounced_search(&mut self, cx: &mut Context<Self>) {
+        self.search_debounce = None;
+        let settings = &EditorSettings::get_global(cx).project_search;
+        if settings.automatic_submission {
+            let delay = settings.automatic_submission_delay;
+            self.search_debounce = Some(cx.spawn(async move |this, cx| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(delay))
+                    .await;
+
+                this.update(cx, |this, cx| {
+                    this.prevent_focus_results = true;
+                    this.search(cx);
+                })
+                .ok();
+            }));
         }
     }
 
@@ -1520,7 +1547,10 @@ impl ProjectSearchView {
                     editor.scroll(Point::default(), Some(Axis::Vertical), window, cx);
                 }
             });
-            if is_new_search && self.query_editor.focus_handle(cx).is_focused(window) {
+            if is_new_search
+                && !self.prevent_focus_results
+                && self.query_editor.focus_handle(cx).is_focused(window)
+            {
                 self.focus_results_editor(window, cx);
             }
         }
@@ -1729,6 +1759,7 @@ impl ProjectSearchBar {
                     .focus_handle(cx)
                     .is_focused(window)
                 {
+                    search_view.prevent_focus_results = false;
                     cx.stop_propagation();
                     search_view
                         .prompt_to_save_if_dirty_then_search(window, cx)

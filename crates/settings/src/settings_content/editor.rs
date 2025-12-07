@@ -151,6 +151,12 @@ pub struct EditorSettingsContent {
     /// Default: nothing is enabled
     pub search: Option<SearchSettingsContent>,
 
+    /// Project search specific options
+    /// Used to enable the automatic submission of project search queries
+    ///
+    /// Default: Automatic submission is enabled with a 350ms delay
+    pub project_search: Option<ProjectSearchSettingsContent>,
+
     /// Whether to automatically show a signature help pop-up or not.
     ///
     /// Default: false
@@ -768,6 +774,20 @@ pub struct SearchSettingsContent {
     pub regex: Option<bool>,
     /// Whether to center the cursor on each search match when navigating.
     pub center_on_match: Option<bool>,
+}
+
+/// Project search specific options.
+#[with_fallible_options]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq, Eq)]
+pub struct ProjectSearchSettingsContent {
+    /// Whether to automatically submit project search queries as you type.
+    ///
+    /// Default: true
+    pub automatic_submission: Option<bool>,
+    /// Delay in milliseconds before automatically submitting project search queries.
+    ///
+    /// Default: 350
+    pub automatic_submission_delay: Option<u64>,
 }
 
 #[with_fallible_options]

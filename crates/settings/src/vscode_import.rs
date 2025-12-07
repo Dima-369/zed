@@ -285,6 +285,7 @@ impl VsCodeSettings {
             scroll_sensitivity: self.read_f32("editor.mouseWheelScrollSensitivity"),
             scrollbar: self.scrollbar_content(),
             search: self.search_content(),
+            project_search: None,
             search_wrap: None,
             seed_search_query_from_cursor: self.read_enum(
                 "editor.find.seedSearchStringFromSelection",

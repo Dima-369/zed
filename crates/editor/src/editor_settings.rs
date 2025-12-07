@@ -3,6 +3,8 @@ use core::num;
 use gpui::App;
 use language::CursorShape;
 use project::project_settings::DiagnosticSeverity;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 pub use settings::{
     CurrentLineHighlight, DelayMs, DisplayIn, DocumentColorsRenderMode, DoubleClickInMultibuffer,
     GoToDefinitionFallback, HideMouseMode, MinimapThumb, MinimapThumbBorder, MultiCursorModifier,
@@ -45,6 +47,7 @@ pub struct EditorSettings {
     pub double_click_in_multibuffer: DoubleClickInMultibuffer,
     pub search_wrap: bool,
     pub search: SearchSettings,
+    pub project_search: ProjectSearchSettings,
     pub auto_signature_help: bool,
     pub show_signature_help_after_edits: bool,
     pub go_to_definition_fallback: GoToDefinitionFallback,
@@ -174,6 +177,12 @@ pub struct SearchSettings {
     pub center_on_match: bool,
 }
 
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+pub struct ProjectSearchSettings {
+    pub automatic_submission: bool,
+    pub automatic_submission_delay: u64,
+}
+
 impl EditorSettings {
     pub fn jupyter_enabled(cx: &App) -> bool {
         EditorSettings::get_global(cx).jupyter.enabled
@@ -195,6 +204,7 @@ impl Settings for EditorSettings {
         let axes = scrollbar.axes.unwrap();
         let toolbar = editor.toolbar.unwrap();
         let search = editor.search.unwrap();
+        let project_search = editor.project_search.unwrap();
         let drag_and_drop_selection = editor.drag_and_drop_selection.unwrap();
         let sticky_scroll = editor.sticky_scroll.unwrap();
         Self {
@@ -267,6 +277,10 @@ impl Settings for EditorSettings {
                 include_ignored: search.include_ignored.unwrap(),
                 regex: search.regex.unwrap(),
                 center_on_match: search.center_on_match.unwrap(),
+            },
+            project_search: ProjectSearchSettings {
+                automatic_submission: project_search.automatic_submission.unwrap(),
+                automatic_submission_delay: project_search.automatic_submission_delay.unwrap(),
             },
             auto_signature_help: editor.auto_signature_help.unwrap(),
             show_signature_help_after_edits: editor.show_signature_help_after_edits.unwrap(),
