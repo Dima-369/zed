@@ -7033,7 +7033,11 @@ impl Editor {
         }
     }
 
-    fn hide_blame_popover(&mut self, ignore_timeout: bool, cx: &mut Context<Self>) -> bool {
+    pub fn has_mouse_context_menu(&self) -> bool {
+        self.mouse_context_menu.is_some()
+    }
+
+    pub fn hide_blame_popover(&mut self, ignore_timeout: bool, cx: &mut Context<Self>) -> bool {
         self.inline_blame_popover_show_task.take();
         if let Some(state) = &mut self.inline_blame_popover {
             let hide_task = cx.spawn(async move |editor, cx| {
@@ -17105,7 +17109,7 @@ if add_trailing_newline {
                 GoToDefinitionFallback::None => Ok(Navigated::No),
                 GoToDefinitionFallback::FindAllReferences => {
                     match editor.update_in(cx, |editor, window, cx| {
-                        editor.find_all_references(&FindAllReferences, window, cx)
+                        editor.find_all_references(&FindAllReferences::default(), window, cx)
                     })? {
                         Some(references) => references.await,
                         None => Ok(Navigated::No),
@@ -17333,9 +17337,7 @@ if add_trailing_newline {
             })
             .collect();
 
-        let Some(workspace) = self.workspace() else {
-            return Task::ready(Ok(Navigated::No));
-        };
+        let workspace = self.workspace();
 
         cx.spawn_in(window, async move |editor, cx| {
             let locations: Vec<Location> = future::join_all(definitions)
@@ -17390,6 +17392,10 @@ if add_trailing_newline {
                     })
                     .context("buffer title")?;
 
+                let Some(workspace) = workspace else {
+                    return Ok(Navigated::No);
+                };
+
                 let opened = workspace
                     .update_in(cx, |workspace, window, cx| {
                         let allow_preview = PreviewTabsSettings::get_global(cx)
@@ -17419,6 +17425,9 @@ if add_trailing_newline {
                         // TODO(andrew): respect preview tab settings
                         //               `enable_keep_preview_on_code_navigation` and
                         //               `enable_preview_file_from_code_navigation`
+                        let Some(workspace) = workspace else {
+                            return Ok(Navigated::No);
+                        };
                         workspace
                             .update_in(cx, |workspace, window, cx| {
                                 workspace.open_resolved_path(path, window, cx)
@@ -17445,6 +17454,9 @@ if add_trailing_newline {
                         let cursor_point = range.start..range.start;
                         editor.go_to_singleton_buffer_range(cursor_point, window, cx);
                     } else {
+                        let Some(workspace) = workspace else {
+                            return Navigated::No;
+                        };
                         let pane = workspace.read(cx).active_pane().clone();
                         window.defer(cx, move |window, cx| {
                             let target_editor: Entity<Self> =
@@ -17659,20 +17671,21 @@ if add_trailing_newline {
 
     pub fn find_all_references(
         &mut self,
-        _: &FindAllReferences,
+        action: &FindAllReferences,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<Task<Result<Navigated>>> {
-        let selection = self
-            .selections
-            .newest::<MultiBufferOffset>(&self.display_snapshot(cx));
+        let always_open_multibuffer = action.always_open_multibuffer;
+        let selection = self.selections.newest_anchor();
         let multi_buffer = self.buffer.read(cx);
-        let head = selection.head();
-
         let multi_buffer_snapshot = multi_buffer.snapshot(cx);
+        let selection_offset = selection.map(|anchor| anchor.to_offset(&multi_buffer_snapshot));
+        let selection_point = selection.map(|anchor| anchor.to_point(&multi_buffer_snapshot));
+        let head = selection_offset.head();
+
         let head_anchor = multi_buffer_snapshot.anchor_at(
             head,
-            if head < selection.tail() {
+            if head < selection_offset.tail() {
                 Bias::Right
             } else {
                 Bias::Left
@@ -17718,6 +17731,15 @@ if add_trailing_newline {
                         let buffer = location.buffer.read(cx);
                         (location.buffer, location.range.to_point(buffer))
                     })
+                    // if special-casing the single-match case, remove ranges
+                    // that intersect current selection
+                    .filter(|(location_buffer, location)| {
+                        if always_open_multibuffer || &buffer != location_buffer {
+                            return true;
+                        }
+
+                        !location.contains_inclusive(&selection_point.range())
+                    })
                     .into_group_map()
             })?;
             if locations.is_empty() {
@@ -17726,6 +17748,60 @@ if add_trailing_newline {
             for ranges in locations.values_mut() {
                 ranges.sort_by_key(|range| (range.start, Reverse(range.end)));
                 ranges.dedup();
+            }
+            let mut num_locations = 0;
+            for ranges in locations.values_mut() {
+                ranges.sort_by_key(|range| (range.start, Reverse(range.end)));
+                ranges.dedup();
+                num_locations += ranges.len();
+            }
+
+            if num_locations == 1 && !always_open_multibuffer {
+                let (target_buffer, target_ranges) = locations.into_iter().next().unwrap();
+                let target_range = target_ranges.first().unwrap().clone();
+
+                return editor.update_in(cx, |editor, window, cx| {
+                    let range = target_range.to_point(target_buffer.read(cx));
+                    let range = editor.range_for_match(&range);
+                    let range = range.start..range.start;
+
+                    if Some(&target_buffer) == editor.buffer.read(cx).as_singleton().as_ref() {
+                        editor.go_to_singleton_buffer_range(range, window, cx);
+                    } else {
+                        let pane = workspace.read(cx).active_pane().clone();
+                        window.defer(cx, move |window, cx| {
+                            let target_editor: Entity<Self> =
+                                workspace.update(cx, |workspace, cx| {
+                                    let pane = workspace.active_pane().clone();
+
+                                    let preview_tabs_settings = PreviewTabsSettings::get_global(cx);
+                                    let keep_old_preview = preview_tabs_settings
+                                        .enable_keep_preview_on_code_navigation;
+                                    let allow_new_preview = preview_tabs_settings
+                                        .enable_preview_file_from_code_navigation;
+
+                                    workspace.open_project_item(
+                                        pane,
+                                        target_buffer.clone(),
+                                        true,
+                                        true,
+                                        keep_old_preview,
+                                        allow_new_preview,
+                                        window,
+                                        cx,
+                                    )
+                                });
+                            target_editor.update(cx, |target_editor, cx| {
+                                // When selecting a definition in a different buffer, disable the nav history
+                                // to avoid creating a history entry at the previous cursor location.
+                                pane.update(cx, |pane, _| pane.disable_history());
+                                target_editor.go_to_singleton_buffer_range(range, window, cx);
+                                pane.update(cx, |pane, _| pane.enable_history());
+                            });
+                        });
+                    }
+                    Navigated::No
+                });
             }
 
             workspace.update_in(cx, |workspace, window, cx| {
@@ -17764,7 +17840,7 @@ if add_trailing_newline {
         }))
     }
 
-    /// Opens a multibuffer with the given project locations in it
+    /// Opens a multibuffer with the given project locations in it.
     pub fn open_locations_in_multibuffer(
         workspace: &mut Workspace,
         locations: std::collections::HashMap<Entity<Buffer>, Vec<Range<Point>>>,
@@ -22402,14 +22478,23 @@ if add_trailing_newline {
                             None => Autoscroll::newest(),
                         };
                         let nav_history = editor.nav_history.take();
+                        let multibuffer_snapshot = editor.buffer().read(cx).snapshot(cx);
+                        let Some((&excerpt_id, _, buffer_snapshot)) =
+                            multibuffer_snapshot.as_singleton()
+                        else {
+                            return;
+                        };
                         editor.change_selections(
                             SelectionEffects::scroll(autoscroll),
                             window,
                             cx,
                             |s| {
                                 s.select_ranges(ranges.into_iter().map(|range| {
-                                    // we checked that the editor is a singleton editor so the offsets are valid
-                                    MultiBufferOffset(range.start.0)..MultiBufferOffset(range.end.0)
+                                    let range = buffer_snapshot.anchor_before(range.start)
+                                        ..buffer_snapshot.anchor_after(range.end);
+                                    multibuffer_snapshot
+                                        .anchor_range_in_excerpt(excerpt_id, range)
+                                        .unwrap()
                                 }));
                             },
                         );
