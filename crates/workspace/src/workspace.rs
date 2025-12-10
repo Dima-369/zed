@@ -274,6 +274,8 @@ actions!(
         RestoreBanner,
         /// Toggles expansion of the selected item.
         ToggleExpandItem,
+        /// Closes all panes except the currently focused one.
+        MakeSinglePane,
     ]
 );
 
@@ -3007,6 +3009,51 @@ impl Workspace {
                 }
                 Ok(())
             }))
+        }
+    }
+
+    pub fn make_single_pane(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let active_pane = self.active_pane().clone();
+        let panes_to_remove: Vec<Entity<Pane>> = self
+            .panes()
+            .iter()
+            .filter(|pane| pane.entity_id() != active_pane.entity_id())
+            .cloned()
+            .collect();
+
+        for pane in panes_to_remove {
+            // Close all items in the pane first
+            let close_task = pane.update(cx, |pane, cx| {
+                pane.close_all_items(
+                    &CloseAllItems {
+                        save_intent: Some(SaveIntent::Close),
+                        close_pinned: false,
+                    },
+                    window,
+                    cx,
+                )
+            });
+
+            // Spawn the close task and handle pane removal when items are closed
+            cx.spawn_in(window, {
+                let pane = pane.clone();
+                let workspace_handle = self.weak_handle();
+                async move |window, cx| {
+                    // Wait for all items to close
+                    if let Err(err) = close_task.await {
+                        log::error!("Failed to close items in pane: {}", err);
+                        return;
+                    }
+
+                    // Remove the pane from the workspace
+                    if let Some(workspace) = workspace_handle.upgrade() {
+                        workspace.update(cx, |workspace, cx| {
+                            workspace.remove_pane(pane, None, window, cx);
+                        });
+                    }
+                }
+            })
+            .detach();
         }
     }
 
@@ -6068,6 +6115,11 @@ impl Workspace {
                         }
                     }
                     cx.propagate();
+                },
+            ))
+            .on_action(cx.listener(
+                |workspace: &mut Workspace, _: &MakeSinglePane, window, cx| {
+                    workspace.make_single_pane(window, cx);
                 },
             ))
             .on_action(cx.listener(Workspace::cancel))
@@ -11495,6 +11547,70 @@ mod tests {
             let settings_store = SettingsStore::test(cx);
             cx.set_global(settings_store);
             theme::init(theme::LoadThemes::JustBase, cx);
+        });
+    }
+
+    #[gpui::test]
+    async fn test_make_single_pane(cx: &mut TestAppContext) {
+        init_test(cx);
+
+        let fs = FakeFs::new(cx.executor());
+        let project = Project::test(fs, [], cx).await;
+        let (workspace, cx) =
+            cx.add_window_view(|window, cx| Workspace::test_new(project, window, cx));
+
+        // Create multiple panes with items
+        let item1 = cx.new(|cx| TestItem::new(cx));
+        let item2 = cx.new(|cx| TestItem::new(cx));
+        let item3 = cx.new(|cx| TestItem::new(cx));
+
+        workspace.update_in(cx, |workspace, window, cx| {
+            // Add first item to the active pane
+            workspace.add_item_to_active_pane(Box::new(item1.clone()), None, true, window, cx);
+
+            // Split and add second item
+            let pane2 = workspace.split_pane(
+                workspace.active_pane().clone(),
+                SplitDirection::Right,
+                window,
+                cx,
+            );
+            pane2.update(cx, |pane, cx| {
+                pane.add_item(Box::new(item2.clone()), true, true, None, window, cx);
+            });
+
+            // Split again and add third item
+            let pane3 = workspace.split_pane(
+                pane2.clone(),
+                SplitDirection::Down,
+                window,
+                cx,
+            );
+            pane3.update(cx, |pane, cx| {
+                pane.add_item(Box::new(item3.clone()), true, true, None, window, cx);
+            });
+        });
+
+        // Verify we have 3 panes
+        workspace.update(cx, |workspace, _| {
+            assert_eq!(workspace.panes().len(), 3);
+        });
+
+        // Focus the first pane and execute MakeSinglePane
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace.panes()[0].update(cx, |pane, cx| window.focus(&pane.focus_handle(cx)));
+            workspace.make_single_pane(window, cx);
+        });
+
+        // Run until all async tasks complete
+        cx.executor().run_until_parked();
+
+        // Verify only one pane remains and it's the originally focused one
+        workspace.update(cx, |workspace, cx| {
+            assert_eq!(workspace.panes().len(), 1);
+            let remaining_pane = &workspace.panes()[0];
+            assert_eq!(remaining_pane.read(cx).items().len(), 1);
+            assert_eq!(remaining_pane.read(cx).items()[0].item_id(), item1.item_id());
         });
     }
 
