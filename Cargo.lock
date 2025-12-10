@@ -401,6 +401,7 @@ dependencies = [
  "unindent",
  "url",
  "util",
+ "uuid",
  "watch",
  "workspace",
  "zed_actions",
@@ -3593,6 +3594,7 @@ dependencies = [
  "settings",
  "smol",
  "tempfile",
+ "terminal",
  "url",
  "util",
 ]
@@ -5246,6 +5248,7 @@ dependencies = [
  "client",
  "gpui",
  "language",
+ "text",
 ]
 
 [[package]]
@@ -5799,6 +5802,7 @@ dependencies = [
  "gpui",
  "heck 0.5.0",
  "http_client",
+ "indoc",
  "language",
  "log",
  "lsp",
@@ -7044,6 +7048,7 @@ dependencies = [
  "gpui",
  "http_client",
  "indoc",
+ "itertools 0.14.0",
  "pretty_assertions",
  "regex",
  "serde",
@@ -7789,7 +7794,6 @@ dependencies = [
  "tempfile",
  "url",
  "util",
- "zed-reqwest",
 ]
 
 [[package]]
@@ -20547,7 +20551,7 @@ dependencies = [
 
 [[package]]
 name = "zed"
-version = "0.217.0"
+version = "0.218.0"
 dependencies = [
  "acp_tools",
  "activity_indicator",

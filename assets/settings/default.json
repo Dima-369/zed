@@ -1817,6 +1817,9 @@
         "allowed": false
       }
     },
+    "CSharp": {
+      "language_servers": ["roslyn", "!omnisharp", "..."]
+    },
     "CSS": {
       "prettier": {
         "allowed": true
