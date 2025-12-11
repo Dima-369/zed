@@ -554,8 +554,7 @@ impl EditorMode {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SoftWrap {
     /// Prefer not to wrap at all.
     ///
@@ -13251,7 +13250,7 @@ impl Editor {
                 } else if !prev_selection_was_entire_line {
                     text += "\n";
                 }
-                    prev_selection_was_entire_line = is_entire_line;
+                prev_selection_was_entire_line = is_entire_line;
 
                 let mut len = 0;
                 for chunk in buffer.text_for_range(start..end) {
@@ -13259,13 +13258,17 @@ impl Editor {
                     len += chunk.len();
                 }
 
-if add_trailing_newline {
-                        text.push('\n');
-                        len += 1;
-                    }                clipboard_selections.push(ClipboardSelection {
+                if add_trailing_newline {
+                    text.push('\n');
+                    len += 1;
+                }
+
+                clipboard_selections.push(ClipboardSelection {
                     len,
                     is_entire_line,
                     first_line_indent: buffer.indent_size_for_line(MultiBufferRow(start.row)).len,
+                    file_path: None,
+                    line_range: None,
                 });
             }
         }
@@ -13551,17 +13554,19 @@ if add_trailing_newline {
                 if let Some(workspace) = self.workspace() {
                     let workspace = workspace.downgrade();
                     cx.defer(move |cx| {
-                        workspace.update(cx, |workspace, cx| {
-                            struct CountTokensNotification;
-                            workspace.show_toast(
-                                Toast::new(
-                                    NotificationId::unique::<CountTokensNotification>(),
-                                    message,
-                                )
-                                .autohide(),
-                                cx,
-                            );
-                        }).ok();
+                        workspace
+                            .update(cx, |workspace, cx| {
+                                struct CountTokensNotification;
+                                workspace.show_toast(
+                                    Toast::new(
+                                        NotificationId::unique::<CountTokensNotification>(),
+                                        message,
+                                    )
+                                    .autohide(),
+                                    cx,
+                                );
+                            })
+                            .ok();
                     });
                 }
             }
@@ -13572,17 +13577,19 @@ if add_trailing_newline {
                     let workspace = workspace.downgrade();
                     let error_msg = format!("Failed to count tokens: {}", e);
                     cx.defer(move |cx| {
-                        workspace.update(cx, |workspace, cx| {
-                            struct CountTokensError;
-                            workspace.show_toast(
-                                Toast::new(
-                                    NotificationId::unique::<CountTokensError>(),
-                                    error_msg,
-                                )
-                                .autohide(),
-                                cx,
-                            );
-                        }).ok();
+                        workspace
+                            .update(cx, |workspace, cx| {
+                                struct CountTokensError;
+                                workspace.show_toast(
+                                    Toast::new(
+                                        NotificationId::unique::<CountTokensError>(),
+                                        error_msg,
+                                    )
+                                    .autohide(),
+                                    cx,
+                                );
+                            })
+                            .ok();
                     });
                 }
             }
@@ -16240,7 +16247,8 @@ if add_trailing_newline {
         // Limit the scroll margin used for fit calculation to prevent large margins
         // from always forcing cursor-top/bottom scrolling behavior
         let effective_scroll_margin = scroll_margin_rows.min(visible_row_count / 4);
-        let fits_on_the_screen = visible_row_count >= selection_height + effective_scroll_margin * 2;
+        let fits_on_the_screen =
+            visible_row_count >= selection_height + effective_scroll_margin * 2;
         let scroll_behavior = if fits_on_the_screen {
             self.request_autoscroll(Autoscroll::fit(), cx);
             SelectSyntaxNodeScrollBehavior::FitSelection
@@ -17050,7 +17058,6 @@ if add_trailing_newline {
         } else {
             (
                 filtered(
-
                     severity,
                     buffer
                         .diagnostics_in_range(MultiBufferOffset(0)..selection.start)
@@ -17058,7 +17065,6 @@ if add_trailing_newline {
                 )
                 .collect(),
                 filtered(
-
                     severity,
                     buffer
                         .diagnostics_in_range(selection.start..buffer.len())
@@ -17756,7 +17762,11 @@ if add_trailing_newline {
                                 // For navigation purposes, just position the cursor without selection
                                 // to avoid triggering vim's visual mode
                                 let cursor_point = range.start..range.start;
-                                target_editor.go_to_singleton_buffer_range(cursor_point, window, cx);
+                                target_editor.go_to_singleton_buffer_range(
+                                    cursor_point,
+                                    window,
+                                    cx,
+                                );
                                 pane.update(cx, |pane, _| pane.enable_history());
                             });
                         });
