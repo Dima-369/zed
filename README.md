@@ -56,6 +56,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window
 - `workspace::NewFileFromClipboard` which pastes in the clipboard contents and sets `Markdown` language
 - `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
+- `workspace::MakeSinglePane` which closes all other panes except the active one
 - `snippets::ReloadSnippets` because auto-reloading snippets is not working for me
 - `editor::CreateNavHistoryEntry`
 - `editor::CopyAll` to copy entire buffer content to clipboard

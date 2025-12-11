@@ -3038,7 +3038,7 @@ impl Workspace {
             cx.spawn_in(window, {
                 let pane = pane.clone();
                 let workspace_handle = self.weak_handle();
-                async move |window, cx| {
+                async move |_window, cx| {
                     // Wait for all items to close
                     if let Err(err) = close_task.await {
                         log::error!("Failed to close items in pane: {}", err);
@@ -3047,9 +3047,9 @@ impl Workspace {
 
                     // Remove the pane from the workspace
                     if let Some(workspace) = workspace_handle.upgrade() {
-                        workspace.update(cx, |workspace, cx| {
+                        workspace.update_in(cx, |workspace, window, cx| {
                             workspace.remove_pane(pane, None, window, cx);
-                        });
+                        }).log_err();
                     }
                 }
             })
