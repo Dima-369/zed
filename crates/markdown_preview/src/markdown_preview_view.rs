@@ -20,7 +20,8 @@ use workspace::{Pane, Workspace};
 use crate::markdown_elements::ParsedMarkdownElement;
 use crate::markdown_renderer::CheckboxClickedEvent;
 use crate::{
-    MovePageDown, MovePageUp, ScrollPageLittleDown, ScrollPageLittleUp, OpenFollowingPreview, OpenPreview, OpenPreviewToTheSide,
+    MovePageDown, MovePageUp, OpenFollowingPreview, OpenPreview, OpenPreviewToTheSide,
+    ScrollPageLittleDown, ScrollPageLittleUp,
     markdown_elements::ParsedMarkdown,
     markdown_parser::parse_markdown,
     markdown_renderer::{RenderContext, render_markdown_block},
@@ -445,7 +446,12 @@ impl MarkdownPreviewView {
         cx.notify();
     }
 
-    fn scroll_page_little_up(&mut self, _: &ScrollPageLittleUp, _window: &mut Window, cx: &mut Context<Self>) {
+    fn scroll_page_little_up(
+        &mut self,
+        _: &ScrollPageLittleUp,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let viewport_height = self.list_state.viewport_bounds().size.height;
         if viewport_height.is_zero() {
             return;
@@ -456,7 +462,12 @@ impl MarkdownPreviewView {
         cx.notify();
     }
 
-    fn scroll_page_little_down(&mut self, _: &ScrollPageLittleDown, _window: &mut Window, cx: &mut Context<Self>) {
+    fn scroll_page_little_down(
+        &mut self,
+        _: &ScrollPageLittleDown,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let viewport_height = self.list_state.viewport_bounds().size.height;
         if viewport_height.is_zero() {
             return;

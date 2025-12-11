@@ -281,11 +281,18 @@ impl SnippetProvider {
         // Spawn tasks to reload snippets from each watched directory
         for directory in directories_to_scan {
             cx.spawn(async move |this, cx| {
-                if let Err(err) = initial_scan(this.clone(), Arc::from(directory.as_path()), cx.clone()).await {
-                    log::error!("Failed to reload snippets from {}: {}", directory.display(), err);
+                if let Err(err) =
+                    initial_scan(this.clone(), Arc::from(directory.as_path()), cx.clone()).await
+                {
+                    log::error!(
+                        "Failed to reload snippets from {}: {}",
+                        directory.display(),
+                        err
+                    );
                 }
                 anyhow::Ok(())
-            }).detach_and_log_err(cx);
+            })
+            .detach_and_log_err(cx);
         }
     }
 }

@@ -34,11 +34,7 @@ pub struct FilePathPicker {
 impl ModalView for FilePathPicker {}
 
 impl FilePathPicker {
-    fn new(
-        delegate: FilePathPickerDelegate,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    fn new(delegate: FilePathPickerDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
         let _subscription = cx.subscribe(&picker, |_, _, _, cx| cx.emit(DismissEvent));
         Self {
@@ -47,11 +43,7 @@ impl FilePathPicker {
         }
     }
 
-    pub fn open(
-        workspace: &mut Workspace,
-        window: &mut Window,
-        cx: &mut Context<Workspace>,
-    ) {
+    pub fn open(workspace: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>) {
         let entries = FilePathPickerDelegate::generate_path_entries(workspace, cx);
         workspace.toggle_modal(window, cx, |window, cx| {
             let delegate = FilePathPickerDelegate::new(entries);
@@ -103,8 +95,14 @@ impl FilePathPickerDelegate {
                 let project = workspace.project().clone();
 
                 // Get the absolute path
-                if let Some(worktree) = project.read(cx).worktree_for_id(project_path.worktree_id, cx) {
-                    let abs_path = worktree.read(cx).abs_path().join(project_path.path.as_std_path());
+                if let Some(worktree) = project
+                    .read(cx)
+                    .worktree_for_id(project_path.worktree_id, cx)
+                {
+                    let abs_path = worktree
+                        .read(cx)
+                        .abs_path()
+                        .join(project_path.path.as_std_path());
 
                     // Collect all potential entries
                     let mut potential_entries = Vec::new();
@@ -119,7 +117,9 @@ impl FilePathPickerDelegate {
                     }
 
                     // Entry 2: Path from git root
-                    if let Some(git_root_relative) = Self::get_git_relative_path(&project, &project_path, cx) {
+                    if let Some(git_root_relative) =
+                        Self::get_git_relative_path(&project, &project_path, cx)
+                    {
                         potential_entries.push(PathEntry {
                             label: git_root_relative.clone(),
                             path: git_root_relative.clone(),
@@ -170,13 +170,21 @@ impl FilePathPickerDelegate {
         cx: &App,
     ) -> Option<String> {
         let git_store = project.read(cx).git_store().read(cx);
-        if let Some((repo, _repo_path)) = git_store.repository_and_path_for_project_path(project_path, cx) {
+        if let Some((repo, _repo_path)) =
+            git_store.repository_and_path_for_project_path(project_path, cx)
+        {
             let repo = repo.read(cx);
             let git_root = &repo.snapshot().work_directory_abs_path;
 
             // Get the absolute path of the file
-            if let Some(worktree) = project.read(cx).worktree_for_id(project_path.worktree_id, cx) {
-                let abs_path = worktree.read(cx).abs_path().join(project_path.path.as_std_path());
+            if let Some(worktree) = project
+                .read(cx)
+                .worktree_for_id(project_path.worktree_id, cx)
+            {
+                let abs_path = worktree
+                    .read(cx)
+                    .abs_path()
+                    .join(project_path.path.as_std_path());
                 if let Ok(relative_path) = abs_path.strip_prefix(git_root) {
                     return Some(relative_path.to_string_lossy().to_string());
                 }
@@ -234,26 +242,24 @@ impl PickerDelegate for FilePathPickerDelegate {
         _cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let entry = self.entries.get(ix)?;
-        
+
         Some(
             ListItem::new(ix)
                 .inset(true)
                 .spacing(ListItemSpacing::Sparse)
                 .toggle_state(selected)
                 .child(
-                    h_flex()
-                        .gap_2()
-                        .child(
-                            v_flex()
-                                .child(Label::new(entry.label.clone()).single_line())
-                                .child(
-                                    Label::new(entry.description.clone())
-                                        .size(LabelSize::Small)
-                                        .color(Color::Muted)
-                                        .single_line()
-                                )
-                        )
-                )
+                    h_flex().gap_2().child(
+                        v_flex()
+                            .child(Label::new(entry.label.clone()).single_line())
+                            .child(
+                                Label::new(entry.description.clone())
+                                    .size(LabelSize::Small)
+                                    .color(Color::Muted)
+                                    .single_line(),
+                            ),
+                    ),
+                ),
         )
     }
 }

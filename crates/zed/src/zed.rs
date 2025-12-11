@@ -22,6 +22,7 @@ use editor::{Editor, MultiBuffer, MultiBufferOffset};
 use extension_host::ExtensionStore;
 use feature_flags::{FeatureFlagAppExt, PanicFeatureFlag};
 use fs::Fs;
+use futures::AsyncReadExt;
 use futures::FutureExt as _;
 use futures::future::Either;
 use futures::{StreamExt, channel::mpsc, select_biased};
@@ -91,10 +92,9 @@ use workspace::{
 };
 use workspace::{Pane, notifications::DetachAndPromptErr};
 use zed_actions::{
-    DeeplTranslate, OpenAccountSettings, OpenBrowser, OpenDocs, OpenServerSettings, OpenSettingsFile, OpenZedUrl,
-    Quit,
+    DeeplTranslate, OpenAccountSettings, OpenBrowser, OpenDocs, OpenServerSettings,
+    OpenSettingsFile, OpenZedUrl, Quit,
 };
-use futures::AsyncReadExt;
 
 actions!(
     zed,
@@ -770,8 +770,8 @@ fn deepl_translate(
     window: &mut Window,
     cx: &mut Context<Workspace>,
 ) {
-    use std::env;
     use std::collections::HashMap;
+    use std::env;
 
     // Get the API key from environment variable
     let api_key = match env::var("DEEPL_API_KEY") {
@@ -803,7 +803,9 @@ fn deepl_translate(
     };
 
     let (selections, buffer_snapshot, replace_whole_line) = editor.update(cx, |editor, cx| {
-        let selections = editor.selections.all::<MultiBufferOffset>(&editor.display_snapshot(cx));
+        let selections = editor
+            .selections
+            .all::<MultiBufferOffset>(&editor.display_snapshot(cx));
         let buffer = editor.buffer().read(cx);
         let snapshot = buffer.snapshot(cx);
         let has_selection = !selections.is_empty() && selections.iter().any(|s| s.start != s.end);
@@ -837,7 +839,9 @@ fn deepl_translate(
 
             // Find the actual end of the current line (before line break)
             let line_end = std::cmp::min(line_end_offset, buffer_snapshot.len());
-            let mut line_text = buffer_snapshot.text_for_range(line_start..line_end).collect::<String>();
+            let mut line_text = buffer_snapshot
+                .text_for_range(line_start..line_end)
+                .collect::<String>();
 
             // Remove trailing newline if present for translation, but keep range for replacement
             let original_line_text = line_text.clone();
@@ -848,7 +852,14 @@ fn deepl_translate(
                 }
             }
 
-            (line_text, Some((line_start, line_end, original_line_text.ends_with('\n') || original_line_text.ends_with("\r\n"))))
+            (
+                line_text,
+                Some((
+                    line_start,
+                    line_end,
+                    original_line_text.ends_with('\n') || original_line_text.ends_with("\r\n"),
+                )),
+            )
         } else {
             (String::new(), None)
         }
@@ -857,7 +868,9 @@ fn deepl_translate(
         let mut text = String::new();
         for selection in &selections {
             if selection.start != selection.end {
-                let selection_text = buffer_snapshot.text_for_range(selection.start..selection.end).collect::<String>();
+                let selection_text = buffer_snapshot
+                    .text_for_range(selection.start..selection.end)
+                    .collect::<String>();
                 text.push_str(&selection_text);
             }
         }
@@ -921,21 +934,40 @@ fn deepl_translate(
                 if status.is_success() {
                     match serde_json::from_slice::<serde_json::Value>(&body) {
                         Ok(json) => {
-                            if let Some(translations) = json.get("translations").and_then(|t| t.as_array()) {
+                            if let Some(translations) =
+                                json.get("translations").and_then(|t| t.as_array())
+                            {
                                 if let Some(translation) = translations.first() {
-                                    if let Some(translated_text) = translation.get("text").and_then(|t| t.as_str()) {
+                                    if let Some(translated_text) =
+                                        translation.get("text").and_then(|t| t.as_str())
+                                    {
                                         // Replace selected text or entire line with translation
                                         workspace.update_in(cx, |workspace, window, cx| {
-                                            if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+                                            if let Some(editor) =
+                                                workspace.active_item_as::<Editor>(cx)
+                                            {
                                                 editor.update(cx, |editor, cx| {
-                                                    if let Some((line_start, line_end, had_newline)) = line_range {
+                                                    if let Some((
+                                                        line_start,
+                                                        line_end,
+                                                        had_newline,
+                                                    )) = line_range
+                                                    {
                                                         // Replace entire line
-                                                        let mut replacement = translated_text.to_string();
+                                                        let mut replacement =
+                                                            translated_text.to_string();
                                                         if had_newline {
                                                             replacement.push('\n');
                                                         }
                                                         editor.buffer().update(cx, |buffer, cx| {
-                                                            buffer.edit([(line_start..line_end, replacement)], None, cx);
+                                                            buffer.edit(
+                                                                [(
+                                                                    line_start..line_end,
+                                                                    replacement,
+                                                                )],
+                                                                None,
+                                                                cx,
+                                                            );
                                                         });
                                                     } else {
                                                         // Replace selected text
@@ -975,29 +1007,43 @@ fn deepl_translate(
                     // Include response body in error message for better debugging
                     let error_body = String::from_utf8_lossy(&body);
                     let error_msg = if error_body.is_empty() {
-                        format!("DeepL API error: HTTP {} {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
+                        format!(
+                            "DeepL API error: HTTP {} {}",
+                            status.as_u16(),
+                            status.canonical_reason().unwrap_or("Unknown")
+                        )
                     } else {
                         // Try to parse JSON error response
                         match serde_json::from_slice::<serde_json::Value>(&body) {
                             Ok(json) => {
-                                if let Some(message) = json.get("message").and_then(|m| m.as_str()) {
-                                    format!("DeepL API error: HTTP {} - {}", status.as_u16(), message)
+                                if let Some(message) = json.get("message").and_then(|m| m.as_str())
+                                {
+                                    format!(
+                                        "DeepL API error: HTTP {} - {}",
+                                        status.as_u16(),
+                                        message
+                                    )
                                 } else {
-                                    format!("DeepL API error: HTTP {} - {}", status.as_u16(), error_body.trim())
+                                    format!(
+                                        "DeepL API error: HTTP {} - {}",
+                                        status.as_u16(),
+                                        error_body.trim()
+                                    )
                                 }
                             }
                             Err(_) => {
-                                format!("DeepL API error: HTTP {} - {}", status.as_u16(), error_body.trim())
+                                format!(
+                                    "DeepL API error: HTTP {} - {}",
+                                    status.as_u16(),
+                                    error_body.trim()
+                                )
                             }
                         }
                     };
 
                     workspace.update_in(cx, |workspace, _, cx| {
                         workspace.show_toast(
-                            Toast::new(
-                                NotificationId::unique::<DeeplTranslate>(),
-                                error_msg,
-                            ),
+                            Toast::new(NotificationId::unique::<DeeplTranslate>(), error_msg),
                             cx,
                         );
                     })?;

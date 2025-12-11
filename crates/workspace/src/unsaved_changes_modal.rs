@@ -1,11 +1,11 @@
-use gpui::{
-    App, Context, DismissEvent, EventEmitter, FocusHandle, Focusable, FontWeight, IntoElement, Render,
-    Task, Window,
-};
-use std::sync::Arc;
-use ui::{prelude::*, Button, ButtonStyle, Label, LabelSize, TintColor};
 use futures::channel::oneshot;
+use gpui::{
+    App, Context, DismissEvent, EventEmitter, FocusHandle, Focusable, FontWeight, IntoElement,
+    Render, Task, Window,
+};
 use menu;
+use std::sync::Arc;
+use ui::{Button, ButtonStyle, Label, LabelSize, TintColor, prelude::*};
 
 use crate::modal_layer::ModalView;
 
@@ -21,8 +21,6 @@ pub struct UnsavedChangesModal {
 impl ModalView for UnsavedChangesModal {}
 
 impl UnsavedChangesModal {
-
-
     pub fn show(
         workspace: &mut crate::Workspace,
         message: impl Into<Arc<str>>,
@@ -50,9 +48,7 @@ impl UnsavedChangesModal {
             modal
         });
 
-        cx.spawn(async move |_workspace, _cx| {
-            receiver.await.ok()
-        })
+        cx.spawn(async move |_workspace, _cx| receiver.await.ok())
     }
 
     fn select_button(&mut self, index: usize, _window: &mut Window, cx: &mut Context<Self>) {
@@ -72,7 +68,10 @@ impl UnsavedChangesModal {
     fn cancel(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if let Some(sender) = self.result_sender.take() {
             // Find "Cancel" button index, or use last button as default
-            let cancel_index = self.buttons.iter().position(|b| b.to_lowercase().contains("cancel"))
+            let cancel_index = self
+                .buttons
+                .iter()
+                .position(|b| b.to_lowercase().contains("cancel"))
                 .unwrap_or(self.buttons.len().saturating_sub(1));
             let _ = sender.send(cancel_index);
         }
@@ -91,7 +90,7 @@ impl Focusable for UnsavedChangesModal {
 impl Render for UnsavedChangesModal {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let focus_handle = self.focus_handle.clone();
-        
+
         v_flex()
             .key_context("UnsavedChangesModal")
             .track_focus(&focus_handle)
@@ -135,7 +134,7 @@ impl Render for UnsavedChangesModal {
                     .child(
                         Icon::new(IconName::Warning)
                             .size(IconSize::Medium)
-                            .color(Color::Warning)
+                            .color(Color::Warning),
                     )
                     .child(
                         v_flex()
@@ -143,13 +142,13 @@ impl Render for UnsavedChangesModal {
                             .child(
                                 Label::new(self.message.clone())
                                     .size(LabelSize::Default)
-                                    .weight(FontWeight::MEDIUM)
+                                    .weight(FontWeight::MEDIUM),
                             )
                             .when_some(self.detail.clone(), |this, detail| {
                                 this.child(
                                     Label::new(detail)
                                         .size(LabelSize::Small)
-                                        .color(Color::Muted)
+                                        .color(Color::Muted),
                                 )
                             })
                             .child(
@@ -159,47 +158,45 @@ impl Render for UnsavedChangesModal {
                                     .child(
                                         Label::new("Enter: Save")
                                             .size(LabelSize::Small)
-                                            .color(Color::Muted)
+                                            .color(Color::Muted),
                                     )
                                     .child(
                                         Label::new("h: Don't Save")
                                             .size(LabelSize::Small)
-                                            .color(Color::Muted)
+                                            .color(Color::Muted),
                                     )
                                     .child(
                                         Label::new("Escape: Cancel")
                                             .size(LabelSize::Small)
-                                            .color(Color::Muted)
-                                    )
-                            )
-                    )
+                                            .color(Color::Muted),
+                                    ),
+                            ),
+                    ),
             )
             .child(
                 // Buttons
                 h_flex()
                     .gap_2()
                     .justify_end()
-                    .children(
-                        self.buttons.iter().enumerate().map(|(index, button_text)| {
-                            let _is_selected = index == self.selected_button;
-                            let is_primary = index == 0; // First button (Save) is primary
-                            let is_destructive = button_text.to_lowercase().contains("don't save") 
-                                || button_text.to_lowercase().contains("discard");
-                            
-                            Button::new(("button", index), button_text.clone())
-                                .style(if is_primary {
-                                    ButtonStyle::Filled
-                                } else if is_destructive {
-                                    ButtonStyle::Tinted(TintColor::Error)
-                                } else {
-                                    ButtonStyle::Subtle
-                                })
-                                .on_click(cx.listener(move |this, _, window, cx| {
-                                    this.select_button(index, window, cx);
-                                    this.confirm_selection(window, cx);
-                                }))
-                        })
-                    )
+                    .children(self.buttons.iter().enumerate().map(|(index, button_text)| {
+                        let _is_selected = index == self.selected_button;
+                        let is_primary = index == 0; // First button (Save) is primary
+                        let is_destructive = button_text.to_lowercase().contains("don't save")
+                            || button_text.to_lowercase().contains("discard");
+
+                        Button::new(("button", index), button_text.clone())
+                            .style(if is_primary {
+                                ButtonStyle::Filled
+                            } else if is_destructive {
+                                ButtonStyle::Tinted(TintColor::Error)
+                            } else {
+                                ButtonStyle::Subtle
+                            })
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.select_button(index, window, cx);
+                                this.confirm_selection(window, cx);
+                            }))
+                    })),
             )
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                 this.cancel(window, cx);

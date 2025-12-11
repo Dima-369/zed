@@ -1,6 +1,9 @@
 mod jump_settings;
 
-use editor::{DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset, ToPoint, display_map::ToDisplayPoint};
+use editor::{
+    DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset, ToPoint,
+    display_map::ToDisplayPoint,
+};
 use gpui::{
     Action, App, Context, DismissEvent, Entity, EventEmitter, Focusable, IntoElement, Render,
     Styled, Window, div,
@@ -387,7 +390,8 @@ impl JumpBar {
                     }
 
                     // Extract slice safely and compare case-insensitively
-                    if !text.is_char_boundary(offset_usize) || !text.is_char_boundary(offset_usize + query_len)
+                    if !text.is_char_boundary(offset_usize)
+                        || !text.is_char_boundary(offset_usize + query_len)
                     {
                         continue;
                     }

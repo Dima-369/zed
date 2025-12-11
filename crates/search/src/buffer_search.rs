@@ -349,41 +349,38 @@ impl Render for BufferSearchBar {
                 .ml_2()
         });
 
-        let matches_row = h_flex()
-            .gap_1()
-            .px_2()
-            .when(!find_in_results, |this| {
-                let query_focus = self.query_editor.focus_handle(cx);
-                this.child(div().min_w(rems_from_px(40.)).child(
-                    Label::new(match_text).size(LabelSize::Small).color(
-                        if self.active_match_index.is_some() {
-                            Color::Default
-                        } else {
-                            Color::Disabled
-                        },
-                    ),
-                ))
-                .child(render_action_button(
-                    "buffer-search-nav-button",
-                    ui::IconName::ChevronLeft,
-                    self.active_match_index
-                        .is_none()
-                        .then_some(ActionButtonState::Disabled),
-                    "Select Previous Match",
-                    &SelectPreviousMatch,
-                    query_focus.clone(),
-                ))
-                .child(render_action_button(
-                    "buffer-search-nav-button",
-                    ui::IconName::ChevronRight,
-                    self.active_match_index
-                        .is_none()
-                        .then_some(ActionButtonState::Disabled),
-                    "Select Next Match",
-                    &SelectNextMatch,
-                    query_focus.clone(),
-                ))
-            });
+        let matches_row = h_flex().gap_1().px_2().when(!find_in_results, |this| {
+            let query_focus = self.query_editor.focus_handle(cx);
+            this.child(div().min_w(rems_from_px(40.)).child(
+                Label::new(match_text).size(LabelSize::Small).color(
+                    if self.active_match_index.is_some() {
+                        Color::Default
+                    } else {
+                        Color::Disabled
+                    },
+                ),
+            ))
+            .child(render_action_button(
+                "buffer-search-nav-button",
+                ui::IconName::ChevronLeft,
+                self.active_match_index
+                    .is_none()
+                    .then_some(ActionButtonState::Disabled),
+                "Select Previous Match",
+                &SelectPreviousMatch,
+                query_focus.clone(),
+            ))
+            .child(render_action_button(
+                "buffer-search-nav-button",
+                ui::IconName::ChevronRight,
+                self.active_match_index
+                    .is_none()
+                    .then_some(ActionButtonState::Disabled),
+                "Select Next Match",
+                &SelectNextMatch,
+                query_focus.clone(),
+            ))
+        });
 
         let search_line =
             h_flex()

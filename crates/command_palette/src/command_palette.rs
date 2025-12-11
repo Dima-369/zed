@@ -7,13 +7,11 @@ use std::{
     time::Duration,
 };
 
-use command_palette_hooks::{
-    CommandInterceptItem, CommandInterceptResult, CommandPaletteFilter,
-};
+use command_palette_hooks::{CommandInterceptItem, CommandInterceptResult, CommandPaletteFilter};
 
 use gpui::{
-    Action, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle,
-    Focusable, ParentElement, Render, Styled, Task, WeakEntity, Window,
+    Action, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
+    ParentElement, Render, Styled, Task, WeakEntity, Window,
 };
 use persistence::COMMAND_PALETTE_HISTORY;
 use picker::Direction;
@@ -340,9 +338,18 @@ impl CommandPaletteDelegate {
             self.selected_ix = cmp::min(self.selected_ix, self.matches.len() - 1);
         }
 
-        let first_ten_displayed: Vec<String> =
-            self.matches.iter().take(10).map(|m| m.name.clone()).collect();
-        log::info!("Command Palette: Current {} displayed candidates with entered input string '{}', First 10 candidates: {:?}", self.matches.len(), self.latest_query, first_ten_displayed);
+        let first_ten_displayed: Vec<String> = self
+            .matches
+            .iter()
+            .take(10)
+            .map(|m| m.name.clone())
+            .collect();
+        log::info!(
+            "Command Palette: Current {} displayed candidates with entered input string '{}', First 10 candidates: {:?}",
+            self.matches.len(),
+            self.latest_query,
+            first_ten_displayed
+        );
     }
 
     /// Last invocation time for each command in the palette.
@@ -555,7 +562,12 @@ impl PickerDelegate for CommandPaletteDelegate {
             Ok(Some((commands, matches, interceptor_result))) => {
                 let first_ten_matches: Vec<String> =
                     matches.iter().take(10).map(|m| m.name.clone()).collect();
-                log::info!("Command Palette: Finalizing {} candidates with input query '{}', First 10 matches: {:?}", matches.len(), query, first_ten_matches);
+                log::info!(
+                    "Command Palette: Finalizing {} candidates with input query '{}', First 10 matches: {:?}",
+                    matches.len(),
+                    query,
+                    first_ten_matches
+                );
                 self.matches_updated(query, commands, matches, interceptor_result, cx);
                 true
             }

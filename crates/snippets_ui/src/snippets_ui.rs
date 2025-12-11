@@ -19,7 +19,10 @@ use std::{
 };
 use ui::{HighlightedLabel, ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
-use workspace::{ModalView, OpenOptions, OpenVisible, Toast, Workspace, notifications::{NotificationId, NotifyResultExt}};
+use workspace::{
+    ModalView, OpenOptions, OpenVisible, Toast, Workspace,
+    notifications::{NotificationId, NotifyResultExt},
+};
 
 #[derive(Eq, Hash, PartialEq)]
 struct ScopeName(Cow<'static, str>);

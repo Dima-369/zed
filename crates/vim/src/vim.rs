@@ -1771,7 +1771,8 @@ impl Vim {
             }
         } else if self.mode == Mode::Normal && newest.start != newest.end {
             // Don't switch to visual mode for project search results editors
-            let should_switch_to_visual = editor.update(cx, |editor, _| !editor.in_project_search());
+            let should_switch_to_visual =
+                editor.update(cx, |editor, _| !editor.in_project_search());
             if should_switch_to_visual {
                 if matches!(newest.goal, SelectionGoal::HorizontalRange { .. }) {
                     self.switch_mode(Mode::VisualBlock, false, window, cx);

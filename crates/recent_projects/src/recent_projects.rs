@@ -69,7 +69,7 @@ where
         // For single words, treat the whole query as one word
         vec![query.trim()]
     };
-    
+
     if words.is_empty() {
         return Vec::new();
     }
@@ -96,13 +96,13 @@ where
             } else {
                 word.to_lowercase()
             };
-            
+
             let found_match = if smart_case {
                 candidate_string.contains(word)
             } else {
                 candidate_lower.contains(&word_lower)
             };
-            
+
             if found_match {
                 if let Some(byte_pos) = if smart_case {
                     candidate_string.find(word)
@@ -110,9 +110,10 @@ where
                     candidate_lower.find(&word_lower)
                 } {
                     // Calculate a simple score based on position and word length
-                    let word_score = 1.0 / (byte_pos as f64 + 1.0) * (word.len() as f64 / candidate_string.len() as f64);
+                    let word_score = 1.0 / (byte_pos as f64 + 1.0)
+                        * (word.len() as f64 / candidate_string.len() as f64);
                     total_score += word_score;
-                    
+
                     if let Some(original_byte_pos) = if smart_case {
                         candidate_string.find(word)
                     } else {
@@ -121,7 +122,9 @@ where
                         let word_byte_len = word.as_bytes().len();
                         for i in 0..word_byte_len {
                             let pos = original_byte_pos + i;
-                            if pos < candidate_string.len() && candidate_string.is_char_boundary(pos) {
+                            if pos < candidate_string.len()
+                                && candidate_string.is_char_boundary(pos)
+                            {
                                 all_positions.push(pos);
                             }
                         }
@@ -146,7 +149,11 @@ where
         }
     }
 
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     results.truncate(max_results);
     results
 }

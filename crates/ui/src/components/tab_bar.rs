@@ -104,8 +104,12 @@ impl RenderOnce for TabBar {
             .flex()
             .flex_none()
             .w_full()
-            .when(self.vertical_stacking, |this| this.min_h(Tab::container_height(cx)))
-            .when(!self.vertical_stacking, |this| this.h(Tab::container_height(cx)))
+            .when(self.vertical_stacking, |this| {
+                this.min_h(Tab::container_height(cx))
+            })
+            .when(!self.vertical_stacking, |this| {
+                this.h(Tab::container_height(cx))
+            })
             .bg(cx.theme().colors().tab_bar_background)
             .when(!self.start_children.is_empty(), |this| {
                 this.child(
@@ -139,9 +143,7 @@ impl RenderOnce for TabBar {
                             .id("tabs")
                             .flex_grow()
                             .when(self.vertical_stacking, |this| {
-                                this.flex()
-                                    .flex_wrap()
-                                    .overflow_hidden()
+                                this.flex().flex_wrap().overflow_hidden()
                             })
                             .when(!self.vertical_stacking, |this| {
                                 this.h_flex()

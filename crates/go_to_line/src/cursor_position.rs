@@ -4,8 +4,8 @@ use settings::{RegisterSetting, Settings};
 use std::{fmt::Write, num::NonZeroU32, time::Duration};
 use text::{Point, Selection};
 use ui::{
-    div, ActiveTheme, Button, ButtonCommon, Clickable, Context, FluentBuilder, IntoElement,
-    ParentElement, Render, Tooltip, Window,
+    ActiveTheme, Button, ButtonCommon, Clickable, Context, FluentBuilder, IntoElement,
+    ParentElement, Render, Tooltip, Window, div,
 };
 use util::paths::FILE_ROW_COLUMN_DELIMITER;
 use workspace::{StatusBarSettings, StatusItemView, Workspace, item::ItemHandle};
@@ -243,13 +243,11 @@ impl Render for CursorPosition {
                         "Go to Line/Column",
                         &editor::actions::ToggleGoToLine,
                         context,
-
                         cx,
                     ),
                     None => Tooltip::for_action(
                         "Go to Line/Column",
                         &editor::actions::ToggleGoToLine,
-
                         cx,
                     ),
                 });

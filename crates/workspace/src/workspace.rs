@@ -1695,8 +1695,6 @@ impl Workspace {
                 .await
                 .unwrap_or_default();
 
-
-
             window
                 .update(cx, |workspace, window, cx| {
                     window.activate_window();
@@ -3047,9 +3045,11 @@ impl Workspace {
 
                     // Remove the pane from the workspace
                     if let Some(workspace) = workspace_handle.upgrade() {
-                        workspace.update_in(cx, |workspace, window, cx| {
-                            workspace.remove_pane(pane, None, window, cx);
-                        }).log_err();
+                        workspace
+                            .update_in(cx, |workspace, window, cx| {
+                                workspace.remove_pane(pane, None, window, cx);
+                            })
+                            .log_err();
                     }
                 }
             })
@@ -11580,12 +11580,7 @@ mod tests {
             });
 
             // Split again and add third item
-            let pane3 = workspace.split_pane(
-                pane2.clone(),
-                SplitDirection::Down,
-                window,
-                cx,
-            );
+            let pane3 = workspace.split_pane(pane2.clone(), SplitDirection::Down, window, cx);
             pane3.update(cx, |pane, cx| {
                 pane.add_item(Box::new(item3.clone()), true, true, None, window, cx);
             });
@@ -11610,7 +11605,10 @@ mod tests {
             assert_eq!(workspace.panes().len(), 1);
             let remaining_pane = &workspace.panes()[0];
             assert_eq!(remaining_pane.read(cx).items().len(), 1);
-            assert_eq!(remaining_pane.read(cx).items()[0].item_id(), item1.item_id());
+            assert_eq!(
+                remaining_pane.read(cx).items()[0].item_id(),
+                item1.item_id()
+            );
         });
     }
 

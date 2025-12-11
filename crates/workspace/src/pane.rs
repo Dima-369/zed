@@ -20,9 +20,9 @@ use futures::{StreamExt, stream::FuturesUnordered};
 use gpui::{
     Action, AnyElement, App, AsyncWindowContext, ClickEvent, ClipboardItem, Context, Corner, Div,
     DragMoveEvent, Entity, EntityId, EventEmitter, ExternalPaths, FocusHandle, FocusOutEvent,
-    Focusable, KeyContext, MouseButton, MouseDownEvent, NavigationDirection, Pixels, Point,
-    Render, ScrollHandle, Subscription, Task, WeakEntity, WeakFocusHandle, Window,
-    actions, anchored, deferred, prelude::*,
+    Focusable, KeyContext, MouseButton, MouseDownEvent, NavigationDirection, Pixels, Point, Render,
+    ScrollHandle, Subscription, Task, WeakEntity, WeakFocusHandle, Window, actions, anchored,
+    deferred, prelude::*,
 };
 use itertools::Itertools;
 use language::DiagnosticSeverity;
@@ -3171,9 +3171,7 @@ impl Pane {
                     .id("unpinned tabs")
                     .w_full()
                     .when(vertical_stacking, |this| {
-                        this.flex()
-                            .flex_wrap()
-                            .overflow_hidden()
+                        this.flex().flex_wrap().overflow_hidden()
                     })
                     .when(!vertical_stacking, |this| {
                         this.h_flex()

@@ -489,8 +489,9 @@ impl FileExplorerDelegate {
             .initial_selected_path
             .take()
             .and_then(|target_path| {
-                self.matches.iter().position(|m| {
-                    match &self.all_entries[m.candidate_id] {
+                self.matches
+                    .iter()
+                    .position(|m| match &self.all_entries[m.candidate_id] {
                         FileExplorerEntry::ParentDirectory
                         | FileExplorerEntry::AllWorktrees
                         | FileExplorerEntry::Worktree(..) => false,
@@ -498,8 +499,7 @@ impl FileExplorerDelegate {
                             e.path.file_name().map(|s| s.to_string()).as_deref()
                                 == Some(&target_path)
                         }
-                    }
-                })
+                    })
             })
             .unwrap_or(0);
     }
@@ -638,11 +638,12 @@ impl PickerDelegate for FileExplorerDelegate {
     }
 
     fn separators_after_indices(&self) -> Vec<usize> {
-        if self
-            .matches
-            .first()
-            .is_some_and(|m| matches!(self.all_entries[m.candidate_id], FileExplorerEntry::ParentDirectory))
-        {
+        if self.matches.first().is_some_and(|m| {
+            matches!(
+                self.all_entries[m.candidate_id],
+                FileExplorerEntry::ParentDirectory
+            )
+        }) {
             vec![0]
         } else {
             Vec::new()

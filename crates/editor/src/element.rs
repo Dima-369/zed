@@ -267,9 +267,13 @@ impl EditorElement {
         register_action(editor, window, Editor::convert_to_upper_camel_case);
         register_action(editor, window, Editor::convert_to_lower_camel_case);
         register_action(editor, window, Editor::convert_to_opposite_case);
-        register_action(editor, window, |editor, _: &crate::actions::CreateNavHistoryEntry, _window, cx| {
-            editor.create_nav_history_entry(cx)
-        });
+        register_action(
+            editor,
+            window,
+            |editor, _: &crate::actions::CreateNavHistoryEntry, _window, cx| {
+                editor.create_nav_history_entry(cx)
+            },
+        );
         register_action(editor, window, Editor::convert_to_sentence_case);
         register_action(editor, window, Editor::toggle_case);
         register_action(editor, window, Editor::convert_to_rot13);
@@ -10779,20 +10783,20 @@ impl EditorScrollbars {
             };
 
             (should_show).then(|| {
-                    ScrollbarLayout::new(
-                        window.insert_hitbox(scrollbar_bounds_for(axis), HitboxBehavior::Normal),
-                        viewport_size,
-                        scroll_range,
-                        glyph_grid_cell.along(axis),
-                        content_offset.along(axis),
-                        scroll_position.along(axis),
-                        show_scrollbars,
-                        axis,
-                    )
-                    .with_thumb_state(
-                        scrollbar_state.and_then(|state| state.thumb_state_for_axis(axis)),
-                    )
-                })
+                ScrollbarLayout::new(
+                    window.insert_hitbox(scrollbar_bounds_for(axis), HitboxBehavior::Normal),
+                    viewport_size,
+                    scroll_range,
+                    glyph_grid_cell.along(axis),
+                    content_offset.along(axis),
+                    scroll_position.along(axis),
+                    show_scrollbars,
+                    axis,
+                )
+                .with_thumb_state(
+                    scrollbar_state.and_then(|state| state.thumb_state_for_axis(axis)),
+                )
+            })
         };
 
         Self {
