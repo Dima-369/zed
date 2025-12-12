@@ -338,12 +338,7 @@ impl CommandPaletteDelegate {
             self.selected_ix = cmp::min(self.selected_ix, self.matches.len() - 1);
         }
 
-        let first_ten_displayed: Vec<String> = self
-            .matches
-            .iter()
-            .take(10)
-            .map(|m| m.name.clone())
-            .collect();
+
     }
 
     /// Last invocation time for each command in the palette.
@@ -458,7 +453,7 @@ impl PickerDelegate for CommandPaletteDelegate {
                     )
                 });
 
-                let first_ten_candidates: Vec<String> = commands.iter().take(10).map(|c| c.name.clone()).collect();
+
 
                 let matches = if query.trim().is_empty() {
                     // If query is empty, show all commands in their sorted order.
@@ -500,11 +495,6 @@ impl PickerDelegate for CommandPaletteDelegate {
                     results
                 };
 
-                let first_ten_matches: Vec<String> =
-                    matches.iter().take(10).map(|m| m.name.clone()).collect();
-
-
-
                 // Always use an empty intercept result to prevent special commands from being injected.
                 let intercept_result = CommandInterceptResult::default();
 
@@ -545,8 +535,6 @@ impl PickerDelegate for CommandPaletteDelegate {
             .block_with_timeout(duration, rx.clone().recv())
         {
             Ok(Some((commands, matches, interceptor_result))) => {
-                let first_ten_matches: Vec<String> =
-                    matches.iter().take(10).map(|m| m.name.clone()).collect();
                 self.matches_updated(query, commands, matches, interceptor_result, cx);
                 true
             }
