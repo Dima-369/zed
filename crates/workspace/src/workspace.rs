@@ -4378,17 +4378,27 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.center.remove(&pane).unwrap() {
-            self.force_remove_pane(&pane, &focus_on, window, cx);
-            self.unfollow_in_pane(&pane, window, cx);
-            self.last_leaders_by_pane.remove(&pane.downgrade());
-            for removed_item in pane.read(cx).items() {
-                self.panes_by_item.remove(&removed_item.item_id());
+        // Handle the case where the pane might already be removed (race condition)
+        match self.center.remove(&pane) {
+            Ok(true) => {
+                // Pane was found and removed from the center pane group
+                self.force_remove_pane(&pane, &focus_on, window, cx);
+                self.unfollow_in_pane(&pane, window, cx);
+                self.last_leaders_by_pane.remove(&pane.downgrade());
+                for removed_item in pane.read(cx).items() {
+                    self.panes_by_item.remove(&removed_item.item_id());
+                }
+                cx.notify();
             }
-
-            cx.notify();
-        } else {
-            self.active_item_path_changed(window, cx);
+            Ok(false) => {
+                // Pane was found but not removed (single pane case)
+                self.active_item_path_changed(window, cx);
+            }
+            Err(_) => {
+                // Pane was not found - likely already removed by another operation
+                // This can happen in race conditions, so we handle it gracefully
+                log::debug!("Attempted to remove pane that was not found in center pane group");
+            }
         }
         cx.emit(Event::PaneRemoved);
     }
