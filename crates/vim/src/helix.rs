@@ -1082,7 +1082,7 @@ impl Vim {
                 "Jump List".to_string(),
                 false, // don't split
                 false, // don't allow preview
-                MultibufferSelectionMode::All,
+                MultibufferSelectionMode::First,
                 window,
                 cx,
             );

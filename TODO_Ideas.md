@@ -12,5 +12,3 @@ create a new action
 
 editor: Implement inline references (peek references) #44669
 https://github.com/zed-industries/zed/pull/44669
-
-fix that in vim::HelixOpenJumpListInMultibuffer it launches a multi selection cursor, it should just be a single cursor, and open at first match
