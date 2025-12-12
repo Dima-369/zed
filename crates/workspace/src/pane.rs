@@ -2638,14 +2638,46 @@ impl Pane {
         let is_pinned = self.is_tab_pinned(ix);
         let position_relative_to_active_item = ix.cmp(&self.active_item_index);
 
-        let tab = Tab::new(ix)
-            .position(if is_first_item {
+        // Determine tab position based on its role in the tab layout
+        let tab_position = if is_pinned {
+            // For pinned tabs
+            let is_last_pinned = ix == self.pinned_tab_count.saturating_sub(1);
+            let has_unpinned_tabs = self.has_unpinned_tabs();
+
+            if is_first_item && !is_last_pinned {
+                // First pinned tab, but not the last pinned tab
                 TabPosition::First
-            } else if is_last_item {
+            } else if is_last_pinned && (has_unpinned_tabs || !is_first_item) {
+                // Last pinned tab, and either there are unpinned tabs or it's not the first tab
+                TabPosition::Last
+            } else if is_first_item && is_last_pinned && !has_unpinned_tabs {
+                // Single pinned tab with no unpinned tabs
+                TabPosition::First
+            } else {
+                // Middle pinned tab
+                TabPosition::Middle(position_relative_to_active_item)
+            }
+        } else {
+            // For unpinned tabs, position them within their own group
+            let unpinned_count = self.items.len() - self.pinned_tab_count;
+            let is_last_unpinned = is_last_item;
+            let is_only_unpinned = unpinned_count == 1;
+
+            if is_only_unpinned {
+                // Single unpinned tab - treat as First
+                TabPosition::First
+            } else if is_last_unpinned {
+                // Last unpinned tab - treat as Last to get right border
                 TabPosition::Last
             } else {
+                // First or middle unpinned tab - treat as Middle to get right border
+                // Use position relative to active item for proper styling
                 TabPosition::Middle(position_relative_to_active_item)
-            })
+            }
+        };
+
+        let tab = Tab::new(ix)
+            .position(tab_position)
             .close_side(match close_side {
                 ClosePosition::Left => ui::TabCloseSide::Start,
                 ClosePosition::Right => ui::TabCloseSide::End,
@@ -3166,69 +3198,71 @@ impl Pane {
                             .border_color(cx.theme().colors().border)
                     })
             }))
-            .child(
-                div()
-                    .id("unpinned tabs")
-                    .w_full()
-                    .when(vertical_stacking, |this| {
-                        this.flex().flex_wrap().overflow_hidden()
-                    })
-                    .when(!vertical_stacking, |this| {
-                        this.h_flex()
-                            .overflow_x_scroll()
-                            .track_scroll(&self.tab_bar_scroll_handle)
-                            .on_scroll_wheel(cx.listener(|this, _, _, _| {
-                                this.suppress_scroll = true;
-                            }))
-                    })
-                    .children(unpinned_tabs)
-                    .child(
-                        div()
-                            .id("tab_bar_drop_target")
-                            .min_w_6()
-                            // HACK: This empty child is currently necessary to force the drop target to appear
-                            // despite us setting a min width above.
-                            .child("")
-                            // HACK: h_full doesn't occupy the complete height, using fixed height instead
-                            .h(Tab::container_height(cx))
-                            .flex_grow()
-                            .drag_over::<DraggedTab>(|bar, _, _, cx| {
-                                bar.bg(cx.theme().colors().drop_target_background)
-                            })
-                            .drag_over::<DraggedSelection>(|bar, _, _, cx| {
-                                bar.bg(cx.theme().colors().drop_target_background)
-                            })
-                            .on_drop(cx.listener(
-                                move |this, dragged_tab: &DraggedTab, window, cx| {
+            .when(!unpinned_tabs.is_empty(), |this| {
+                this.child(
+                    div()
+                        .id("unpinned tabs")
+                        .w_full()
+                        .when(vertical_stacking, |this| {
+                            this.flex().flex_wrap().overflow_hidden()
+                        })
+                        .when(!vertical_stacking, |this| {
+                            this.h_flex()
+                                .overflow_x_scroll()
+                                .track_scroll(&self.tab_bar_scroll_handle)
+                                .on_scroll_wheel(cx.listener(|this, _, _, _| {
+                                    this.suppress_scroll = true;
+                                }))
+                        })
+                        .children(unpinned_tabs)
+                        .child(
+                            div()
+                                .id("tab_bar_drop_target")
+                                .min_w_6()
+                                // HACK: This empty child is currently necessary to force the drop target to appear
+                                // despite us setting a min width above.
+                                .child("")
+                                // HACK: h_full doesn't occupy the complete height, using fixed height instead
+                                .h(Tab::container_height(cx))
+                                .flex_grow()
+                                .drag_over::<DraggedTab>(|bar, _, _, cx| {
+                                    bar.bg(cx.theme().colors().drop_target_background)
+                                })
+                                .drag_over::<DraggedSelection>(|bar, _, _, cx| {
+                                    bar.bg(cx.theme().colors().drop_target_background)
+                                })
+                                .on_drop(cx.listener(
+                                    move |this, dragged_tab: &DraggedTab, window, cx| {
+                                        this.drag_split_direction = None;
+                                        this.handle_tab_drop(dragged_tab, this.items.len(), window, cx)
+                                    },
+                                ))
+                                .on_drop(cx.listener(
+                                    move |this, selection: &DraggedSelection, window, cx| {
+                                        this.drag_split_direction = None;
+                                        this.handle_project_entry_drop(
+                                            &selection.active_selection.entry_id,
+                                            Some(tab_count),
+                                            window,
+                                            cx,
+                                        )
+                                    },
+                                ))
+                                .on_drop(cx.listener(move |this, paths, window, cx| {
                                     this.drag_split_direction = None;
-                                    this.handle_tab_drop(dragged_tab, this.items.len(), window, cx)
-                                },
-                            ))
-                            .on_drop(cx.listener(
-                                move |this, selection: &DraggedSelection, window, cx| {
-                                    this.drag_split_direction = None;
-                                    this.handle_project_entry_drop(
-                                        &selection.active_selection.entry_id,
-                                        Some(tab_count),
-                                        window,
-                                        cx,
-                                    )
-                                },
-                            ))
-                            .on_drop(cx.listener(move |this, paths, window, cx| {
-                                this.drag_split_direction = None;
-                                this.handle_external_paths_drop(paths, window, cx)
-                            }))
-                            .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
-                                if event.click_count() == 2 {
-                                    window.dispatch_action(
-                                        this.double_click_dispatch_action.boxed_clone(),
-                                        cx,
-                                    );
-                                }
-                            })),
-                    ),
-            )
+                                    this.handle_external_paths_drop(paths, window, cx)
+                                }))
+                                .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
+                                    if event.click_count() == 2 {
+                                        window.dispatch_action(
+                                            this.double_click_dispatch_action.boxed_clone(),
+                                            cx,
+                                        );
+                                    }
+                                })),
+                        ),
+                )
+            })
             .into_any_element()
     }
 
