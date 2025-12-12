@@ -1,0 +1,1 @@
+- never build release builds or run, always just verify via `cargo test` or `cargo check`
