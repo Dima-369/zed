@@ -43,6 +43,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - fixed that a large `vertical_scroll_margin` in `settings.json` to have a centered cursor jumps buffer scrolls around (https://github.com/zed-industries/zed/issues/42155)
 - fixed that on entering the project search, there can be instances where visual mode is entered (https://github.com/zed-industries/zed/issues/43878)
 - integrated file explorer from https://github.com/zed-industries/zed/pull/43961
+- integrated Helix jump list from https://github.com/zed-industries/zed/pull/44661 and implemented `vim::HelixOpenJumpListInMultibuffer` action
 
 ### Command palette
 
