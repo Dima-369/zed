@@ -145,10 +145,7 @@ impl JumpBar {
         // my custom Dvorak Programmer keyboard layout
         // first home row, then top row, then bottom row without pinky finger keys (s and l)
         let lowercase_priority = "htndueoifgcrypzbmwvxkjq";
-        let uppercase_priority = "HTNDUEOIFGCRYPZBMWVXKJQ";
-
-        let mut priority_chars: Vec<char> = lowercase_priority.chars().collect();
-        priority_chars.extend(uppercase_priority.chars());
+        let priority_chars: Vec<char> = lowercase_priority.chars().collect();
 
         // Filter out forbidden characters (case-insensitive comparison)
         let available: Vec<char> = priority_chars
