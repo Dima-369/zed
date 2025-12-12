@@ -21506,6 +21506,73 @@ impl Editor {
         .detach();
     }
 
+    pub fn search_in_current_file_via_multibuffer(
+        &mut self,
+        _: &SearchInCurrentFileViaMultiBuffer,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(workspace) = self.workspace() else {
+            return;
+        };
+
+        let multibuffer = self.buffer.read(cx);
+        let Some(buffer) = multibuffer.as_singleton() else {
+            return;
+        };
+
+        // Get the current file path relative to workspace root
+        let file_path = buffer.read(cx).file().and_then(|file| {
+            let worktree_id = file.worktree_id(cx);
+            workspace.read(cx).project().read(cx)
+                .worktree_for_id(worktree_id, cx)
+                .map(|worktree| {
+                    let worktree = worktree.read(cx);
+                    let project = workspace.read(cx).project().read(cx);
+                    let include_root = project.visible_worktrees(cx).count() > 1;
+                    let path_style = workspace.read(cx).path_style(cx);
+
+                    if include_root {
+                        // Multi-root workspace: include worktree root name
+                        worktree.root_name().join(file.path()).display(path_style).to_string()
+                    } else {
+                        // Single-root workspace: use relative path from root
+                        file.path().display(path_style).to_string()
+                    }
+                })
+        });
+
+        let Some(file_path) = file_path else {
+            return;
+        };
+
+        // Store the current selection to restore it later
+        let current_selections = self.selections.all_adjusted(&self.snapshot(window, cx).display_snapshot);
+
+        // Temporarily clear selections to prevent automatic query extraction
+        let snapshot = self.snapshot(window, cx);
+        let empty_anchor = snapshot.buffer_snapshot().anchor_before(MultiBufferOffset(0));
+        self.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+            s.select_ranges([empty_anchor..empty_anchor]);
+        });
+
+        // Launch project search with the current file path using DeploySearch action
+        let deploy_search = workspace::DeploySearch {
+            replace_enabled: false,
+            included_files: Some(file_path),
+            excluded_files: None,
+        };
+
+        workspace.update(cx, |_workspace, cx| {
+            window.dispatch_action(Box::new(deploy_search), cx);
+        });
+
+        // Restore the original selections
+        self.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+            s.select_ranges(current_selections.into_iter().map(|selection| selection.range()));
+        });
+    }
+
     /// Adds a row highlight for the given range. If a row has multiple highlights, the
     /// last highlight added will be used.
     ///

@@ -625,6 +625,7 @@ impl EditorElement {
         register_action(editor, window, Editor::insert_uuid_v4);
         register_action(editor, window, Editor::insert_uuid_v7);
         register_action(editor, window, Editor::open_selections_in_multibuffer);
+        register_action(editor, window, Editor::search_in_current_file_via_multibuffer);
         register_action(editor, window, Editor::toggle_breakpoint);
         register_action(editor, window, Editor::edit_log_breakpoint);
         register_action(editor, window, Editor::enable_breakpoint);
