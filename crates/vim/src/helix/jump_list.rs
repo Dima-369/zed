@@ -149,6 +149,12 @@ impl JumpList {
         self.current = self.current.saturating_sub(1);
     }
 
+    /// Returns all entries in the jump list for display purposes.
+    /// Returns a vector of all jump entries, useful for creating multibuffer views.
+    pub fn all_entries(&self) -> Vec<&JumpEntry> {
+        self.jumps.iter().collect()
+    }
+
     /// Removes all entries associated with a closed buffer.
     ///
     /// Adjusts the current position to account for removed entries.
