@@ -7,8 +7,8 @@ use settings_macros::{MergeFrom, with_fallible_options};
 use util::serde::default_true;
 
 use crate::{
-    AllLanguageSettingsContent, DelayMs, ExtendingVec, ProjectTerminalSettingsContent,
-    SlashCommandSettings,
+    AllLanguageSettingsContent, DelayMs, ExtendingVec, FontFamilyName,
+    ProjectTerminalSettingsContent, SlashCommandSettings,
 };
 
 #[with_fallible_options]
@@ -280,7 +280,7 @@ impl std::fmt::Debug for ContextServerCommand {
 }
 
 #[with_fallible_options]
-#[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize, JsonSchema, MergeFrom)]
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize, JsonSchema, MergeFrom)]
 pub struct GitSettings {
     /// Whether or not to show the git gutter.
     ///
@@ -363,13 +363,18 @@ pub struct InlineBlameSettings {
 }
 
 #[with_fallible_options]
-#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize, JsonSchema, MergeFrom)]
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize, JsonSchema, MergeFrom)]
 #[serde(rename_all = "snake_case")]
 pub struct BlameSettings {
     /// Whether to show the avatar of the author of the commit.
     ///
     /// Default: true
     pub show_avatar: Option<bool>,
+    /// The name of a font to use for rendering git blame information.
+    /// If not specified, uses the buffer font.
+    ///
+    /// Default: null (uses buffer font)
+    pub git_blame_font_family: Option<FontFamilyName>,
 }
 
 #[with_fallible_options]

@@ -337,8 +337,6 @@ impl CommandPaletteDelegate {
         } else {
             self.selected_ix = cmp::min(self.selected_ix, self.matches.len() - 1);
         }
-
-
     }
 
     /// Last invocation time for each command in the palette.
@@ -452,8 +450,6 @@ impl PickerDelegate for CommandPaletteDelegate {
                         action.name.clone(),
                     )
                 });
-
-
 
                 let matches = if query.trim().is_empty() {
                     // If query is empty, show all commands in their sorted order.

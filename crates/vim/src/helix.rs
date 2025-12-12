@@ -12,17 +12,17 @@ pub use jump_list::{JumpEntry, JumpList};
 use editor::display_map::DisplaySnapshot;
 use editor::{
     DisplayPoint, Editor, EditorSettings, HideMouseCursorOrigin, MultiBufferOffset,
-    SelectionEffects, ToOffset, ToPoint, movement, MultibufferSelectionMode,
+    MultibufferSelectionMode, SelectionEffects, ToOffset, ToPoint, movement,
 };
 use gpui::actions;
-use gpui::{Context, Window, Entity};
-use language::{CharClassifier, CharKind, Point, Buffer};
+use gpui::{Context, Entity, Window};
+use language::{Buffer, CharClassifier, CharKind, Point};
 use search::{BufferSearchBar, SearchOptions};
 use settings::Settings;
-use text::{Bias, SelectionGoal};
-use workspace::{Workspace, searchable::FilteredSearchRange};
-use workspace::searchable::{self, Direction};
 use std::collections::HashMap;
+use text::{Bias, SelectionGoal};
+use workspace::searchable::{self, Direction};
+use workspace::{Workspace, searchable::FilteredSearchRange};
 
 use crate::motion::{self, MotionKind};
 use crate::state::SearchState;
@@ -1005,7 +1005,12 @@ impl Vim {
 
         // Get all jump list entries
         let entries = Vim::update_globals(cx, |globals, _| {
-            globals.helix_jump_list.all_entries().into_iter().cloned().collect::<Vec<_>>()
+            globals
+                .helix_jump_list
+                .all_entries()
+                .into_iter()
+                .cloned()
+                .collect::<Vec<_>>()
         });
 
         if entries.is_empty() {

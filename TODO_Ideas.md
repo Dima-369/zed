@@ -1,8 +1,6 @@
 - is there a keybinding to view the commit from git blame?
 does not seem there is, when I am inside a git commit view and I run `git::Blame`, I just see this error notification: `failed to find a git repository for buffer`. I wonder if you can implement this, so `git::Blame` also works in git commit view tabs, and shows the left side next to the line numbers for the blame info PLUS `editor::OpenGitBlameCommit` works to jump to the new commit
 
-- is there a setting to set the git blame font? because I am using a proportional editor font, but in git blame it all does not align anymore, if not, can you implement such a setting like `buffer_font_family`
-
 - implement swiper like search, or maybe via `tv`?
 how about using project search like multibuffer, but only for current file with context=1?
 I know that in the project panel with right click there is "Find in Folder...", can you create a new action which launches that functionality for the current file path prefilled like `dotty/.config/zed/keymap.json`. if the previous text buffer is in visual mode, preset the selection from visual mode into the "Search..." field
@@ -18,4 +16,3 @@ https://github.com/zed-industries/zed/pull/44669
 for the Helix jump list navigation, find helix.rs and helix/jump_list.rs add a new editor action which opens a new multi buffer showing all locations in this jump list
 
 fix that in vim::HelixOpenJumpListInMultibuffer it launches a multi selection, it should just be a single cursor
-

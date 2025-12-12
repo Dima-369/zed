@@ -1350,6 +1350,11 @@
     },
     "blame": {
       "show_avatar": true,
+      // The name of a font to use for rendering git blame information.
+      // If not specified, uses the buffer font.
+      // This is useful when using a proportional font for the editor
+      // but wanting monospace alignment for git blame.
+      // "git_blame_font_family": ".ZedMono",
     },
     // Control which information is shown in the branch picker.
     "branch_picker": {

@@ -20,9 +20,9 @@ use serde::{Deserialize, Serialize};
 pub use settings::DirenvSettings;
 pub use settings::LspSettings;
 use settings::{
-    DapSettingsContent, GitGutterSetting, GitHunkStyleSetting, InvalidSettingsError,
-    LocalSettingsKind, RegisterSetting, Settings, SettingsLocation, SettingsStore,
-    parse_json_with_comments, watch_config_file,
+    DapSettingsContent, FontFamilyName, GitGutterSetting, GitHunkStyleSetting,
+    InvalidSettingsError, LocalSettingsKind, RegisterSetting, Settings, SettingsLocation,
+    SettingsStore, parse_json_with_comments, watch_config_file,
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use task::{DebugTaskFile, TaskTemplates, VsCodeDebugTaskFile, VsCodeTaskFile};
@@ -324,7 +324,7 @@ impl GoToDiagnosticSeverityFilter {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct GitSettings {
     /// Whether or not to show the git gutter.
     ///
@@ -398,12 +398,17 @@ pub struct InlineBlameSettings {
     pub show_commit_summary: bool,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct BlameSettings {
     /// Whether to show the avatar of the author of the commit.
     ///
     /// Default: true
     pub show_avatar: bool,
+    /// The name of a font to use for rendering git blame information.
+    /// If not specified, uses the buffer font.
+    ///
+    /// Default: None (uses buffer font)
+    pub git_blame_font_family: Option<FontFamilyName>,
 }
 
 impl GitSettings {
@@ -520,9 +525,10 @@ impl Settings for ProjectSettings {
                 }
             },
             blame: {
-                let blame = git.blame.unwrap_or_default();
+                let blame = git.blame.clone().unwrap_or_default();
                 BlameSettings {
                     show_avatar: blame.show_avatar.unwrap_or(true),
+                    git_blame_font_family: blame.git_blame_font_family,
                 }
             },
             branch_picker: {

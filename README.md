@@ -44,6 +44,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - fixed that on entering the project search, there can be instances where visual mode is entered (https://github.com/zed-industries/zed/issues/43878)
 - integrated file explorer from https://github.com/zed-industries/zed/pull/43961
 - integrated Helix jump list from https://github.com/zed-industries/zed/pull/44661 and implemented `vim::HelixOpenJumpListInMultibuffer` action
+- add `blame > git_blame_font_family` setting to specify the font family for the git blame view because I am using a proportional font and the blame view misaligns otherwise
 
 ### Command palette
 

@@ -21524,7 +21524,10 @@ impl Editor {
         // Get the current file path relative to workspace root
         let file_path = buffer.read(cx).file().and_then(|file| {
             let worktree_id = file.worktree_id(cx);
-            workspace.read(cx).project().read(cx)
+            workspace
+                .read(cx)
+                .project()
+                .read(cx)
                 .worktree_for_id(worktree_id, cx)
                 .map(|worktree| {
                     let worktree = worktree.read(cx);
@@ -21534,7 +21537,11 @@ impl Editor {
 
                     if include_root {
                         // Multi-root workspace: include worktree root name
-                        worktree.root_name().join(file.path()).display(path_style).to_string()
+                        worktree
+                            .root_name()
+                            .join(file.path())
+                            .display(path_style)
+                            .to_string()
                     } else {
                         // Single-root workspace: use relative path from root
                         file.path().display(path_style).to_string()
@@ -21547,11 +21554,15 @@ impl Editor {
         };
 
         // Store the current selection to restore it later
-        let current_selections = self.selections.all_adjusted(&self.snapshot(window, cx).display_snapshot);
+        let current_selections = self
+            .selections
+            .all_adjusted(&self.snapshot(window, cx).display_snapshot);
 
         // Temporarily clear selections to prevent automatic query extraction
         let snapshot = self.snapshot(window, cx);
-        let empty_anchor = snapshot.buffer_snapshot().anchor_before(MultiBufferOffset(0));
+        let empty_anchor = snapshot
+            .buffer_snapshot()
+            .anchor_before(MultiBufferOffset(0));
         self.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
             s.select_ranges([empty_anchor..empty_anchor]);
         });
@@ -21569,7 +21580,11 @@ impl Editor {
 
         // Restore the original selections
         self.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
-            s.select_ranges(current_selections.into_iter().map(|selection| selection.range()));
+            s.select_ranges(
+                current_selections
+                    .into_iter()
+                    .map(|selection| selection.range()),
+            );
         });
     }
 
