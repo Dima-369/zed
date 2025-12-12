@@ -6,13 +6,11 @@ how about using project search like multibuffer, but only for current file with 
 I know that in the project panel with right click there is "Find in Folder...", can you create a new action which launches that functionality for the current file path prefilled like `dotty/.config/zed/keymap.json`. if the previous text buffer is in visual mode, preset the selection from visual mode into the "Search..." field
 create a new action
 
-- rename `editor::SearchInCurrentFile` to `editor::SearchInCurrentFileViaMultiBuffer`. then fix that when the previous buffer has a selection (like in vim mode), it does not take that as the initial text
+- for `editor::SearchInCurrentFileViaMultiBuffer`, fix that when the previous buffer has a selection (like in vim mode), it does not take that as the initial text
 
 - try out:
 
 editor: Implement inline references (peek references) #44669
 https://github.com/zed-industries/zed/pull/44669
 
-for the Helix jump list navigation, find helix.rs and helix/jump_list.rs add a new editor action which opens a new multi buffer showing all locations in this jump list
-
-fix that in vim::HelixOpenJumpListInMultibuffer it launches a multi selection, it should just be a single cursor
+fix that in vim::HelixOpenJumpListInMultibuffer it launches a multi selection cursor, it should just be a single cursor, and open at first match
