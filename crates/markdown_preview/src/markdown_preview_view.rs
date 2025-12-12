@@ -21,9 +21,8 @@ use workspace::{Pane, Workspace};
 use crate::markdown_elements::ParsedMarkdownElement;
 use crate::markdown_renderer::CheckboxClickedEvent;
 use crate::{
-    MovePageDown, MovePageUp, OpenFollowingPreview, OpenPreview, OpenPreviewToTheSide,
-    ScrollPageLittleDown, ScrollPageLittleUp,
-    OpenFollowingPreview, OpenPreview, OpenPreviewToTheSide, ScrollPageDown, ScrollPageUp,
+    OpenFollowingPreview, OpenPreview, OpenPreviewToTheSide,
+    ScrollPageLittleDown, ScrollPageLittleUp, ScrollPageDown, ScrollPageUp,
     markdown_elements::ParsedMarkdown,
     markdown_parser::parse_markdown,
     markdown_renderer::{RenderContext, render_markdown_block},
