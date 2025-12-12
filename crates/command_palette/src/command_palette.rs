@@ -344,12 +344,6 @@ impl CommandPaletteDelegate {
             .take(10)
             .map(|m| m.name.clone())
             .collect();
-        log::info!(
-            "Command Palette: Current {} displayed candidates with entered input string '{}', First 10 candidates: {:?}",
-            self.matches.len(),
-            self.latest_query,
-            first_ten_displayed
-        );
     }
 
     /// Last invocation time for each command in the palette.
@@ -465,7 +459,6 @@ impl PickerDelegate for CommandPaletteDelegate {
                 });
 
                 let first_ten_candidates: Vec<String> = commands.iter().take(10).map(|c| c.name.clone()).collect();
-                log::info!("Command Palette: Input query = '{}', Total candidates = {}, First 10 candidates: {:?}", query, commands.len(), first_ten_candidates);
 
                 let matches = if query.trim().is_empty() {
                     // If query is empty, show all commands in their sorted order.
@@ -509,16 +502,8 @@ impl PickerDelegate for CommandPaletteDelegate {
 
                 let first_ten_matches: Vec<String> =
                     matches.iter().take(10).map(|m| m.name.clone()).collect();
-                log::info!("Command Palette: Found {} matches for input query '{}', First 10 matches: {:?}", matches.len(), query, first_ten_matches);
 
-                // Log the position of ":edit" candidate if it exists
-                if let Some(pos) = matches.iter().position(|m| m.name.contains(": edit")) {
-                    log::info!(
-                        "Command Palette: ':edit' candidate found at position {} with candidate_id {}",
-                        pos,
-                        matches[pos].candidate_id
-                    );
-                }
+
 
                 // Always use an empty intercept result to prevent special commands from being injected.
                 let intercept_result = CommandInterceptResult::default();
@@ -562,12 +547,6 @@ impl PickerDelegate for CommandPaletteDelegate {
             Ok(Some((commands, matches, interceptor_result))) => {
                 let first_ten_matches: Vec<String> =
                     matches.iter().take(10).map(|m| m.name.clone()).collect();
-                log::info!(
-                    "Command Palette: Finalizing {} candidates with input query '{}', First 10 matches: {:?}",
-                    matches.len(),
-                    query,
-                    first_ten_matches
-                );
                 self.matches_updated(query, commands, matches, interceptor_result, cx);
                 true
             }
