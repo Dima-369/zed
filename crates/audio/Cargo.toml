@@ -12,6 +12,10 @@ workspace = true
 path = "src/audio.rs"
 doctest = false
 
+[features]
+default = []
+webrtc = ["dep:libwebrtc"]
+
 [dependencies]
 anyhow.workspace = true
 async-tar.workspace = true
@@ -28,5 +32,6 @@ smol.workspace = true
 thiserror.workspace = true
 util.workspace = true
 
-[target.'cfg(not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd")))'.dependencies]
-libwebrtc = { rev = "5f04705ac3f356350ae31534ffbc476abc9ea83d", git = "https://github.com/zed-industries/livekit-rust-sdks" }
+# WebRTC dependency for echo cancellation - only included when webrtc feature is enabled
+# and not on unsupported platforms
+libwebrtc = { rev = "5f04705ac3f356350ae31534ffbc476abc9ea83d", git = "https://github.com/zed-industries/livekit-rust-sdks", optional = true }

@@ -15,6 +15,7 @@ doctest = false
 [features]
 default = []
 stories = ["dep:story"]
+webrtc = ["call/webrtc"]
 test-support = [
     "call/test-support",
     "client/test-support",

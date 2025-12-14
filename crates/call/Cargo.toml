@@ -13,6 +13,8 @@ path = "src/call.rs"
 doctest = false
 
 [features]
+default = []
+webrtc = ["livekit_client/webrtc", "audio/webrtc"]
 test-support = [
     "client/test-support",
     "collections/test-support",

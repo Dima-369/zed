@@ -11,7 +11,9 @@ authors = ["Zed Team <hi@zed.dev>"]
 workspace = true
 
 [features]
+default = ["webrtc"]
 tracy = ["ztracing/tracy"]
+webrtc = ["audio/webrtc", "call/webrtc", "agent_ui/webrtc", "collab_ui/webrtc"]
 
 [[bin]]
 name = "zed"

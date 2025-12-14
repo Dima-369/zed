@@ -255,7 +255,7 @@ assets = { path = "crates/assets" }
 assistant_text_thread = { path = "crates/assistant_text_thread" }
 assistant_slash_command = { path = "crates/assistant_slash_command" }
 assistant_slash_commands = { path = "crates/assistant_slash_commands" }
-audio = { path = "crates/audio" }
+audio = { path = "crates/audio", default-features = false }
 auto_update = { path = "crates/auto_update" }
 auto_update_ui = { path = "crates/auto_update_ui" }
 aws_http_client = { path = "crates/aws_http_client" }

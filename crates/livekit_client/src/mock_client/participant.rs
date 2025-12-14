@@ -1,8 +1,10 @@
 use crate::{
     AudioStream, LocalAudioTrack, LocalTrackPublication, LocalVideoTrack, Participant,
-    ParticipantIdentity, RemoteTrack, RemoteTrackPublication, TrackSid,
-    test::{Room, WeakRoom},
+    RemoteTrack, RemoteTrackPublication, TrackSid,
+    mock_client::{Room, WeakRoom, RemoteAudioTrack, RemoteVideoTrack},
+    shared_types::ParticipantIdentity,
 };
+use std::sync::Arc;
 use anyhow::Result;
 use collections::HashMap;
 use gpui::{
@@ -31,6 +33,13 @@ impl Participant {
 }
 
 impl LocalParticipant {
+    pub fn new() -> Self {
+        Self {
+            identity: ParticipantIdentity("mock_local_participant".to_string()),
+            room: Room::new(),
+        }
+    }
+
     pub async fn unpublish_track(&self, track: TrackSid, _cx: &AsyncApp) -> Result<()> {
         self.room
             .test_server()
@@ -87,12 +96,16 @@ impl RemoteParticipant {
                 .into_iter()
                 .filter(|track| track.publisher_id() == self.identity)
                 .map(|track| {
+                    let remote_track = RemoteAudioTrack {
+                        server_track: Arc::new(track.clone()),
+                        room: self.room.clone(),
+                    };
                     (
                         track.sid(),
                         RemoteTrackPublication {
                             sid: track.sid(),
                             room: self.room.clone(),
-                            track: RemoteTrack::Audio(track),
+                            track: RemoteTrack::Audio(remote_track),
                         },
                     )
                 });
@@ -102,12 +115,16 @@ impl RemoteParticipant {
                 .into_iter()
                 .filter(|track| track.publisher_id() == self.identity)
                 .map(|track| {
+                    let remote_track = RemoteVideoTrack {
+                        server_track: Arc::new(track.clone()),
+                        _room: self.room.clone(),
+                    };
                     (
                         track.sid(),
                         RemoteTrackPublication {
                             sid: track.sid(),
                             room: self.room.clone(),
-                            track: RemoteTrack::Video(track),
+                            track: RemoteTrack::Video(remote_track),
                         },
                     )
                 });

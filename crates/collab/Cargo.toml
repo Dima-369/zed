@@ -14,8 +14,10 @@ workspace = true
 name = "collab"
 
 [features]
+default = []
 sqlite = ["sea-orm/sqlx-sqlite", "sqlx/sqlite"]
 test-support = ["sqlite"]
+webrtc = ["audio/webrtc"]
 
 [dependencies]
 anyhow.workspace = true

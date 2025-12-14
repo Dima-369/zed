@@ -9,19 +9,25 @@ use rodio::DeviceTrait as _;
 mod record;
 pub use record::CaptureInput;
 
-#[cfg(not(any(
-    test,
-    feature = "test-support",
-    all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd"
-)))]
+#[cfg(all(
+    feature = "webrtc",
+    not(any(
+        test,
+        feature = "test-support",
+        all(target_os = "windows", target_env = "gnu"),
+        target_os = "freebsd"
+    ))
+))]
 mod livekit_client;
-#[cfg(not(any(
-    test,
-    feature = "test-support",
-    all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd"
-)))]
+#[cfg(all(
+    feature = "webrtc",
+    not(any(
+        test,
+        feature = "test-support",
+        all(target_os = "windows", target_env = "gnu"),
+        target_os = "freebsd"
+    ))
+))]
 pub use livekit_client::*;
 
 // If you need proper LSP in livekit_client you've got to comment
@@ -30,20 +36,32 @@ pub use livekit_client::*;
 // - the pub use mock_client::* and their conditional blocks
 
 #[cfg(any(
+    not(feature = "webrtc"),
+    test,
+    feature = "test-support",
+    all(target_os = "windows", target_env = "gnu"),
+    target_os = "freebsd"
+))]
+mod shared_types;
+
+#[cfg(any(
+    not(feature = "webrtc"),
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
     target_os = "freebsd"
 ))]
 mod mock_client;
-#[cfg(any(
-    test,
-    feature = "test-support",
-    all(target_os = "windows", target_env = "gnu"),
-    target_os = "freebsd"
+#[cfg(all(
+    feature = "webrtc",
+    any(
+        test,
+        feature = "test-support"
+    )
 ))]
 pub mod test;
 #[cfg(any(
+    not(feature = "webrtc"),
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
