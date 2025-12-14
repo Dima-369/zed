@@ -227,9 +227,9 @@ impl InertialCursorConfig {
             },
             SmoothCaretMode::On => Self {
                 enabled: true,
-                animation_time: Duration::from_millis(150),
-                short_animation_time: Duration::from_millis(25),
-                trail_size: 1.0,
+                animation_time: Duration::from_millis(90),
+                short_animation_time: Duration::from_millis(15),
+                trail_size: 0.0,
                 animate_in_insert_mode: true,
             },
         }
