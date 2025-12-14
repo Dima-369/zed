@@ -650,6 +650,8 @@
     "regex": false,
     // Whether to center the cursor on each search match when navigating.
     "center_on_match": false,
+    // Show search results on input by default.
+    "search_on_input": false,
   },
   // When to populate a new search's query based on the text under the cursor.
   // This setting can take the following three values:
@@ -904,6 +906,8 @@
     "default_width": 380,
   },
   "agent": {
+    // Whether the inline assistant should use streaming tools, when available
+    "inline_assistant_use_streaming_tools": true,
     // Whether the agent is enabled.
     "enabled": true,
     // What completion mode to start new threads in, if available. Can be 'normal' or 'burn'.
