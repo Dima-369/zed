@@ -31,7 +31,7 @@ use crate::{
     mouse_context_menu::{self, MenuPosition},
     scroll::{
         ActiveScrollbarState, Autoscroll, ScrollOffset, ScrollPixelOffset, ScrollbarThumbState,
-        scroll_amount::ScrollAmount,
+        UpdateResponse, scroll_amount::ScrollAmount,
     },
 };
 use buffer_diff::{DiffHunkStatus, DiffHunkStatusKind};
@@ -7002,7 +7002,7 @@ impl EditorElement {
                                 ))
                                 .max(0.)
                             });
-                            editor.set_scroll_position(position, window, cx);
+                            editor.scroll(position, Some(axis), false, window, cx);
                         }
 
                         editor.scroll_manager.show_scrollbars(window, cx);
@@ -7818,10 +7818,12 @@ impl EditorElement {
 
                         let line_height = position_map.line_height;
                         let max_glyph_advance = position_map.em_advance;
+                        let mut try_use_anim = true;
                         let (delta, axis) = match delta {
                             gpui::ScrollDelta::Pixels(mut pixels) => {
                                 //Trackpad
                                 let axis = position_map.snapshot.ongoing_scroll.filter(&mut pixels);
+                                try_use_anim = false;
                                 (pixels, axis)
                             }
 
@@ -7849,7 +7851,7 @@ impl EditorElement {
                         }
 
                         if scroll_position != current_scroll_position {
-                            editor.scroll(scroll_position, axis, window, cx);
+                            editor.scroll(scroll_position, axis, try_use_anim, window, cx);
                             cx.stop_propagation();
                         } else if y < 0. {
                             // Due to clamping, we may fail to detect cases of overscroll to the top;
@@ -10433,6 +10435,21 @@ impl Element for EditorElement {
         window.with_rem_size(rem_size, |window| {
             window.with_text_style(Some(text_style), |window| {
                 window.with_content_mask(Some(ContentMask { bounds }), |window| {
+                    self.editor.update(cx, |editor, cx| {
+                        let snapshot = editor.snapshot(window, cx);
+
+                        if editor.scroll_manager.requires_animation_update() {
+                            let update_response =
+                                editor.scroll_manager.update_animation(window, cx);
+                            match update_response {
+                                UpdateResponse::RequiresAnimationFrame { .. } => {
+                                    window.request_animation_frame();
+                                }
+                                _ => (),
+                            };
+                        }
+                    });
+
                     self.paint_mouse_listeners(layout, window, cx);
                     self.paint_background(layout, window, cx);
                     self.paint_indent_guides(layout, window, cx);

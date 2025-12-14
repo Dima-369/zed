@@ -1541,7 +1541,7 @@ impl ProjectSearchView {
                     editor.change_selections(Default::default(), window, cx, |s| {
                         s.select_ranges(range_to_select)
                     });
-                    editor.scroll(Point::default(), Some(Axis::Vertical), window, cx);
+                    editor.scroll(Point::default(), Some(Axis::Vertical), false, window, cx);
                 }
             });
             let should_auto_focus = !self.search_options.contains(SearchOptions::SEARCH_ON_INPUT);
@@ -4326,6 +4326,7 @@ pub mod tests {
                     results_editor.scroll(
                         Point::new(0., f64::MAX),
                         Some(Axis::Vertical),
+                        false,
                         window,
                         cx,
                     );
