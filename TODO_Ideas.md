@@ -1,3 +1,8 @@
+- implement backspace in the fork hint jump code to forget last typed in character
+
+- check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
+is that a bug from me?
+
 - improve UI `workspace::OpenRecentFile`. on very long file paths they are badly truncated
 copy the design of the `file_finder::Toggle` action which shows file name left, then path at right truncated in gray
 
@@ -25,10 +30,15 @@ create a new action
 
 # Misc
 
-key.l to jump to hints does not work anymore? since when?
-is it smooth scroll or smooth caret?
-is this related? Was it working before?
-- document bug that hint jump is not working in multi buffers (can it be fixed?)
+for key.l to jump to hints document bug that hint jump is not working in multi buffers (can it be fixed?)
+maybe check latest fork code?
+
+CHECK this:
+- open README.md
+- center the `New actions` headline content
+- hit l to open the jump, then hit `b` to jump to `buffer`, notice how no jump hints appear (same with m for markdown)
+is that because of uppercase character removal logic?
+- hit l, then t works, but only displays characters at bottom?
 
 ---
 
@@ -90,4 +100,4 @@ https://github.com/zed-industries/zed/pull/44467
 
 - when I am inside a git commit view (for instance launched from git blame) and I run `git::Blame`, I just see this error notification: `failed to find a git repository for buffer`. I wonder if you can implement this, so `git::Blame` also works in git commit view tabs, and shows the left side next to the line numbers for the blame info PLUS `editor::OpenGitBlameCommit` works to jump to the new commit
 
-- can you implement a new modal like `outline::Toggle`, there should be like a search text field input at top, focused, modal cancels on escape. you type in things and it showns all lines below (cap to 10 visible, candidate scrollable) and it is like a filter, so every line is shown below by default, but when I type "test", it only shows lines with test. on selecting one, jump to that instance, actually scolling through candidates should live-update just like `outline::Toggle`. It is basically a line filter. Make sure that on long lines, you also consider horizontal scroll, so the searched text is always visible. Also highlight the matched text line part like `outline::Toggle`.
+- can you implement a new modal like `outline::Toggle`, there should be like a search text field input at top, focused, modal cancels on escape. you type in things and it showns all lines below (cap to 10 visible, candidate scrollable) and it is like a filter, so every line is shown below by default, but when I type "test", it only shows lines with test. on selecting one, jump to that instance, actually scrolling through candidates should live-update just like `outline::Toggle`. It is basically a line filter. Make sure that on long lines, you also consider horizontal scroll, so the searched text is always visible. Also highlight the matched text line part like `outline::Toggle`.
