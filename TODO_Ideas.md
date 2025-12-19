@@ -1,3 +1,6 @@
+- improve UI `workspace::OpenRecentFile`. on very long file paths they are badly truncated
+copy the design of the `file_finder::Toggle` action which shows file name left, then path at right truncated in gray
+
 - in `workspace::NewFileFromClipboard` on initial opening the markdown block syntax highlighting is not working, at all
 I always need to modify the content in the line before ```, then the syntax highlighting appears
 
@@ -6,11 +9,10 @@ related code:
 
 how about creating it with empty content and then afterward insert the clipboard content? try that out, maybe it will work
 
-- new action like editor stop all language servers like in the bottom bar
-
 - document bugs with smooth caret about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
 
 - do not use smooth caret in terminal, I think it causes lazygit commit message dialog typing weirdness (basically hidden)
+even when smooth caret is disabled, in lazygit the cursor is weird?
 
 - space u `tab_switcher::ToggleAll` should not show buffer where it was launched 
 
