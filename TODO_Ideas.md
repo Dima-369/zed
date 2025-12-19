@@ -1,12 +1,8 @@
 - new action like editor stop all language servers like in the bottom bar
 
-- document bugs with smooth scroll about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
+- document bugs with smooth caret about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
 
 - do not use smooth caret in terminal, I think it causes lazygit commit message dialog typing weirdness (basically hidden)
-
-- document new not required key.m and key.v custom commands for smooth scrolling
-
-- document bug that hint jump is not working in multi buffers (can it be fixed?)
 
 - space u `tab_switcher::ToggleAll` should not show buffer where it was launched 
 
@@ -16,6 +12,69 @@ I know that in the project panel with right click there is "Find in Folder...", 
 create a new action
 
 - for `editor::SearchInCurrentFileViaMultiBuffer`, fix that when the previous buffer has a selection (like in vim mode), it does not take that as the initial text
+
+# Misc
+
+key.l to jump to hints does not work anymore? since when?
+is it smooth scroll or smooth caret?
+is this related? Was it working before?
+- document bug that hint jump is not working in multi buffers (can it be fixed?)
+
+---
+
+Add actions to move to start and end of larger syntax node
+https://github.com/zed-industries/zed/pull/45331
+
+## which key system
+
+merge in main, then check out
+https://github.com/zed-industries/zed/pull/43618
+
+Add which-key system
+https://github.com/zed-industries/zed/pull/34798
+
+## side by side diffs
+
+https://github.com/zed-industries/zed/issues/8279
+
+
+figure out the way to enable this
+Basic side-by-side diff implementation
+https://github.com/zed-industries/zed/pull/43586
+
+otherwise try this out
+Implement initial side-by-side Git diffs
+https://github.com/zed-industries/zed/pull/40014
+
+## Filter for code actions
+
+This seems nicer:
+Add filter for code actions
+https://github.com/zed-industries/zed/pull/44534
+
+This is a bit weird with a new action and numbers:
+Add fuzzy code actions picker
+https://github.com/zed-industries/zed/pull/44802
+
+## Smooth cursor
+
+editor: Add smooth cursor animation
+This is integrated, only `inertial_cursor.rs` is implemented, not the other VFX modes.
+https://github.com/zed-industries/zed/pull/44770
+
+Very small diff? Add smooth cursor animation
+https://github.com/zed-industries/zed/pull/43826
+
+## Add file explorer modal v2
+
+https://github.com/zed-industries/zed/pull/45307
+
+
+
+# Potentially interesting things not merged
+
+## Diff With Commit
+https://github.com/zed-industries/zed/pull/44467
 
 # AI (auggie) fails
 
