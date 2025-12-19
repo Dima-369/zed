@@ -1,3 +1,11 @@
+- in `workspace::NewFileFromClipboard` on initial opening the markdown block syntax highlighting is not working, at all
+I always need to modify the content in the line before ```, then the syntax highlighting appears
+
+related code:
+`Self::new_in_workspace_with_content_and_language(workspace, content, Some("Markdown"), window, cx).detach_and_prompt_err(`
+
+how about creating it with empty content and then afterward insert the clipboard content? try that out, maybe it will work
+
 - new action like editor stop all language servers like in the bottom bar
 
 - document bugs with smooth caret about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
