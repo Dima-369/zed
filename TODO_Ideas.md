@@ -1,3 +1,6 @@
+- add argument to `workspace::NewFileFromClipboard` which allows to set initial langauge
+then bind to space n j with json
+
 - implement backspace in the fork hint jump code to forget last typed in character
 
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
@@ -44,6 +47,9 @@ is that because of uppercase character removal logic?
 
 Add actions to move to start and end of larger syntax node
 https://github.com/zed-industries/zed/pull/45331
+
+Add quick search modal
+https://github.com/zed-industries/zed/pull/44530
 
 ## which key system
 
