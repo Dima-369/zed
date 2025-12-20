@@ -1,10 +1,12 @@
-- add argument to `workspace::NewFileFromClipboard` which allows to set initial langauge
+- integrate latest changes from https://github.com/zed-industries/zed/pull/44770
+
+- add argument to `workspace::NewFileFromClipboard` which allows to set initial language
 then bind to space n j with json
 
-- implement backspace in the fork hint jump code to forget last typed in character
+- in `jump::Toggle` implement backspace to remove last typed in character
 
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
-is that a bug from me?
+is that a bug from my fork code?
 
 - improve UI `workspace::OpenRecentFile`. on very long file paths they are badly truncated
 copy the design of the `file_finder::Toggle` action which shows file name left, then path at right truncated in gray
