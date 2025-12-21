@@ -57,6 +57,7 @@ https://github.com/zed-industries/zed/pull/45307
 # Potentially interesting things not merged
 
 ## Diff With Commit
+
 https://github.com/zed-industries/zed/pull/44467
 
 # AI (auggie) fails
