@@ -1749,7 +1749,7 @@ pub enum ZedLink {
 /// Returns [`None`] for links that should be opened in the browser.
 pub fn parse_zed_link(link: &str, cx: &App) -> Option<ZedLink> {
     let server_url = &ClientSettings::get_global(cx).server_url;
-    if let Some(stripped) = link
+    let path = link
         .strip_prefix(server_url)
         .and_then(|result| result.strip_prefix('/'))
         .or_else(|| {
@@ -1760,10 +1760,7 @@ pub fn parse_zed_link(link: &str, cx: &App) -> Option<ZedLink> {
     let mut parts = path.split('/');
 
     if parts.next() != Some("channel") {
-        // Only handle internal routes that Zed knows how to handle
-        // Currently only channel/ routes are supported internally
-        if stripped.starts_with("channel/") {
-            return None;
+        return None;
     }
 
     let slug = parts.next()?;
@@ -1773,8 +1770,6 @@ pub fn parse_zed_link(link: &str, cx: &App) -> Option<ZedLink> {
     let Some(next) = parts.next() else {
         return Some(ZedLink::Channel { channel_id });
     };
-        }
-        return None;
 
     if let Some(heading) = next.strip_prefix("notes#") {
         return Some(ZedLink::ChannelNotes {
