@@ -48,6 +48,8 @@ actions!(
         FileHistory,
         /// Shows a diff of the current file against a selected commit.
         DiffWithCommit,
+        /// Shows a diff of the current file against a selected branch.
+        DiffWithBranch,
         /// Stages the current file.
         StageFile,
         /// Unstages the current file.

@@ -25,13 +25,14 @@ use onboarding::GitOnboardingModal;
 use project::git_store::Repository;
 use project_diff::ProjectDiff;
 use ui::prelude::*;
-use workspace::{ModalView, Workspace, notifications::DetachAndPromptErr};
+use workspace::{ModalView, Toast, Workspace, notifications::{DetachAndPromptErr, NotificationId}};
 use zed_actions;
 
 use crate::{git_panel::GitPanel, text_diff_view::TextDiffView};
 
 mod askpass_modal;
 pub mod branch_picker;
+pub mod branch_diff_picker;
 pub mod commit_diff_picker;
 mod commit_modal;
 pub mod commit_tooltip;
@@ -304,6 +305,43 @@ pub fn init(cx: &mut App) {
                 cx,
             );
         });
+        workspace.register_action(|workspace, _: &git::DiffWithBranch, window, cx| {
+            let Some(active_item) = workspace.active_item(cx) else {
+                return;
+            };
+            let Some(editor) = active_item.downcast::<Editor>() else {
+                return;
+            };
+            let Some(buffer) = editor.read(cx).buffer().read(cx).as_singleton() else {
+                return;
+            };
+            let Some(file) = buffer.read(cx).file() else {
+                return;
+            };
+            let worktree_id = file.worktree_id(cx);
+            let project_path = ProjectPath {
+                worktree_id,
+                path: file.path().clone(),
+            };
+            let project = workspace.project().clone();
+            let git_store = project.read(cx).git_store();
+            let Some((repo, repo_path)) = git_store
+                .read(cx)
+                .repository_and_path_for_project_path(&project_path, cx)
+            else {
+                return;
+            };
+            open_branch_diff_picker(
+                repo_path,
+                buffer.clone(),
+                git_store.clone(),
+                repo,
+                workspace,
+                project,
+                window,
+                cx,
+            );
+        });
     })
     .detach();
 }
@@ -345,6 +383,60 @@ fn open_commit_diff_picker(
         anyhow::Ok(())
     })
     .detach_and_log_err(cx);
+}
+
+fn open_branch_diff_picker(
+    repo_path: git::repository::RepoPath,
+    buffer: Entity<language::Buffer>,
+    _git_store: Entity<project::git_store::GitStore>,
+    repo: Entity<Repository>,
+    workspace: &mut Workspace,
+    project: Entity<project::Project>,
+    window: &mut Window,
+    cx: &mut Context<Workspace>,
+) {
+    let branches_task = repo.update(cx, |repo, cx| repo.branches(cx));
+    let workspace_weak = workspace.weak_handle();
+    let repo_weak = repo.downgrade();
+    let buffer_clone = buffer.clone();
+    let project_clone = project.clone();
+
+    cx.spawn_in(window, async move |workspace, cx| {
+        if let Ok(branches_result) = branches_task.await {
+            if let Ok(branches_list) = branches_result {
+                workspace.update_in(cx, |workspace, window, cx| {
+                    workspace.toggle_modal(window, cx, |window, cx| {
+                        branch_diff_picker::BranchDiffPicker::new(
+                            branches_list,
+                            repo_path,
+                            buffer_clone,
+                            repo_weak,
+                            workspace_weak,
+                            project_clone,
+                            window,
+                            cx,
+                        )
+                    });
+                }).ok();
+            } else {
+                // Handle error - internal result failure
+                workspace.update_in(cx, |workspace, _window, cx| {
+                    workspace.show_toast(
+                        Toast::new(NotificationId::unique::<()>(), "Failed to retrieve branches"),
+                        cx,
+                    );
+                }).ok();
+            }
+        } else {
+            // Handle error - receiver failure
+            workspace.update_in(cx, |workspace, _window, cx| {
+                workspace.show_toast(
+                    Toast::new(NotificationId::unique::<()>(), "Failed to retrieve branches"),
+                    cx,
+                );
+            }).ok();
+        }
+    }).detach();
 }
 
 fn open_modified_files(
