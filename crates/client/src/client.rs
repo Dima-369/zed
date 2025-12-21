@@ -1742,7 +1742,12 @@ pub fn parse_zed_link<'a>(link: &'a str, cx: &App) -> Option<&'a str> {
         .strip_prefix(server_url)
         .and_then(|result| result.strip_prefix('/'))
     {
-        return Some(stripped);
+        // Only handle internal routes that Zed knows how to handle
+        // Currently only channel/ routes are supported internally
+        if stripped.starts_with("channel/") {
+            return Some(stripped);
+        }
+        return None;
     }
     if let Some(stripped) = link
         .strip_prefix(ZED_URL_SCHEME)
