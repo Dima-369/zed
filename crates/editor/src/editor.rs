@@ -60,6 +60,7 @@ pub struct JumpLabel {
     pub position: DisplayPoint,
     pub label: String,
     pub match_length: usize,
+    pub typed_count: usize,
 }
 pub use edit_prediction_types::Direction;
 pub use editor_settings::{
