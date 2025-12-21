@@ -1,3 +1,5 @@
+- how to enable AI predictions in those space t n buffers? Why does it have none?
+
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 is that a bug from my fork code?
 
