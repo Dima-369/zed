@@ -1,4 +1,4 @@
-# workspace::NewFileFromClipboard`
+# workspace::NewFileFromClipboard
 
 - add argument to `workspace::NewFileFromClipboard` which allows to set initial language
 then bind to space n j with json
@@ -24,6 +24,7 @@ is that a bug from my fork code?
 
 - improve UI `workspace::OpenRecentFile`. on very long file paths they are badly truncated
 copy the design of the `file_finder::Toggle` action which shows file name left, then path at right truncated in gray
+also increase the width of the open recent file modal
 
 - document bugs with smooth caret about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
 
@@ -31,11 +32,6 @@ copy the design of the `file_finder::Toggle` action which shows file name left, 
 even when smooth caret is disabled, in lazygit the cursor is weird?
 
 - space u `tab_switcher::ToggleAll` should not show buffer where it was launched 
-
-- implement swiper like search, or maybe via `tv`?
-how about using project search like multibuffer, but only for current file with context=1?
-I know that in the project panel with right click there is "Find in Folder...", can you create a new action which launches that functionality for the current file path prefilled like `dotty/.config/zed/keymap.json`. if the previous text buffer is in visual mode, preset the selection from visual mode into the "Search..." field
-create a new action
 
 # Try out
 
