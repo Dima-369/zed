@@ -1,13 +1,10 @@
 # Jump code
 
-- when I have a file with content: "abc" only, I invoke the jump action, enter a since I want to a, I see the hint `hh`. this is incorrect
-two character hints should only appear when all single character hints are already present in the file.
-
 - it should auto jump when there is only one hint displayed, like when file content is "abc" and user wants to jump to "a", so disregard the setting `auto_jump` code
 
 - allow backspace to remove last typed in character
 
-- when there are multi character hints displayed, and I already typed in the first character, the typed character hint should be in gray
+- when there are multi character hints displayed, and I already typed in the first character, the typed character hint should be rendered in gray
 
 ---
 
