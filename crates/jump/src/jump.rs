@@ -82,9 +82,9 @@ impl JumpBar {
 
         // Get editors from all panes
         for pane in workspace.panes() {
-            for item in pane.read(cx).items() {
+            if let Some(item) = pane.read(cx).active_item() {
                 if let Some(editor) =
-                    (&**item as &dyn workspace::item::ItemHandle).downcast::<Editor>()
+                    (&*item as &dyn workspace::item::ItemHandle).downcast::<Editor>()
                 {
                     if !visible_editors
                         .iter()
