@@ -7,8 +7,6 @@
 - add argument to `workspace::NewFileFromClipboard` which allows to set initial language
 then bind to space n j with json
 
-- in `jump::Toggle` implement backspace to remove last typed in character
-
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
 is that a bug from my fork code?
 
@@ -37,12 +35,16 @@ create a new action
 
 - for `editor::SearchInCurrentFileViaMultiBuffer`, fix that when the previous buffer has a selection (like in vim mode), it does not take that as the initial text
 
-# Misc
+# crates/jump/src/jump.rs
+
+there is a bug that when soft line wrapping is enabled, that the jump hints are shifted down, not showing all which are visible to me
+can that be fixed?
+like I mean the ones that are shown, are at their correct position, but it does not detect the very first visible line correctly, I think
 
 for key.l to jump to hints document bug that hint jump is not working in multi buffers (can it be fixed?)
 maybe check latest fork code?
 
-CHECK this:
+CHECK this on my latest changes in `dima`
 - open README.md
 - center the `New actions` headline content
 - hit l to open the jump, then hit `b` to jump to `buffer`, notice how no jump hints appear (same with m for markdown)
