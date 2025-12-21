@@ -1,16 +1,6 @@
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 is that a bug from my fork code?
 
-## side by side diffs
-
-figure out the way to enable this
-Basic side-by-side diff implementation
-https://github.com/zed-industries/zed/pull/43586
-
-otherwise try this out
-Implement initial side-by-side Git diffs
-https://github.com/zed-industries/zed/pull/40014
-
 ## Smooth cursor
 
 editor: Add smooth cursor animation
@@ -29,14 +19,6 @@ even when smooth caret is disabled, in lazygit the cursor is weird?
 Very small diff? Add smooth cursor animation
 https://github.com/zed-industries/zed/pull/43826
 
-## Add file explorer modal v2
-
-I already have his v1 integrated, I think? Bound at `file_explorer::Toggle`
-
-https://github.com/zed-industries/zed/pull/45307
-
-# Potentially interesting things not merged
-
 ## Diff With Commit
 
 https://github.com/zed-industries/zed/pull/44467
@@ -53,27 +35,61 @@ https://github.com/zed-industries/zed/pull/44467
 
 # Investigations
 
+## Add file explorer modal v2 (PR open)
+
+I already have his v1 (https://github.com/zed-industries/zed/pull/43961 (PR closed)) integrated. It is bound at `file_explorer::Toggle`.
+I only see the v2 improvement that it has a full text field at the top, which can go outside the project root directory, but that is just a minor thing.
+
+https://github.com/zed-industries/zed/pull/45307
+
 ## telescope/quick search
 
-Add telescope style search (this was closed by Zed team in favor of the PR below)
-https://github.com/zed-industries/zed/pull/44942
+Not so important with `editor::SearchInCurrentFileViaMultiBuffer`.
+
+###  Add telescope style search (PR closed)
+
+This was closed by Zed team in favor of the PR below.
+
 I tested it, the file search only shows `...` which is not good. Text search seems very nice, otherwise, but the dialog is just too small designed for my resolution.
 
-Add quick search modal
-https://github.com/zed-industries/zed/pull/44530
+https://github.com/zed-industries/zed/pull/44942
+
+### Add quick search modal (PR WIP)
+
 I don't think it is ready yet, when a file has many search results, you do not see the file name anymore, it needs sticky scroll.
 Otherwise, UI works great on my smaller resolution.
 
+https://github.com/zed-industries/zed/pull/44530
+
 ## Filter for code actions
 
-### Add filter for code actions
+Absolutely not important since I rarely, if ever, need to search.
+
+### Add filter for code actions (PR open)
 
 Has merge conflicts and I do not have a clue how to merge.
 
 https://github.com/zed-industries/zed/pull/44534
 
-### Add fuzzy code actions picker
+### Add fuzzy code actions picker (PR open)
 
 This is a bit weird with a new action and numbers. Will not use it.
 
 https://github.com/zed-industries/zed/pull/44802
+
+## Git side by side diffs
+
+Not so important.
+
+### Basic side-by-side diff implementation (PR merged)
+
+This is kinda difficult to enable, I stopped researching it.
+
+https://github.com/zed-industries/zed/pull/43586
+
+### Implement initial side-by-side Git diffs (PR closed)
+
+PR was apparently closed, only has 3k changes.
+Does it have merge conflicts?
+
+https://github.com/zed-industries/zed/pull/40014
