@@ -8,6 +8,7 @@ copy the design of the `file_finder::Toggle` action which shows file name left, 
 also increase the width of the open recent file modal
 
 - space u `tab_switcher::ToggleAll` should not show buffer where it was launched
+if there are no tabs to display then, show an error notification
 
 # Try out
 
@@ -25,6 +26,7 @@ https://github.com/zed-industries/zed/pull/34798
 ## telescope/quick search
 
 Add telescope style search (this was closed by Zed team in favor of the PR below)
+This looks nicer than the PR below, has more features?
 https://github.com/zed-industries/zed/pull/44942
 
 Add quick search modal
@@ -69,6 +71,8 @@ Very small diff? Add smooth cursor animation
 https://github.com/zed-industries/zed/pull/43826
 
 ## Add file explorer modal v2
+
+I already have his v1 integrated, I think? Bound at `file_explorer::Toggle`
 
 https://github.com/zed-industries/zed/pull/45307
 
