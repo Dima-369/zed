@@ -209,27 +209,25 @@ impl JumpBar {
                 if query.len() > self.previous_query_length
                     && !query.is_empty()
                     && !self.matches.is_empty()
+                    && query.starts_with(&self.search_query)
                 {
-                    for jump_match in &self.matches {
-                        if !jump_match.label.is_empty() {
-                            if query.ends_with(&jump_match.label) {
-                                let position = jump_match.position;
-                                let target_editor = jump_match.editor.clone();
-                                self.jump_to_position(position, target_editor, window, cx);
-                                self.previous_query_length = query.len();
-                                return;
-                            }
-                        }
-                    }
+                    let remaining = &query[self.search_query.len()..];
 
-                    if query.starts_with(&self.search_query) {
-                        let remaining = &query[self.search_query.len()..];
-                        if !remaining.is_empty()
-                            && self.matches.iter().any(|m| m.label.starts_with(remaining))
-                        {
+                    for jump_match in &self.matches {
+                        if !jump_match.label.is_empty() && jump_match.label == remaining {
+                            let position = jump_match.position;
+                            let target_editor = jump_match.editor.clone();
+                            self.jump_to_position(position, target_editor, window, cx);
                             self.previous_query_length = query.len();
                             return;
                         }
+                    }
+
+                    if !remaining.is_empty()
+                        && self.matches.iter().any(|m| m.label.starts_with(remaining))
+                    {
+                        self.previous_query_length = query.len();
+                        return;
                     }
                 }
 
