@@ -1,5 +1,7 @@
 # Jump code
 
+- update README with changes!
+
 - it should auto jump when there is only one hint displayed, like when file content is "abc" and user wants to jump to "a", so disregard the setting `auto_jump` code
 
 - allow backspace to remove last typed in character

@@ -7487,19 +7487,42 @@ impl EditorElement {
                 border_style: gpui::BorderStyle::Solid,
             });
 
-            let label_run = TextRun {
-                len: jump_label.label.len(),
-                font: font_id.clone(),
-                color: label_fg,
-                background_color: None,
-                underline: None,
-                strikethrough: None,
+            let typed_count = jump_label.typed_count;
+            let label_len = jump_label.label.len();
+            let label_runs = if typed_count > 0 && typed_count < label_len {
+                vec![
+                    TextRun {
+                        len: typed_count,
+                        font: font_id.clone(),
+                        color: cx.theme().colors().text_disabled,
+                        background_color: None,
+                        underline: None,
+                        strikethrough: None,
+                    },
+                    TextRun {
+                        len: label_len - typed_count,
+                        font: font_id.clone(),
+                        color: label_fg,
+                        background_color: None,
+                        underline: None,
+                        strikethrough: None,
+                    },
+                ]
+            } else {
+                vec![TextRun {
+                    len: label_len,
+                    font: font_id.clone(),
+                    color: label_fg,
+                    background_color: None,
+                    underline: None,
+                    strikethrough: None,
+                }]
             };
 
             let shaped_label = window.text_system().shape_line(
                 jump_label.label.clone().into(),
                 font_size,
-                &[label_run],
+                &label_runs,
                 None,
             );
 
@@ -10436,7 +10459,7 @@ impl Element for EditorElement {
             window.with_text_style(Some(text_style), |window| {
                 window.with_content_mask(Some(ContentMask { bounds }), |window| {
                     self.editor.update(cx, |editor, cx| {
-                        let snapshot = editor.snapshot(window, cx);
+                        let _snapshot = editor.snapshot(window, cx);
 
                         if editor.scroll_manager.requires_animation_update() {
                             let update_response =

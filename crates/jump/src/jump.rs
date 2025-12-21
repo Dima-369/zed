@@ -1,5 +1,3 @@
-mod jump_settings;
-
 use editor::{
     DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset, ToPoint,
     display_map::ToDisplayPoint,
@@ -8,10 +6,8 @@ use gpui::{
     Action, App, Context, DismissEvent, Entity, EventEmitter, Focusable, IntoElement, Render,
     Styled, Window, div,
 };
-use jump_settings::JumpSettings;
 use schemars::JsonSchema;
 use serde::Deserialize;
-use settings::Settings;
 use std::collections::HashSet;
 use ui::{IconButton, IconName, Tooltip, prelude::*};
 use workspace::{DismissDecision, ModalView, Workspace};
@@ -36,7 +32,6 @@ pub enum Event {
 }
 
 pub fn init(cx: &mut App) {
-    JumpSettings::register(cx);
     cx.observe_new(JumpBar::register).detach();
 }
 
@@ -205,6 +200,13 @@ impl JumpBar {
             EditorEvent::BufferEdited => {
                 let query = self.query_editor.read(cx).text(cx);
 
+                // Handle backspace when query is getting shorter
+                if query.len() < self.previous_query_length {
+                    self.previous_query_length = query.len();
+                    self.update_search(window, cx);
+                    return;
+                }
+
                 // Check if the query ends with a label (allow typing search + label)
                 if query.len() > self.previous_query_length
                     && !query.is_empty()
@@ -223,9 +225,21 @@ impl JumpBar {
                         }
                     }
 
-                    if !remaining.is_empty()
-                        && self.matches.iter().any(|m| m.label.starts_with(remaining))
-                    {
+                    let filtered_matches: Vec<_> = self
+                        .matches
+                        .iter()
+                        .filter(|m| m.label.starts_with(remaining))
+                        .collect();
+
+                    if !filtered_matches.is_empty() {
+                        if filtered_matches.len() == 1 {
+                            let jump_match = filtered_matches[0];
+                            let position = jump_match.position;
+                            let target_editor = jump_match.editor.clone();
+                            self.jump_to_position(position, target_editor, window, cx);
+                        } else {
+                            self.update_labels(Some(remaining.len()), Some(remaining), cx);
+                        }
                         self.previous_query_length = query.len();
                         return;
                     }
@@ -306,7 +320,6 @@ impl JumpBar {
     fn update_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let query = self.query_editor.read(cx).text(cx);
         self.search_query = query.clone();
-        let autojump = JumpSettings::get_global(cx).autojump;
 
         if query.is_empty() {
             // Clear all editors
@@ -495,29 +508,12 @@ impl JumpBar {
             match_item.label = label.clone();
         }
 
-        // Group matches by editor and set labels
-        for editor_entity in &self.visible_editors {
-            let editor_labels: Vec<JumpLabel> = all_matches
-                .iter()
-                .filter(|m| {
-                    m.editor.entity_id() == editor_entity.entity_id() && !m.label.is_empty()
-                })
-                .map(|m| JumpLabel {
-                    position: m.position,
-                    label: m.label.clone(),
-                    match_length: query_len,
-                })
-                .collect();
-
-            editor_entity.update(cx, |editor, cx| {
-                editor.set_jump_labels(editor_labels, cx);
-            });
-        }
-
         self.matches = all_matches;
 
-        // Autojump if enabled and exactly one match
-        if autojump && self.matches.len() == 1 {
+        self.update_labels(None, None, cx);
+
+        // Autojump if exactly one match (now happens regardless of settings)
+        if self.matches.len() == 1 {
             if let Some(jump_match) = self.matches.first() {
                 let position = jump_match.position;
                 let target_editor = jump_match.editor.clone();
@@ -527,6 +523,37 @@ impl JumpBar {
         }
 
         cx.notify();
+    }
+
+    fn update_labels(
+        &self,
+        typed_count: Option<usize>,
+        label_prefix: Option<&str>,
+        cx: &mut Context<Self>,
+    ) {
+        let match_length = self.search_query.len();
+        // Group matches by editor and set labels
+        for editor_entity in &self.visible_editors {
+            let editor_labels: Vec<JumpLabel> = self
+                .matches
+                .iter()
+                .filter(|m| {
+                    m.editor.entity_id() == editor_entity.entity_id()
+                        && !m.label.is_empty()
+                        && label_prefix.map_or(true, |prefix| m.label.starts_with(prefix))
+                })
+                .map(|m| JumpLabel {
+                    position: m.position,
+                    label: m.label.clone(),
+                    match_length,
+                    typed_count: typed_count.unwrap_or(0),
+                })
+                .collect();
+
+            editor_entity.update(cx, |editor, cx| {
+                editor.set_jump_labels(editor_labels, cx);
+            });
+        }
     }
 }
 

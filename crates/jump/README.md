@@ -7,19 +7,8 @@
 - Jump labels only single chars with lower and upper case chars
 - Jump label priority based on distance to current cursor position and active editor: Home row, top row, bottom row
 - Jump to first char of match when label typed
-- Autojump on single match (configurable)
 
 ## Configuration
-
-Settings can be configured in your `settings.json`:
-
-```json
-{
-  "jump": {
-    "autojump": false
-  }
-}
-```
 
 Vim mode use 's' to trigger jump mode.
 
