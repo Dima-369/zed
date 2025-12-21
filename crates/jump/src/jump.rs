@@ -392,15 +392,15 @@ impl JumpBar {
                 let buffer_snapshot = buffer.snapshot(cx);
 
                 // Convert visible display rows to buffer positions
-                let visible_start_point = display_snapshot
-                    .buffer_snapshot()
-                    .anchor_before(language::Point::new(visible_start_row, 0))
-                    .to_point(&buffer_snapshot);
+                let visible_start_point = display_snapshot.display_point_to_point(
+                    DisplayPoint::new(editor::display_map::DisplayRow(visible_start_row), 0),
+                    editor::Bias::Left,
+                );
 
-                let visible_end_point = display_snapshot
-                    .buffer_snapshot()
-                    .anchor_before(language::Point::new(visible_end_row, 0))
-                    .to_point(&buffer_snapshot);
+                let visible_end_point = display_snapshot.display_point_to_point(
+                    DisplayPoint::new(editor::display_map::DisplayRow(visible_end_row), 0),
+                    editor::Bias::Left,
+                );
 
                 // Get start and end offsets for the visible range
                 let start_offset = buffer_snapshot.point_to_offset(visible_start_point);
