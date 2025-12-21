@@ -589,7 +589,7 @@ impl PickerDelegate for CommandPaletteDelegate {
         })
         .detach_and_log_err(cx);
         let action = command.action;
-        window.focus(&self.previous_focus_handle);
+        window.focus(&self.previous_focus_handle, cx);
         self.dismissed(window, cx);
         window.dispatch_action(action, cx);
     }
@@ -860,7 +860,7 @@ mod tests {
 
         workspace.update_in(cx, |workspace, window, cx| {
             workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
-            editor.update(cx, |editor, cx| window.focus(&editor.focus_handle(cx)))
+            editor.update(cx, |editor, cx| window.focus(&editor.focus_handle(cx), cx))
         });
 
         cx.simulate_keystrokes("cmd-shift-p");
@@ -932,7 +932,7 @@ mod tests {
 
         workspace.update_in(cx, |workspace, window, cx| {
             workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
-            editor.update(cx, |editor, cx| window.focus(&editor.focus_handle(cx)))
+            editor.update(cx, |editor, cx| window.focus(&editor.focus_handle(cx), cx))
         });
 
         // Test normalize (trimming whitespace and double colons)

@@ -14,7 +14,7 @@ doctest = false
 
 [features]
 default = []
-test-support = ["gpui/test-support", "language/test-support", "reqwest_client"]
+test-support = ["assistant_text_thread/test-support", "eval_utils", "gpui/test-support", "language/test-support", "reqwest_client", "workspace/test-support", "agent/test-support"]
 unit-eval = []
 webrtc = ["audio/webrtc"]
 
@@ -42,6 +42,7 @@ component.workspace = true
 context_server.workspace = true
 db.workspace = true
 editor.workspace = true
+eval_utils = { workspace = true, optional = true }
 extension.workspace = true
 extension_host.workspace = true
 feature_flags.workspace = true
@@ -73,6 +74,7 @@ postage.workspace = true
 project.workspace = true
 prompt_store.workspace = true
 proto.workspace = true
+rand.workspace = true
 release_channel.workspace = true
 rope.workspace = true
 rules_library.workspace = true
@@ -86,7 +88,6 @@ smol.workspace = true
 streaming_diff.workspace = true
 task.workspace = true
 telemetry.workspace = true
-telemetry_events.workspace = true
 terminal.workspace = true
 terminal_view.workspace = true
 text.workspace = true
@@ -122,7 +123,6 @@ language_model = { workspace = true, "features" = ["test-support"] }
 pretty_assertions.workspace = true
 project = { workspace = true, features = ["test-support"] }
 semver.workspace = true
-rand.workspace = true
 reqwest_client.workspace = true
 tree-sitter-md.workspace = true
 unindent.workspace = true

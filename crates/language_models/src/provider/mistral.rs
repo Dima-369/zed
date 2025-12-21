@@ -5,7 +5,7 @@ use futures::{FutureExt, Stream, StreamExt, future, future::BoxFuture, stream::B
 use gpui::{AnyView, App, AsyncApp, Context, Entity, Global, SharedString, Task, Window};
 use http_client::HttpClient;
 use language_model::{
-    ApiKeyState, AuthenticateError, EnvVar, LanguageModel, LanguageModelCompletionError,
+    ApiKeyState, AuthenticateError, EnvVar, IconOrSvg, LanguageModel, LanguageModelCompletionError,
     LanguageModelCompletionEvent, LanguageModelId, LanguageModelName, LanguageModelProvider,
     LanguageModelProviderId, LanguageModelProviderName, LanguageModelProviderState,
     LanguageModelRequest, LanguageModelToolChoice, LanguageModelToolResultContent,
@@ -17,7 +17,7 @@ use settings::{Settings, SettingsStore};
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::str::FromStr;
-use std::sync::{Arc, LazyLock, OnceLock};
+use std::sync::{Arc, LazyLock};
 use strum::IntoEnumIterator;
 use ui::{ButtonLink, ConfiguredApiCard, List, ListBulletItem, prelude::*};
 use ui_input::InputField;
@@ -31,7 +31,6 @@ static API_KEY_ENV_VAR: LazyLock<EnvVar> = env_var!(API_KEY_ENV_VAR_NAME);
 
 const CODESTRAL_API_KEY_ENV_VAR_NAME: &str = "CODESTRAL_API_KEY";
 static CODESTRAL_API_KEY_ENV_VAR: LazyLock<EnvVar> = env_var!(CODESTRAL_API_KEY_ENV_VAR_NAME);
-static CODESTRAL_API_KEY: OnceLock<Entity<ApiKeyState>> = OnceLock::new();
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct MistralSettings {
@@ -49,14 +48,18 @@ pub struct State {
     codestral_api_key_state: Entity<ApiKeyState>,
 }
 
+struct CodestralApiKey(Entity<ApiKeyState>);
+impl Global for CodestralApiKey {}
+
 pub fn codestral_api_key(cx: &mut App) -> Entity<ApiKeyState> {
-    return CODESTRAL_API_KEY
-        .get_or_init(|| {
-            cx.new(|_| {
-                ApiKeyState::new(CODESTRAL_API_URL.into(), CODESTRAL_API_KEY_ENV_VAR.clone())
-            })
-        })
-        .clone();
+    if cx.has_global::<CodestralApiKey>() {
+        cx.global::<CodestralApiKey>().0.clone()
+    } else {
+        let api_key_state = cx
+            .new(|_| ApiKeyState::new(CODESTRAL_API_URL.into(), CODESTRAL_API_KEY_ENV_VAR.clone()));
+        cx.set_global(CodestralApiKey(api_key_state.clone()));
+        api_key_state
+    }
 }
 
 impl State {
@@ -173,8 +176,8 @@ impl LanguageModelProvider for MistralLanguageModelProvider {
         PROVIDER_NAME
     }
 
-    fn icon(&self) -> IconName {
-        IconName::AiMistral
+    fn icon(&self) -> IconOrSvg {
+        IconOrSvg::Icon(IconName::AiMistral)
     }
 
     fn default_model(&self, _cx: &App) -> Option<Arc<dyn LanguageModel>> {
@@ -924,7 +927,7 @@ mod tests {
                     MessageContent::Text("What's in this image?".into()),
                     MessageContent::Image(LanguageModelImage {
                         source: "base64data".into(),
-                        size: Default::default(),
+                        size: None,
                     }),
                 ],
                 cache: false,

@@ -97,7 +97,7 @@ impl MarkdownPreviewView {
                         pane.add_item(Box::new(view.clone()), false, false, None, window, cx)
                     }
                 });
-                editor.focus_handle(cx).focus(window);
+                editor.focus_handle(cx).focus(window, cx);
                 cx.notify();
             }
         });
@@ -371,7 +371,7 @@ impl MarkdownPreviewView {
                     cx,
                     |selections| selections.select_ranges(vec![selection]),
                 );
-                window.focus(&editor.focus_handle(cx));
+                window.focus(&editor.focus_handle(cx), cx);
             });
         }
     }
