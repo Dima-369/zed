@@ -7559,7 +7559,7 @@ impl EditorElement {
             });
 
             shaped_label
-                .paint(label_origin, line_height, window, cx)
+                .paint(label_origin, line_height, gpui::TextAlign::Left, None, window, cx)
                 .log_err();
         }
     }
@@ -11622,7 +11622,7 @@ impl CursorLayout {
 
                 if let Some(block_text) = &self.block_text {
                     block_text
-                        .paint(self.origin + origin, self.line_height, window, cx)
+                        .paint(self.origin + origin, self.line_height, gpui::TextAlign::Left, None, window, cx)
                         .log_err();
                 }
                 return;
@@ -11647,7 +11647,7 @@ impl CursorLayout {
 
                 if let Some(block_text) = &self.block_text {
                     block_text
-                        .paint(self.origin + origin, self.line_height, window, cx)
+                        .paint(self.origin + origin, self.line_height, gpui::TextAlign::Left, None, window, cx)
                         .log_err();
                 }
                 return;

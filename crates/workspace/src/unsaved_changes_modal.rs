@@ -44,7 +44,7 @@ impl UnsavedChangesModal {
                 focus_handle: cx.focus_handle(),
                 result_sender: Some(sender),
             };
-            modal.focus_handle.focus(window);
+            modal.focus_handle.focus(window, cx);
             modal
         });
 

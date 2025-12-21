@@ -297,7 +297,7 @@ impl JumpBar {
                             pane.activate_item(item_index, true, true, window, cx);
                         });
                     }
-                    window.focus(&pane.focus_handle(cx));
+                    window.focus(&pane.focus_handle(cx), cx);
                     break;
                 }
             }
