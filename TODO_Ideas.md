@@ -1,21 +1,5 @@
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 
--  I have a JSONC file which starts like this, when cursor is on a link, then editor::OpenUrl does not open it?
-
-/*
-https://zed.dev/docs/configuring-zed
-https://zed.dev/docs/visual-customization
-*/
-{
-...
-}
-
-The URL detection code is correct!
-
-2025-12-21T12:23:12+01:00 INFO  [editor] URL: Some("https://zed.dev/docs/key-bindings")
-2025-12-21T12:23:12+01:00 ERROR [crates/zed/src/zed/open_listener.rs:115] invalid zed url: docs/key-bindings
-
-
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
 is that a bug from my fork code?
 
