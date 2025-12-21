@@ -1,21 +1,10 @@
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 is that a bug from my fork code?
 
-- check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
-is that a bug from my fork code?
-
 # Try out
 
 Add actions to move to start and end of larger syntax node
 https://github.com/zed-industries/zed/pull/45331
-
-## which key system
-
-THIS is in MAIN already, check it out
-https://github.com/zed-industries/zed/pull/43618
-
-Add which-key system
-https://github.com/zed-industries/zed/pull/34798
 
 ## telescope/quick search
 
