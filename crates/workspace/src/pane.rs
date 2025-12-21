@@ -48,7 +48,7 @@ use theme::ThemeSettings;
 use ui::{
     ButtonSize, Color, ContextMenu, ContextMenuEntry, ContextMenuItem, DecoratedIcon, IconButton,
     IconButtonShape, IconDecoration, IconDecorationKind, IconName, IconSize, Indicator, Label,
-    PopoverMenu, PopoverMenuHandle, Tab, TabBar, TabPosition, Tooltip, prelude::*,
+    PopoverMenu, PopoverMenuHandle, Tab, TabBar, Tooltip, prelude::*,
     right_click_menu,
 };
 use util::{ResultExt, debug_panic, maybe, paths::PathStyle, truncate_and_remove_front};
@@ -2633,51 +2633,9 @@ impl Pane {
         let indicator = render_item_indicator(item.boxed_clone(), cx);
         let tab_tooltip_content = item.tab_tooltip_content(cx);
         let item_id = item.item_id();
-        let is_first_item = ix == 0;
-        let is_last_item = ix == self.items.len() - 1;
         let is_pinned = self.is_tab_pinned(ix);
-        let position_relative_to_active_item = ix.cmp(&self.active_item_index);
-
-        // Determine tab position based on its role in the tab layout
-        let tab_position = if is_pinned {
-            // For pinned tabs
-            let is_last_pinned = ix == self.pinned_tab_count.saturating_sub(1);
-            let has_unpinned_tabs = self.has_unpinned_tabs();
-
-            if is_first_item && !is_last_pinned {
-                // First pinned tab, but not the last pinned tab
-                TabPosition::First
-            } else if is_last_pinned && (has_unpinned_tabs || !is_first_item) {
-                // Last pinned tab, and either there are unpinned tabs or it's not the first tab
-                TabPosition::Last
-            } else if is_first_item && is_last_pinned && !has_unpinned_tabs {
-                // Single pinned tab with no unpinned tabs
-                TabPosition::First
-            } else {
-                // Middle pinned tab
-                TabPosition::Middle(position_relative_to_active_item)
-            }
-        } else {
-            // For unpinned tabs, position them within their own group
-            let unpinned_count = self.items.len() - self.pinned_tab_count;
-            let is_last_unpinned = is_last_item;
-            let is_only_unpinned = unpinned_count == 1;
-
-            if is_only_unpinned {
-                // Single unpinned tab - treat as First
-                TabPosition::First
-            } else if is_last_unpinned {
-                // Last unpinned tab - treat as Last to get right border
-                TabPosition::Last
-            } else {
-                // First or middle unpinned tab - treat as Middle to get right border
-                // Use position relative to active item for proper styling
-                TabPosition::Middle(position_relative_to_active_item)
-            }
-        };
 
         let tab = Tab::new(ix)
-            .position(tab_position)
             .close_side(match close_side {
                 ClosePosition::Left => ui::TabCloseSide::Start,
                 ClosePosition::Right => ui::TabCloseSide::End,

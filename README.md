@@ -114,6 +114,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ```
 
 It places pinned tabs in an own row, separated to non-pinned tabs.
+Since it was too difficult to only render tab borders where exactly required, every tab now has a full border, so it looks a bit bold between dividers, but I don't mind. It looks better that way, instead of missing top borders in second row, for instance, when first row has pinned tabs.
 
 - lower `toolbar.rs` height to save space, same in `breadcrumbs.rs` (here no padding is set). This applies for terminals, as well
 - switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
