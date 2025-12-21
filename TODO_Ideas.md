@@ -1,17 +1,7 @@
-- fix whitespace selection which only shows when visual selection is active
-
-- write in github about broken git blame in git commit view
-
-- integrate latest changes from https://github.com/zed-industries/zed/pull/44770 (editor: Add smooth cursor animation)
+# workspace::NewFileFromClipboard`
 
 - add argument to `workspace::NewFileFromClipboard` which allows to set initial language
 then bind to space n j with json
-
-- check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
-is that a bug from my fork code?
-
-- improve UI `workspace::OpenRecentFile`. on very long file paths they are badly truncated
-copy the design of the `file_finder::Toggle` action which shows file name left, then path at right truncated in gray
 
 - in `workspace::NewFileFromClipboard` on initial opening the markdown block syntax highlighting is not working, at all
 I always need to modify the content in the line before ```, then the syntax highlighting appears
@@ -20,6 +10,20 @@ related code:
 `Self::new_in_workspace_with_content_and_language(workspace, content, Some("Markdown"), window, cx).detach_and_prompt_err(`
 
 how about creating it with empty content and then afterward insert the clipboard content? try that out, maybe it will work
+
+# Others
+
+- fix whitespace selection which only shows when visual selection is active
+
+- write in github about broken git blame in git commit view
+
+- integrate latest changes from https://github.com/zed-industries/zed/pull/44770 (editor: Add smooth cursor animation)
+
+- check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
+is that a bug from my fork code?
+
+- improve UI `workspace::OpenRecentFile`. on very long file paths they are badly truncated
+copy the design of the `file_finder::Toggle` action which shows file name left, then path at right truncated in gray
 
 - document bugs with smooth caret about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
 
@@ -33,25 +37,7 @@ how about using project search like multibuffer, but only for current file with 
 I know that in the project panel with right click there is "Find in Folder...", can you create a new action which launches that functionality for the current file path prefilled like `dotty/.config/zed/keymap.json`. if the previous text buffer is in visual mode, preset the selection from visual mode into the "Search..." field
 create a new action
 
-- for `editor::SearchInCurrentFileViaMultiBuffer`, fix that when the previous buffer has a selection (like in vim mode), it does not take that as the initial text
-
-# crates/jump/src/jump.rs
-
-there is a bug that when soft line wrapping is enabled, that the jump hints are shifted down, not showing all which are visible to me
-can that be fixed?
-like I mean the ones that are shown, are at their correct position, but it does not detect the very first visible line correctly, I think
-
-for key.l to jump to hints document bug that hint jump is not working in multi buffers (can it be fixed?)
-maybe check latest fork code?
-
-CHECK this on my latest changes in `dima`
-- open README.md
-- center the `New actions` headline content
-- hit l to open the jump, then hit `b` to jump to `buffer`, notice how no jump hints appear (same with m for markdown)
-is that because of uppercase character removal logic?
-- hit l, then t works, but only displays characters at bottom?
-
----
+# Try out
 
 Add actions to move to start and end of larger syntax node
 https://github.com/zed-industries/zed/pull/45331
