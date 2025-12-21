@@ -6,7 +6,7 @@ is that a bug from my fork code?
 Add telescope style search (this was closed by Zed team in favor of the PR below)
 This looks nicer than the PR below, has more features?
 https://github.com/zed-industries/zed/pull/44942
-I tested it, the file search only shows `...` which is not good. Text file 
+I tested it, the file search only shows `...` which is not good. Text search seems very nice, otherwise, but the dialog is just too small designed for my resolution.
 
 Add quick search modal
 https://github.com/zed-industries/zed/pull/44530
