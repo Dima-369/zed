@@ -1229,6 +1229,7 @@ impl File for GitBlob {
             path: self.path.as_ref().as_unix_str().to_string(),
             mtime: None,
             is_deleted: self.is_deleted,
+            is_historic: false,
         }
     }
 
