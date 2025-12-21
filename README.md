@@ -99,6 +99,8 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ],
 ```
 
+- `editor::MoveToStartOfLargerSyntaxNode` from https://github.com/zed-industries/zed/pull/45331
+
 ## UI changes
 
 - on macOS, the unsaved changes model uses the native macOS dialog instead of Zed's custom one which has bad keyboard support, so `unsaved_changes_model.rs` was created which allows keyboard navigation (and just looks nicer)

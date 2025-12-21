@@ -1,11 +1,6 @@
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 is that a bug from my fork code?
 
-# Try out
-
-Add actions to move to start and end of larger syntax node
-https://github.com/zed-industries/zed/pull/45331
-
 ## telescope/quick search
 
 Add telescope style search (this was closed by Zed team in favor of the PR below)
