@@ -5,10 +5,10 @@ use gpui::{
 };
 use ordered_float::OrderedFloat;
 use parking_lot::Mutex;
-use picker::{Picker, PickerDelegate, highlighted_match_with_paths::HighlightedMatch};
+use picker::{Picker, PickerDelegate};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use ui::{ListItem, prelude::*};
+use ui::{HighlightedLabel, ListItem, prelude::*};
 use util::paths::PathExt;
 use workspace::{
     self, ModalView, PathList, SerializedWorkspaceLocation, WORKSPACE_DB, Workspace, WorkspaceId,
@@ -383,7 +383,7 @@ impl Render for RecentFiles {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
             .key_context("RecentFiles")
-            .w(rems(34.))
+            .w(rems(48.))
             .child(self.picker.clone())
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                 this.picker.update(cx, |this, cx| {
@@ -563,24 +563,54 @@ impl PickerDelegate for RecentFilesDelegate {
         &self,
         ix: usize,
         selected: bool,
-        window: &mut Window,
-        cx: &mut Context<Picker<Self>>,
+        _window: &mut Window,
+        _cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let hit = self.matches.get(ix)?;
         let path = self.files.get(hit.candidate_id)?;
 
-        let path_str = path.compact().to_string_lossy().to_string();
-        let highlighted_match = HighlightedMatch {
-            text: path_str,
-            highlight_positions: hit.positions.clone(),
-            color: ui::Color::Default,
-        };
+        let path = path.compact();
+        let path_string = path.to_string_lossy();
+        let file_name = path
+            .file_name()
+            .map(|n| n.to_string_lossy())
+            .unwrap_or_default();
+
+        let file_name_start = path_string.len().saturating_sub(file_name.len());
+        let dir_name = &path_string[0..file_name_start];
+
+        let file_name_highlights: Vec<usize> = hit
+            .positions
+            .iter()
+            .filter(|&&i| i >= file_name_start)
+            .map(|&i| i - file_name_start)
+            .collect();
+
+        let dir_highlights: Vec<usize> = hit
+            .positions
+            .iter()
+            .filter(|&&i| i < file_name_start)
+            .copied()
+            .collect();
 
         Some(
             ListItem::new(ix)
                 .toggle_state(selected)
                 .inset(true)
-                .child(highlighted_match.render(window, cx)),
+                .child(
+                    h_flex()
+                        .gap_2()
+                        .items_center()
+                        .child(HighlightedLabel::new(
+                            file_name.to_string(),
+                            file_name_highlights,
+                        ))
+                        .child(
+                            HighlightedLabel::new(dir_name.to_string(), dir_highlights)
+                                .size(LabelSize::Small)
+                                .color(Color::Muted),
+                        ),
+                ),
         )
     }
 }
