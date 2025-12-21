@@ -1,14 +1,4 @@
-# Jump code
-
-- update README with changes!
-
-- it should auto jump when there is only one hint displayed, like when file content is "abc" and user wants to jump to "a", so disregard the setting `auto_jump` code
-
-- allow backspace to remove last typed in character
-
-- when there are multi character hints displayed, and I already typed in the first character, the typed character hint should be rendered in gray
-
----
+- fix whitespace selection which only shows when visual selection is active
 
 - write in github about broken git blame in git commit view
 
