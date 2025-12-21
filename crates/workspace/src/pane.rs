@@ -3301,14 +3301,20 @@ impl Pane {
                     })
             }))
             .child(
-                h_flex()
+                div()
                     .id("unpinned tabs")
-                    .overflow_x_scroll()
                     .w_full()
-                    .track_scroll(&self.tab_bar_scroll_handle)
-                    .on_scroll_wheel(cx.listener(|this, _, _, _| {
-                        this.suppress_scroll = true;
-                    }))
+                    .when(vertical_stacking, |this| {
+                        this.flex().flex_wrap().overflow_hidden()
+                    })
+                    .when(!vertical_stacking, |this| {
+                        this.h_flex()
+                            .overflow_x_scroll()
+                            .track_scroll(&self.tab_bar_scroll_handle)
+                            .on_scroll_wheel(cx.listener(|this, _, _, _| {
+                                this.suppress_scroll = true;
+                            }))
+                    })
                     .children(unpinned_tabs)
                     .child(
                         div()
