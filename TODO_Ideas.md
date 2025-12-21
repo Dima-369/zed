@@ -1,8 +1,21 @@
-- fix whitespace selection which only shows when visual selection is active
+- in visual line mode when cursor is on newline, then the line below is also incorrectly copied
+
+-  I have a JSONC file which starts like this, when cursor is on a link, then editor::OpenUrl does not open it?
+
+/*
+https://zed.dev/docs/configuring-zed
+https://zed.dev/docs/visual-customization
+*/
+{
+...
+}
+
+The URL detection code is correct!
+
+2025-12-21T12:23:12+01:00 INFO  [editor] URL: Some("https://zed.dev/docs/key-bindings")
+2025-12-21T12:23:12+01:00 ERROR [crates/zed/src/zed/open_listener.rs:115] invalid zed url: docs/key-bindings
 
 - write in github about broken git blame in git commit view
-
-- integrate latest changes from https://github.com/zed-industries/zed/pull/44770 (editor: Add smooth cursor animation)
 
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
 is that a bug from my fork code?
@@ -10,11 +23,6 @@ is that a bug from my fork code?
 - improve UI `workspace::OpenRecentFile`. on very long file paths they are badly truncated
 copy the design of the `file_finder::Toggle` action which shows file name left, then path at right truncated in gray
 also increase the width of the open recent file modal
-
-- document bugs with smooth caret about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
-
-- do not use smooth caret in terminal, I think it causes lazygit commit message dialog typing weirdness (basically hidden)
-even when smooth caret is disabled, in lazygit the cursor is weird?
 
 - space u `tab_switcher::ToggleAll` should not show buffer where it was launched
 
@@ -62,6 +70,15 @@ https://github.com/zed-industries/zed/pull/44802
 editor: Add smooth cursor animation
 This is integrated, only `inertial_cursor.rs` is implemented, not the other VFX modes.
 https://github.com/zed-industries/zed/pull/44770
+
+- integrate latest changes from https://github.com/zed-industries/zed/pull/44770 (editor: Add smooth cursor animation)
+
+- document bugs with smooth caret about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
+
+- do not use smooth caret in terminal, I think it causes lazygit commit message dialog typing weirdness (basically hidden)
+even when smooth caret is disabled, in lazygit the cursor is weird?
+
+---
 
 Very small diff? Add smooth cursor animation
 https://github.com/zed-industries/zed/pull/43826
