@@ -59,7 +59,9 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scroll a quarter of a page
 - `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window
-- `workspace::NewFileFromClipboard` which pastes in the clipboard contents and sets `Markdown` language
+- `workspace::NewFileFromClipboard` which pastes in the clipboard contents
+  - the action supports setting an initial language like `"space n j": [ "workspace::NewFileFromClipboard", { "language": "json" } ],` in `keymap.json`
+  - BUG: little bug, when the content is set initially on creation, the ``` code blocks are not properly highlighted. So, the text is set afterward, but then the tab is marked as modified which is also a little bit annoying
 - `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
 - `workspace::MakeSinglePane` which closes all other panes except the active one
 - `snippets::ReloadSnippets` because auto-reloading snippets is not working for me
@@ -69,7 +71,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - `jump::Toggle` from https://github.com/tebben/zed/tree/feature/jump with the following changes:
   - modified key jump hints to my custom Dvorak Programmer keyboard layout
   - implemented multiple character jump hints
-  - fixed bug that hints did not appear correctly 
+  - fixed bug that hints did not appear correctly
   - set the opacity of the dialog to 50% to see hints below
   - BUG: does not work in multi buffers
 - [DEPRECATED due to smooth scrolling PR merge] `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit. Bind like this:

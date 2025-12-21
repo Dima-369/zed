@@ -2929,6 +2929,7 @@ impl Editor {
                 workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
                 editor.update(cx, |editor, cx| {
                     editor.set_text(content, window, cx);
+                    editor.move_to_beginning(&Default::default(), window, cx);
                 });
                 editor
             })
