@@ -1,5 +1,5 @@
 use editor::{
-    DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset, ToPoint,
+    DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset,
     display_map::ToDisplayPoint,
 };
 use gpui::{
