@@ -23,8 +23,9 @@ use ui::{
 };
 use util::ResultExt;
 use workspace::{
-    Event as WorkspaceEvent, ModalView, Pane, SaveIntent, Workspace,
+    Event as WorkspaceEvent, ModalView, Pane, SaveIntent, Toast, Workspace,
     item::{ItemHandle, ItemSettings, ShowDiagnostics, TabContentParams},
+    notifications::NotificationId,
     pane::{render_item_indicator, tab_details},
 };
 
@@ -115,6 +116,21 @@ impl TabSwitcher {
                     weak_pane = pane.downgrade();
                 }
             })
+        }
+
+        if is_global {
+            let active_item_id = workspace.active_item(cx).map(|item| item.item_id());
+            let has_other_items = workspace.panes().iter().any(|pane| {
+                pane.read(cx)
+                    .items()
+                    .any(|item| Some(item.item_id()) != active_item_id)
+            });
+
+            if !has_other_items {
+                let id = NotificationId::unique::<ToggleAll>();
+                workspace.show_toast(Toast::new(id, "No other tabs to display"), cx);
+                return;
+            }
         }
 
         let weak_workspace = workspace.weak_handle();
@@ -383,6 +399,8 @@ impl TabSwitcherDelegate {
         let Some(workspace) = self.workspace.upgrade() else {
             return;
         };
+        let active_item_id = workspace.read(cx).active_item(cx).map(|item| item.item_id());
+
         let mut all_items = Vec::new();
         let mut item_index = 0;
         for pane_handle in workspace.read(cx).panes() {
@@ -394,6 +412,10 @@ impl TabSwitcherDelegate {
                 .enumerate()
                 .zip(tab_details(&items, window, cx))
             {
+                if Some(item.item_id()) == active_item_id {
+                    continue;
+                }
+
                 all_items.push(TabMatch {
                     pane: pane_handle.downgrade(),
                     item_index,

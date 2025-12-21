@@ -1,3 +1,5 @@
+- fix missing borders for tabs
+
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
