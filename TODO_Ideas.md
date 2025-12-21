@@ -5,9 +5,6 @@
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
 is that a bug from my fork code?
 
-- space u `tab_switcher::ToggleAll` should not show buffer where it was launched
-if there are no tabs to display then, show an error notification
-
 # Try out
 
 Add actions to move to start and end of larger syntax node

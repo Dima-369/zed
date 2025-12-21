@@ -561,6 +561,7 @@ impl TabSwitcherDelegate {
             return 1;
         }
 
+        self.set_selected_index(0, window, cx);
         0
     }
 
