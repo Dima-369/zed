@@ -1,16 +1,6 @@
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 is that a bug from my fork code?
 
-## telescope/quick search
-
-Add telescope style search (this was closed by Zed team in favor of the PR below)
-This looks nicer than the PR below, has more features?
-https://github.com/zed-industries/zed/pull/44942
-I tested it, the file search only shows `...` which is not good. Text search seems very nice, otherwise, but the dialog is just too small designed for my resolution.
-
-Add quick search modal
-https://github.com/zed-industries/zed/pull/44530
-
 ## side by side diffs
 
 figure out the way to enable this
@@ -70,3 +60,16 @@ https://github.com/zed-industries/zed/pull/44467
 ## reconsider this, maybe by using excerpt lines = 1 or so?
 
 - can you implement a new modal like `outline::Toggle`, there should be like a search text field input at top, focused, modal cancels on escape. you type in things and it showns all lines below (cap to 10 visible, candidate scrollable) and it is like a filter, so every line is shown below by default, but when I type "test", it only shows lines with test. on selecting one, jump to that instance, actually scrolling through candidates should live-update just like `outline::Toggle`. It is basically a line filter. Make sure that on long lines, you also consider horizontal scroll, so the searched text is always visible. Also highlight the matched text line part like `outline::Toggle`.
+
+# Investigations
+
+## telescope/quick search
+
+Add telescope style search (this was closed by Zed team in favor of the PR below)
+https://github.com/zed-industries/zed/pull/44942
+I tested it, the file search only shows `...` which is not good. Text search seems very nice, otherwise, but the dialog is just too small designed for my resolution.
+
+Add quick search modal
+https://github.com/zed-industries/zed/pull/44530
+I don't think it is ready yet, when a file has many search results, you do not see the file name anymore, it needs sticky scroll.
+Otherwise, UI works great on my smaller resolution.
