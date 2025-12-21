@@ -1,3 +1,5 @@
+- undo all smooth caret changes
+
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
@@ -6,23 +8,12 @@ is that a bug from my fork code?
 - based on the code in https://github.com/zed-industries/zed/pull/44530 implement swiper
 use 50% width left for candidates, right 50% width for preview
 
-## Smooth cursor
-
-editor: Add smooth cursor animation
-This is integrated, only `inertial_cursor.rs` is implemented, not the other VFX modes.
-https://github.com/zed-industries/zed/pull/44770
-
-- integrate latest changes from https://github.com/zed-industries/zed/pull/44770 (editor: Add smooth cursor animation)
-
-- document bugs with smooth caret about shifting character with video/screenshot, and disable in code that it does not animate in insert mode?
-
-- do not use smooth caret in terminal, I think it causes lazygit commit message dialog typing weirdness (basically hidden)
-even when smooth caret is disabled, in lazygit the cursor is weird?
-
----
-
+- try this out 
 Very small diff? Add smooth cursor animation
 https://github.com/zed-industries/zed/pull/43826
+
+- add jump to url
+bind to space l
 
 # AI (auggie) fails
 
@@ -31,6 +22,21 @@ https://github.com/zed-industries/zed/pull/43826
 - when I am inside a git commit view (for instance launched from git blame) and I run `git::Blame`, I just see this error notification: `failed to find a git repository for buffer`. I wonder if you can implement this, so `git::Blame` also works in git commit view tabs, and shows the left side next to the line numbers for the blame info PLUS `editor::OpenGitBlameCommit` works to jump to the new commit
 
 # Investigations
+
+## Smooth cursor
+
+### editor: Add smooth cursor animation
+
+I tested this and it has visual glitches, apparently which I documented in GitHub, so I do not use this.
+It also does not support jumping the cursor across multiple panes.
+
+https://github.com/zed-industries/zed/pull/44770
+
+### Add smooth cursor animation
+
+Very small diff, try this out!
+
+https://github.com/zed-industries/zed/pull/43826
 
 ## Add file explorer modal v2 (PR open)
 
