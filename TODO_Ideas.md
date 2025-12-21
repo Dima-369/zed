@@ -21,6 +21,7 @@ https://github.com/zed-industries/zed/pull/43826
 
 ## Diff With Commit
 
+Start with this, then implement diff with branch in modal as well.
 https://github.com/zed-industries/zed/pull/44467
 
 # AI (auggie) fails
