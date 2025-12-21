@@ -1,4 +1,6 @@
-- integrate latest changes from https://github.com/zed-industries/zed/pull/44770
+- write in github about broken git blame in git commit view
+
+- integrate latest changes from https://github.com/zed-industries/zed/pull/44770 (editor: Add smooth cursor animation)
 
 - add argument to `workspace::NewFileFromClipboard` which allows to set initial language
 then bind to space n j with json
