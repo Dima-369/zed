@@ -1,0 +1,1760 @@
+use std::{
+    collections::HashMap,
+    ops::Range,
+    path,
+    path::Path,
+    sync::{Arc, OnceLock},
+    time::{Duration, Instant},
+};
+
+use collections::FxHashMap;
+
+use file_icons::FileIcons;
+use futures::FutureExt as _;
+use gpui::{AnyView, App, AppContext, AsyncApp, Context, Entity, IntoElement, Render, Window, div};
+use language::{Buffer, HighlightId, LanguageRegistry};
+use markdown::{Markdown, MarkdownElement};
+use search::SearchOptions;
+use settings::Settings;
+use text::{Anchor as TextAnchor, BufferId, Point, ToOffset, ToPoint};
+use theme::ThemeSettings;
+use ui::prelude::*;
+use ui::{Color, IconName, LabelSize, SpinnerLabel};
+
+use crate::types::{GroupHeader, GroupInfo, MatchKey, QuickMatch, QuickMatchBuilder};
+use log::debug;
+use project::search::{SearchQuery, SearchResult};
+use project::{HoverBlock, HoverBlockKind, ProjectPath};
+use smol::future::yield_now;
+use util::paths::{PathMatcher, PathStyle};
+
+use crate::core::{
+    ListPresentation, MatchBatcher, QuickSearchSource, SearchContext, SearchSink, SearchUiContext,
+    SortPolicy, SourceId, SourceSpec, SourceSpecCore, SourceSpecUi,
+};
+use editor::hover_popover::hover_markdown_style;
+use editor::hover_popover::open_markdown_url;
+
+pub struct TextGrepSource;
+
+struct GrepHoverFooter {
+    host_state: Entity<crate::core::PreviewFooterHostState>,
+    markdown: Option<Entity<Markdown>>,
+    message: Option<Arc<str>>,
+    selected_key: Option<MatchKey>,
+    loading_overlay_visible: bool,
+    loading_overlay_nonce: u64,
+    last_loading: bool,
+    _subscription: gpui::Subscription,
+}
+
+impl GrepHoverFooter {
+    fn clear(&mut self) {
+        self.markdown = None;
+        self.message = None;
+        self.selected_key = None;
+    }
+
+    fn set_markdown(&mut self, markdown: Entity<Markdown>) {
+        self.markdown = Some(markdown);
+        self.message = None;
+    }
+
+    fn set_message(&mut self, message: Arc<str>) {
+        self.markdown = None;
+        self.message = Some(message);
+    }
+}
+
+impl Render for GrepHoverFooter {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let host_state = self.host_state.read(cx);
+        let show_overlay = host_state.loading && self.loading_overlay_visible;
+        let buffer_font_size = ThemeSettings::get_global(cx).buffer_font_size(cx);
+        div()
+            .relative()
+            .w_full()
+            .when_some(self.markdown.clone(), |this, markdown| {
+                let mut style = hover_markdown_style(window, cx);
+                style.base_text_style.refine(&gpui::TextStyleRefinement {
+                    font_size: Some(buffer_font_size.into()),
+                    ..Default::default()
+                });
+                this.child(
+                    MarkdownElement::new(markdown, style)
+                        .code_block_renderer(markdown::CodeBlockRenderer::Default {
+                            copy_button: false,
+                            copy_button_on_hover: false,
+                            border: false,
+                        })
+                        .on_url_click(open_markdown_url)
+                        .p_2(),
+                )
+            })
+            .when(self.markdown.is_none() && self.message.is_some(), |this| {
+                let message = self
+                    .message
+                    .clone()
+                    .unwrap_or_else(|| Arc::<str>::from("No details available"));
+                this.child(
+                    div()
+                        .text_size(buffer_font_size)
+                        .text_color(Color::Muted.color(cx))
+                        .child(message.to_string()),
+                )
+                .p_2()
+            })
+            .when(
+                !host_state.loading && self.markdown.is_none() && self.message.is_none(),
+                |this| {
+                    this.child(
+                        div()
+                            .text_size(buffer_font_size)
+                            .text_color(Color::Muted.color(cx))
+                            .child("No details available"),
+                    )
+                    .p_2()
+                },
+            )
+            .when(show_overlay, |this| {
+                this.child(
+                    div()
+                        .absolute()
+                        .top(rems_from_px(8.))
+                        .right(rems_from_px(8.))
+                        .child(
+                            SpinnerLabel::new()
+                                .size(LabelSize::Small)
+                                .color(Color::Muted),
+                        ),
+                )
+            })
+    }
+}
+
+fn hover_blocks_to_markdown(blocks: &[HoverBlock]) -> String {
+    let mut out = String::new();
+    for (index, block) in blocks.iter().enumerate() {
+        if index > 0 {
+            out.push_str("\n\n");
+        }
+        match &block.kind {
+            HoverBlockKind::PlainText | HoverBlockKind::Markdown => {
+                out.push_str(block.text.trim());
+            }
+            HoverBlockKind::Code { language } => {
+                out.push_str("```");
+                out.push_str(language);
+                out.push('\n');
+                out.push_str(block.text.trim());
+                out.push_str("\n```");
+            }
+        }
+    }
+    out
+}
+
+fn rightmost_token_probe_offset(line: &str, start: usize, end: usize) -> Option<usize> {
+    fn is_token_char(ch: char) -> bool {
+        ch == '_' || ch.is_alphanumeric()
+    }
+
+    let mut start = start.min(line.len());
+    let mut end = end.min(line.len());
+    while start > 0 && !line.is_char_boundary(start) {
+        start = start.saturating_sub(1);
+    }
+    while end > 0 && !line.is_char_boundary(end) {
+        end = end.saturating_sub(1);
+    }
+    if start >= end {
+        return None;
+    }
+
+    let slice = &line[start..end];
+    let mut index = slice.len();
+    while index > 0 {
+        let Some(ch) = slice[..index].chars().next_back() else {
+            break;
+        };
+        let ch_len = ch.len_utf8();
+        let ch_start = index.saturating_sub(ch_len);
+        if is_token_char(ch) {
+            let mut run_start = ch_start;
+            while run_start > 0 {
+                let Some(prev) = slice[..run_start].chars().next_back() else {
+                    break;
+                };
+                if is_token_char(prev) {
+                    run_start = run_start.saturating_sub(prev.len_utf8());
+                } else {
+                    break;
+                }
+            }
+
+            let mut probe = run_start + (index - run_start) / 2;
+            while probe > run_start && !slice.is_char_boundary(probe) {
+                probe = probe.saturating_sub(1);
+            }
+            return Some(start + probe);
+        }
+        index = ch_start;
+    }
+
+    None
+}
+
+#[derive(Clone)]
+struct SyntaxEnrichItem {
+    key: crate::types::MatchKey,
+    row: u32,
+    snippet_len: usize,
+}
+
+impl TextGrepSource {
+    fn spec_static() -> &'static SourceSpec {
+        static SPEC: OnceLock<SourceSpec> = OnceLock::new();
+        SPEC.get_or_init(|| SourceSpec {
+            id: SourceId(Arc::from("grep")),
+            core: SourceSpecCore {
+                supported_options: SearchOptions::REGEX
+                    | SearchOptions::CASE_SENSITIVE
+                    | SearchOptions::WHOLE_WORD
+                    | SearchOptions::INCLUDE_IGNORED,
+                min_query_len: crate::MIN_QUERY_LEN,
+                sort_policy: SortPolicy::StreamOrder,
+            },
+            ui: SourceSpecUi {
+                title: Arc::from("Text"),
+                icon: IconName::MagnifyingGlass,
+                placeholder: Arc::from("Live grep..."),
+                list_presentation: ListPresentation::Grouped,
+                use_diff_preview: false,
+            },
+        })
+    }
+}
+
+impl QuickSearchSource for TextGrepSource {
+    fn spec(&self) -> &'static SourceSpec {
+        Self::spec_static()
+    }
+
+    fn create_preview_footer(
+        &self,
+        _window: &mut Window,
+        cx: &mut App,
+    ) -> Option<crate::core::FooterInstance> {
+        let host = crate::core::PreviewFooterHost::new(cx);
+        let host_state = host.state_entity().clone();
+        let footer = cx.new(|cx| {
+            let subscription = cx.observe(&host_state, move |this: &mut GrepHoverFooter, state, cx| {
+                let loading = state.read(cx).loading;
+                if loading && !this.last_loading {
+                    this.last_loading = true;
+                    this.loading_overlay_visible = false;
+                    this.loading_overlay_nonce = this.loading_overlay_nonce.wrapping_add(1);
+                    let nonce = this.loading_overlay_nonce;
+                    let footer = cx.entity().downgrade();
+                    cx.spawn(move |_, app: &mut AsyncApp| {
+                        let mut app = app.clone();
+                        async move {
+                            smol::Timer::after(Duration::from_millis(75)).await;
+                            let Some(footer) = footer.upgrade() else {
+                                return;
+                            };
+                            if let Err(err) = footer.update(&mut app, |footer, cx| {
+                                if !footer.last_loading || footer.loading_overlay_nonce != nonce {
+                                    return;
+                                }
+                                footer.loading_overlay_visible = true;
+                                cx.notify();
+                            }) {
+                                debug!(
+                                    "quick_search: failed to show grep footer loading overlay: {:?}",
+                                    err
+                                );
+                            }
+                        }
+                    })
+                    .detach();
+                } else if !loading && this.last_loading {
+                    this.last_loading = false;
+                    this.loading_overlay_visible = false;
+                }
+
+                cx.notify();
+            });
+            GrepHoverFooter {
+                host_state,
+                markdown: None,
+                message: None,
+                selected_key: None,
+                loading_overlay_visible: false,
+                loading_overlay_nonce: 0,
+                last_loading: false,
+                _subscription: subscription,
+            }
+        });
+        let footer_view = AnyView::from(footer.clone());
+        let footer_weak = footer.downgrade();
+        let host_for_events = host.clone();
+        let host_state_for_tasks = host.state_entity().clone();
+
+        Some(crate::core::FooterInstance {
+            spec: crate::core::FooterSpec {
+                title: Arc::from("Details"),
+                toggleable: true,
+                default_open: true,
+            },
+            host,
+            view: footer_view,
+            handle_event: Arc::new(move |event, window, cx| match event {
+                crate::core::FooterEvent::OpenChanged(_open) => {}
+                crate::core::FooterEvent::ContextChanged(ctx) => {
+                    host_for_events.set_loading(false, cx);
+                    host_for_events.set_loading_label(None, cx);
+
+                    let Some(selected) = ctx.selected else {
+                        host_for_events.set_has_content(false, cx);
+                        if let Err(err) = footer_weak.update(cx, |footer, cx| {
+                            footer.clear();
+                            cx.notify();
+                        }) {
+                            debug!("quick_search: failed to clear grep footer view: {:?}", err);
+                        }
+                        return;
+                    };
+                    let Some(buffer_id) = selected.buffer_id() else {
+                        host_for_events.set_has_content(false, cx);
+                        if let Err(err) = footer_weak.update(cx, |footer, cx| {
+                            footer.clear();
+                            cx.notify();
+                        }) {
+                            debug!("quick_search: failed to clear grep footer view: {:?}", err);
+                        }
+                        return;
+                    };
+                    let Some(match_range) =
+                        selected.ranges().and_then(|ranges| ranges.first()).cloned()
+                    else {
+                        host_for_events.set_has_content(false, cx);
+                        if let Err(err) = footer_weak.update(cx, |footer, cx| {
+                            footer.clear();
+                            cx.notify();
+                        }) {
+                            debug!("quick_search: failed to clear grep footer view: {:?}", err);
+                        }
+                        return;
+                    };
+
+                    host_for_events.set_has_content(true, cx);
+                    if let Err(err) = footer_weak.update(cx, |footer, cx| {
+                        footer.selected_key = Some(selected.key);
+                        cx.notify();
+                    }) {
+                        debug!(
+                            "quick_search: failed to update grep footer selection key: {:?}",
+                            err
+                        );
+                    }
+                    let selected_key = selected.key;
+                    let project_path = selected.project_path().cloned();
+                    let worktree_id = project_path.as_ref().map(|path| path.worktree_id);
+
+                    let project = ctx.project.clone();
+                    let preview_buffer = ctx.preview_buffer.clone();
+                    let cancellation = ctx.cancellation.clone();
+
+                    host_for_events.set_loading(true, cx);
+                    host_for_events.set_loading_label(Some(Arc::from("Preparing…")), cx);
+                    let footer_for_task = footer_weak.clone();
+                    let host_state = host_state_for_tasks.clone();
+                    window
+                        .spawn(cx, async move |cx| {
+                            let set_loading = |loading: bool, cx: &mut gpui::AsyncWindowContext| {
+                                if let Err(err) = cx.update_entity(&host_state, |state, cx| {
+                                    if state.loading == loading {
+                                        return;
+                                    }
+                                    state.loading = loading;
+                                    cx.notify();
+                                }) {
+                                    debug!(
+                                        "quick_search: failed to update grep footer loading state: {:?}",
+                                        err
+                                    );
+                                }
+                            };
+
+                            let set_has_content =
+                                |has_content: bool, cx: &mut gpui::AsyncWindowContext| {
+                                    if let Err(err) =
+                                        cx.update_entity(&host_state, |state, cx| {
+                                            if state.has_content == has_content {
+                                                return;
+                                            }
+                                            state.has_content = has_content;
+                                            cx.notify();
+                                        })
+                                    {
+                                        debug!(
+                                            "quick_search: failed to update grep footer content state: {:?}",
+                                            err
+                                        );
+                                    }
+                                };
+
+                            let set_loading_label = |label: Option<Arc<str>>,
+                                                     cx: &mut gpui::AsyncWindowContext| {
+                                if let Err(err) = cx.update_entity(&host_state, |state, cx| {
+                                    if state.loading_label == label {
+                                        return;
+                                    }
+                                    state.loading_label = label;
+                                    cx.notify();
+                                }) {
+                                    debug!(
+                                        "quick_search: failed to update grep footer loading label: {:?}",
+                                        err
+                                    );
+                                }
+                            };
+
+                            cx.background_executor()
+                                .timer(std::time::Duration::from_millis(50))
+                                .await;
+                            if cancellation.is_cancelled() {
+                                set_loading(false, cx);
+                                return;
+                            }
+
+                            let buffer = preview_buffer
+                                .and_then(|buffer| {
+                                    let matches = cx
+                                        .read_entity(&buffer, |buffer, _| buffer.remote_id())
+                                        .map(|id| id == buffer_id)
+                                        .unwrap_or_else(|err| {
+                                            debug!(
+                                                "quick_search: failed to read preview buffer id for hover footer: {:?}",
+                                                err
+                                            );
+                                            false
+                                        });
+                                    matches.then_some(buffer)
+                                })
+                                .map(Some)
+                                .unwrap_or_else(|| {
+                                    cx.read_entity(&project, |project, cx| {
+                                        project.buffer_for_id(buffer_id, cx)
+                                    })
+                                    .unwrap_or_else(|err| {
+                                        debug!(
+                                            "quick_search: failed to read project buffer for grep footer: {:?}",
+                                            err
+                                        );
+                                        None
+                                    })
+                                });
+
+                            set_loading_label(Some(Arc::from("Opening file…")), cx);
+                            let buffer = if let Some(buffer) = buffer {
+                                buffer
+                            } else if let Some(project_path) = &project_path {
+                                let open_task = match cx.update_entity(&project, |project, cx| {
+                                    project.open_buffer(project_path.clone(), cx)
+                                }) {
+                                    Ok(task) => task,
+                                    Err(err) => {
+                                        debug!(
+                                            "quick_search: failed to start open_buffer for hover footer: {:?}",
+                                            err
+                                        );
+                                        set_loading(false, cx);
+                                        set_has_content(false, cx);
+                                        return;
+                                    }
+                                };
+                                match open_task.await {
+                                    Ok(buffer) => buffer,
+                                    Err(err) => {
+                                        debug!(
+                                            "quick_search: failed to open buffer for hover footer: {:?}",
+                                            err
+                                        );
+                                        set_loading(false, cx);
+                                        set_has_content(false, cx);
+                                        return;
+                                    }
+                                }
+                            } else {
+                                set_loading(false, cx);
+                                set_has_content(false, cx);
+                                set_loading_label(None, cx);
+                                return;
+                            };
+
+                            if cancellation.is_cancelled() {
+                                set_loading(false, cx);
+                                set_loading_label(None, cx);
+                                return;
+                            }
+
+                            let hover_points = cx
+                                .read_entity(&buffer, |buffer, _| {
+                                    let snapshot = buffer.snapshot();
+                                    let max_row = snapshot.text.max_point().row;
+                                    let row = match_range.start.row.min(max_row);
+                                    let line_start = Point::new(row, 0);
+                                    let line_end = Point::new(row, snapshot.text.line_len(row));
+
+                                    let line_start_offset = snapshot.text.point_to_offset(line_start);
+                                    let line_end_offset = snapshot.text.point_to_offset(line_end);
+
+                                    let match_start_offset =
+                                        snapshot.text.point_to_offset(match_range.start);
+                                    let match_end_offset = snapshot.text.point_to_offset(match_range.end);
+
+                                    let line_text: String = snapshot
+                                        .text
+                                        .text_for_range(line_start_offset..line_end_offset)
+                                        .collect();
+
+                                    let rel_start = match_start_offset
+                                        .saturating_sub(line_start_offset)
+                                        .min(line_text.len());
+                                    let rel_end = match_end_offset
+                                        .min(line_end_offset)
+                                        .saturating_sub(line_start_offset)
+                                        .min(line_text.len());
+
+                                    let mut points = Vec::with_capacity(3);
+                                    if let Some(probe) =
+                                        rightmost_token_probe_offset(&line_text, rel_start, rel_end)
+                                    {
+                                        points.push(
+                                            snapshot
+                                                .text
+                                                .offset_to_point(line_start_offset.saturating_add(probe)),
+                                        );
+                                    }
+
+                                    let end_point = if match_range.end.column > 0 {
+                                        Point::new(
+                                            match_range.end.row,
+                                            match_range.end.column.saturating_sub(1),
+                                        )
+                                    } else {
+                                        match_range.end
+                                    };
+                                    points.push(end_point);
+                                    points.push(match_range.start);
+
+                                    let mut unique = Vec::with_capacity(points.len());
+                                    for point in points {
+                                        if !unique.iter().any(|p| p == &point) {
+                                            unique.push(point);
+                                        }
+                                    }
+                                    unique
+                                })
+                                .unwrap_or_else(|err| {
+                                    debug!("quick_search: failed to compute hover probe points: {:?}", err);
+                                    vec![match_range.start]
+                                });
+
+                            let (language_name, has_relevant_adapters) =
+                                cx.read_entity(&project, |project, cx| {
+                                    let Some(language) = buffer.read(cx).language().cloned() else {
+                                        return (None, false);
+                                    };
+                                    let language_name = Some(language.name());
+                                    let has_relevant_adapters = !project
+                                        .languages()
+                                        .lsp_adapters(&language.name())
+                                        .is_empty();
+                                    (language_name, has_relevant_adapters)
+                                })
+                                .unwrap_or_else(|err| {
+                                    debug!(
+                                        "quick_search: failed to read language info for footer: {:?}",
+                                        err
+                                    );
+                                    (None, false)
+                                });
+
+                            if language_name.is_none() {
+                                if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                    if footer.selected_key != Some(selected_key) {
+                                        return;
+                                    }
+                                    footer.set_message(Arc::from("No language detected for this file."));
+                                    cx.notify();
+                                }) {
+                                    debug!("quick_search: failed to update grep footer view: {:?}", err);
+                                }
+                                set_loading(false, cx);
+                                set_has_content(true, cx);
+                                set_loading_label(None, cx);
+                                return;
+                            }
+
+                            if !has_relevant_adapters {
+                                let language_name = language_name
+                                    .map(|name| name.0.to_string())
+                                    .unwrap_or_else(|| "this language".to_string());
+                                let label =
+                                    format!("No language server configured for {language_name}.");
+                                if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                    if footer.selected_key != Some(selected_key) {
+                                        return;
+                                    }
+                                    footer.set_message(Arc::from(label.clone()));
+                                    cx.notify();
+                                }) {
+                                    debug!("quick_search: failed to update grep footer view: {:?}", err);
+                                }
+                                set_loading(false, cx);
+                                set_has_content(true, cx);
+                                set_loading_label(None, cx);
+                                return;
+                            }
+
+                            let server_status_for_buffer = |cx: &gpui::AsyncWindowContext| {
+                                cx.read_entity(&project, |project, cx| {
+                                    let Some(language) = buffer.read(cx).language().cloned() else {
+                                        return (false, false, None);
+                                    };
+                                    let relevant = project
+                                        .languages()
+                                        .lsp_adapters(&language.name())
+                                        .into_iter()
+                                        .map(|adapter| adapter.name())
+                                        .collect::<std::collections::HashSet<_>>();
+                                    if relevant.is_empty() {
+                                        return (false, false, None);
+                                    }
+
+                                    let mut has_running_relevant = false;
+                                    let mut has_pending_diagnostic_updates = false;
+                                    let mut best_progress: Option<(std::time::Instant, Arc<str>)> =
+                                        None;
+
+                                    for (_id, status) in project.language_server_statuses(cx) {
+                                        if !relevant.contains(&status.name) {
+                                            continue;
+                                        }
+                                        if let Some(worktree_id) = worktree_id {
+                                            if let Some(status_worktree_id) = status.worktree {
+                                                if status_worktree_id != worktree_id {
+                                                    continue;
+                                                }
+                                            }
+                                        }
+
+                                        has_running_relevant = true;
+                                        has_pending_diagnostic_updates |=
+                                            status.has_pending_diagnostic_updates;
+
+                                        let Some(progress) = status
+                                            .pending_work
+                                            .values()
+                                            .max_by_key(|progress| progress.last_update_at)
+                                        else {
+                                            continue;
+                                        };
+
+                                        let label = if let Some(title) =
+                                            progress.title.as_ref().filter(|s| !s.trim().is_empty())
+                                        {
+                                            if let Some(pct) = progress.percentage {
+                                                Arc::<str>::from(format!("{title} ({pct}%)"))
+                                            } else {
+                                                Arc::<str>::from(title.to_string())
+                                            }
+                                        } else if let Some(message) =
+                                            progress.message.as_ref().filter(|s| !s.trim().is_empty())
+                                        {
+                                            if let Some(pct) = progress.percentage {
+                                                Arc::<str>::from(format!("{message} ({pct}%)"))
+                                            } else {
+                                                Arc::<str>::from(message.to_string())
+                                            }
+                                        } else {
+                                            Arc::<str>::from("busy")
+                                        };
+
+                                        match best_progress.as_ref() {
+                                            Some((at, _)) if *at >= progress.last_update_at => {}
+                                            _ => {
+                                                best_progress = Some((progress.last_update_at, label));
+                                            }
+                                        }
+                                    }
+
+                                    let hint = if let Some((_at, label)) = best_progress {
+                                        Some(label)
+                                    } else if has_pending_diagnostic_updates {
+                                        Some(Arc::<str>::from("updating diagnostics"))
+                                    } else {
+                                        None
+                                    };
+
+                                    let busy = hint.is_some();
+                                    (has_running_relevant, busy, hint)
+                                })
+                                .unwrap_or_else(|err| {
+                                    debug!(
+                                        "quick_search: failed to read language server statuses for footer: {:?}",
+                                        err
+                                    );
+                                    (false, false, None)
+                                })
+                            };
+
+                            let slow_after =
+                                std::time::Instant::now() + std::time::Duration::from_secs(30);
+                            let started_at = std::time::Instant::now();
+                            let min_time_before_no_hover = std::time::Duration::from_secs(1);
+                            let mut consecutive_idle_empty_responses: usize = 0;
+
+                            loop {
+                                if cancellation.is_cancelled() {
+                                    set_loading(false, cx);
+                                    set_loading_label(None, cx);
+                                    return;
+                                }
+
+                                let poll_interval = if std::time::Instant::now() > slow_after {
+                                    std::time::Duration::from_millis(750)
+                                } else {
+                                    std::time::Duration::from_millis(250)
+                                };
+
+                                let (running, _busy, hint) = server_status_for_buffer(cx);
+                                if !running {
+                                    consecutive_idle_empty_responses = 0;
+                                    set_loading_label(Some(Arc::from("Starting language server…")), cx);
+                                    if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                        if footer.selected_key != Some(selected_key) {
+                                            return;
+                                        }
+                                        footer.set_message(Arc::<str>::from(
+                                            "Language server still starting…",
+                                        ));
+                                        cx.notify();
+                                    }) {
+                                        debug!(
+                                            "quick_search: failed to update grep footer view: {:?}",
+                                            err
+                                        );
+                                    }
+                                    set_has_content(true, cx);
+                                    cx.background_executor()
+                                        .timer(poll_interval)
+                                        .await;
+                                    continue;
+                                }
+
+                                let label = if let Some(hint) = hint {
+                                    Arc::<str>::from(format!("Requesting hover… ({hint})"))
+                                } else {
+                                    Arc::<str>::from("Requesting hover…")
+                                };
+                                set_loading_label(Some(label), cx);
+
+                                let mut hovers: Option<Vec<project::Hover>> = None;
+                                let mut saw_not_ready = false;
+                                let mut saw_response = false;
+                                for probe_point in hover_points.iter().cloned() {
+                                    if cancellation.is_cancelled() {
+                                        set_loading(false, cx);
+                                        set_loading_label(None, cx);
+                                        return;
+                                    }
+
+                                    let hover_task = cx.update_entity(&project, |project, cx| {
+                                        project.hover(&buffer, probe_point, cx)
+                                    });
+                                    let hover_task = match hover_task {
+                                        Ok(task) => task,
+                                        Err(err) => {
+                                            debug!(
+                                                "quick_search: hover request failed: {:?}",
+                                                err
+                                            );
+                                            set_loading(false, cx);
+                                            set_has_content(true, cx);
+                                            set_loading_label(None, cx);
+                                            if let Err(err) =
+                                                footer_for_task.update(cx, |footer, cx| {
+                                                    if footer.selected_key != Some(selected_key) {
+                                                        return;
+                                                    }
+                                                    footer.set_message(Arc::from(
+                                                        "Failed to request hover.",
+                                                    ));
+                                                    cx.notify();
+                                                })
+                                            {
+                                                debug!(
+                                                    "quick_search: failed to update grep footer view: {:?}",
+                                                    err
+                                                );
+                                            }
+                                            return;
+                                        }
+                                    };
+
+                                    let hover_task = hover_task.fuse();
+                                    futures::pin_mut!(hover_task);
+
+                                    let result = loop {
+                                        if cancellation.is_cancelled() {
+                                            set_loading(false, cx);
+                                            set_loading_label(None, cx);
+                                            return;
+                                        }
+
+                                        let poll_timer = cx
+                                            .background_executor()
+                                            .timer(poll_interval)
+                                            .fuse();
+                                        futures::pin_mut!(poll_timer);
+
+                                        futures::select_biased! {
+                                            hovers = hover_task => break hovers,
+                                            _ = poll_timer => {
+                                                let (running, _busy, hint) = server_status_for_buffer(cx);
+                                                let label = if !running {
+                                                    Arc::<str>::from("Starting language server…")
+                                                } else if let Some(hint) = hint {
+                                                    Arc::<str>::from(format!("Requesting hover… ({hint})"))
+                                                } else {
+                                                    Arc::<str>::from("Requesting hover…")
+                                                };
+                                                set_loading_label(Some(label), cx);
+                                            }
+                                        }
+                                    };
+
+                                    match result {
+                                        None => {
+                                            saw_not_ready = true;
+                                        }
+                                        Some(result) => {
+                                            saw_response = true;
+                                            let has_content = result
+                                                .iter()
+                                                .any(|hover| !hover.is_empty());
+                                            hovers = Some(result);
+                                            if has_content {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                let mut blocks: Vec<HoverBlock> = Vec::new();
+                                let mut hover_language_name: Option<language::LanguageName> = None;
+                                if let Some(hovers) = hovers {
+                                    for hover in hovers {
+                                        if hover.is_empty() {
+                                            continue;
+                                        }
+                                        if hover_language_name.is_none() {
+                                            hover_language_name = hover
+                                                .language
+                                                .as_ref()
+                                                .map(|language| language.name());
+                                        }
+                                        blocks.extend(hover.contents);
+                                    }
+                                }
+
+                                let text = hover_blocks_to_markdown(&blocks);
+                                if text.trim().is_empty() {
+                                    let (running, busy_now, hint) = server_status_for_buffer(cx);
+
+                                    if !running {
+                                        consecutive_idle_empty_responses = 0;
+                                    }
+
+                                    if !saw_response && saw_not_ready {
+                                        consecutive_idle_empty_responses = 0;
+                                        let message = if !running {
+                                            Arc::<str>::from("Language server still starting…")
+                                        } else if let Some(hint) = hint {
+                                            Arc::<str>::from(format!(
+                                                "Language server busy… ({hint}). Waiting for hover…"
+                                            ))
+                                        } else {
+                                            Arc::<str>::from("Waiting for language server hover…")
+                                        };
+                                        if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                            if footer.selected_key != Some(selected_key) {
+                                                return;
+                                            }
+                                            footer.set_message(message);
+                                            cx.notify();
+                                        }) {
+                                            debug!(
+                                                "quick_search: failed to update grep footer view: {:?}",
+                                                err
+                                            );
+                                        }
+                                        set_has_content(true, cx);
+                                        cx.background_executor()
+                                            .timer(poll_interval)
+                                            .await;
+                                        continue;
+                                    }
+
+                                    if busy_now {
+                                        consecutive_idle_empty_responses = 0;
+                                        let message = if let Some(hint) = hint {
+                                            Arc::<str>::from(format!(
+                                                "Language server busy… ({hint}). Waiting for hover…"
+                                            ))
+                                        } else {
+                                            Arc::<str>::from("Language server busy… Waiting for hover…")
+                                        };
+                                        if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                            if footer.selected_key != Some(selected_key) {
+                                                return;
+                                            }
+                                            footer.set_message(message);
+                                            cx.notify();
+                                        }) {
+                                            debug!(
+                                                "quick_search: failed to update grep footer view: {:?}",
+                                                err
+                                            );
+                                        }
+                                        set_has_content(true, cx);
+                                        cx.background_executor()
+                                            .timer(poll_interval)
+                                            .await;
+                                        continue;
+                                    }
+
+                                    consecutive_idle_empty_responses =
+                                        consecutive_idle_empty_responses.saturating_add(1);
+                                    if consecutive_idle_empty_responses < 2 {
+                                        if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                            if footer.selected_key != Some(selected_key) {
+                                                return;
+                                            }
+                                            footer.set_message(Arc::<str>::from(
+                                                "Waiting for hover information…",
+                                            ));
+                                            cx.notify();
+                                        }) {
+                                            debug!(
+                                                "quick_search: failed to update grep footer view: {:?}",
+                                                err
+                                            );
+                                        }
+                                        set_has_content(true, cx);
+                                        cx.background_executor()
+                                            .timer(poll_interval)
+                                            .await;
+                                        continue;
+                                    }
+
+                                    let elapsed = std::time::Instant::now()
+                                        .saturating_duration_since(started_at);
+                                    if elapsed < min_time_before_no_hover {
+                                        if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                            if footer.selected_key != Some(selected_key) {
+                                                return;
+                                            }
+                                            footer.set_message(Arc::<str>::from(
+                                                "Waiting for hover information…",
+                                            ));
+                                            cx.notify();
+                                        }) {
+                                            debug!(
+                                                "quick_search: failed to update grep footer view: {:?}",
+                                                err
+                                            );
+                                        }
+                                        set_has_content(true, cx);
+                                        cx.background_executor()
+                                            .timer(poll_interval)
+                                            .await;
+                                        continue;
+                                    }
+
+                                    if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                        if footer.selected_key != Some(selected_key) {
+                                            return;
+                                        }
+                                        footer.set_message(Arc::<str>::from(
+                                            "No hover information at this position.",
+                                        ));
+                                        cx.notify();
+                                    }) {
+                                        debug!(
+                                            "quick_search: failed to update grep footer view: {:?}",
+                                            err
+                                        );
+                                    }
+                                    set_has_content(true, cx);
+                                    set_loading(false, cx);
+                                    set_loading_label(None, cx);
+                                    return;
+                                }
+
+                                if text.contains("{unknown}") {
+                                    consecutive_idle_empty_responses = 0;
+                                    let (_running, _busy_now, hint) = server_status_for_buffer(cx);
+                                    let message = if let Some(hint) = hint {
+                                        Arc::<str>::from(format!(
+                                            "Hover incomplete (server returned {{unknown}}). Waiting… ({hint})"
+                                        ))
+                                    } else {
+                                        Arc::<str>::from(
+                                            "Hover incomplete (server returned {unknown}). Waiting…",
+                                        )
+                                    };
+                                    if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                        if footer.selected_key != Some(selected_key) {
+                                            return;
+                                        }
+                                        footer.set_message(message);
+                                        cx.notify();
+                                    }) {
+                                        debug!(
+                                            "quick_search: failed to update grep footer view: {:?}",
+                                            err
+                                        );
+                                    }
+                                    set_has_content(true, cx);
+                                    cx.background_executor()
+                                        .timer(poll_interval)
+                                        .await;
+                                    continue;
+                                }
+
+                                let language_registry = cx
+                                    .read_entity(&project, |project, _| project.languages().clone())
+                                    .map(Some)
+                                    .unwrap_or_else(|err| {
+                                        debug!(
+                                            "quick_search: failed to read language registry for hover footer: {:?}",
+                                            err
+                                        );
+                                        None
+                                    });
+
+                                let markdown = match cx.new(|cx| {
+                                    Markdown::new(
+                                        text.into(),
+                                        language_registry,
+                                        hover_language_name,
+                                        cx,
+                                    )
+                                }) {
+                                    Ok(markdown) => markdown,
+                                    Err(err) => {
+                                        debug!(
+                                            "quick_search: failed to build hover markdown: {:?}",
+                                            err
+                                        );
+                                        set_loading(false, cx);
+                                        set_has_content(false, cx);
+                                        set_loading_label(None, cx);
+                                        return;
+                                    }
+                                };
+
+                                if let Err(err) = footer_for_task.update(cx, |footer, cx| {
+                                    if footer.selected_key != Some(selected_key) {
+                                        return;
+                                    }
+                                    footer.set_markdown(markdown);
+                                    cx.notify();
+                                }) {
+                                    debug!(
+                                        "quick_search: failed to update grep footer view: {:?}",
+                                        err
+                                    );
+                                    set_loading(false, cx);
+                                    set_has_content(false, cx);
+                                    set_loading_label(None, cx);
+                                    return;
+                                }
+
+                                set_loading(false, cx);
+                                set_has_content(true, cx);
+                                set_loading_label(None, cx);
+                                return;
+                            }
+                        })
+                        .detach();
+                }
+            }),
+        })
+    }
+
+    fn start_search(&self, ctx: SearchContext, sink: SearchSink, cx: &mut SearchUiContext<'_>) {
+        let project = ctx.project().clone();
+        let search_options = ctx.search_options();
+        let source_id = self.spec().id.0.clone();
+        let path_style = ctx.path_style();
+        let language_registry = ctx.language_registry().clone();
+        let query = ctx.query().clone();
+        let match_arena = ctx.match_arena().clone();
+
+        crate::core::spawn_source_task(cx, sink, move |app, sink| {
+            async move {
+                let search_query = match app.update_entity(&project, |_project, _| {
+                    let include = PathMatcher::default();
+                    let exclude = PathMatcher::default();
+                    if search_options.contains(SearchOptions::REGEX) {
+                        SearchQuery::regex(
+                            query.as_ref(),
+                            search_options.contains(SearchOptions::WHOLE_WORD),
+                            search_options.contains(SearchOptions::CASE_SENSITIVE),
+                            search_options.contains(SearchOptions::INCLUDE_IGNORED),
+                            false,
+                            include,
+                            exclude,
+                            false,
+                            None,
+                        )
+                    } else {
+                        SearchQuery::text(
+                            query.as_ref(),
+                            search_options.contains(SearchOptions::WHOLE_WORD),
+                            search_options.contains(SearchOptions::CASE_SENSITIVE),
+                            search_options.contains(SearchOptions::INCLUDE_IGNORED),
+                            include,
+                            exclude,
+                            false,
+                            None,
+                        )
+                    }
+                }) {
+                    Ok(Ok(query)) => query,
+                    Ok(Err(err)) => {
+                        sink.record_error(err.to_string(), app);
+                        return;
+                    }
+                    Err(err) => {
+                        sink.record_error(err.to_string(), app);
+                        return;
+                    }
+                };
+
+            let receiver =
+                match app.update_entity(&project, |project, cx| project.search(search_query, cx)) {
+                    Ok(receiver) => receiver,
+                    Err(err) => {
+                        sink.record_error(err.to_string(), app);
+                        return;
+                    }
+                };
+
+            sink.set_inflight_results(receiver.clone(), app);
+
+            let mut batcher = MatchBatcher::new(match_arena.clone());
+            let mut syntax_workers: HashMap<BufferId, async_channel::Sender<SyntaxEnrichItem>> =
+                HashMap::new();
+            const YIELD_MAX_ITEMS: usize = 128;
+            const YIELD_MAX_INTERVAL: Duration = Duration::from_millis(4);
+            let mut since_yield = 0usize;
+            let mut last_yield = Instant::now();
+            loop {
+                let result = match receiver.recv().await {
+                    Ok(r) => r,
+                    Err(_) => break,
+                };
+                if sink.is_cancelled() {
+                    break;
+                }
+
+                match result {
+                    SearchResult::Buffer { buffer, ranges } => {
+                        if let Some(out) = build_matches_for_buffer(
+                            app,
+                            &buffer,
+                            ranges,
+                            &path_style,
+                            &source_id,
+                        ) {
+                            if !out.pending_syntax.is_empty() {
+                                ensure_syntax_worker(
+                                    app,
+                                    &mut syntax_workers,
+                                    out.buffer_id,
+                                    buffer.clone(),
+                                    sink.clone(),
+                                    language_registry.clone(),
+                                );
+                                if let Some(sender) = syntax_workers.get(&out.buffer_id) {
+                                    for item in out.pending_syntax {
+                                        if let Err(err) = sender.try_send(item) {
+                                            debug!(
+                                                "quick_search: failed to queue syntax enrich item: {:?}",
+                                                err
+                                            );
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            for match_item in out.matches {
+                                batcher.push(match_item, &sink, app);
+                            }
+                        }
+                        if sink.is_cancelled() {
+                            break;
+                        }
+                    }
+                    SearchResult::LimitReached => {
+                        batcher.flush(&sink, app);
+                        if sink.is_cancelled() {
+                            break;
+                        }
+                        break;
+                    }
+                }
+
+                since_yield = since_yield.saturating_add(1);
+                if since_yield >= YIELD_MAX_ITEMS || last_yield.elapsed() >= YIELD_MAX_INTERVAL {
+                    yield_now().await;
+                    since_yield = 0;
+                    last_yield = Instant::now();
+                }
+            }
+
+                drop(syntax_workers);
+                if !sink.is_cancelled() {
+                    batcher.finish(&sink, app);
+                }
+            }
+            .boxed_local()
+        });
+    }
+}
+
+fn elide_path(segments: &[Arc<str>]) -> Arc<str> {
+    const MAX_SEGMENTS: usize = 5;
+    let Some(head) = segments.first() else {
+        return Arc::<str>::from("");
+    };
+    if segments.len() <= MAX_SEGMENTS {
+        return Arc::<str>::from(segments.join("/"));
+    }
+
+    let tail_count = MAX_SEGMENTS.saturating_sub(1);
+    let tail_start = segments.len().saturating_sub(tail_count);
+    let mut parts = Vec::with_capacity(2 + tail_count);
+    parts.push(head.clone());
+    parts.push(Arc::<str>::from("…"));
+    parts.extend_from_slice(&segments[tail_start..]);
+    Arc::<str>::from(parts.join("/"))
+}
+
+fn clip_snippet_into(text: &str, out: &mut String) -> usize {
+    out.clear();
+    if text.len() <= crate::MAX_SNIPPET_BYTES {
+        out.push_str(text);
+        return text.len();
+    }
+
+    let suffix = ".";
+    let max_content_bytes = crate::MAX_SNIPPET_BYTES.saturating_sub(suffix.len());
+    let mut end = max_content_bytes.min(text.len());
+    while end > 0 && !text.is_char_boundary(end) {
+        end -= 1;
+    }
+
+    out.reserve(end + suffix.len());
+    out.push_str(&text[..end]);
+    out.push_str(suffix);
+    end
+}
+
+fn coalesce_syntax_runs(runs: &mut Vec<(Range<usize>, HighlightId)>) {
+    if runs.len() <= 1 {
+        return;
+    }
+    runs.sort_by_key(|(range, _)| (range.start, range.end));
+    let mut out: Vec<(Range<usize>, HighlightId)> = Vec::with_capacity(runs.len());
+    for (range, id) in runs.drain(..) {
+        if let Some((last_range, last_id)) = out.last_mut() {
+            if *last_id == id && last_range.end == range.start {
+                last_range.end = range.end;
+                continue;
+            }
+        }
+        out.push((range, id));
+    }
+    *runs = out;
+}
+
+struct BuildMatchesOutput {
+    matches: Vec<QuickMatch>,
+    pending_syntax: Vec<SyntaxEnrichItem>,
+    buffer_id: BufferId,
+}
+
+fn ensure_syntax_worker(
+    app: &mut AsyncApp,
+    workers: &mut HashMap<BufferId, async_channel::Sender<SyntaxEnrichItem>>,
+    buffer_id: BufferId,
+    buffer: gpui::Entity<Buffer>,
+    sink: SearchSink,
+    language_registry: Arc<LanguageRegistry>,
+) {
+    if workers.contains_key(&buffer_id) {
+        return;
+    }
+
+    let (sender, receiver) = async_channel::unbounded();
+    workers.insert(buffer_id, sender);
+
+    app.spawn(async move |app| {
+        let mut language_attempted = false;
+        let mut queued: Vec<SyntaxEnrichItem> = Vec::new();
+
+        loop {
+            let first = match receiver.recv().await {
+                Ok(item) => item,
+                Err(_) => break,
+            };
+            queued.push(first);
+            while let Ok(item) = receiver.try_recv() {
+                queued.push(item);
+            }
+
+            if sink.is_cancelled() {
+                break;
+            }
+
+            let snapshot = match app.read_entity(&buffer, |b, _| b.snapshot()) {
+                Ok(s) => s,
+                Err(_) => break,
+            };
+
+            if snapshot.language().is_none() && !language_attempted {
+                language_attempted = true;
+                let file = match app.read_entity(&buffer, |b, _| b.file().cloned()) {
+                    Ok(file) => file,
+                    Err(err) => {
+                        debug!(
+                            "quick_search: failed to read file for syntax enrich worker: {:?}",
+                            err
+                        );
+                        None
+                    }
+                };
+                if let Some(file) = file {
+                    let available = match app.update({
+                        let language_registry = language_registry.clone();
+                        let file = file.clone();
+                        move |cx| language_registry.language_for_file(&file, None, cx)
+                    }) {
+                        Ok(available) => available,
+                        Err(err) => {
+                            debug!(
+                                "quick_search: failed to detect language for syntax enrich worker: {:?}",
+                                err
+                            );
+                            None
+                        }
+                    };
+                    if let Some(available) = available {
+                        let language_receiver = language_registry.load_language(&available);
+                        if let Ok(Ok(language)) = language_receiver.await {
+                            if let Err(err) = app.update_entity(&buffer, |b, cx| {
+                                b.set_language_registry(language_registry.clone());
+                                b.set_language_async(Some(language.clone()), cx);
+                            }) {
+                                debug!(
+                                    "quick_search: failed to set language for syntax enrich worker: {:?}",
+                                    err
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            let parsing_idle = app.read_entity(&buffer, |b, _| b.parsing_idle());
+            if let Ok(idle) = parsing_idle {
+                idle.await;
+            }
+
+            while let Ok(item) = receiver.try_recv() {
+                queued.push(item);
+            }
+
+            if sink.is_cancelled() {
+                break;
+            }
+
+            let snapshot = match app.read_entity(&buffer, |b, _| b.snapshot()) {
+                Ok(s) => s,
+                Err(_) => break,
+            };
+            if snapshot.language().is_none() {
+                queued.clear();
+                continue;
+            }
+
+            let mut patches: Vec<(crate::types::MatchKey, crate::types::QuickMatchPatch)> =
+                Vec::new();
+
+            for item in queued.drain(..) {
+                let snippet_len = item.snippet_len;
+                if snippet_len == 0 {
+                    continue;
+                }
+
+                let max_row = snapshot.text.max_point().row;
+                let row = item.row.min(max_row);
+                let line_start = Point::new(row, 0);
+                let line_end = Point::new(row, snapshot.text.line_len(row));
+                let line_start_offset = snapshot.text.point_to_offset(line_start);
+                let line_end_offset = snapshot.text.point_to_offset(line_end);
+
+                // Limit work to the snippet window to avoid scanning long lines.
+                let snippet_abs_start = line_start_offset;
+                let snippet_abs_end =
+                    (line_start_offset + snippet_len + 512).min(line_end_offset);
+
+                let snippet_text: String = snapshot
+                    .text_for_range(snippet_abs_start..snippet_abs_end)
+                    .collect();
+                let snippet_trimmed_end = snippet_text.trim_end();
+                let trim_start = snippet_trimmed_end.len() - snippet_trimmed_end.trim_start().len();
+                let snippet_end_abs = (trim_start + snippet_len).min(snippet_trimmed_end.len());
+                if trim_start >= snippet_end_abs {
+                    continue;
+                }
+
+                let mut highlight_ids: Vec<(Range<usize>, HighlightId)> = Vec::new();
+                let mut current_offset = 0usize;
+                let mut chunks = snapshot.chunks(snippet_abs_start..snippet_abs_end, true);
+                for chunk in chunks.by_ref() {
+                    let chunk_len = chunk.text.len();
+
+                    if let Some(highlight_id) = chunk.syntax_highlight_id {
+                        let abs_start = current_offset;
+                        let abs_end = current_offset + chunk_len;
+                        let rel_start = abs_start.saturating_sub(trim_start);
+                        let rel_end = abs_end.saturating_sub(trim_start);
+                        if rel_end > 0 && rel_start < snippet_len {
+                            let clamped_start = rel_start.min(snippet_len);
+                            let clamped_end = rel_end.min(snippet_len);
+                            if clamped_start < clamped_end {
+                                highlight_ids.push((clamped_start..clamped_end, highlight_id));
+                            }
+                        }
+                    }
+
+                    current_offset += chunk_len;
+                    if current_offset >= snippet_len + trim_start {
+                        break;
+                    }
+                }
+
+                if highlight_ids.is_empty() {
+                    continue;
+                }
+                coalesce_syntax_runs(&mut highlight_ids);
+
+                patches.push((
+                    item.key,
+                    crate::types::QuickMatchPatch {
+                        snippet_syntax_highlights: crate::types::PatchValue::SetTo(Arc::from(
+                            highlight_ids.into_boxed_slice(),
+                        )),
+                        ..Default::default()
+                    },
+                ));
+            }
+
+            if !patches.is_empty() {
+                sink.apply_patches_by_key(patches, app);
+            }
+        }
+    })
+    .detach();
+}
+
+fn build_matches_for_buffer(
+    app: &mut AsyncApp,
+    buffer: &gpui::Entity<Buffer>,
+    ranges: Vec<Range<TextAnchor>>,
+    path_style: &PathStyle,
+    source_id: &Arc<str>,
+) -> Option<BuildMatchesOutput> {
+    struct PreparedRange {
+        start_col: u32,
+        start_point: Point,
+        end_point: Point,
+        start_offset: usize,
+        end_offset: usize,
+    }
+
+    let snapshot = match app.read_entity(buffer, |b, _| b.snapshot()) {
+        Ok(s) => s,
+        Err(_) => return None,
+    };
+    let buffer_id = snapshot.text.remote_id();
+
+    let (project_path, path_label): (Option<ProjectPath>, Arc<str>) = app
+        .read_entity(buffer, |b, cx| {
+            let Some(file) = b.file() else {
+                return (None, Arc::<str>::from("<untitled>"));
+            };
+            let project_path = ProjectPath {
+                worktree_id: file.worktree_id(cx),
+                path: file.path().clone(),
+            };
+            let path_label: Arc<str> =
+                Arc::<str>::from(file.path().display(*path_style).to_string());
+            (Some(project_path), path_label)
+        })
+        .unwrap_or((None, Arc::<str>::from("<untitled>")));
+
+    let file_name: Arc<str> = path_label
+        .rsplit_once(path::MAIN_SEPARATOR)
+        .map(|(_, name)| Arc::<str>::from(name))
+        .or_else(|| {
+            path_label
+                .rsplit_once('/')
+                .map(|(_, name)| Arc::<str>::from(name))
+        })
+        .unwrap_or_else(|| path_label.clone());
+
+    let path_segments = crate::types::split_path_segments(&path_label);
+    let display_path: Arc<str> = elide_path(&path_segments);
+
+    let group: Option<Arc<GroupInfo>> = project_path.as_ref().map(|project_path| {
+        let title: Arc<str> = project_path
+            .path
+            .file_name()
+            .map(|name| Arc::<str>::from(name.to_string()))
+            .unwrap_or_else(|| Arc::<str>::from(project_path.path.as_unix_str().to_string()));
+        let subtitle: Option<Arc<str>> = project_path.path.parent().and_then(|path| {
+            let s = path.as_unix_str().to_string();
+            (!s.is_empty()).then(|| Arc::<str>::from(s))
+        });
+        let icon_path = app
+            .update({
+                let file_name = file_name.clone();
+                move |cx| FileIcons::get_icon(Path::new(file_name.as_ref()), cx)
+            })
+            .unwrap_or_else(|err| {
+                debug!("quick_search: failed to get icon for grep group: {:?}", err);
+                None
+            });
+
+        Arc::new(GroupInfo {
+            key: crate::types::compute_group_key_for_project_path(source_id, project_path),
+            header: GroupHeader {
+                icon_name: IconName::File,
+                icon_path,
+                title,
+                subtitle,
+            },
+        })
+    });
+
+    let mut per_line: FxHashMap<u32, Vec<PreparedRange>> = FxHashMap::default();
+    let mut line_order: Vec<u32> = Vec::new();
+    for range in ranges {
+        let start_point = range.start.to_point(&snapshot.text);
+        let end_point = range.end.to_point(&snapshot.text);
+        let start_offset = range.start.to_offset(&snapshot.text);
+        let end_offset = range.end.to_offset(&snapshot.text);
+        let row = start_point.row;
+
+        if !per_line.contains_key(&row) {
+            line_order.push(row);
+        }
+        per_line
+            .entry(row)
+            .or_insert_with(Vec::new)
+            .push(PreparedRange {
+                start_col: start_point.column,
+                start_point,
+                end_point,
+                start_offset,
+                end_offset,
+            });
+    }
+
+    let mut matches = Vec::with_capacity(line_order.len());
+    let mut pending_syntax: Vec<SyntaxEnrichItem> = Vec::new();
+    let mut line_buf = String::new();
+    let mut snippet_buf = String::new();
+    let mut snippet_match_positions: Vec<Range<usize>> = Vec::new();
+    let mut snippet_syntax_highlights: Vec<(Range<usize>, HighlightId)> = Vec::new();
+    for row in line_order {
+        let mut items = match per_line.remove(&row) {
+            Some(v) => v,
+            None => continue,
+        };
+        if items.len() > 1 {
+            items.sort_by_key(|item| item.start_col);
+        }
+
+        let mut ranges_for_line = Vec::with_capacity(items.len());
+        for item in &items {
+            ranges_for_line.push(item.start_point..item.end_point);
+        }
+
+        let Some(first_range) = items.first() else {
+            continue;
+        };
+        let first_col = first_range.start_col;
+        let start_point = first_range.start_point;
+        let location_label: Option<Arc<str>> =
+            Some(format!(":{}:{}", row + 1, first_col + 1).into());
+
+        let max_row = snapshot.text.max_point().row;
+        let row = row.min(max_row);
+        let line_start = Point::new(row, 0);
+        let line_end = Point::new(row, snapshot.text.line_len(row));
+        let line_start_offset = snapshot.text.point_to_offset(line_start);
+        let line_end_offset = snapshot.text.point_to_offset(line_end);
+        let line_read_end =
+            (line_start_offset + crate::MAX_SNIPPET_BYTES + 512).min(line_end_offset);
+
+        line_buf.clear();
+        line_buf.extend(snapshot.text_for_range(line_start_offset..line_read_end));
+
+        let line_trimmed_end = line_buf.trim_end();
+        let trim_start = line_trimmed_end.len() - line_trimmed_end.trim_start().len();
+        let line_trimmed = &line_trimmed_end[trim_start..];
+
+        let snippet_content_len = clip_snippet_into(line_trimmed, &mut snippet_buf);
+        let snippet: Arc<str> = Arc::<str>::from(snippet_buf.as_str());
+
+        snippet_match_positions.clear();
+        for r in &items {
+            let match_start_offset = r.start_offset;
+            let match_end_offset = r.end_offset;
+
+            let start_in_line = match_start_offset.saturating_sub(line_start_offset);
+            let end_in_line = match_end_offset.saturating_sub(line_start_offset);
+
+            let start_in_preview = start_in_line.saturating_sub(trim_start);
+            let end_in_preview = end_in_line.saturating_sub(trim_start);
+
+            if start_in_preview >= snippet_content_len || end_in_preview == 0 {
+                continue;
+            }
+
+            let clamped_start = start_in_preview.min(snippet_content_len);
+            let clamped_end = end_in_preview.min(snippet_content_len);
+            if clamped_start >= clamped_end {
+                continue;
+            }
+
+            let snippet_str = snippet.as_ref();
+            let mut safe_start = clamped_start.min(snippet_str.len());
+            while safe_start > 0 && !snippet_str.is_char_boundary(safe_start) {
+                safe_start -= 1;
+            }
+            let mut safe_end = clamped_end.min(snippet_str.len());
+            while safe_end < snippet_str.len() && !snippet_str.is_char_boundary(safe_end) {
+                safe_end += 1;
+            }
+
+            if safe_start < safe_end {
+                snippet_match_positions.push(safe_start..safe_end);
+            }
+        }
+        if snippet_match_positions.len() > 1 {
+            snippet_match_positions.sort_by_key(|r| (r.start, r.end));
+            snippet_match_positions.dedup();
+        }
+
+        snippet_syntax_highlights.clear();
+        if snippet_content_len > 0 && snapshot.language().is_some() {
+            let mut rel_offset = 0usize;
+            let snippet_abs_start = line_start_offset + trim_start;
+            let snippet_abs_end = snippet_abs_start + snippet_content_len;
+            let mut chunks = snapshot.chunks(snippet_abs_start..snippet_abs_end, true);
+            for chunk in chunks.by_ref() {
+                let chunk_len = chunk.text.len();
+                let chunk_start = rel_offset;
+                let chunk_end = rel_offset + chunk_len;
+                rel_offset = chunk_end;
+
+                if let Some(id) = chunk.syntax_highlight_id {
+                    let start_rel = chunk_start.min(snippet_content_len);
+                    let end_rel = chunk_end.min(snippet_content_len);
+                    if start_rel < end_rel {
+                        snippet_syntax_highlights.push((start_rel..end_rel, id));
+                    }
+                }
+
+                if rel_offset >= snippet_content_len {
+                    break;
+                }
+            }
+            if snippet_syntax_highlights.len() > 1 {
+                coalesce_syntax_runs(&mut snippet_syntax_highlights);
+            }
+        }
+
+        let ranges_for_line_points = ranges_for_line;
+        let first_point_range = ranges_for_line_points.first().cloned();
+        let kind = crate::types::QuickMatchKind::Buffer {
+            buffer_id,
+            ranges: ranges_for_line_points.clone(),
+            position: Some((row, start_point.column)),
+        };
+        let snippet_for_match = snippet.clone();
+        let snippet_match_positions_arc = (!snippet_match_positions.is_empty())
+            .then(|| Arc::<[Range<usize>]>::from(snippet_match_positions.as_slice()));
+        let snippet_syntax_highlights_arc = (!snippet_syntax_highlights.is_empty()).then(|| {
+            Arc::<[(Range<usize>, HighlightId)]>::from(snippet_syntax_highlights.as_slice())
+        });
+
+        let mut match_item = QuickMatchBuilder::new(source_id.clone(), kind)
+            .action(match project_path.clone() {
+                Some(project_path) => crate::types::MatchAction::OpenProjectPath {
+                    project_path,
+                    point_range: first_point_range,
+                },
+                None => crate::types::MatchAction::Dismiss,
+            })
+            .group(group.clone())
+            .path_label(path_label.clone())
+            .display_path(display_path.clone())
+            .path_segments(path_segments.clone())
+            .file_name(file_name.clone())
+            .location_label(location_label)
+            .snippet(Some(snippet_for_match))
+            .first_line_snippet(Some(snippet))
+            .snippet_match_positions(snippet_match_positions_arc)
+            .snippet_syntax_highlights(snippet_syntax_highlights_arc)
+            .build();
+        match_item.key = crate::types::compute_match_key(&match_item);
+        if match_item.snippet_syntax_highlights.is_none() && snippet_content_len > 0 {
+            pending_syntax.push(SyntaxEnrichItem {
+                key: match_item.key,
+                row,
+                snippet_len: snippet_content_len,
+            });
+        }
+        matches.push(match_item);
+    }
+
+    Some(BuildMatchesOutput {
+        matches,
+        pending_syntax,
+        buffer_id,
+    })
+}
