@@ -1,18 +1,3 @@
-# workspace::NewFileFromClipboard
-
-- add argument to `workspace::NewFileFromClipboard` which allows to set initial language
-then bind to space n j with json
-
-- in `workspace::NewFileFromClipboard` on initial opening the markdown block syntax highlighting is not working, at all
-I always need to modify the content in the line before ```, then the syntax highlighting appears
-
-related code:
-`Self::new_in_workspace_with_content_and_language(workspace, content, Some("Markdown"), window, cx).detach_and_prompt_err(`
-
-how about creating it with empty content and then afterward insert the clipboard content? try that out, maybe it will work
-
-# Others
-
 - fix whitespace selection which only shows when visual selection is active
 
 - write in github about broken git blame in git commit view
@@ -31,7 +16,7 @@ also increase the width of the open recent file modal
 - do not use smooth caret in terminal, I think it causes lazygit commit message dialog typing weirdness (basically hidden)
 even when smooth caret is disabled, in lazygit the cursor is weird?
 
-- space u `tab_switcher::ToggleAll` should not show buffer where it was launched 
+- space u `tab_switcher::ToggleAll` should not show buffer where it was launched
 
 # Try out
 

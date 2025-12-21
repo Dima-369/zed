@@ -2925,11 +2925,14 @@ impl Editor {
             })?;
             workspace.update_in(cx, |workspace, window, cx| {
                 let editor =
-                    cx.new(|cx| Editor::for_buffer(buffer, Some(project.clone()), window, cx));
+                    cx.new(|cx| Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx));
                 workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
                 editor.update(cx, |editor, cx| {
                     editor.set_text(content, window, cx);
                     editor.move_to_beginning(&Default::default(), window, cx);
+                });
+                buffer.update(cx, |buffer, cx| {
+                    buffer.did_save(buffer.version().clone(), None, cx);
                 });
                 editor
             })
