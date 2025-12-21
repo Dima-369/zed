@@ -1,6 +1,9 @@
 - fix missing borders for tabs
+always show borders for every tab, since you do not know which one is wrapped
+where is code for pinned tabs?
 
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
+is that a bug from my fork code?
 
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
 is that a bug from my fork code?
