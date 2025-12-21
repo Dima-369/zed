@@ -3,10 +3,6 @@
 - check with main branch, fold anything via action, notice how in my fork, it ends up in visual mode
 is that a bug from my fork code?
 
-- improve UI `workspace::OpenRecentFile`. on very long file paths they are badly truncated
-copy the design of the `file_finder::Toggle` action which shows file name left, then path at right truncated in gray
-also increase the width of the open recent file modal
-
 - space u `tab_switcher::ToggleAll` should not show buffer where it was launched
 if there are no tabs to display then, show an error notification
 
