@@ -269,7 +269,7 @@ impl PickerDelegate for BranchDiffPickerDelegate {
         _cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let branch = self.matches.get(ix)?;
-        let branch_name = branch.name().clone();
+        let branch_name: SharedString = branch.name().to_string().into();
 
         Some(
             ListItem::new(SharedString::from(format!("branch-{ix}")))

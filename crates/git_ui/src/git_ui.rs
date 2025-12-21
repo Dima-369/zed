@@ -395,7 +395,7 @@ fn open_branch_diff_picker(
     window: &mut Window,
     cx: &mut Context<Workspace>,
 ) {
-    let branches_task = repo.update(cx, |repo, cx| repo.branches(cx));
+    let branches_task = repo.update(cx, |repo, _cx| repo.branches());
     let workspace_weak = workspace.weak_handle();
     let repo_weak = repo.downgrade();
     let buffer_clone = buffer.clone();

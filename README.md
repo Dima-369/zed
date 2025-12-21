@@ -68,7 +68,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - `editor::CreateNavHistoryEntry`
 - `editor::CopyAll` to copy entire buffer content to clipboard
 - `editor::CountTokens` which counts the tokens in the current buffer using `o200k_base` via the `tiktoken` crate
-- `git::DiffWithCommit` from https://github.com/zed-industries/zed/pull/44467
+- `git::DiffWithCommit` from https://github.com/zed-industries/zed/pull/44467 and based on that code, `git::DiffWithBranch` is implemented
 - `jump::Toggle` from https://github.com/tebben/zed/tree/feature/jump with the following changes:
   - modified key jump hints to my custom Dvorak Programmer keyboard layout
   - implemented multiple character jump hints
