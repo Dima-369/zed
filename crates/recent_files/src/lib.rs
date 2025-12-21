@@ -1,3 +1,4 @@
+use file_icons::FileIcons;
 use fuzzy::{StringMatch, StringMatchCandidate};
 use gpui::{
     App, AsyncApp, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
@@ -8,7 +9,7 @@ use parking_lot::Mutex;
 use picker::{Picker, PickerDelegate};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use ui::{HighlightedLabel, ListItem, prelude::*};
+use ui::{HighlightedLabel, ListItem, ListItemSpacing, prelude::*};
 use util::paths::PathExt;
 use workspace::{
     self, ModalView, PathList, SerializedWorkspaceLocation, WORKSPACE_DB, Workspace, WorkspaceId,
@@ -564,7 +565,7 @@ impl PickerDelegate for RecentFilesDelegate {
         ix: usize,
         selected: bool,
         _window: &mut Window,
-        _cx: &mut Context<Picker<Self>>,
+        cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let hit = self.matches.get(ix)?;
         let path = self.files.get(hit.candidate_id)?;
@@ -593,14 +594,19 @@ impl PickerDelegate for RecentFilesDelegate {
             .copied()
             .collect();
 
+        let file_icon = FileIcons::get_icon(&path, cx)
+            .map(|icon| Icon::from_path(icon).color(Color::Muted));
+
         Some(
             ListItem::new(ix)
+                .spacing(ListItemSpacing::Sparse)
                 .toggle_state(selected)
+                .start_slot::<Icon>(file_icon)
                 .inset(true)
                 .child(
                     h_flex()
                         .gap_2()
-                        .items_center()
+                        .py_px()
                         .child(HighlightedLabel::new(
                             file_name.to_string(),
                             file_name_highlights,
