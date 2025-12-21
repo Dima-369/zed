@@ -153,16 +153,44 @@ impl JumpBar {
             .filter(|c| !next_chars.contains(&c.to_lowercase().next().unwrap()))
             .collect();
 
-        let mut labels = Vec::new();
-
-        for &ch in &available {
-            if labels.len() >= count {
-                break;
-            }
-            labels.push(ch.to_string());
+        let n = available.len();
+        if n == 0 {
+            return Vec::new();
         }
 
-        // If we don't have enough labels, that's okay - user needs to filter more
+        let mut labels = Vec::new();
+
+        // Calculate split between single and double char labels
+        // x + (n-x)*n >= count => x <= (n^2 - count) / (n - 1)
+        let max_2_char_capacity = n * n;
+
+        let effective_count = count.min(max_2_char_capacity);
+
+        let single_char_count = if effective_count <= n {
+            effective_count
+        } else {
+            (n * n - effective_count) / (n - 1)
+        };
+
+        // Generate single char labels
+        for i in 0..single_char_count {
+            labels.push(available[i].to_string());
+        }
+
+        // Generate double char labels
+        for i in single_char_count..n {
+            let prefix = available[i];
+            for &suffix in &available {
+                if labels.len() >= effective_count {
+                    break;
+                }
+                labels.push(format!("{}{}", prefix, suffix));
+            }
+            if labels.len() >= effective_count {
+                break;
+            }
+        }
+
         labels
     }
 
@@ -191,6 +219,16 @@ impl JumpBar {
                                 self.previous_query_length = query.len();
                                 return;
                             }
+                        }
+                    }
+
+                    if query.starts_with(&self.search_query) {
+                        let remaining = &query[self.search_query.len()..];
+                        if !remaining.is_empty()
+                            && self.matches.iter().any(|m| m.label.starts_with(remaining))
+                        {
+                            self.previous_query_length = query.len();
+                            return;
                         }
                     }
                 }

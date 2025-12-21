@@ -57,7 +57,7 @@ https://github.com/zed-industries/zed/pull/44530
 
 ## which key system
 
-merge in main, then check out
+THIS is in MAIN already, check it out
 https://github.com/zed-industries/zed/pull/43618
 
 Add which-key system
@@ -99,7 +99,10 @@ https://github.com/zed-industries/zed/pull/43826
 
 https://github.com/zed-industries/zed/pull/45307
 
+# Try out and maybe modify?
 
+Beam Jump - Lightning Fast Vim style navigation
+https://github.com/zed-industries/zed/pull/45387
 
 # Potentially interesting things not merged
 
