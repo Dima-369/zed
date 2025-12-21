@@ -11,16 +11,6 @@ otherwise try this out
 Implement initial side-by-side Git diffs
 https://github.com/zed-industries/zed/pull/40014
 
-## Filter for code actions
-
-This seems nicer:
-Add filter for code actions
-https://github.com/zed-industries/zed/pull/44534
-
-This is a bit weird with a new action and numbers:
-Add fuzzy code actions picker
-https://github.com/zed-industries/zed/pull/44802
-
 ## Smooth cursor
 
 editor: Add smooth cursor animation
@@ -73,3 +63,17 @@ Add quick search modal
 https://github.com/zed-industries/zed/pull/44530
 I don't think it is ready yet, when a file has many search results, you do not see the file name anymore, it needs sticky scroll.
 Otherwise, UI works great on my smaller resolution.
+
+## Filter for code actions
+
+### Add filter for code actions
+
+Has merge conflicts and I do not have a clue how to merge.
+
+https://github.com/zed-industries/zed/pull/44534
+
+### Add fuzzy code actions picker
+
+This is a bit weird with a new action and numbers. Will not use it.
+
+https://github.com/zed-industries/zed/pull/44802
