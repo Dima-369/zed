@@ -12,6 +12,8 @@ use language::{Anchor, Buffer, HighlightId, ToOffset as _};
 use text::Bias;
 use picker::{Picker, PickerDelegate};
 use project::search::SearchQuery;
+use settings::Settings;
+use vim_mode_setting::VimModeSetting;
 use std::{
     ops::Range,
     sync::{
@@ -249,7 +251,7 @@ impl BufferSearchModal {
                 let selection = editor.selections.newest_anchor();
                 let range = selection.range();
                 if range.start.cmp(&range.end, &snapshot).is_ne() {
-                    let text_opt = editor
+                    editor
                         .buffer()
                         .read(cx)
                         .as_singleton()
@@ -257,16 +259,21 @@ impl BufferSearchModal {
                             let buffer = buffer.read(cx);
                             let start = range.start.text_anchor.to_offset(&buffer);
                             let end = range.end.text_anchor.to_offset(&buffer);
-                            Some(buffer.text_for_range(start..end).collect::<String>())
-                        });
-                    text_opt
-                } else {
+                            let mut text = buffer.text_for_range(start..end).collect::<String>();
+                            if text.ends_with('\n') {
+                                text.pop();
+                            }
+                            Some(text)
+                        })
+                } else if !VimModeSetting::get_global(cx).0 {
                     let query = editor.query_suggestion(window, cx);
                     if query.is_empty() {
                         None
                     } else {
                         Some(query)
                     }
+                } else {
+                    None
                 }
             });
 
