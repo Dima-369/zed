@@ -22,11 +22,6 @@ pub struct EditorSettingsContent {
     ///
     /// Default: bar
     pub cursor_shape: Option<CursorShape>,
-    /// Enable smooth cursor animation.
-    /// When true, cursor animates smoothly between positions and blinks with opacity fade.
-    ///
-    /// Default: true
-    pub smooth_caret: Option<bool>,
     /// Determines when the mouse cursor should be hidden in an editor or input box.
     ///
     /// Default: on_typing_and_movement
@@ -100,14 +95,6 @@ pub struct EditorSettingsContent {
     /// Default: 4.0
     #[serde(serialize_with = "crate::serialize_optional_f32_with_two_decimal_places")]
     pub fast_scroll_sensitivity: Option<f32>,
-    /// Whether to scroll smoothly or instantaneously
-    ///
-    /// Default: false
-    pub smooth_scroll: Option<bool>,
-    /// How much time in seconds it takes for a scrolling when smooth_scroll is enabled
-    ///
-    /// Default: 0.25
-    pub smooth_scroll_duration: Option<f32>,
     /// Settings for sticking scopes to the top of the editor.
     ///
     /// Default: sticky scroll is disabled
@@ -681,33 +668,6 @@ pub enum CursorShape {
     Underline,
     /// A box drawn around the following character
     Hollow,
-}
-
-/// Smooth cursor animation mode.
-/// Controls whether the cursor animates between positions.
-///
-/// Default: on
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    JsonSchema,
-    MergeFrom,
-    strum::VariantArray,
-    strum::VariantNames,
-)]
-#[serde(rename_all = "snake_case")]
-pub enum SmoothCaretMode {
-    /// No animation - cursor teleports instantly
-    Off,
-    /// Smooth animation with critically damped spring physics (150ms, trail_size=1.0)
-    #[default]
-    On,
 }
 
 /// What to do when go to definition yields no results.

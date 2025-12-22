@@ -17,7 +17,6 @@ use ui::scrollbars::{ScrollbarVisibility, ShowScrollbar};
 pub struct EditorSettings {
     pub cursor_blink: bool,
     pub cursor_shape: Option<CursorShape>,
-    pub smooth_caret: bool,
     pub current_line_highlight: CurrentLineHighlight,
     pub selection_highlight: bool,
     pub rounded_selection: bool,
@@ -34,8 +33,6 @@ pub struct EditorSettings {
     pub horizontal_scroll_margin: f32,
     pub scroll_sensitivity: f32,
     pub fast_scroll_sensitivity: f32,
-    pub smooth_scroll: bool,
-    pub smooth_scroll_duration: f32,
     pub sticky_scroll: StickyScroll,
     pub relative_line_numbers: RelativeLineNumbers,
     pub seed_search_query_from_cursor: SeedQuerySetting,
@@ -205,7 +202,6 @@ impl Settings for EditorSettings {
         Self {
             cursor_blink: editor.cursor_blink.unwrap(),
             cursor_shape: editor.cursor_shape.map(Into::into),
-            smooth_caret: editor.smooth_caret.unwrap_or(true),
             current_line_highlight: editor.current_line_highlight.unwrap(),
             selection_highlight: editor.selection_highlight.unwrap(),
             rounded_selection: editor.rounded_selection.unwrap(),
@@ -291,8 +287,6 @@ impl Settings for EditorSettings {
                 delay: drag_and_drop_selection.delay.unwrap(),
             },
             lsp_document_colors: editor.lsp_document_colors.unwrap(),
-            smooth_scroll: editor.smooth_scroll.unwrap_or(false),
-            smooth_scroll_duration: editor.smooth_scroll_duration.unwrap_or(0.25),
             minimum_contrast_for_highlights: editor.minimum_contrast_for_highlights.unwrap().0,
             completion_menu_scrollbar: editor.completion_menu_scrollbar.map(Into::into).unwrap(),
         }
