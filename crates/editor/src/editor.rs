@@ -124,6 +124,7 @@ use gpui::{
     size,
 };
 use hover_links::{HoverLink, HoveredLinkState, find_file};
+pub use hover_links::{find_url, find_url_from_range};
 use hover_popover::{HoverState, hide_hover};
 use indent_guides::ActiveIndentGuidesState;
 use inlays::{InlaySplice, inlay_hints::InlayHintRefreshReason};
@@ -227,7 +228,6 @@ use workspace::{
 use crate::{
     code_context_menus::CompletionsMenuSource,
     editor_settings::MultiCursorModifier,
-    hover_links::{find_url, find_url_from_range},
     inlays::{
         InlineValueCache,
         inlay_hints::{LspInlayHintData, inlay_hint_settings},

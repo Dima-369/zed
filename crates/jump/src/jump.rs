@@ -1,11 +1,12 @@
 use editor::{
-    DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset,
+    DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset, ToOffset,
     display_map::ToDisplayPoint,
 };
 use gpui::{
     Action, App, Context, DismissEvent, Entity, EventEmitter, Focusable, IntoElement, Render,
     Styled, Window, div,
 };
+use linkify::{LinkFinder, LinkKind};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -19,6 +20,10 @@ pub struct Toggle {
     #[serde(default = "util::serde::default_true")]
     pub focus: bool,
 }
+
+#[derive(PartialEq, Clone, Deserialize, JsonSchema, Debug, Action)]
+#[action(namespace = jump)]
+pub struct JumpToUrl;
 
 impl Toggle {
     pub fn default() -> Self {
@@ -44,6 +49,12 @@ struct JumpMatch {
     next_char: Option<char>,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum JumpMode {
+    Text,
+    Url,
+}
+
 pub struct JumpBar {
     query_editor: Entity<Editor>,
     query_editor_focused: bool,
@@ -53,6 +64,7 @@ pub struct JumpBar {
     search_query: String,
     previous_query_length: usize,
     matches: Vec<JumpMatch>,
+    mode: JumpMode,
 }
 
 impl JumpBar {
@@ -62,11 +74,19 @@ impl JumpBar {
         _: &mut Context<Workspace>,
     ) {
         workspace.register_action(|workspace, _: &Toggle, window, cx| {
-            Self::toggle(workspace, window, cx)
+            Self::toggle(workspace, JumpMode::Text, window, cx)
+        });
+        workspace.register_action(|workspace, _: &JumpToUrl, window, cx| {
+            Self::toggle(workspace, JumpMode::Url, window, cx)
         });
     }
 
-    pub fn toggle(workspace: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>) {
+    pub fn toggle(
+        workspace: &mut Workspace,
+        mode: JumpMode,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
         let workspace_handle = cx.entity();
 
         // Collect all visible editors from all panes
@@ -96,6 +116,7 @@ impl JumpBar {
                 workspace_handle,
                 active_editor_entity,
                 visible_editors,
+                mode,
                 window,
                 cx,
             )
@@ -106,12 +127,17 @@ impl JumpBar {
         workspace: Entity<Workspace>,
         active_editor: Option<Entity<Editor>>,
         visible_editors: Vec<Entity<Editor>>,
+        mode: JumpMode,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
         let query_editor = cx.new(|cx| {
             let mut editor = Editor::single_line(window, cx);
-            editor.set_placeholder_text("Jump to…", window, cx);
+            let placeholder = match mode {
+                JumpMode::Text => "Jump to…",
+                JumpMode::Url => "Jump to URL…",
+            };
+            editor.set_placeholder_text(placeholder, window, cx);
             editor.set_use_autoclose(false);
             editor
         });
@@ -120,7 +146,7 @@ impl JumpBar {
 
         cx.focus_view(&query_editor, window);
 
-        Self {
+        let mut this = Self {
             query_editor,
             query_editor_focused: false,
             workspace,
@@ -129,7 +155,14 @@ impl JumpBar {
             search_query: String::new(),
             previous_query_length: 0,
             matches: Vec::new(),
+            mode,
+        };
+
+        if mode == JumpMode::Url {
+            this.update_search(window, cx);
         }
+
+        this
     }
 
     fn generate_labels(count: usize, next_chars: &HashSet<char>) -> Vec<String> {
@@ -200,6 +233,28 @@ impl JumpBar {
             EditorEvent::BufferEdited => {
                 let query = self.query_editor.read(cx).text(cx);
 
+                if self.mode == JumpMode::Url {
+                    for jump_match in &self.matches {
+                        if !jump_match.label.is_empty() && jump_match.label == query {
+                            let position = jump_match.position;
+                            let target_editor = jump_match.editor.clone();
+                            self.jump_to_position(position, target_editor, window, cx);
+                            return;
+                        }
+                    }
+
+                    let filtered_matches: Vec<_> = self
+                        .matches
+                        .iter()
+                        .filter(|m| m.label.starts_with(&query))
+                        .collect();
+
+                    if !filtered_matches.is_empty() {
+                        self.update_labels(Some(query.len()), Some(&query), cx);
+                    }
+                    return;
+                }
+
                 // Handle backspace when query is getting shorter
                 if query.len() < self.previous_query_length {
                     self.previous_query_length = query.len();
@@ -265,6 +320,41 @@ impl JumpBar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.mode == JumpMode::Url {
+            // For URL mode, we need to extract the URL at the given position
+            // We'll need to use the linkify crate directly to find the URL at the position
+            target_editor.update(cx, |editor, cx| {
+                let snapshot = editor.buffer().read(cx).snapshot(cx);
+                let anchor = editor.display_map.update(cx, |map, cx| {
+                    map.snapshot(cx)
+                        .display_point_to_anchor(position, editor::Bias::Left)
+                });
+
+                // Get the text around the anchor to find the URL
+                let MultiBufferOffset(offset) = anchor.to_offset(&snapshot);
+
+                // Get the whole text for link identification
+                let text = snapshot.text();
+
+                // Use linkify to find the URL at the specific position
+                let mut finder = LinkFinder::new();
+                finder.kinds(&[LinkKind::Url]);
+
+                for link in finder.links(&text) {
+                    if link.start() <= offset && offset <= link.end() {
+                        let url = link.as_str();
+                        cx.open_url(url);
+                        break;
+                    }
+                }
+            });
+            self.query_editor.update(cx, |editor, cx| {
+                editor.clear(window, cx);
+            });
+            cx.emit(DismissEvent);
+            return;
+        }
+
         // Activate the target editor's pane if it's not already active
         self.workspace.update(cx, |workspace, cx| {
             for pane in workspace.panes() {
@@ -321,7 +411,7 @@ impl JumpBar {
         let query = self.query_editor.read(cx).text(cx);
         self.search_query = query.clone();
 
-        if query.is_empty() {
+        if query.is_empty() && self.mode != JumpMode::Url {
             // Clear all editors
             for editor in &self.visible_editors {
                 editor.update(cx, |editor, cx| {
@@ -333,159 +423,202 @@ impl JumpBar {
             return;
         }
 
-        // Get active editor cursor position for distance calculation
-        let active_cursor_info = self.active_editor.as_ref().map(|editor_entity| {
-            let editor_id = editor_entity.entity_id();
-            let cursor_point = editor_entity.update(cx, |editor, cx| {
-                let snapshot = editor.snapshot(window, cx);
-                let display_snapshot = snapshot.display_snapshot;
-                let cursor_anchor = editor.selections.newest_anchor().head();
-                cursor_anchor.to_display_point(&display_snapshot)
-            });
-            (cursor_point, editor_id)
-        });
+        let mut all_matches = Vec::new();
 
-        let (active_cursor_point, active_editor_id) = match active_cursor_info {
-            Some((point, id)) => (point, Some(id)),
-            None => {
-                // No active editor, use first visible editor's cursor
-                if let Some(first_editor) = self.visible_editors.first() {
-                    let editor_id = first_editor.entity_id();
-                    let point = first_editor.update(cx, |editor, cx| {
-                        let snapshot = editor.snapshot(window, cx);
-                        let display_snapshot = snapshot.display_snapshot;
-                        let cursor_anchor = editor.selections.newest_anchor().head();
-                        cursor_anchor.to_display_point(&display_snapshot)
+        if self.mode == JumpMode::Url {
+            // For URL mode, collect all URLs from all visible editors
+            for editor_entity in &self.visible_editors {
+                let editor_matches = editor_entity.update(cx, |editor, cx| {
+                    let buffer = editor.buffer().read(cx);
+                    let buffer_snapshot = buffer.snapshot(cx);
+                    let display_snapshot = editor.display_map.update(cx, |map, _cx| map.snapshot(_cx));
+
+                    let mut urls = Vec::new();
+
+                    // Get the full content of the buffer
+                    let text = buffer_snapshot.text();
+
+                    // Use linkify to find all URLs
+                    let mut finder = LinkFinder::new();
+                    finder.kinds(&[LinkKind::Url]);
+
+                    for link in finder.links(&text) {
+                        let start_offset = link.start();
+
+                        // Convert to display point
+                        let anchor = buffer_snapshot.anchor_before(MultiBufferOffset(start_offset));
+                        let display_point = anchor.to_display_point(&display_snapshot);
+
+                        urls.push((display_point, 0u32)); // distance doesn't matter much for URLs
+                    }
+
+                    urls
+                });
+
+                for (position, distance) in editor_matches {
+                    all_matches.push(JumpMatch {
+                        position,
+                        label: String::new(),
+                        distance,
+                        editor: editor_entity.clone(),
+                        next_char: None,
                     });
-                    (point, Some(editor_id))
-                } else {
-                    return; // No editors at all
                 }
             }
-        };
-
-        let mut all_matches = Vec::new();
-        let query_len = query.len();
-
-        // Search each visible editor
-        for editor_entity in &self.visible_editors {
-            let is_active = active_editor_id
-                .map(|id| id == editor_entity.entity_id())
-                .unwrap_or(false);
-            let editor_distance_penalty = if is_active { 0 } else { 100000 };
-
-            let editor_matches = editor_entity.update(cx, |editor, cx| {
-                let snapshot = editor.snapshot(window, cx);
-                let display_snapshot = snapshot.display_snapshot;
-
-                // Get the visible range
-                let visible_line_count = editor.visible_line_count().unwrap_or(50.0);
-                let scroll_position = editor
-                    .scroll_manager
-                    .anchor()
-                    .scroll_position(&display_snapshot);
-
-                let visible_start_row = scroll_position.y as u32;
-                let visible_end_row = visible_start_row + visible_line_count.ceil() as u32;
-
-                let buffer = editor.buffer().read(cx);
-                let buffer_snapshot = buffer.snapshot(cx);
-
-                // Convert visible display rows to buffer positions
-                let visible_start_point = display_snapshot.display_point_to_point(
-                    DisplayPoint::new(editor::display_map::DisplayRow(visible_start_row), 0),
-                    editor::Bias::Left,
-                );
-
-                let visible_end_point = display_snapshot.display_point_to_point(
-                    DisplayPoint::new(editor::display_map::DisplayRow(visible_end_row), 0),
-                    editor::Bias::Left,
-                );
-
-                // Get start and end offsets for the visible range
-                let start_offset = buffer_snapshot.point_to_offset(visible_start_point);
-                let end_offset = buffer_snapshot.point_to_offset(visible_end_point);
-
-                let mut matches = Vec::new();
-
-                let text = buffer_snapshot.text();
-                let query_str = query.as_str();
-
-                if query_len == 0 {
-                    return matches;
-                }
-
-                let query_first = query_str.chars().next().unwrap();
-                let query_first_lower = query_first.to_ascii_lowercase();
-                let query_first_upper = query_first.to_ascii_uppercase();
-
-                let bytes = text.as_bytes();
-
-                // Only search within the visible range
-                for offset_usize in start_offset.0..end_offset.0 {
-                    let offset = MultiBufferOffset(offset_usize);
-                    // Skip if remaining text is shorter than query
-                    if offset + query_len > end_offset {
-                        break;
-                    }
-
-                    // Check first character quickly to skip most positions
-                    let c = bytes[offset_usize] as char;
-                    if c != query_first_lower && c != query_first_upper {
-                        continue;
-                    }
-
-                    // Extract slice safely and compare case-insensitively
-                    if !text.is_char_boundary(offset_usize)
-                        || !text.is_char_boundary(offset_usize + query_len)
-                    {
-                        continue;
-                    }
-
-                    let slice = &text[offset_usize..offset_usize + query_len];
-                    if slice.eq_ignore_ascii_case(query_str) {
-                        let point = buffer_snapshot.offset_to_point(offset);
-                        let display_point = display_snapshot
-                            .buffer_snapshot()
-                            .anchor_after(point)
-                            .to_display_point(&display_snapshot);
-
-                        let dy = (display_point.row().0 as i32
-                            - active_cursor_point.row().0 as i32)
-                            .unsigned_abs();
-                        let dx = (display_point.column() as i32
-                            - active_cursor_point.column() as i32)
-                            .unsigned_abs();
-                        let distance = dy * 1000 + dx;
-
-                        // Get the next character after the match
-                        let next_char = if offset + query_len < buffer_snapshot.len() {
-                            let next_offset_usize = offset_usize + query_len;
-                            if text.is_char_boundary(next_offset_usize) {
-                                text[next_offset_usize..].chars().next()
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        };
-
-                        matches.push((display_point, distance, next_char));
-                    }
-                }
-
-                matches
+        } else {
+            // Get active editor cursor position for distance calculation
+            let active_cursor_info = self.active_editor.as_ref().map(|editor_entity| {
+                let editor_id = editor_entity.entity_id();
+                let cursor_point = editor_entity.update(cx, |editor, cx| {
+                    let snapshot = editor.snapshot(window, cx);
+                    let display_snapshot = snapshot.display_snapshot;
+                    let cursor_anchor = editor.selections.newest_anchor().head();
+                    cursor_anchor.to_display_point(&display_snapshot)
+                });
+                (cursor_point, editor_id)
             });
 
-            // Add matches from this editor with distance penalty
-            for (position, distance, next_char) in editor_matches {
-                all_matches.push(JumpMatch {
-                    position,
-                    label: String::new(),
-                    distance: distance + editor_distance_penalty,
-                    editor: editor_entity.clone(),
-                    next_char,
+            let (active_cursor_point, active_editor_id) = match active_cursor_info {
+                Some((point, id)) => (point, Some(id)),
+                None => {
+                    // No active editor, use first visible editor's cursor
+                    if let Some(first_editor) = self.visible_editors.first() {
+                        let editor_id = first_editor.entity_id();
+                        let point = first_editor.update(cx, |editor, cx| {
+                            let snapshot = editor.snapshot(window, cx);
+                            let display_snapshot = snapshot.display_snapshot;
+                            let cursor_anchor = editor.selections.newest_anchor().head();
+                            cursor_anchor.to_display_point(&display_snapshot)
+                        });
+                        (point, Some(editor_id))
+                    } else {
+                        return; // No editors at all
+                    }
+                }
+            };
+
+            let query_len = query.len();
+
+            // Search each visible editor
+            for editor_entity in &self.visible_editors {
+                let is_active = active_editor_id
+                    .map(|id| id == editor_entity.entity_id())
+                    .unwrap_or(false);
+                let editor_distance_penalty = if is_active { 0 } else { 100000 };
+
+                let editor_matches = editor_entity.update(cx, |editor, cx| {
+                    let snapshot = editor.snapshot(window, cx);
+                    let display_snapshot = snapshot.display_snapshot;
+
+                    // Get the visible range
+                    let visible_line_count = editor.visible_line_count().unwrap_or(50.0);
+                    let scroll_position = editor
+                        .scroll_manager
+                        .anchor()
+                        .scroll_position(&display_snapshot);
+
+                    let visible_start_row = scroll_position.y as u32;
+                    let visible_end_row = visible_start_row + visible_line_count.ceil() as u32;
+
+                    let buffer = editor.buffer().read(cx);
+                    let buffer_snapshot = buffer.snapshot(cx);
+
+                    // Convert visible display rows to buffer positions
+                    let visible_start_point = display_snapshot.display_point_to_point(
+                        DisplayPoint::new(editor::display_map::DisplayRow(visible_start_row), 0),
+                        editor::Bias::Left,
+                    );
+
+                    let visible_end_point = display_snapshot.display_point_to_point(
+                        DisplayPoint::new(editor::display_map::DisplayRow(visible_end_row), 0),
+                        editor::Bias::Left,
+                    );
+
+                    // Get start and end offsets for the visible range
+                    let start_offset = buffer_snapshot.point_to_offset(visible_start_point);
+                    let end_offset = buffer_snapshot.point_to_offset(visible_end_point);
+
+                    let mut matches = Vec::new();
+
+                    let text = buffer_snapshot.text();
+                    let query_str = query.as_str();
+
+                    if query_len == 0 {
+                        return matches;
+                    }
+
+                    let query_first = query_str.chars().next().unwrap();
+                    let query_first_lower = query_first.to_ascii_lowercase();
+                    let query_first_upper = query_first.to_ascii_uppercase();
+
+                    let bytes = text.as_bytes();
+
+                    // Only search within the visible range
+                    for offset_usize in start_offset.0..end_offset.0 {
+                        let offset = MultiBufferOffset(offset_usize);
+                        // Skip if remaining text is shorter than query
+                        if offset + query_len > end_offset {
+                            break;
+                        }
+
+                        // Check first character quickly to skip most positions
+                        let c = bytes[offset_usize] as char;
+                        if c != query_first_lower && c != query_first_upper {
+                            continue;
+                        }
+
+                        // Extract slice safely and compare case-insensitively
+                        if !text.is_char_boundary(offset_usize)
+                            || !text.is_char_boundary(offset_usize + query_len)
+                        {
+                            continue;
+                        }
+
+                        let slice = &text[offset_usize..offset_usize + query_len];
+                        if slice.eq_ignore_ascii_case(query_str) {
+                            let point = buffer_snapshot.offset_to_point(offset);
+                            let display_point = display_snapshot
+                                .buffer_snapshot()
+                                .anchor_after(point)
+                                .to_display_point(&display_snapshot);
+
+                            let dy = (display_point.row().0 as i32
+                                - active_cursor_point.row().0 as i32)
+                                .unsigned_abs();
+                            let dx = (display_point.column() as i32
+                                - active_cursor_point.column() as i32)
+                                .unsigned_abs();
+                            let distance = dy * 1000 + dx;
+
+                            // Get the next character after the match
+                            let next_char = if offset + query_len < buffer_snapshot.len() {
+                                let next_offset_usize = offset_usize + query_len;
+                                if text.is_char_boundary(next_offset_usize) {
+                                    text[next_offset_usize..].chars().next()
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+
+                            matches.push((display_point, distance, next_char));
+                        }
+                    }
+
+                    matches
                 });
+
+                // Add matches from this editor with distance penalty
+                for (position, distance, next_char) in editor_matches {
+                    all_matches.push(JumpMatch {
+                        position,
+                        label: String::new(),
+                        distance: distance + editor_distance_penalty,
+                        editor: editor_entity.clone(),
+                        next_char,
+                    });
+                }
             }
         }
 
@@ -511,16 +644,6 @@ impl JumpBar {
         self.matches = all_matches;
 
         self.update_labels(None, None, cx);
-
-        // Autojump if exactly one match (now happens regardless of settings)
-        if self.matches.len() == 1 {
-            if let Some(jump_match) = self.matches.first() {
-                let position = jump_match.position;
-                let target_editor = jump_match.editor.clone();
-                self.jump_to_position(position, target_editor, window, cx);
-                return;
-            }
-        }
 
         cx.notify();
     }

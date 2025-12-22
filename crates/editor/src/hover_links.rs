@@ -468,7 +468,7 @@ pub fn show_link_definition(
     editor.hovered_link_state = Some(hovered_link_state);
 }
 
-pub(crate) fn find_url(
+pub fn find_url(
     buffer: &Entity<language::Buffer>,
     position: text::Anchor,
     cx: AsyncWindowContext,
@@ -528,7 +528,7 @@ pub(crate) fn find_url(
     None
 }
 
-pub(crate) fn find_url_from_range(
+pub fn find_url_from_range(
     buffer: &Entity<language::Buffer>,
     range: Range<text::Anchor>,
     cx: AsyncWindowContext,
