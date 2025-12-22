@@ -1,5 +1,8 @@
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+- always show in the right preview, all matches bg highlighted and only the active one gets the match active bg color
+
 - if 2 or more matches on same line, you need to use a different bg color to designate active match
+I see that there was code added, but it does not work correctly? the active bg is never highlighted?
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
@@ -105,7 +108,7 @@ I tested it, the file search only shows `...` which is not good. Text search see
 
 https://github.com/zed-industries/zed/pull/44942
 
-### Add quick search modal (PR WIP)
+### Add quick search modal (PR open)
 
 I don't think it is ready yet, when a file has many search results, you do not see the file name anymore, it needs sticky scroll.
 Otherwise, UI works great on my smaller resolution.
