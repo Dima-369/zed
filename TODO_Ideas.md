@@ -1,6 +1,5 @@
-- undo all smooth caret changes (see https://github.com/zed-industries/zed/pull/44770/changes on what to undo)
-711068f0facd is the merge commit
-then merge in https://github.com/zed-industries/zed/pull/43826 as a test
+- merge in https://github.com/zed-industries/zed/pull/43826 as a test to see how it behaves
+that is the other small diff smooth caret PR
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
@@ -40,11 +39,7 @@ index 504a1927a0..9e30903069 100644
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 is that a bug from my fork code?
 
-- based on the code in https://github.com/zed-industries/zed/pull/44530 implement swiper
-use 50% width left for candidates, right 50% width for preview
-
-it was implemented as `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
-add this note in readme
+- improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
 - write in github about broken git blame in git commit view
 
@@ -95,7 +90,7 @@ https://github.com/zed-industries/zed/pull/43826
 ## Add file explorer modal v2 (PR open)
 
 I already have his v1 (https://github.com/zed-industries/zed/pull/43961 (PR closed)) integrated. It is bound at `file_explorer::Toggle`.
-I only see the v2 improvement that it has a full text field at the top, which can go outside the project root directory, but that is just a minor thing.
+I only see the v2 improvement that it has a full text field at the top, which can go outside the project root directory, but that is just a minor thing. I do not think I need it, since I can just do it via the `neovim` task.
 
 https://github.com/zed-industries/zed/pull/45307
 
