@@ -1,12 +1,9 @@
 - can `jump::Toggle` work in multi buffers? currently, no hints are displayed at all
-
-- fix key G and R so they jump to start of word
+I tried with AI and it fails to do, how about checking other jump hint PRs if it works there, and then copy over the relevant code?
 
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
   - the right preview only appears when I hit arrow keys once, before it just displays ???
-
-- if 2 or more matches on same line, you need to use a different bg color to designate active match
-I see that there was code added, but it does not work correctly? the active bg is never highlighted?
+  - fix warnings once I am happy with it, then bind to key b and use zed regular at `space t b`
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
