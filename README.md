@@ -36,7 +36,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - implement new recent file functionality which tracks every opened buffer to quickly jump to file/open new workspace. Action is `workspace::OpenRecentFile`
 - improved the `go to next/previous diagnostic` action to always jump to errors first. Only if there are no errors, it jumps to warnings. Before, this was mixed
 - moving up/down in outline panel does not wrap around anymore
-- changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the second part is still untested)
+- changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the code for opening as plain text is still untested since I do not use agents inside Zed anymore, and just use CLI)
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
 - modified `vim/.../delete_motion.rs` so `vim::DeleteRight` at end of line stays on the newline character
 - modified `editor::GoToDefinition` to not enter Vim visual mode when jumping to a definition
