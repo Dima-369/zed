@@ -1,5 +1,3 @@
-- how to disable smooth caret?
-
 - undo all smooth caret changes
 711068f0facd is the merge commit
 then merge in https://github.com/zed-industries/zed/pull/43826 as a test 
@@ -12,11 +10,10 @@ is that a bug from my fork code?
 - based on the code in https://github.com/zed-industries/zed/pull/44530 implement swiper
 use 50% width left for candidates, right 50% width for preview
 
-# AI (auggie) fails
-
 - write in github about broken git blame in git commit view
 
-- when I am inside a git commit view (for instance launched from git blame) and I run `git::Blame`, I just see this error notification: `failed to find a git repository for buffer`. I wonder if you can implement this, so `git::Blame` also works in git commit view tabs, and shows the left side next to the line numbers for the blame info PLUS `editor::OpenGitBlameCommit` works to jump to the new commit
+- TRY this out via Gemini?
+when I am inside a git commit view (for instance launched from git blame) and I run `git::Blame`, I just see this error notification: `failed to find a git repository for buffer`. I wonder if you can implement this, so `git::Blame` also works in git commit view tabs, and shows the left side next to the line numbers for the blame info PLUS `editor::OpenGitBlameCommit` works to jump to the new commit
 
 
 
