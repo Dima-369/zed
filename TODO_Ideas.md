@@ -1,3 +1,7 @@
+- improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+- if the buffer where the modal was enabled, has a visual selection, it should be the preset query of the modal
+- if 2 or more matches on same line, you need to use a different bg color to designate active match
+
 - merge in https://github.com/zed-industries/zed/pull/43826 as a test to see how it behaves
 that is the other small diff smooth caret PR
 
@@ -41,10 +45,6 @@ But when cursor is on the characters before on that line, it is correctly copied
 Is that a bug from my fork code?
 
 - improve `outline_toggle` in multi buffers to show files only, currently, nothing is shown
-
-- improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
-- if the buffer where the modal was enabled, has a visual selection, it should be the preset query of the modal
-- if 2 or more matches on same line, you need to use a different bg color to designate active match
 
 ---
 
@@ -163,7 +163,7 @@ https://github.com/zed-industries/zed/pull/43733
 
 # Impossible to fix from my side
 
-## Fix that the git: blame action inside a git blame commit tab is not working and only showing an error notification 
+## Fix that the git: blame action inside a git blame commit tab is not working and only showing an error notification
 
 I tried to fix with my yek file merger through Gemini and via auggie, but both failed.
 
