@@ -74,6 +74,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - implemented multiple character jump hints
   - fixed bug that hints did not appear correctly
   - set the opacity of the dialog to 50% to see hints below
+  - implemented `jump::JumpToUrl` based on this code to jump to `http...` URLs
   - BUG: does not work in multi buffers
 - [DEPRECATED due to smooth scrolling PR merge] `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit. Bind like this:
 
