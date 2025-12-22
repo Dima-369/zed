@@ -3,7 +3,7 @@
 - fix key G and R so they jump to start of word
 
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
-- always show in the right preview, all matches bg highlighted and only the active one gets the match active bg color
+  - the right preview only appears when I hit arrow keys once, before it just displays ???
 
 - if 2 or more matches on same line, you need to use a different bg color to designate active match
 I see that there was code added, but it does not work correctly? the active bg is never highlighted?
