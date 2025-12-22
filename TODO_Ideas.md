@@ -9,10 +9,6 @@ is that a bug from my fork code?
 - based on the code in https://github.com/zed-industries/zed/pull/44530 implement swiper
 use 50% width left for candidates, right 50% width for preview
 
-- try this out
-Very small diff? Add smooth cursor animation
-https://github.com/zed-industries/zed/pull/43826
-
 - add jump to url
 bind to space l
 
@@ -24,6 +20,8 @@ bind to space l
 
 
 
+
+---
 
 # Investigations
 
@@ -38,7 +36,26 @@ https://github.com/zed-industries/zed/pull/44770
 
 ### Add smooth cursor animation
 
-Very small diff, try this out!
+This has a very small diff, I checked out the branch, but `cargo run` does not start properly and is unable to open a window:
+
+```
+Zed failed to open a window: select toolchains
+
+Caused by:
+    0: Prepare call failed for query:
+       SELECT
+         name,
+         path,
+         worktree_id,
+         relative_worktree_path,
+         language_name,
+         raw_json
+       FROM
+         toolchains
+       WHERE
+         workspace_id = ?
+    1: Sqlite call failed with code 1 and message: Some("no such column: worktree_id"). See https://zed.dev/docs/linux for troubleshooting steps.
+```
 
 https://github.com/zed-industries/zed/pull/43826
 
