@@ -2928,6 +2928,9 @@ impl Editor {
                 editor.update(cx, |editor, cx| {
                     editor.set_text(content, window, cx);
                     editor.move_to_beginning(&Default::default(), window, cx);
+                    // Update edit prediction settings after editor is fully initialized
+                    // This ensures that edit predictions are properly enabled for this buffer
+                    editor.update_edit_prediction_settings(cx);
                 });
                 buffer.update(cx, |buffer, cx| {
                     buffer.did_save(buffer.version().clone(), None, cx);
