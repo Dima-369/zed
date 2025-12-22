@@ -5,6 +5,35 @@ then merge in https://github.com/zed-industries/zed/pull/43826 as a test
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
 
+qwen came up with this
+
+```diff
+diff --git a/crates/editor/src/editor.rs b/crates/editor/src/editor.rs
+index 504a1927a0..9e30903069 100644
+--- a/crates/editor/src/editor.rs
++++ b/crates/editor/src/editor.rs
+@@ -2917,11 +2917,16 @@ impl Editor {
+             })?;
+             workspace.update_in(cx, |workspace, window, cx| {
+                 let editor =
+                     cx.new(|cx| Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx));
+                 workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
+                 editor.update(cx, |editor, cx| {
+                     editor.set_text(content, window, cx);
+                     editor.move_to_beginning(&Default::default(), window, cx);
++                    
++                    // Update edit prediction settings after editor is fully initialized
++                    // This ensures that edit predictions are properly enabled for this buffer
++                    editor.update_edit_prediction_settings(cx);
+                 });
+                 buffer.update(cx, |buffer, cx| {
+                     buffer.did_save(buffer.version().clone(), None, cx);
+                 });
+                 editor
+             })
+         })
+```
+
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 is that a bug from my fork code?
 
