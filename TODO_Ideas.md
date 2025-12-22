@@ -13,33 +13,8 @@ the agent pane at right also has no edit predictions? Or does it?
 it interestingly worked with switching edit prediction provider to Codestral instead of `Zed AI`
 is that a bug in the release version as well, try to reproduce
 
-qwen came up with this
-
-```diff
-diff --git a/crates/editor/src/editor.rs b/crates/editor/src/editor.rs
-index 504a1927a0..9e30903069 100644
---- a/crates/editor/src/editor.rs
-+++ b/crates/editor/src/editor.rs
-@@ -2917,11 +2917,16 @@ impl Editor {
-             })?;
-             workspace.update_in(cx, |workspace, window, cx| {
-                 let editor =
-                     cx.new(|cx| Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx));
-                 workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
-                 editor.update(cx, |editor, cx| {
-                     editor.set_text(content, window, cx);
-                     editor.move_to_beginning(&Default::default(), window, cx);
-+                    // Update edit prediction settings after editor is fully initialized
-+                    // This ensures that edit predictions are properly enabled for this buffer
-+                    editor.update_edit_prediction_settings(cx);
-                 });
-                 buffer.update(cx, |buffer, cx| {
-                     buffer.did_save(buffer.version().clone(), None, cx);
-                 });
-                 editor
-             })
-         })
-```
+qwen suggested to use: `editor.update_edit_prediction_settings(cx);`, but it did not work
+remove it from the code
 
 - in visual line mode when cursor is on the newline character, then the line below is also incorrectly copied.
 But when cursor is on the characters before on that line, it is correctly copied.
