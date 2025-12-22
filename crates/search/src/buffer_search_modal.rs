@@ -26,7 +26,6 @@ use ui::{
 };
 use util::{ResultExt, paths::PathMatcher};
 use workspace::{ModalView, Workspace};
-use workspace::searchable::SearchableItemHandle;
 
 use crate::{
     SearchOption, SearchOptions, ToggleCaseSensitive, ToggleIncludeIgnored, ToggleRegex,
@@ -129,6 +128,7 @@ pub struct BufferSearchDelegate {
 pub struct BufferSearchModal {
     picker: Entity<Picker<BufferSearchDelegate>>,
     preview_editor: Option<Entity<Editor>>,
+    target_buffer: Entity<Buffer>,
     _picker_subscription: Subscription,
     _preview_editor_subscription: Option<Subscription>,
     _preview_debounce_task: Option<Task<()>>,
@@ -387,6 +387,7 @@ impl BufferSearchModal {
         Self {
             picker,
             preview_editor: None,
+            target_buffer,
             _picker_subscription: picker_subscription,
             _preview_editor_subscription: None,
             _preview_debounce_task: None,
@@ -493,7 +494,7 @@ impl BufferSearchModal {
             return;
         }
 
-        let buffer = self.picker.read(cx).delegate.target_buffer.clone();
+        let buffer = self.target_buffer.clone();
 
         let editor = cx.new(|cx| {
             let mut editor = Editor::for_buffer(buffer.clone(), None, window, cx);
@@ -753,10 +754,11 @@ impl PickerDelegate for BufferSearchDelegate {
     fn update_matches(
         &mut self,
         query: String,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Task<()> {
         self.current_query = query.clone();
+        let window_handle = window.window_handle();
 
         if let Some(prev_cancelled) = self.search_cancelled.take() {
             prev_cancelled.store(true, Ordering::Relaxed);
@@ -842,6 +844,24 @@ impl PickerDelegate for BufferSearchDelegate {
                     let cursor_line = buffer_snapshot.offset_to_point(initial_cursor).row;
                     picker.delegate.selected_index =
                         cursor_line.min(line_count.saturating_sub(1)) as usize;
+
+                    let selected_index = picker.delegate.selected_index;
+                    let buffer_search_modal = picker.delegate.buffer_search_modal.clone();
+                    let preview_data = picker.delegate.items.get(selected_index).map(|item| {
+                        (
+                            item.primary_match_offset,
+                            selected_index,
+                            picker.delegate.all_matches.clone(),
+                        )
+                    });
+
+                    if let Some(modal) = buffer_search_modal.upgrade() {
+                        window_handle.update(cx, |_, window, cx| {
+                            modal.update(cx, |modal, cx| {
+                                modal.update_preview(preview_data, window, cx);
+                            });
+                        });
+                    }
 
                     cx.notify();
                 })
@@ -1034,6 +1054,23 @@ impl PickerDelegate for BufferSearchDelegate {
                     }
 
                     picker.delegate.selected_index = best_index;
+
+                    let buffer_search_modal = picker.delegate.buffer_search_modal.clone();
+                    let preview_data = picker.delegate.items.get(best_index).map(|item| {
+                        (
+                            item.primary_match_offset,
+                            best_index,
+                            picker.delegate.all_matches.clone(),
+                        )
+                    });
+
+                    if let Some(modal) = buffer_search_modal.upgrade() {
+                        window_handle.update(cx, |_, window, cx| {
+                            modal.update(cx, |modal, cx| {
+                                modal.update_preview(preview_data, window, cx);
+                            });
+                        });
+                    }
 
                     cx.notify();
                 })
