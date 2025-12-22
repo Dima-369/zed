@@ -3,6 +3,7 @@
 then merge in https://github.com/zed-industries/zed/pull/43826 as a test
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
+see `fn edit_prediction_settings_at_position(`
 
 - in visual line mode when cursor is on newline, then the line below is also incorrectly copied
 is that a bug from my fork code?
