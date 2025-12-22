@@ -1,3 +1,7 @@
+- can `jump::Toggle` work in multi buffers? currently, no hints are displayed at all
+
+- fix key G and R so they jump to start of word
+
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 - always show in the right preview, all matches bg highlighted and only the active one gets the match active bg color
 
@@ -41,7 +45,8 @@ index 504a1927a0..9e30903069 100644
 
 - in visual line mode when cursor is on the newline character, then the line below is also incorrectly copied.
 But when cursor is on the characters before on that line, it is correctly copied.
-Is that a bug from my fork code?
+
+this also happens on `main`
 
 - improve `outline_toggle` in multi buffers to show files only, currently, nothing is shown
 
