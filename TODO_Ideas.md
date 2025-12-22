@@ -1,6 +1,6 @@
-- undo all smooth caret changes
+- undo all smooth caret changes (see https://github.com/zed-industries/zed/pull/44770/changes on what to undo)
 711068f0facd is the merge commit
-then merge in https://github.com/zed-industries/zed/pull/43826 as a test 
+then merge in https://github.com/zed-industries/zed/pull/43826 as a test
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 
@@ -22,7 +22,7 @@ when I am inside a git commit view (for instance launched from git blame) and I 
 
 # Investigations
 
-## Smooth cursor
+## Smooth caret/cursor
 
 ### editor: Add smooth cursor animation
 
