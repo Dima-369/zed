@@ -2636,20 +2636,6 @@ impl Interactivity {
                     style.refine(&group_hover.style);
                 }
             }
-
-            if let Some(hover_style) = self.hover_style.as_ref() {
-                let is_hovered = if let Some(hitbox) = hitbox {
-                    hitbox.is_hovered(window)
-                } else if let Some(element_state) = element_state.as_ref() {
-                    element_state
-                        .hover_state
-                        .as_ref()
-                        .map(|state| state.borrow().element)
-                        .unwrap_or(false)
-                } else {
-                    false
-                };
-            }
         }
 
         if let Some(hitbox) = hitbox {
