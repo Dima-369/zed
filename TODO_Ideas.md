@@ -40,12 +40,13 @@ index 504a1927a0..9e30903069 100644
 is that a bug from my fork code?
 
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+if the previous buffer has
 
 - write in github about broken git blame in git commit view
 
 - TRY this out via Gemini?
-when I am inside a git commit view (for instance launched from git blame) and I run `git::Blame`, I just see this error notification: `failed to find a git repository for buffer`. I wonder if you can implement this, so `git::Blame` also works in git commit view tabs, and shows the left side next to the line numbers for the blame info PLUS `editor::OpenGitBlameCommit` works to jump to the new commit
-
+when I am inside a git commit view (for instance launched from `git::Blame` action) and I run `git::Blame` again in that new commit view, I just see this error notification: `failed to find a git repository for buffer`. I wonder if you can implement this, so `git::Blame` also works in git commit view tabs, and shows the left side next to the line numbers for the blame info PLUS `editor::OpenGitBlameCommit` works to jump to the new commit
+what files are those?
 
 
 
