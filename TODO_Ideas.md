@@ -1,9 +1,6 @@
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 - if 2 or more matches on same line, you need to use a different bg color to designate active match
 
-- merge in https://github.com/zed-industries/zed/pull/43826 as a test to see how it behaves
-that is the other small diff smooth caret PR
-
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
 the agent pane at right also has no edit predictions? Or does it?
@@ -54,14 +51,14 @@ Is that a bug from my fork code?
 
 ## Smooth caret/cursor
 
-### editor: Add smooth cursor animation
+### editor: Add smooth cursor animation (PR open)
 
 I tested this and it has visual glitches, apparently which I documented in GitHub, so I do not use this.
 It also does not support jumping the cursor across multiple panes.
 
 https://github.com/zed-industries/zed/pull/44770
 
-### Add smooth cursor animation
+### Add smooth cursor animation (PR closed)
 
 This has a very small diff, I checked out the branch, but `cargo run` does not start properly and is unable to open a window:
 
@@ -84,6 +81,9 @@ Caused by:
     1: Sqlite call failed with code 1 and message: Some("no such column: worktree_id"). See https://zed.dev/docs/linux for troubleshooting steps.
 ```
 
+I then let AI apply the diff directly on my `dima` branch, and it correctly starts up and shows the smooth cursor.
+But it has the same annoying character misplaced bug as the other diff, but in this PR it instantly jumps to the character of where the cursor will be which also looks bad.
+
 https://github.com/zed-industries/zed/pull/43826
 
 ## Add file explorer modal v2 (PR open)
@@ -95,7 +95,7 @@ https://github.com/zed-industries/zed/pull/45307
 
 ## telescope/quick search
 
-Not so important with `editor::SearchInCurrentFileViaMultiBuffer`.
+Not so important with `buffer_search_modal::ToggleBufferSearch` and `editor::SearchInCurrentFileViaMultiBuffer`.
 
 ###  Add telescope style search (PR closed)
 
