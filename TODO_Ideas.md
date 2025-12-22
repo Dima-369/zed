@@ -39,9 +39,6 @@ index 504a1927a0..9e30903069 100644
          })
 ```
 
-- is it possible to unset mouse hover background color entirely? or make fully transparent?
-it is annoying since I am only using mouse anyway and mouse pointer cursor already shows that it is clickable
-
 - in visual line mode when cursor is on the newline character, then the line below is also incorrectly copied.
 But when cursor is on the characters before on that line, it is correctly copied.
 Is that a bug from my fork code?

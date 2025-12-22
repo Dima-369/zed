@@ -47,6 +47,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add `blame > git_blame_font_family` setting to specify the font family for the git blame view because I am using a proportional font and the blame view misaligns otherwise
 - integrated live refreshing project search from https://github.com/zed-industries/zed/pull/42889, enable in `settings.json` via `search > search_on_input`
 - integrated smooth scroll from https://github.com/zed-industries/zed/pull/31671
+- modified `compute_style_internal()` in `crates/gpui/src/elements/div.rs` to not apply the mouse hover style, since it clashes when one only uses the keyboard
 
 ### Command palette
 

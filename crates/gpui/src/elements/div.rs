@@ -2649,10 +2649,6 @@ impl Interactivity {
                 } else {
                     false
                 };
-
-                if is_hovered {
-                    style.refine(hover_style);
-                }
             }
         }
 
