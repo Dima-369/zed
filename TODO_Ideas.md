@@ -6,6 +6,9 @@ then merge in https://github.com/zed-industries/zed/pull/43826 as a test
 see `fn edit_prediction_settings_at_position(`
 the agent pane at right also has no edit predictions? Or does it?
 
+it interestingly worked with switching edit prediction provider to Codestral instead of `Zed AI`
+is that a bug in the release version as well, try to reproduce
+
 qwen came up with this
 
 ```diff
@@ -22,7 +25,6 @@ index 504a1927a0..9e30903069 100644
                  editor.update(cx, |editor, cx| {
                      editor.set_text(content, window, cx);
                      editor.move_to_beginning(&Default::default(), window, cx);
-+                    
 +                    // Update edit prediction settings after editor is fully initialized
 +                    // This ensures that edit predictions are properly enabled for this buffer
 +                    editor.update_edit_prediction_settings(cx);
@@ -42,6 +44,7 @@ is that a bug from my fork code?
 use 50% width left for candidates, right 50% width for preview
 
 it was implemented as `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+add this note in readme
 
 - write in github about broken git blame in git commit view
 
