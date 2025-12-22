@@ -7,6 +7,7 @@ use gpui::{
     HighlightStyle, Pixels, Render, SharedString, StyledText, Subscription, Task, WeakEntity,
     Window, actions,
 };
+use workspace::searchable::SearchableItem;
 use language::{Anchor, Buffer, HighlightId, ToOffset as _};
 use text::Bias;
 use picker::{Picker, PickerDelegate};
@@ -56,6 +57,7 @@ struct LineMatchData {
     preview_match_ranges: Arc<Vec<AnchorRange>>,
     // Range in the preview text for the specific match this item represents (for list item highlighting)
     list_match_ranges: Arc<Vec<Range<usize>>>,
+    active_match_index_in_list: Option<usize>,
     trim_start: usize,
     syntax_highlights: Option<Arc<Vec<(Range<usize>, HighlightId)>>>,
     // The offset of the match this item specifically represents (for sorting/selection)
@@ -243,10 +245,31 @@ impl BufferSearchModal {
                 return;
             };
 
-            let selected_text = {
-                let query = editor.query_suggestion(window, cx);
-                if query.is_empty() { None } else { Some(query) }
-            };
+            let selected_text = editor.update(cx, |editor, cx| {
+                let snapshot = editor.buffer().read(cx).snapshot(cx);
+                let selection = editor.selections.newest_anchor();
+                let range = selection.range();
+                if range.start.cmp(&range.end, &snapshot).is_ne() {
+                    let text_opt = editor
+                        .buffer()
+                        .read(cx)
+                        .as_singleton()
+                        .and_then(|buffer| {
+                            let buffer = buffer.read(cx);
+                            let start = range.start.text_anchor.to_offset(&buffer);
+                            let end = range.end.text_anchor.to_offset(&buffer);
+                            Some(buffer.text_for_range(start..end).collect::<String>())
+                        });
+                    text_opt
+                } else {
+                    let query = editor.query_suggestion(window, cx);
+                    if query.is_empty() {
+                        None
+                    } else {
+                        Some(query)
+                    }
+                }
+            });
 
             let buffer = editor.read(cx).buffer().read(cx).as_singleton();
             let Some(buffer) = buffer else { return };
@@ -545,12 +568,19 @@ impl BufferSearchDelegate {
             })
             .unwrap_or_default();
 
-        for range in list_match_ranges.iter() {
+        for (i, range) in list_match_ranges.iter().enumerate() {
             if !is_valid_range(range) {
                 continue;
             }
+            let is_active = item.active_match_index_in_list == Some(i);
+            let color = if is_active {
+                cx.theme().colors().search_active_match_background
+            } else {
+                cx.theme().colors().search_match_background
+            };
             let match_style = HighlightStyle {
                 font_weight: Some(gpui::FontWeight::BOLD),
+                background_color: Some(color),
                 ..Default::default()
             };
             highlights.push((range.clone(), match_style));
@@ -767,6 +797,7 @@ impl PickerDelegate for BufferSearchDelegate {
                         preview_text,
                         preview_match_ranges: Arc::new(Vec::new()),
                         list_match_ranges: Arc::new(Vec::new()),
+                        active_match_index_in_list: None,
                         trim_start,
                         syntax_highlights,
                         primary_match_offset: line_start,
@@ -878,43 +909,56 @@ impl PickerDelegate for BufferSearchDelegate {
                     };
 
                     // Convert all matches on this line to anchor ranges for the preview editor
-                    let all_preview_match_ranges: Vec<AnchorRange> = ranges.iter().map(|r| {
-                         buffer_snapshot.anchor_at(r.start, Bias::Left)..buffer_snapshot.anchor_at(r.end, Bias::Right)
-                    }).collect();
+                    let all_preview_match_ranges: Vec<AnchorRange> = ranges
+                        .iter()
+                        .map(|r| {
+                            buffer_snapshot.anchor_at(r.start, Bias::Left)
+                                ..buffer_snapshot.anchor_at(r.end, Bias::Right)
+                        })
+                        .collect();
                     let all_preview_match_ranges = Arc::new(all_preview_match_ranges);
 
-                    // Create an item for each match
-                    for range in ranges {
-                         let ms = range.start;
-                         let me = range.end;
+                    let mut visible_preview_ranges = Vec::new();
+                    let mut original_index_to_list_index = HashMap::default();
 
-                         let start_in_line = ms.saturating_sub(line_start);
-                         let end_in_line = me.saturating_sub(line_start);
+                    for (i, range) in ranges.iter().enumerate() {
+                        let ms = range.start;
+                        let me = range.end;
 
-                         let start_in_preview = start_in_line.saturating_sub(trim_start);
-                         let end_in_preview = end_in_line.saturating_sub(trim_start);
+                        let start_in_line = ms.saturating_sub(line_start);
+                        let end_in_line = me.saturating_sub(line_start);
 
-                         let mut list_match_ranges = Vec::new();
+                        let start_in_preview = start_in_line.saturating_sub(trim_start);
+                        let end_in_preview = end_in_line.saturating_sub(trim_start);
 
-                         if start_in_preview < preview_len && end_in_preview > 0 {
-                            let clamped_start = start_in_line.min(preview_len);
-                            let clamped_end = end_in_line.min(preview_len);
+                        if start_in_preview < preview_len && end_in_preview > 0 {
+                            let clamped_start = start_in_preview.min(preview_len);
+                            let clamped_end = end_in_preview.min(preview_len);
                             if let Some((safe_start, safe_end)) =
                                 find_safe_char_boundaries(preview_str, clamped_start, clamped_end)
                             {
-                                list_match_ranges.push(safe_start..safe_end);
+                                visible_preview_ranges.push(safe_start..safe_end);
+                                original_index_to_list_index
+                                    .insert(i, visible_preview_ranges.len() - 1);
                             }
                         }
+                    }
+                    let list_match_ranges = Arc::new(visible_preview_ranges);
 
+                    // Create an item for each match
+                    for (i, range) in ranges.iter().enumerate() {
                         new_items.push(LineMatchData {
                             line,
                             line_label: (line + 1).to_string().into(),
                             preview_text: preview_text.clone(),
                             preview_match_ranges: all_preview_match_ranges.clone(),
-                            list_match_ranges: Arc::new(list_match_ranges),
+                            list_match_ranges: list_match_ranges.clone(),
+                            active_match_index_in_list: original_index_to_list_index
+                                .get(&i)
+                                .copied(),
                             trim_start,
                             syntax_highlights: syntax_highlights.clone(),
-                            primary_match_offset: ms,
+                            primary_match_offset: range.start,
                         });
                     }
                 }
