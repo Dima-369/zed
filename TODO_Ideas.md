@@ -1,3 +1,5 @@
+- how to disable smooth caret?
+
 - undo all smooth caret changes
 711068f0facd is the merge commit
 then merge in https://github.com/zed-industries/zed/pull/43826 as a test 
@@ -9,9 +11,6 @@ is that a bug from my fork code?
 
 - based on the code in https://github.com/zed-industries/zed/pull/44530 implement swiper
 use 50% width left for candidates, right 50% width for preview
-
-- add jump to url
-bind to space l
 
 # AI (auggie) fails
 
