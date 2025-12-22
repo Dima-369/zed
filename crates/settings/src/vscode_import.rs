@@ -297,7 +297,6 @@ impl VsCodeSettings {
             ),
             selection_highlight: self.read_bool("editor.selectionHighlight"),
             show_signature_help_after_edits: self.read_bool("editor.parameterHints.enabled"),
-            smooth_caret: None,
             smooth_scroll: None,
             smooth_scroll_duration: None,
             snippet_sort_order: None,
