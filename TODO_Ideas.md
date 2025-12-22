@@ -118,3 +118,21 @@ PR was apparently closed, only has 3k changes.
 Does it have merge conflicts?
 
 https://github.com/zed-industries/zed/pull/40014
+
+## Jump hint implementations
+
+### The branch where my implementation is based on (no PR)
+
+https://github.com/tebben/zed/tree/feature/jump
+
+### Beam Jump - Lightning Fast Vim style navigation (PR open)
+
+Has no screenshots.
+
+https://github.com/zed-industries/zed/pull/45387
+
+### helix: Add Helix's "Amp Jump" Feature (PR open)
+
+This shows 2 character hints at the start of each word.
+
+https://github.com/zed-industries/zed/pull/43733
