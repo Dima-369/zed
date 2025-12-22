@@ -4,6 +4,7 @@ then merge in https://github.com/zed-industries/zed/pull/43826 as a test
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
+the agent pane at right also has no edit predictions? Or does it?
 
 qwen came up with this
 
