@@ -1,5 +1,4 @@
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
-- if the buffer where the modal was enabled, has a visual selection, it should be the preset query of the modal
 - if 2 or more matches on same line, you need to use a different bg color to designate active match
 
 - merge in https://github.com/zed-industries/zed/pull/43826 as a test to see how it behaves
