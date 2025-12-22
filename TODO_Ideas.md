@@ -40,6 +40,8 @@ is that a bug from my fork code?
 - based on the code in https://github.com/zed-industries/zed/pull/44530 implement swiper
 use 50% width left for candidates, right 50% width for preview
 
+it was implemented as `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+
 - write in github about broken git blame in git commit view
 
 - TRY this out via Gemini?
