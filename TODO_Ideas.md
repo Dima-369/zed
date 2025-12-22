@@ -1,5 +1,6 @@
 - undo all smooth caret changes
 711068f0facd is the merge commit
+then merge in https://github.com/zed-industries/zed/pull/43826 as a test 
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 
