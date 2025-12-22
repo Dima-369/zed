@@ -2,8 +2,8 @@
 I tried with AI and it fails to do, how about checking other jump hint PRs if it works there, and then copy over the relevant code?
 
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
-  - the selection should only be taken over when in vim visual mode, since the current code also considers it a selection when I am in vim normal mode, it then prefills the word under the cursor which I don't want
-  - while at it, if selection from the launching buffer ends with a \n, trim that away
+  - can the right preview side have soft wrap enabled? since otherwise, it is easy for the match to get out of view
+  - can the left candidate be centered, currently is always at either top or bottom when holding arrow up/down
   - fix warnings once I am happy with it, then bind to key b and use zed regular at `space t b`
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
