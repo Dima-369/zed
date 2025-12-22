@@ -53,8 +53,6 @@ struct LineMatchData {
     line: u32,
     line_label: SharedString,
     preview_text: SharedString,
-    // Ranges in the buffer for ALL matches on this line (for preview editor highlighting)
-    preview_match_ranges: Arc<Vec<AnchorRange>>,
     // Range in the preview text for the specific match this item represents (for list item highlighting)
     list_match_ranges: Arc<Vec<Range<usize>>>,
     active_match_index_in_list: Option<usize>,
@@ -125,6 +123,7 @@ pub struct BufferSearchDelegate {
     current_query: String,
     focus_handle: Option<FocusHandle>,
     regex_error: Option<String>,
+    all_matches: Arc<Vec<AnchorRange>>,
 }
 
 pub struct BufferSearchModal {
@@ -368,6 +367,7 @@ impl BufferSearchModal {
             current_query: initial_query.clone().unwrap_or_default(),
             focus_handle: None,
             regex_error: None,
+            all_matches: Arc::new(Vec::new()),
         };
 
         let picker = cx.new(|cx| {
@@ -418,6 +418,7 @@ impl BufferSearchModal {
     fn navigate_and_highlight_matches(
         editor: &mut Editor,
         match_offset: usize,
+        active_match_index: usize,
         match_ranges: &[AnchorRange],
         window: &mut Window,
         cx: &mut Context<Editor>,
@@ -434,7 +435,13 @@ impl BufferSearchModal {
                 .collect();
             editor.highlight_background::<BufferSearchHighlights>(
                 &multi_buffer_ranges,
-                |_, theme| theme.colors().search_match_background,
+                move |index, theme| {
+                    if index == &active_match_index {
+                        theme.colors().search_active_match_background
+                    } else {
+                        theme.colors().search_match_background
+                    }
+                },
                 cx,
             );
         }
@@ -442,7 +449,7 @@ impl BufferSearchModal {
 
     fn schedule_preview_update(
         &mut self,
-        data: Option<(usize, Arc<Vec<AnchorRange>>)>,
+        data: Option<(usize, usize, Arc<Vec<AnchorRange>>)>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -460,11 +467,11 @@ impl BufferSearchModal {
 
     fn update_preview(
         &mut self,
-        data: Option<(usize, Arc<Vec<AnchorRange>>)>,
+        data: Option<(usize, usize, Arc<Vec<AnchorRange>>)>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some((match_offset, match_ranges)) = data else {
+        let Some((match_offset, active_index, match_ranges)) = data else {
             self.preview_editor = None;
             self._preview_editor_subscription = None;
             cx.notify();
@@ -473,7 +480,14 @@ impl BufferSearchModal {
 
         if let Some(editor) = &self.preview_editor {
             editor.update(cx, |editor, cx| {
-                Self::navigate_and_highlight_matches(editor, match_offset, &match_ranges, window, cx);
+                Self::navigate_and_highlight_matches(
+                    editor,
+                    match_offset,
+                    active_index,
+                    &match_ranges,
+                    window,
+                    cx,
+                );
             });
             cx.notify();
             return;
@@ -488,7 +502,14 @@ impl BufferSearchModal {
         });
 
         editor.update(cx, |editor, cx| {
-            Self::navigate_and_highlight_matches(editor, match_offset, &match_ranges, window, cx);
+            Self::navigate_and_highlight_matches(
+                editor,
+                match_offset,
+                active_index,
+                &match_ranges,
+                window,
+                cx,
+            );
         });
 
         self._preview_editor_subscription =
@@ -644,7 +665,11 @@ impl PickerDelegate for BufferSearchDelegate {
         let buffer_search_modal = self.buffer_search_modal.clone();
 
         let preview_data = if let Some(item) = self.items.get(ix) {
-            Some((item.primary_match_offset, item.preview_match_ranges.clone()))
+            Some((
+                item.primary_match_offset,
+                ix,
+                self.all_matches.clone(),
+            ))
         } else {
             None
         };
@@ -795,7 +820,6 @@ impl PickerDelegate for BufferSearchDelegate {
                         line,
                         line_label: (line + 1).to_string().into(),
                         preview_text,
-                        preview_match_ranges: Arc::new(Vec::new()),
                         list_match_ranges: Arc::new(Vec::new()),
                         active_match_index_in_list: None,
                         trim_start,
@@ -805,18 +829,23 @@ impl PickerDelegate for BufferSearchDelegate {
                 }
 
                 picker.update(cx, |picker, cx| {
-                    if cancelled.load(Ordering::Relaxed) { return; }
+                    if cancelled.load(Ordering::Relaxed) {
+                        return;
+                    }
 
                     picker.delegate.match_count = new_items.len();
                     picker.delegate.items = new_items;
                     picker.delegate.is_searching = false;
+                    picker.delegate.all_matches = Arc::new(Vec::new());
 
                     // Set selected index to cursor line
                     let cursor_line = buffer_snapshot.offset_to_point(initial_cursor).row;
-                    picker.delegate.selected_index = cursor_line.min(line_count.saturating_sub(1)) as usize;
+                    picker.delegate.selected_index =
+                        cursor_line.min(line_count.saturating_sub(1)) as usize;
 
                     cx.notify();
-                }).log_err();
+                })
+                .log_err();
             });
         }
 
@@ -858,6 +887,14 @@ impl PickerDelegate for BufferSearchDelegate {
             }
 
             let matches = matches;
+            let all_match_ranges: Vec<AnchorRange> = matches
+                .iter()
+                .map(|r| {
+                    buffer_snapshot.anchor_at(r.start, Bias::Left)
+                        ..buffer_snapshot.anchor_at(r.end, Bias::Right)
+                })
+                .collect();
+            let all_match_ranges = Arc::new(all_match_ranges);
 
             // Group matches by line to compute preview text once per line
             let mut lines_data: HashMap<u32, Vec<Range<usize>>> = HashMap::default();
@@ -871,13 +908,17 @@ impl PickerDelegate for BufferSearchDelegate {
             sorted_lines.sort();
 
             for line in sorted_lines {
-                if cancelled.load(Ordering::Relaxed) { return; }
+                if cancelled.load(Ordering::Relaxed) {
+                    return;
+                }
 
                 if let Some(ranges) = lines_data.remove(&line) {
                     let line_start = buffer_snapshot.point_to_offset(language::Point::new(line, 0));
                     let line_len = buffer_snapshot.line_len(line);
-                    let line_end = buffer_snapshot.point_to_offset(language::Point::new(line, line_len));
-                    let line_text: String = buffer_snapshot.text_for_range(line_start..line_end).collect();
+                    let line_end =
+                        buffer_snapshot.point_to_offset(language::Point::new(line, line_len));
+                    let line_text: String =
+                        buffer_snapshot.text_for_range(line_start..line_end).collect();
 
                     let trim_start = line_text.len() - line_text.trim_start().len();
                     let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
@@ -898,25 +939,23 @@ impl PickerDelegate for BufferSearchDelegate {
                                 if rel_end > 0 && rel_start < preview_len {
                                     let clamped_start = rel_start.min(preview_len);
                                     let clamped_end = rel_end.min(preview_len);
-                                    if let Some((safe_start, safe_end)) = find_safe_char_boundaries(preview_str, clamped_start, clamped_end) {
+                                    if let Some((safe_start, safe_end)) = find_safe_char_boundaries(
+                                        preview_str,
+                                        clamped_start,
+                                        clamped_end,
+                                    ) {
                                         highlights.push((safe_start..safe_end, highlight_id));
                                     }
                                 }
                             }
                             current_offset += chunk_len;
                         }
-                        if highlights.is_empty() { None } else { Some(Arc::new(highlights)) }
+                        if highlights.is_empty() {
+                            None
+                        } else {
+                            Some(Arc::new(highlights))
+                        }
                     };
-
-                    // Convert all matches on this line to anchor ranges for the preview editor
-                    let all_preview_match_ranges: Vec<AnchorRange> = ranges
-                        .iter()
-                        .map(|r| {
-                            buffer_snapshot.anchor_at(r.start, Bias::Left)
-                                ..buffer_snapshot.anchor_at(r.end, Bias::Right)
-                        })
-                        .collect();
-                    let all_preview_match_ranges = Arc::new(all_preview_match_ranges);
 
                     let mut visible_preview_ranges = Vec::new();
                     let mut original_index_to_list_index = HashMap::default();
@@ -934,9 +973,11 @@ impl PickerDelegate for BufferSearchDelegate {
                         if start_in_preview < preview_len && end_in_preview > 0 {
                             let clamped_start = start_in_preview.min(preview_len);
                             let clamped_end = end_in_preview.min(preview_len);
-                            if let Some((safe_start, safe_end)) =
-                                find_safe_char_boundaries(preview_str, clamped_start, clamped_end)
-                            {
+                            if let Some((safe_start, safe_end)) = find_safe_char_boundaries(
+                                preview_str,
+                                clamped_start,
+                                clamped_end,
+                            ) {
                                 visible_preview_ranges.push(safe_start..safe_end);
                                 original_index_to_list_index
                                     .insert(i, visible_preview_ranges.len() - 1);
@@ -951,7 +992,6 @@ impl PickerDelegate for BufferSearchDelegate {
                             line,
                             line_label: (line + 1).to_string().into(),
                             preview_text: preview_text.clone(),
-                            preview_match_ranges: all_preview_match_ranges.clone(),
                             list_match_ranges: list_match_ranges.clone(),
                             active_match_index_in_list: original_index_to_list_index
                                 .get(&i)
@@ -964,37 +1004,40 @@ impl PickerDelegate for BufferSearchDelegate {
                 }
             }
 
-            picker.update(cx, |picker, cx| {
-                if cancelled.load(Ordering::Relaxed) {
-                    return;
-                }
-
-                picker.delegate.match_count = matches.len();
-                picker.delegate.items = new_items;
-                picker.delegate.is_searching = false;
-
-                // Find closest match to initial cursor
-                // For search results, we look at primary_match_offset (absolute offset in buffer)
-                let mut best_index = 0;
-                let mut min_distance = usize::MAX;
-
-                for (idx, item) in picker.delegate.items.iter().enumerate() {
-                    let dist = if item.primary_match_offset >= initial_cursor {
-                        item.primary_match_offset - initial_cursor
-                    } else {
-                        initial_cursor - item.primary_match_offset
-                    };
-
-                    if dist < min_distance {
-                        min_distance = dist;
-                        best_index = idx;
+            picker
+                .update(cx, |picker, cx| {
+                    if cancelled.load(Ordering::Relaxed) {
+                        return;
                     }
-                }
 
-                picker.delegate.selected_index = best_index;
+                    picker.delegate.match_count = matches.len();
+                    picker.delegate.items = new_items;
+                    picker.delegate.is_searching = false;
+                    picker.delegate.all_matches = all_match_ranges;
 
-                cx.notify();
-            }).log_err();
+                    // Find closest match to initial cursor
+                    // For search results, we look at primary_match_offset (absolute offset in buffer)
+                    let mut best_index = 0;
+                    let mut min_distance = usize::MAX;
+
+                    for (idx, item) in picker.delegate.items.iter().enumerate() {
+                        let dist = if item.primary_match_offset >= initial_cursor {
+                            item.primary_match_offset - initial_cursor
+                        } else {
+                            initial_cursor - item.primary_match_offset
+                        };
+
+                        if dist < min_distance {
+                            min_distance = dist;
+                            best_index = idx;
+                        }
+                    }
+
+                    picker.delegate.selected_index = best_index;
+
+                    cx.notify();
+                })
+                .log_err();
         })
     }
 
