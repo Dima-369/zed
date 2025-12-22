@@ -36,19 +36,15 @@ index 504a1927a0..9e30903069 100644
          })
 ```
 
-- in visual line mode when cursor is on newline, then the line below is also incorrectly copied
-is that a bug from my fork code?
+- in visual line mode when cursor is on the newline character, then the line below is also incorrectly copied.
+But when cursor is on the characters before on that line, it is correctly copied.
+Is that a bug from my fork code?
+
+- improve `outline_toggle` in multi buffers to show files only, currently, nothing is shown
 
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
-if the previous buffer has
-
-- write in github about broken git blame in git commit view
-
-- TRY this out via Gemini?
-when I am inside a git commit view (for instance launched from `git::Blame` action) and I run `git::Blame` again in that new commit view, I just see this error notification: `failed to find a git repository for buffer`. I wonder if you can implement this, so `git::Blame` also works in git commit view tabs, and shows the left side next to the line numbers for the blame info PLUS `editor::OpenGitBlameCommit` works to jump to the new commit
-what files are those?
-
-
+- if the buffer where the modal was enabled, has a visual selection, it should be the preset query of the modal
+- if 2 or more matches on same line, you need to use a different bg color to designate active match
 
 ---
 
@@ -164,3 +160,11 @@ https://github.com/zed-industries/zed/pull/45387
 This shows 2 character hints at the start of each word.
 
 https://github.com/zed-industries/zed/pull/43733
+
+# Impossible to fix from my side
+
+## Fix that the git: blame action inside a git blame commit tab is not working and only showing an error notification 
+
+I tried to fix with my yek file merger through Gemini and via auggie, but both failed.
+
+https://github.com/zed-industries/zed/issues/45532
