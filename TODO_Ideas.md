@@ -23,8 +23,6 @@ remove it from the code
 But when cursor is on the characters before on that line, it is correctly copied.
 this also happens on `main`
 
-- improve `outline_toggle` in multi buffers to show files headings only, currently, nothing is shown. Also, ensure that the buffer behind correctly jumps to the picked candidate in the list. This is super handy for "Uncommitted changes" tab
-
 - improve code around `MIN_NAVIGATION_HISTORY_ROW_DELTA` for proper jumping
 
 ---
