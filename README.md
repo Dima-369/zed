@@ -48,6 +48,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - integrated live refreshing project search from https://github.com/zed-industries/zed/pull/42889, enable in `settings.json` via `search > search_on_input`
 - integrated smooth scroll from https://github.com/zed-industries/zed/pull/31671
 - modified `compute_style_internal()` in `crates/gpui/src/elements/div.rs` to not apply the mouse hover style, since it clashes when one only uses the keyboard
+- improved `outline::Toggle` to work in multi buffers, it shows the file headings only
 
 ### Command palette
 
