@@ -12,8 +12,9 @@ qwen suggested to use: `editor.update_edit_prediction_settings(cx);`, but it did
 - in visual line mode when cursor is on the newline character, then the line below is also incorrectly copied.
 But when cursor is on the characters before on that line, it is correctly copied.
 this also happens on `main`
+WRITE Github issue, then attempt AI fix in `editor::Copy` when in visual line mode and cursor is detected to be on the right most newline character
 
-- improve code around `MIN_NAVIGATION_HISTORY_ROW_DELTA` for proper jumping
+- revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
 
 # improve `jump::Toggle`
 
@@ -24,23 +25,42 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
-- currently selectnext and selectprevious are bound, that is incorrect, it needs to use this:
-        "ctrl-c": "search::NextHistoryQuery",
-        "ctrl-t": "search::PreviousHistoryQuery"
-
-how do the other modals do it? how is the history stored? I would like to have it globally across all buffers
-and it means the history in top input field
-
+TEST THIS:
 - in the candidate item list there is currently the active substring highlighted, can you change it so that highlight is only there if the candidate is selected? only the selected one gets that bg highlighting. and if a line has multiple matches, in the candidate item list, only highlight the MATCHing one from the line, not all in the current line
-
-- add ctrl-c and ctrl-t to cycle through previous and next candidates
-maybe there is already an action for that, and it just needs to be bound or so?
 
 - fix warnings, handle errors properly, check how other code handles them
 
 ## impossible
 
 - can the left candidate be centered, currently is always at either top or bottom when holding arrow up/down (this is not implemented anywhere else in Zed, so probably too difficult to implement)
+
+
+
+---
+
+# Later (low prio)
+
+## improve code around `MIN_NAVIGATION_HISTORY_ROW_DELTA` for proper jumping
+
+Investigate how I did the jumping in Emacs, I think there, it was always scoped to a single buffer.
+And then only on certain actions, I appended to the jump list.
+
+## Better node selection code?
+
+editor: Expand selection to word under cursor before expanding to next enclosing syntax node
+PR merged: https://github.com/zed-industries/zed/pull/28864
+
+setting: Add editor.select_word_as_node setting for syntax node selection behavior
+PR open: https://github.com/zed-industries/zed/pull/45580
+
+does it improve my key i issues? namely directly selecting everything inside quotes like `foo bar` instead of just the inner word
+
+## Add Terminal CLI for programmatic terminal control
+
+Hmm, but do I have any real use for it? Maybe launching a terminal from Kotlin Emacs file explorer?
+
+https://github.com/zed-industries/zed/pull/45558
+
 
 
 ---
