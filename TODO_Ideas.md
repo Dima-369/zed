@@ -8,7 +8,6 @@ it interestingly worked with switching edit prediction provider to Codestral ins
 is that a bug in the release version as well, try to reproduce
 
 qwen suggested to use: `editor.update_edit_prediction_settings(cx);`, but it did not work
-remove it from the code
 
 - in visual line mode when cursor is on the newline character, then the line below is also incorrectly copied.
 But when cursor is on the characters before on that line, it is correctly copied.
