@@ -1,14 +1,17 @@
 - can `jump::Toggle` work in multi buffers? currently, no hints are displayed at all
 I tried with AI and it fails to do, how about checking other jump hint PRs if it works there, and then copy over the relevant code?
 
+- improve `jump::Toggle` to not allow entering extra characters, like currently one can enter " buffer" with leading space (plus buffer) and it trims down candidates. This is annoying because if you just want to jump to a space, only a few hints are shown, you first need to enter more. I want: Instantly after hitting space, I want to see all space characters highlighted to jump to (probably 2 characters in the ordering provided)
+
 - improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
   - can the right preview side have soft wrap enabled? since otherwise, it is easy for the match to get out of view
-  - can the left candidate be centered, currently is always at either top or bottom when holding arrow up/down
+  - can the left candidate be centered, currently is always at either top or bottom when holding arrow up/down (this is not implemented anywhere else in Zed, so probably too difficult to implement)
   - fix warnings once I am happy with it, then bind to key b and use zed regular at `space t b`
 
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
 the agent pane at right also has no edit predictions? Or does it?
+try it out in `main`, then write bug report?
 
 it interestingly worked with switching edit prediction provider to Codestral instead of `Zed AI`
 is that a bug in the release version as well, try to reproduce
@@ -21,6 +24,8 @@ But when cursor is on the characters before on that line, it is correctly copied
 this also happens on `main`
 
 - improve `outline_toggle` in multi buffers to show files headings only, currently, nothing is shown. Also, ensure that the buffer behind correctly jumps to the picked candidate in the list. This is super handy for "Uncommitted changes" tab
+
+- improve code around `MIN_NAVIGATION_HISTORY_ROW_DELTA` for proper jumping
 
 ---
 
