@@ -148,8 +148,8 @@ impl Render for BufferSearchModal {
 
         let viewport_size = window.viewport_size();
 
-        let modal_width = (viewport_size.width * 0.9).min(viewport_size.width);
-        let modal_height = (viewport_size.height * 0.8).min(viewport_size.height);
+        let modal_width = (viewport_size.width * 0.95).min(viewport_size.width);
+        let modal_height = (viewport_size.height * 0.95).min(viewport_size.height);
 
         let border_color = cx.theme().colors().border;
 
