@@ -1,3 +1,7 @@
+- merge main then bind this to https://github.com/zed-industries/zed/pull/44411#event-21573828652
+ctrl-tab
+and think a better keybinding for the current ctrl-tab behavior for `editor::MoveToStartOfLargerSyntaxNode`
+
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
 the agent pane at right also has no edit predictions? Or does it?
