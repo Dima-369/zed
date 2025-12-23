@@ -1,5 +1,3 @@
-// crates/search/src/buffer_search_modal.rs
-
 use collections::HashMap;
 use editor::{Anchor as MultiBufferAnchor, Editor, EditorEvent, MultiBufferOffset};
 use gpui::{
@@ -159,7 +157,7 @@ impl Render for BufferSearchModal {
             .flex_shrink_0()
             .min_h_0()
             .overflow_hidden()
-            .h(rems(22.))
+            .h(rems(12.))
             .border_b_1()
             .border_color(border_color)
             .child(self.picker.clone());
