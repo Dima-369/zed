@@ -24,12 +24,13 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
-- can the right preview side have soft wrap enabled? since otherwise, it is easy for the match to get out of view
-- change layout so it is vertical, so not 50% left and 50% right, but instead place text input at very top, below 9 candidate lines, and then below the editor preview text
+- is it possible to highlight in the top matches the matched substring? currently only in the editor there is the highlight
+
+- add ctrl-c and ctrl-t to cycle through previous and next candidates
 
 - fix crash, but how to reproduce? stacktrace did not show anything about that code
 
-- fix warnings once I am happy with it, then bind to key b and use zed regular at `space t b`
+- fix warnings, handle errors properly, check how other code handles them
 
 ## impossible
 
