@@ -1,13 +1,12 @@
 use collections::HashMap;
 use editor::{Anchor as MultiBufferAnchor, Editor, EditorEvent, MultiBufferOffset};
 use gpui::{
-    App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
+    App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Global,
     HighlightStyle, KeyBinding, KeyContext, Render, SharedString, StyledText, Subscription, Task,
-    WeakEntity, Window, actions,
+    UpdateGlobal, WeakEntity, Window, actions,
 };
 use language::language_settings::SoftWrap;
 use language::{Anchor, Buffer, HighlightId, ToOffset as _};
-use menu::{SelectNext, SelectPrevious};
 use picker::{Picker, PickerDelegate};
 use project::search::SearchQuery;
 use settings::Settings;
@@ -21,8 +20,7 @@ use std::{
 };
 use text::Bias;
 use ui::{
-    ButtonStyle, Color, Divider, IconButton, IconButtonShape, Label, ListItem,
-    Tooltip, prelude::*,
+    ButtonStyle, Color, Divider, IconButton, IconButtonShape, Label, ListItem, Tooltip, prelude::*,
 };
 use util::{ResultExt, paths::PathMatcher};
 use vim_mode_setting::VimModeSetting;
@@ -30,11 +28,15 @@ use workspace::searchable::SearchableItem;
 use workspace::{ModalView, Workspace};
 
 use crate::{
-    SearchOption, SearchOptions, ToggleCaseSensitive, ToggleIncludeIgnored, ToggleRegex,
-    ToggleWholeWord,
+    NextHistoryQuery, PreviousHistoryQuery, SearchOption, SearchOptions, ToggleCaseSensitive,
+    ToggleIncludeIgnored, ToggleRegex, ToggleWholeWord,
 };
+use project::search_history::{SearchHistory, SearchHistoryCursor};
 
 actions!(buffer_search_modal, [ToggleBufferSearch]);
+
+struct BufferSearchHistory(SearchHistory);
+impl Global for BufferSearchHistory {}
 
 const MAX_PREVIEW_BYTES: usize = 200;
 const PREVIEW_DEBOUNCE_MS: u64 = 50;
@@ -42,9 +44,13 @@ const PREVIEW_DEBOUNCE_MS: u64 = 50;
 type AnchorRange = Range<Anchor>;
 
 pub fn init(cx: &mut App) {
+    cx.set_global(BufferSearchHistory(SearchHistory::new(
+        Some(50),
+        project::search_history::QueryInsertionBehavior::ReplacePreviousIfContains,
+    )));
     cx.bind_keys([
-        KeyBinding::new("ctrl-c", SelectNext, Some("BufferSearchModal")),
-        KeyBinding::new("ctrl-t", SelectPrevious, Some("BufferSearchModal")),
+        KeyBinding::new("ctrl-c", NextHistoryQuery, Some("BufferSearchModal")),
+        KeyBinding::new("ctrl-t", PreviousHistoryQuery, Some("BufferSearchModal")),
     ]);
     cx.observe_new(BufferSearchModal::register).detach();
 }
@@ -185,6 +191,7 @@ pub struct BufferSearchDelegate {
     focus_handle: Option<FocusHandle>,
     regex_error: Option<String>,
     all_matches: Arc<Vec<AnchorRange>>,
+    search_history_cursor: SearchHistoryCursor,
 }
 
 pub struct BufferSearchModal {
@@ -194,6 +201,7 @@ pub struct BufferSearchModal {
     _picker_subscription: Subscription,
     _preview_editor_subscription: Option<Subscription>,
     _preview_debounce_task: Option<Task<()>>,
+    search_history_cursor: SearchHistoryCursor,
 }
 
 impl ModalView for BufferSearchModal {}
@@ -216,7 +224,8 @@ impl Render for BufferSearchModal {
 
         let viewport_size = window.viewport_size();
 
-        let modal_width = (viewport_size.width * 0.3).min(viewport_size.width);
+        let modal_width = (viewport_size.width).min(viewport_size.width);
+        // needs to be a bit lower than the viewport height to avoid the dialog going off screen at the bottom
         let modal_height = (viewport_size.height * 0.9).min(viewport_size.height);
 
         let border_color = cx.theme().colors().border;
@@ -267,12 +276,77 @@ impl Render for BufferSearchModal {
                     .child(results_panel)
                     .child(preview_panel),
             )
+            .on_action(cx.listener(Self::next_history_query))
+            .on_action(cx.listener(Self::previous_history_query))
     }
 }
 
 enum BufferSearchHighlights {}
 
 impl BufferSearchModal {
+    fn next_history_query(
+        &mut self,
+        _: &NextHistoryQuery,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let mut cursor = self.picker.read(cx).delegate.search_history_cursor.clone();
+
+        let next_query = BufferSearchHistory::update_global(cx, |history, _| {
+            history.0.next(&mut cursor).map(|s| s.to_string())
+        });
+
+        self.picker.update(cx, |picker, cx| {
+            picker.delegate.search_history_cursor = cursor;
+            if let Some(query) = next_query {
+                picker.set_query(query, window, cx);
+            } else {
+                picker.delegate.search_history_cursor.reset();
+                picker.set_query("".to_string(), window, cx);
+            }
+        });
+    }
+
+    fn previous_history_query(
+        &mut self,
+        _: &PreviousHistoryQuery,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let (current_query_empty, cursor_snapshot) = {
+            let picker = self.picker.read(cx);
+            (
+                picker.query(cx).is_empty(),
+                picker.delegate.search_history_cursor.clone(),
+            )
+        };
+
+        if current_query_empty {
+            if let Some(query) = cx
+                .global::<BufferSearchHistory>()
+                .0
+                .current(&cursor_snapshot)
+                .map(|s| s.to_string())
+            {
+                self.picker
+                    .update(cx, |picker, cx| picker.set_query(query, window, cx));
+                return;
+            }
+        }
+
+        let mut cursor_mut = cursor_snapshot;
+        let prev_query = BufferSearchHistory::update_global(cx, |history, _| {
+            history.0.previous(&mut cursor_mut).map(|s| s.to_string())
+        });
+
+        if let Some(query) = prev_query {
+            self.picker.update(cx, |picker, cx| {
+                picker.delegate.search_history_cursor = cursor_mut;
+                picker.set_query(query, window, cx);
+            });
+        }
+    }
+
     fn register(
         workspace: &mut Workspace,
         _window: Option<&mut Window>,
@@ -421,6 +495,7 @@ impl BufferSearchModal {
             focus_handle: None,
             regex_error: None,
             all_matches: Arc::new(Vec::new()),
+            search_history_cursor: SearchHistoryCursor::default(),
         };
 
         let picker = cx.new(|cx| {
@@ -444,6 +519,7 @@ impl BufferSearchModal {
             _picker_subscription: picker_subscription,
             _preview_editor_subscription: None,
             _preview_debounce_task: None,
+            search_history_cursor: SearchHistoryCursor::default(),
         }
     }
 
@@ -663,30 +739,27 @@ impl BufferSearchDelegate {
             highlights = merge_highlights(&highlights, &match_highlights);
         }
 
-        ListItem::new(ix)
-            .inset(true)
-            .toggle_state(selected)
-            .child(
-                h_flex()
-                    .w_full()
-                    .pl(px(8.))
-                    .justify_between()
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .overflow_hidden()
-                            .whitespace_nowrap()
-                            .text_ellipsis()
-                            .text_ui_sm(cx)
-                            .child(StyledText::new(preview_text).with_highlights(highlights)),
-                    )
-                    .child(
-                        Label::new(line_label.clone())
-                            .size(ui::LabelSize::Small)
-                            .color(Color::Muted),
-                    ),
-            )
+        ListItem::new(ix).inset(true).toggle_state(selected).child(
+            h_flex()
+                .w_full()
+                .pl(px(8.))
+                .justify_between()
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .overflow_hidden()
+                        .whitespace_nowrap()
+                        .text_ellipsis()
+                        .text_ui_sm(cx)
+                        .child(StyledText::new(preview_text).with_highlights(highlights)),
+                )
+                .child(
+                    Label::new(line_label.clone())
+                        .size(ui::LabelSize::Small)
+                        .color(Color::Muted),
+                ),
+        )
     }
 }
 
@@ -867,23 +940,30 @@ impl PickerDelegate for BufferSearchDelegate {
                                 let chunk_absolute_end = current_offset + chunk_len;
 
                                 // Map to trimmed line coordinates
-                                let chunk_in_trimmed_start = chunk_absolute_start.saturating_sub(left_trimmed_len);
-                                let chunk_in_trimmed_end = chunk_absolute_end.saturating_sub(left_trimmed_len);
+                                let chunk_in_trimmed_start =
+                                    chunk_absolute_start.saturating_sub(left_trimmed_len);
+                                let chunk_in_trimmed_end =
+                                    chunk_absolute_end.saturating_sub(left_trimmed_len);
 
                                 // Only highlight if within the trimmed content range
                                 if chunk_in_trimmed_start < trimmed_line.len() {
                                     let start_in_preview = chunk_in_trimmed_start.max(0);
-                                    let end_in_preview = chunk_in_trimmed_end.min(trimmed_line.len());
+                                    let end_in_preview =
+                                        chunk_in_trimmed_end.min(trimmed_line.len());
 
-                                    if start_in_preview < end_in_preview && start_in_preview < preview_len {
+                                    if start_in_preview < end_in_preview
+                                        && start_in_preview < preview_len
+                                    {
                                         let clamped_start = start_in_preview.min(preview_len);
                                         let clamped_end = end_in_preview.min(preview_len);
 
-                                        if let Some((safe_start, safe_end)) = find_safe_char_boundaries(
-                                            preview_str,
-                                            clamped_start,
-                                            clamped_end,
-                                        ) {
+                                        if let Some((safe_start, safe_end)) =
+                                            find_safe_char_boundaries(
+                                                preview_str,
+                                                clamped_start,
+                                                clamped_end,
+                                            )
+                                        {
                                             highlights.push((safe_start..safe_end, highlight_id));
                                         }
                                     }
@@ -1184,6 +1264,12 @@ impl PickerDelegate for BufferSearchDelegate {
     }
 
     fn confirm(&mut self, _secondary: bool, window: &mut Window, cx: &mut Context<Picker<Self>>) {
+        let query = self.current_query.clone();
+        if !query.is_empty() {
+            BufferSearchHistory::update_global(cx, |history, _| {
+                history.0.add(&mut self.search_history_cursor, query);
+            });
+        }
         if let Some(item) = self.items.get(self.selected_index) {
             let target_editor = self.target_editor.clone();
             let match_offset = item.primary_match_offset;
