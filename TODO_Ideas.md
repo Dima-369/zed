@@ -24,11 +24,8 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
-- is it possible to highlight in the top matches the matched substring? currently only in the editor there is the highlight
-
 - add ctrl-c and ctrl-t to cycle through previous and next candidates
-
-- fix crash, but how to reproduce? stacktrace did not show anything about that code
+maybe there is already an action for that, and it just needs to be bound or so?
 
 - fix warnings, handle errors properly, check how other code handles them
 
