@@ -2,11 +2,12 @@ use collections::HashMap;
 use editor::{Anchor as MultiBufferAnchor, Editor, EditorEvent, MultiBufferOffset};
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    HighlightStyle, Render, SharedString, StyledText, Subscription, Task, WeakEntity, Window,
-    actions,
+    HighlightStyle, KeyBinding, KeyContext, Render, SharedString, StyledText, Subscription, Task,
+    WeakEntity, Window, actions,
 };
 use language::language_settings::SoftWrap;
 use language::{Anchor, Buffer, HighlightId, ToOffset as _};
+use menu::{SelectNext, SelectPrevious};
 use picker::{Picker, PickerDelegate};
 use project::search::SearchQuery;
 use settings::Settings;
@@ -41,6 +42,10 @@ const PREVIEW_DEBOUNCE_MS: u64 = 50;
 type AnchorRange = Range<Anchor>;
 
 pub fn init(cx: &mut App) {
+    cx.bind_keys([
+        KeyBinding::new("ctrl-c", SelectNext, Some("BufferSearchModal")),
+        KeyBinding::new("ctrl-t", SelectPrevious, Some("BufferSearchModal")),
+    ]);
     cx.observe_new(BufferSearchModal::register).detach();
 }
 
@@ -206,10 +211,13 @@ impl Render for BufferSearchModal {
         let preview_editor = self.preview_editor.clone();
         let picker = self.picker.clone();
 
+        let mut key_context = KeyContext::new_with_defaults();
+        key_context.add("BufferSearchModal");
+
         let viewport_size = window.viewport_size();
 
-        let modal_width = (viewport_size.width * 0.95).min(viewport_size.width);
-        let modal_height = (viewport_size.height * 0.95).min(viewport_size.height);
+        let modal_width = (viewport_size.width * 0.3).min(viewport_size.width);
+        let modal_height = (viewport_size.height * 0.9).min(viewport_size.height);
 
         let border_color = cx.theme().colors().border;
 
@@ -245,6 +253,7 @@ impl Render for BufferSearchModal {
 
         div()
             .id("buffer-search-modal")
+            .key_context(key_context)
             .relative()
             .h(modal_height)
             .w(modal_width)
