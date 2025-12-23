@@ -25,6 +25,14 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
+- can smooth scroll be disabled in the preview editor?
+
+- fix crash in this branch's `README.md` when searching for "sm", it crashes.
+Steps to reproduce:
+- launch `buffer_search_modal::ToggleBufferSearch`
+- type `s` (this works)
+- type `m` (this crashes)
+
 TEST THIS:
 - in the candidate item list there is currently the active substring highlighted, can you change it so that highlight is only there if the candidate is selected? only the selected one gets that bg highlighting. and if a line has multiple matches, in the candidate item list, only highlight the MATCHing one from the line, not all in the current line
 
