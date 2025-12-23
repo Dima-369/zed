@@ -4,11 +4,12 @@ use collections::HashMap;
 use editor::{Anchor as MultiBufferAnchor, Editor, EditorEvent, MultiBufferOffset};
 use gpui::{
     Action, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    HighlightStyle, Pixels, Render, SharedString, StyledText, Subscription, Task, WeakEntity,
+    HighlightStyle, Render, SharedString, StyledText, Subscription, Task, WeakEntity,
     Window, actions,
 };
 use workspace::searchable::SearchableItem;
 use language::{Anchor, Buffer, HighlightId, ToOffset as _};
+use language::language_settings::SoftWrap;
 use text::Bias;
 use picker::{Picker, PickerDelegate};
 use project::search::SearchQuery;
@@ -36,10 +37,6 @@ use crate::{
 
 actions!(buffer_search_modal, [ToggleBufferSearch]);
 
-const MIN_WIDTH_FOR_HORIZONTAL_LAYOUT: Pixels = px(950.);
-// Requested 50% width split
-const LEFT_PANEL_RATIO: f32 = 0.50;
-const VERTICAL_RESULTS_RATIO: f32 = 0.40;
 const MAX_PREVIEW_BYTES: usize = 200;
 const PREVIEW_DEBOUNCE_MS: u64 = 50;
 
@@ -152,7 +149,6 @@ impl Render for BufferSearchModal {
         let picker = self.picker.clone();
 
         let viewport_size = window.viewport_size();
-        let use_vertical_layout = viewport_size.width < MIN_WIDTH_FOR_HORIZONTAL_LAYOUT;
 
         let modal_width = (viewport_size.width * 0.9).min(viewport_size.width);
         let modal_height = (viewport_size.height * 0.8).min(viewport_size.height);
@@ -163,6 +159,9 @@ impl Render for BufferSearchModal {
             .flex_shrink_0()
             .min_h_0()
             .overflow_hidden()
+            .h(rems(22.))
+            .border_b_1()
+            .border_color(border_color)
             .child(self.picker.clone());
 
         let preview_panel = v_flex()
@@ -186,40 +185,6 @@ impl Render for BufferSearchModal {
                 )
             });
 
-        let content = if use_vertical_layout {
-            let results_height = modal_height * VERTICAL_RESULTS_RATIO;
-            v_flex()
-                .w_full()
-                .flex_1()
-                .min_h_0()
-                .overflow_hidden()
-                .child(
-                    results_panel
-                        .h(results_height)
-                        .w_full()
-                        .border_b_1()
-                        .border_color(border_color),
-                )
-                .child(preview_panel.w_full())
-                .into_any_element()
-        } else {
-            let left_panel_width = modal_width * LEFT_PANEL_RATIO;
-            h_flex()
-                .w_full()
-                .flex_1()
-                .min_h_0()
-                .overflow_hidden()
-                .child(
-                    results_panel
-                        .w(left_panel_width)
-                        .h_full()
-                        .border_r_1()
-                        .border_color(border_color),
-                )
-                .child(preview_panel.h_full())
-                .into_any_element()
-        };
-
         div()
             .id("buffer-search-modal")
             .relative()
@@ -232,7 +197,8 @@ impl Render for BufferSearchModal {
                     .overflow_hidden()
                     .border_1()
                     .border_color(border_color)
-                    .child(content),
+                    .child(results_panel)
+                    .child(preview_panel),
             )
     }
 }
@@ -506,6 +472,7 @@ impl BufferSearchModal {
         let editor = cx.new(|cx| {
             let mut editor = Editor::for_buffer(buffer.clone(), None, window, cx);
             editor.set_show_gutter(true, cx);
+            editor.set_soft_wrap_mode(SoftWrap::EditorWidth, cx);
             editor
         });
 
