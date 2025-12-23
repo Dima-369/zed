@@ -24,6 +24,13 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
+- currently selectnext and selectprevious are bound, that is incorrect, it needs to use this:
+        "ctrl-c": "search::NextHistoryQuery",
+        "ctrl-t": "search::PreviousHistoryQuery"
+
+how do the other modals do it? how is the history stored? I would like to have it globally across all buffers
+and it means the history in top input field
+
 - in the candidate item list there is currently the active substring highlighted, can you change it so that highlight is only there if the candidate is selected? only the selected one gets that bg highlighting. and if a line has multiple matches, in the candidate item list, only highlight the MATCHing one from the line, not all in the current line
 
 - add ctrl-c and ctrl-t to cycle through previous and next candidates
