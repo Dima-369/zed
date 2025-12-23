@@ -2,6 +2,7 @@ use editor::{
     DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset, ToOffset,
     display_map::ToDisplayPoint,
 };
+use editor::actions::MoveToEnd;
 use gpui::{
     Action, App, Context, DismissEvent, Entity, EventEmitter, Focusable, IntoElement, Render,
     Styled, Window, div,
@@ -298,6 +299,15 @@ impl JumpBar {
                         self.previous_query_length = query.len();
                         return;
                     }
+
+                    if self.mode == JumpMode::Text {
+                        let query = self.search_query.clone();
+                        self.query_editor.update(cx, |editor, cx| {
+                            editor.set_text(query, window, cx);
+                            editor.move_to_end(&MoveToEnd, window, cx);
+                        });
+                        return;
+                    }
                 }
 
                 self.previous_query_length = query.len();
@@ -431,7 +441,8 @@ impl JumpBar {
                 let editor_matches = editor_entity.update(cx, |editor, cx| {
                     let buffer = editor.buffer().read(cx);
                     let buffer_snapshot = buffer.snapshot(cx);
-                    let display_snapshot = editor.display_map.update(cx, |map, _cx| map.snapshot(_cx));
+                    let display_snapshot =
+                        editor.display_map.update(cx, |map, _cx| map.snapshot(_cx));
 
                     let mut urls = Vec::new();
 
