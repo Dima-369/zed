@@ -3,7 +3,7 @@
 # improve `jump::Toggle`
 
 - can `jump::Toggle` work in multi buffers? currently, no hints are displayed at all
-I tried with AI and it fails to do, how about checking other jump hint PRs if it works there, and then copy over the relevant code?
+https://github.com/zed-industries/zed/pull/43733 is a jump hint implementation and its hints work in multi buffers
 
 ---
 
