@@ -10,7 +10,6 @@ use gpui::{
 use linkify::{LinkFinder, LinkKind};
 use schemars::JsonSchema;
 use serde::Deserialize;
-use std::collections::HashSet;
 use ui::{IconButton, IconName, Tooltip, prelude::*};
 use workspace::{DismissDecision, ModalView, Workspace};
 
