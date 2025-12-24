@@ -5,13 +5,7 @@ git checkout main -- crates/search/src/buffer_search.rs
 
 why is there search_on_input in my code diff? Is it from the project search?
 
-# improve `vim::HelixJumpToWord`
 
-- do not enter visual mode on jumping to word and jump to start of word, where the hints are shown
-see `fn finish_helix_jump`
-just move position and stap in vim normal mode
-
-- in  `fn helix_handle_jump_input` can you make escape cancel out of the jump mode?
 
 
 # >>> Later (low prio)
@@ -189,3 +183,9 @@ https://github.com/zed-industries/zed/issues/45532
 ### Can the left candidate be centered, currently is always at either top or bottom when holding arrow up/down?
 
 This is not implemented anywhere else in Zed, so probably too difficult to implement.
+
+## improve `vim::HelixJumpToWord`
+
+- in  `fn helix_handle_jump_input` can you make escape cancel out of the jump mode?
+
+I tried, but escape is not propogated to `input_ignored`, so no idea how to fix this.
