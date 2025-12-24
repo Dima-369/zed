@@ -20799,6 +20799,10 @@ impl Editor {
         cx.notify();
     }
 
+    pub fn set_smooth_scroll(&mut self, enabled: bool, cx: &App) {
+        self.scroll_manager.set_smooth_scroll(enabled, cx);
+    }
+
     pub fn set_hard_wrap(&mut self, hard_wrap: Option<usize>, cx: &mut Context<Self>) {
         self.hard_wrap = hard_wrap;
         cx.notify();

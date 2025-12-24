@@ -629,6 +629,7 @@ impl BufferSearchModal {
             let mut editor = Editor::for_buffer(buffer.clone(), None, window, cx);
             editor.set_show_gutter(true, cx);
             editor.set_soft_wrap_mode(SoftWrap::EditorWidth, cx);
+            editor.set_smooth_scroll(false, cx);
             editor
         });
 

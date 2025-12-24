@@ -229,6 +229,16 @@ impl ScrollManager {
         self.ongoing
     }
 
+    pub fn set_smooth_scroll(&mut self, enabled: bool, cx: &App) {
+        if enabled {
+            if self.animation_manager.is_none() {
+                self.animation_manager = Some(ScrollAnimationManager::new(cx));
+            }
+        } else {
+            self.animation_manager = None;
+        }
+    }
+
     pub fn update_ongoing_scroll(&mut self, axis: Option<Axis>, try_use_anim: bool) {
         self.ongoing.last_event = Instant::now();
         self.ongoing.axis = axis;
