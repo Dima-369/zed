@@ -1,6 +1,3 @@
-- WRITE Github issue about:  `editor::Copy` when in visual line mode and cursor is detected to be on the right most newline character
-Fix that in vim visual line mode `editor::Copy` misbehaves when the cursor is on the newline character and copies one line too much
-
 - revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
 
 # improve `jump::Toggle`
