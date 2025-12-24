@@ -1,3 +1,5 @@
+- can terminal tabs not have cwd? just running process
+
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
 the agent pane at right also has no edit predictions? Or does it?
@@ -18,8 +20,13 @@ WRITE Github issue, then attempt AI fix in `editor::Copy` when in visual line mo
 
 # improve `jump::Toggle`
 
+- can hints not overlap? check only horizontally, maybe ensure at least 2 characters space or so?
+issue is when text is "hellllo" and you want to jump to l, the hints just overlap
+
 - can `jump::Toggle` work in multi buffers? currently, no hints are displayed at all
 I tried with AI and it fails to do, how about checking other jump hint PRs if it works there, and then copy over the relevant code?
+
+- when I try to search for a character which exists A LOT in the buffer, maybe like a space, I do not see the 2 characters multi jump hints starting at o again, often only "z...", "k..." prefix for the 2 char hints. how to fix that? I want to see all hints across all characters, so first `o` with all other characters in hint jump list, then next character, and so on
 
 - improve `jump::Toggle` to not allow entering extra characters, like currently one can enter " buffer" with leading space (plus buffer) and it trims down candidates. This is annoying because if you just want to jump to a space, only a few hints are shown, you first need to enter more. I want: Instantly after hitting space, I want to see all space characters highlighted to jump to (probably 2 characters in the ordering provided)
 
