@@ -226,7 +226,7 @@ impl Render for BufferSearchModal {
 
         let modal_width = (viewport_size.width * 0.95).min(viewport_size.width);
         // needs to be a bit lower than the viewport height to avoid the dialog going off screen at the bottom
-        let modal_height = (viewport_size.height * 0.85).min(viewport_size.height);
+        let modal_height = (viewport_size.height * 0.8).min(viewport_size.height);
 
         let border_color = cx.theme().colors().border;
 
