@@ -6,7 +6,7 @@ use crate::{
     DebugEvent, EDIT_PREDICTIONS_MODEL_ID, EditPredictionFinishedDebugEvent, EditPredictionId,
     EditPredictionModelInput, EditPredictionStartedDebugEvent, EditPredictionStore,
 };
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use cloud_llm_client::EditPredictionRejectReason;
 use gpui::{Task, prelude::*};
 use language::{OffsetRangeExt as _, ToOffset as _, ToPoint};
@@ -33,10 +33,12 @@ pub fn request_prediction_with_zeta2(
 ) -> Task<Result<Option<EditPredictionResult>>> {
     let buffer_snapshotted_at = Instant::now();
 
-    let excerpt_path: Arc<Path> = snapshot
+    let Some(excerpt_path) = snapshot
         .file()
-        .map(|file| file.full_path(cx).into())
-        .unwrap_or_else(|| Path::new(&format!("untitled-{}", snapshot.remote_id())).into());
+        .map(|file| -> Arc<Path> { file.full_path(cx).into() })
+    else {
+        return Task::ready(Err(anyhow!("No file path for excerpt")));
+    };
 
     let client = store.client.clone();
     let llm_token = store.llm_token.clone();
