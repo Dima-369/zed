@@ -17,19 +17,16 @@ use editor::{
     MultibufferSelectionMode, SelectionEffects, ToOffset, ToPoint, movement,
 };
 use gpui::actions;
-use gpui::{Context, Entity, Window};
-use language::{Buffer, CharClassifier, CharKind, Point};
-use gpui::{Context, Hsla, Window};
-use language::{CharClassifier, CharKind, Point, Selection};
+use gpui::{Context, Entity, Hsla, Window};
+use language::{Buffer, CharClassifier, CharKind, Point, Selection};
 use multi_buffer::MultiBufferSnapshot;
 use search::{BufferSearchBar, SearchOptions};
 use settings::{RegisterSetting, Settings};
 use std::collections::HashMap;
 use text::{Bias, SelectionGoal};
 use ui::prelude::*;
+use workspace::Workspace;
 use workspace::searchable::{self, Direction, FilteredSearchRange};
-use workspace::searchable::{self, Direction};
-use workspace::{Workspace, searchable::FilteredSearchRange};
 
 use crate::motion::{self, MotionKind};
 use crate::state::SearchState;

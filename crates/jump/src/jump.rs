@@ -590,7 +590,7 @@ impl JumpBar {
                             // Prevent overlapping hints by checking distance from the previous match
                             if let Some(last_point) = last_match_point {
                                 if last_point.row() == display_point.row()
-                                && display_point.column() < last_point.column() + 4
+                                    && display_point.column() < last_point.column() + 4
                                 {
                                     continue;
                                 }
