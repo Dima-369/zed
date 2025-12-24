@@ -13261,7 +13261,11 @@ impl Editor {
                 let mut add_trailing_newline = false;
                 if is_entire_line {
                     start = Point::new(start.row, 0);
-                    let next_line_start = Point::new(end.row + 1, 0);
+                    let next_line_start = if end.column == 0 && end.row > start.row {
+                        Point::new(end.row, 0)
+                    } else {
+                        Point::new(end.row + 1, 0)
+                    };
                     if next_line_start <= max_point {
                         end = next_line_start;
                     } else {
