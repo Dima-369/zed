@@ -1,5 +1,3 @@
-- can terminal tabs not have cwd? just running process
-
 - how to enable AI predictions in those space t n buffers? Why does it have none?
 see `fn edit_prediction_settings_at_position(`
 the agent pane at right also has no edit predictions? Or does it?
