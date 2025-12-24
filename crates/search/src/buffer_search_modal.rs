@@ -57,13 +57,11 @@ pub fn init(cx: &mut App) {
 
 #[derive(Clone)]
 struct LineMatchData {
-    line: u32,
     line_label: SharedString,
     preview_text: SharedString,
     // Range in the preview text for the specific match this item represents (for list item highlighting)
     list_match_ranges: Arc<Vec<Range<usize>>>,
     active_match_index_in_list: Option<usize>,
-    trim_start: usize,
     syntax_highlights: Option<Arc<Vec<(Range<usize>, HighlightId)>>>,
     // The offset of the match this item specifically represents (for sorting/selection)
     primary_match_offset: usize,
@@ -201,7 +199,6 @@ pub struct BufferSearchModal {
     _picker_subscription: Subscription,
     _preview_editor_subscription: Option<Subscription>,
     _preview_debounce_task: Option<Task<()>>,
-    search_history_cursor: SearchHistoryCursor,
 }
 
 impl ModalView for BufferSearchModal {}
@@ -519,7 +516,6 @@ impl BufferSearchModal {
             _picker_subscription: picker_subscription,
             _preview_editor_subscription: None,
             _preview_debounce_task: None,
-            search_history_cursor: SearchHistoryCursor::default(),
         }
     }
 
@@ -914,7 +910,6 @@ impl PickerDelegate for BufferSearchDelegate {
                     let line_text: String = buffer_snapshot
                         .text_for_range(line_start..line_end)
                         .collect();
-                    let trim_start = line_text.len() - line_text.trim_start().len();
 
                     let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
                     let preview_len = preview_content_len(&preview_text);
@@ -977,12 +972,10 @@ impl PickerDelegate for BufferSearchDelegate {
                     };
 
                     new_items.push(LineMatchData {
-                        line,
                         line_label: (line + 1).to_string().into(),
                         preview_text,
                         list_match_ranges: Arc::new(Vec::new()),
                         active_match_index_in_list: None,
-                        trim_start,
                         syntax_highlights,
                         primary_match_offset: line_start,
                     });
@@ -1015,11 +1008,13 @@ impl PickerDelegate for BufferSearchDelegate {
                         });
 
                         if let Some(modal) = buffer_search_modal.upgrade() {
-                            window_handle.update(cx, |_, window, cx| {
-                                modal.update(cx, |modal, cx| {
-                                    modal.update_preview(preview_data, window, cx);
-                                });
-                            });
+                            window_handle
+                                .update(cx, |_, window, cx| {
+                                    modal.update(cx, |modal, cx| {
+                                        modal.update_preview(preview_data, window, cx);
+                                    });
+                                })
+                                .log_err();
                         }
 
                         cx.notify();
@@ -1193,12 +1188,10 @@ impl PickerDelegate for BufferSearchDelegate {
                         };
 
                         new_items.push(LineMatchData {
-                            line,
                             line_label: (line + 1).to_string().into(),
                             preview_text,
                             list_match_ranges: Arc::new(list_match_ranges),
                             active_match_index_in_list,
-                            trim_start,
                             syntax_highlights,
                             primary_match_offset: range.start,
                         });
@@ -1247,11 +1240,13 @@ impl PickerDelegate for BufferSearchDelegate {
                     });
 
                     if let Some(modal) = buffer_search_modal.upgrade() {
-                        window_handle.update(cx, |_, window, cx| {
-                            modal.update(cx, |modal, cx| {
-                                modal.update_preview(preview_data, window, cx);
-                            });
-                        });
+                        window_handle
+                            .update(cx, |_, window, cx| {
+                                modal.update(cx, |modal, cx| {
+                                    modal.update_preview(preview_data, window, cx);
+                                });
+                            })
+                            .log_err();
                     }
 
                     cx.notify();
