@@ -27,6 +27,7 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 - can smooth scroll be disabled in the preview editor?
 
+TEST in cargo run!
 - fix crash in this branch's `README.md` when searching for "sm", it crashes.
 Steps to reproduce:
 - launch `buffer_search_modal::ToggleBufferSearch`
@@ -69,7 +70,11 @@ Hmm, but do I have any real use for it? Maybe launching a terminal from Kotlin E
 
 https://github.com/zed-industries/zed/pull/45558
 
+##  Multibuffer breadcrumbs toolbar redesign
 
+Try this out. Will it get merged?
+
+https://github.com/zed-industries/zed/pull/45547
 
 ---
 
