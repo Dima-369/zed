@@ -25,8 +25,6 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
-- can smooth scroll be disabled in the preview editor?
-
 TEST in cargo run!
 - fix crash in this branch's `README.md` when searching for "sm", it crashes.
 Steps to reproduce:
