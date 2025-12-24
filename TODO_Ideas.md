@@ -22,6 +22,7 @@ WRITE Github issue, then attempt AI fix in `editor::Copy` when in visual line mo
 
 - can hints not overlap? check only horizontally, maybe ensure at least 2 characters space or so?
 issue is when text is "hellllo" and you want to jump to l, the hints just overlap
+test in this buffer's TODO_ideas.md first line with space
 
 - can `jump::Toggle` work in multi buffers? currently, no hints are displayed at all
 I tried with AI and it fails to do, how about checking other jump hint PRs if it works there, and then copy over the relevant code?
