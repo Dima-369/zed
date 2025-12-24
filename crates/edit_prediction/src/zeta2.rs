@@ -33,12 +33,10 @@ pub fn request_prediction_with_zeta2(
 ) -> Task<Result<Option<EditPredictionResult>>> {
     let buffer_snapshotted_at = Instant::now();
 
-    let Some(excerpt_path) = snapshot
+    let excerpt_path: Arc<Path> = snapshot
         .file()
-        .map(|file| -> Arc<Path> { file.full_path(cx).into() })
-    else {
-        return Task::ready(Err(anyhow!("No file path for excerpt")));
-    };
+        .map(|file| file.full_path(cx).into())
+        .unwrap_or_else(|| Path::new(&format!("untitled-{}", snapshot.remote_id())).into());
 
     let client = store.client.clone();
     let llm_token = store.llm_token.clone();

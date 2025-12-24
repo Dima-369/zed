@@ -242,8 +242,12 @@ impl TextThreadEditor {
         );
 
         let editor = cx.new(|cx| {
-            let mut editor =
-                Editor::for_buffer(text_thread.read(cx).buffer().clone(), None, window, cx);
+            let mut editor = Editor::for_buffer(
+                text_thread.read(cx).buffer().clone(),
+                Some(project.clone()),
+                window,
+                cx,
+            );
             editor.disable_scrollbars_and_minimap(window, cx);
             editor.set_soft_wrap_mode(SoftWrap::EditorWidth, cx);
             editor.set_show_line_numbers(false, cx);

@@ -31,7 +31,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - try to fix panic in `anchor_at_offset` when buffer has Umlaute, seems to work, no idea if my fix has other consequences
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines instead of leading indents
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3, from 10, as a test which seems fine
-- allow AI edit predictions in Zed's `settings.json` and `keymap.json`
+- allow AI edit predictions in Zed's `settings.json` and `keymap.json` and in buffers without files like ones from `workspace: new file` or in the agent text thread pane (although here in the text thread it does not trigger as often?)
 - opening a workspace which has no tabs initially, will trigger `workspace::NewFile` for proper editor focus. Before, there seems to be a bug where the project panel does not have proper focus
 - implement new recent file functionality which tracks every opened buffer to quickly jump to file/open new workspace. Action is `workspace::OpenRecentFile`
 - improved the `go to next/previous diagnostic` action to always jump to errors first. Only if there are no errors, it jumps to warnings. Before, this was mixed

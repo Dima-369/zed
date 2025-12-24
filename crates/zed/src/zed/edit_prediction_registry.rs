@@ -191,7 +191,6 @@ fn assign_edit_prediction_provider(
 
             if let Some(project) = editor.project()
                 && let Some(buffer) = &singleton_buffer
-                && buffer.read(cx).file().is_some()
             {
                 let has_model = ep_store.update(cx, |ep_store, cx| {
                     let model = if let EditPredictionProvider::Experimental(name) = value {

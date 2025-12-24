@@ -48,8 +48,9 @@ https://github.com/zed-industries/zed/pull/45625
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
 
-I fixed this in this fork already, but still good to report this, and see if anyone fixes that:
+I fixed this in my own fork already, but let's see what Zed team says:
 
+I created this bug report issue:
 https://github.com/zed-industries/zed/issues/45631
 
 ## Smooth caret/cursor
