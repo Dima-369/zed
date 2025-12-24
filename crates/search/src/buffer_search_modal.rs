@@ -856,8 +856,6 @@ impl PickerDelegate for BufferSearchDelegate {
                             .h_6()
                             .pl_1()
                             .pr_1()
-                            .border_1()
-                            .border_color(cx.theme().colors().border)
                             .rounded_md()
                             .child(editor.clone())
                             .child(
