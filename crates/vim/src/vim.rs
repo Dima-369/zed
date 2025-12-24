@@ -1708,11 +1708,6 @@ impl Vim {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if input_char == '\x1b' {
-            self.clear_operator(window, cx);
-            return;
-        }
-
         let Operator::HelixJump {
             behaviour,
             first_char,
