@@ -49,6 +49,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - integrated smooth scroll from https://github.com/zed-industries/zed/pull/31671
 - modified `compute_style_internal()` in `crates/gpui/src/elements/div.rs` to not apply the mouse hover style, since it clashes when one only uses the keyboard
 - improved `outline::Toggle` to work in multi buffers, it shows the file headings only
+- remove abbreviated `cwd` display in terminal title
 
 ### Command palette
 
