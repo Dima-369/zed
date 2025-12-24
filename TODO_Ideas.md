@@ -1,6 +1,10 @@
 - revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
 see `crates/search/src/buffer_search.rs`
 
+git checkout main -- crates/search/src/buffer_search.rs
+
+why is there search_on_input in my code diff? Is it from the project search?
+
 # improve `vim::HelixJumpToWord`
 
 - do not enter visual mode on jumping to word and jump to start of word, where the hints are shown
