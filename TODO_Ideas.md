@@ -1,15 +1,5 @@
-- how to enable AI predictions in those space t n buffers? Why does it have none?
-see `fn edit_prediction_settings_at_position(`
-the agent pane at right also has no edit predictions? Or does it?
-try it out in `main`, then write bug report?
-it also does not seem to work 
-
-it interestingly worked with switching edit prediction provider to Codestral instead of `Zed AI`
-is that a bug in the release version as well, try to reproduce
-
-qwen suggested to use: `editor.update_edit_prediction_settings(cx);`, but it did not work
-
 - WRITE Github issue about:  `editor::Copy` when in visual line mode and cursor is detected to be on the right most newline character
+Fix that in vim visual line mode `editor::Copy` misbehaves when the cursor is on the newline character and copies one line too much
 
 - revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
 
@@ -49,9 +39,21 @@ Try this out. Will it get merged?
 
 https://github.com/zed-industries/zed/pull/45547
 
+## Add a button to copy diagnostic messages from the hover popover to the clipboard
+
+https://github.com/zed-industries/zed/pull/45625
+
+
+
 ---
 
 # Investigations
+
+## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
+
+I fixed this in this fork already, but still good to report this, and see if anyone fixes that:
+
+https://github.com/zed-industries/zed/issues/45631
 
 ## Smooth caret/cursor
 
@@ -166,6 +168,10 @@ https://github.com/zed-industries/zed/pull/45387
 This shows 2 character hints at the start of each word.
 
 https://github.com/zed-industries/zed/pull/43733
+
+
+
+---
 
 # Impossible to fix from my side
 
