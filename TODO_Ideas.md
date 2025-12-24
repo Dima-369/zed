@@ -1,5 +1,3 @@
-- restore zeta2.rs from main branch
-
 - revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
 
 # improve `vim::HelixJumpToWord`
