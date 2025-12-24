@@ -1,4 +1,5 @@
 - revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
+see `crates/search/src/buffer_search.rs`
 
 # improve `vim::HelixJumpToWord`
 
