@@ -9,20 +9,19 @@ mod select;
 
 pub use jump_list::{JumpEntry, JumpList};
 
-use editor::display_map::{BlockContext, BlockPlacement, BlockProperties, BlockStyle, DisplayRow, DisplaySnapshot, ToDisplayPoint};
+use editor::display_map::{DisplayRow, DisplaySnapshot};
 use editor::{
-    Anchor, DisplayPoint, Editor, EditorSettings, HideMouseCursorOrigin, JumpLabel,
+    DisplayPoint, Editor, EditorSettings, HideMouseCursorOrigin,
     MultiBufferOffset, MultibufferSelectionMode, SelectionEffects, ToOffset, ToPoint, movement,
 };
 use gpui::actions;
-use gpui::{Context, Entity, Hsla, Window};
+use gpui::{Context, Entity, Window};
 use language::{Buffer, CharClassifier, CharKind, Point, Selection};
 use multi_buffer::MultiBufferSnapshot;
 use search::{BufferSearchBar, SearchOptions};
-use settings::{RegisterSetting, Settings};
+use settings::Settings;
 use std::collections::HashMap;
 use text::{Bias, SelectionGoal};
-use ui::prelude::*;
 use workspace::Workspace;
 use workspace::searchable::{self, Direction, FilteredSearchRange};
 
@@ -33,14 +32,8 @@ use crate::{
     motion::{Motion, right},
     state::{HelixJumpBehaviour, HelixJumpLabel, Mode, Operator},
 };
-use std::{ops::Range, sync::Arc};
+use std::ops::Range;
 
-pub(crate) const HELIX_JUMP_ACCENT: Hsla = Hsla {
-    h: 0.0,
-    s: 0.78,
-    l: 0.55,
-    a: 1.0,
-};
 
 actions!(
     vim,
@@ -1410,46 +1403,9 @@ impl Vim {
                 .any(|range| range.start < word_end && word_start < range.end)
     }
 
-    fn jump_label_block(
-        anchor: Anchor,
-        label: [char; 2],
-        accent: Hsla,
-        label_index: usize,
-    ) -> BlockProperties<Anchor> {
-        let text: SharedString = label.iter().collect::<String>().into();
-        BlockProperties {
-            placement: BlockPlacement::Near(anchor),
-            height: Some(0),
-            style: BlockStyle::Fixed,
-            render: Arc::new(move |_cx: &mut BlockContext| {
-                div()
-                    .block_mouse_except_scroll()
-                    .child(
-                        Label::new(text.clone())
-                            .size(LabelSize::Default)
-                            .color(Color::Custom(accent)),
-                    )
-                    .into_any_element()
-            }),
-            priority: label_index,
-        }
-    }
 
 }
 
-#[derive(RegisterSetting)]
-struct HelixSettings {
-    jump_label_accent: Hsla,
-}
-
-impl Settings for HelixSettings {
-    fn from_settings(content: &settings::SettingsContent) -> Self {
-        let helix = content.helix.clone().unwrap_or_default();
-        Self {
-            jump_label_accent: helix.jump_label_accent.unwrap_or(HELIX_JUMP_ACCENT),
-        }
-    }
-}
 
 /// Same as in jump.rs.
 /// My custom Dvorak Programmer keyboard layout.

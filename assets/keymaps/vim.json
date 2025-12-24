@@ -501,7 +501,6 @@
       "shift-l": "pane::ActivateNextItem", // not a helix default
       "g p": "pane::ActivatePreviousItem",
       "shift-h": "pane::ActivatePreviousItem", // not a helix default
-      "g w": "vim::HelixJumpToWord",
       "g .": "vim::HelixGotoLastModification",
       "g o": "editor::ToggleSelectedDiffHunks", // Zed specific
       "g shift-o": "git::ToggleStaged", // Zed specific

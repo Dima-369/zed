@@ -6,7 +6,7 @@ use crate::{
     DebugEvent, EDIT_PREDICTIONS_MODEL_ID, EditPredictionFinishedDebugEvent, EditPredictionId,
     EditPredictionModelInput, EditPredictionStartedDebugEvent, EditPredictionStore,
 };
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use cloud_llm_client::EditPredictionRejectReason;
 use gpui::{Task, prelude::*};
 use language::{OffsetRangeExt as _, ToOffset as _, ToPoint};

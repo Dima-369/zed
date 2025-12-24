@@ -20,8 +20,8 @@ mod surrounds;
 mod visual;
 
 use crate::normal::paste::Paste as VimPaste;
-use collections::{HashMap, HashSet};
-use editor::display_map::{BlockProperties, CustomBlockId, ToDisplayPoint};
+use collections::HashMap;
+use editor::display_map::ToDisplayPoint;
 use editor::{
     Anchor, Bias, Editor, EditorEvent, EditorSettings, HideMouseCursorOrigin, MultiBufferOffset,
     SelectionEffects, ToPoint,
@@ -29,7 +29,7 @@ use editor::{
     movement::{self, FindRange},
 };
 use gpui::{
-    Action, App, AppContext, Axis, Context, Entity, EventEmitter, HighlightStyle, KeyContext,
+    Action, App, AppContext, Axis, Context, Entity, EventEmitter, KeyContext,
     KeystrokeEvent, Render, Subscription, Task, WeakEntity, Window, actions,
 };
 use insert::{NormalBefore, TemporaryNormal};
@@ -1700,16 +1700,6 @@ impl Vim {
         });
     }
 
-    fn apply_helix_jump_ui(
-        &self,
-        _highlight_ranges: Vec<Range<Anchor>>,
-        _blocks: Vec<BlockProperties<Anchor>>,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) -> bool {
-        // Deprecated: UI is applied via update_helix_jump_labels
-        true
-    }
 
     pub(crate) fn helix_handle_jump_input(
         &mut self,
