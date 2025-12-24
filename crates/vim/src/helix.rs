@@ -1451,9 +1451,12 @@ impl Settings for HelixSettings {
     }
 }
 
-const HELIX_JUMP_ALPHABET: &[char; 26] = &[
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
-    't', 'u', 'v', 'w', 'x', 'y', 'z',
+/// Same as in jump.rs.
+/// My custom Dvorak Programmer keyboard layout.
+/// First home row, then top row, then bottom row without pinky finger keys (s and l).
+const HELIX_JUMP_ALPHABET: &[char] = &[
+    'h', 't', 'n', 'd', 'u', 'e', 'o', 'i', 'f', 'g', 'c', 'r', 'y', 'p', 'z',
+    'b', 'm', 'w', 'v', 'x', 'k', 'j', 'q',
 ];
 
 fn is_jump_word_char(ch: char) -> bool {
