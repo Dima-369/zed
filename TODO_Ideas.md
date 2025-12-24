@@ -27,7 +27,7 @@ test in this buffer's TODO_ideas.md first line with space
 - can `jump::Toggle` work in multi buffers? currently, no hints are displayed at all
 I tried with AI and it fails to do, how about checking other jump hint PRs if it works there, and then copy over the relevant code?
 
-- when I try to search for a character which exists A LOT in the buffer, maybe like a space, I do not see the 2 characters multi jump hints starting at o again, often only "z...", "k..." prefix for the 2 char hints. how to fix that? I want to see all hints across all characters, so first `o` with all other characters in hint jump list, then next character, and so on
+- when I try to search for a character which exists A LOT in the buffer, maybe like a space, I do not see the 2 characters multi jump hints starting at o again, often only "z...", "k..." prefix for the 2 char hints. how to fix that? I want to see all hints across all characters, so first `o` with all other characters in hint jump list, then next character, and so on. and not all space characters have a hint? the hint generation logic seems to be flawed
 
 - improve `jump::Toggle` to not allow entering extra characters, like currently one can enter " buffer" with leading space (plus buffer) and it trims down candidates. This is annoying because if you just want to jump to a space, only a few hints are shown, you first need to enter more. I want: Instantly after hitting space, I want to see all space characters highlighted to jump to (probably 2 characters in the ordering provided)
 
