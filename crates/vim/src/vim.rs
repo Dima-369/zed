@@ -1708,6 +1708,11 @@ impl Vim {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if input_char == '\x1b' {
+            self.clear_operator(window, cx);
+            return;
+        }
+
         let Operator::HelixJump {
             behaviour,
             first_char,
@@ -1790,7 +1795,8 @@ impl Vim {
         self.update_editor(cx, |_, editor, cx| match behaviour {
             HelixJumpBehaviour::Move => {
                 editor.change_selections(Default::default(), window, cx, |s| {
-                    s.select_anchor_ranges([candidate.range.clone()])
+                    let start = candidate.range.start;
+                    s.select_anchor_ranges([start.clone()..start])
                 });
             }
             HelixJumpBehaviour::Extend => {
