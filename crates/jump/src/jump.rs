@@ -47,7 +47,6 @@ struct JumpMatch {
     label: String,
     distance: u32,
     editor: Entity<Editor>,
-    next_char: Option<char>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -166,7 +165,7 @@ impl JumpBar {
         this
     }
 
-    fn generate_labels(count: usize, next_chars: &HashSet<char>) -> Vec<String> {
+    fn generate_labels(count: usize) -> Vec<String> {
         if count == 0 {
             return Vec::new();
         }
@@ -176,11 +175,7 @@ impl JumpBar {
         let lowercase_priority = "htndueoifgcrypzbmwvxkjq";
         let priority_chars: Vec<char> = lowercase_priority.chars().collect();
 
-        // Filter out forbidden characters (case-insensitive comparison)
-        let available: Vec<char> = priority_chars
-            .into_iter()
-            .filter(|c| !next_chars.contains(&c.to_lowercase().next().unwrap()))
-            .collect();
+        let available = priority_chars;
 
         let n = available.len();
         if n == 0 {
@@ -472,7 +467,6 @@ impl JumpBar {
                         label: String::new(),
                         distance,
                         editor: editor_entity.clone(),
-                        next_char: None,
                     });
                 }
             }
@@ -612,19 +606,7 @@ impl JumpBar {
                                 .unsigned_abs();
                             let distance = dy * 1000 + dx;
 
-                            // Get the next character after the match
-                            let next_char = if offset + query_len < buffer_snapshot.len() {
-                                let next_offset_usize = offset_usize + query_len;
-                                if text.is_char_boundary(next_offset_usize) {
-                                    text[next_offset_usize..].chars().next()
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            };
-
-                            matches.push((display_point, distance, next_char));
+                            matches.push((display_point, distance));
                         }
                     }
 
@@ -632,13 +614,12 @@ impl JumpBar {
                 });
 
                 // Add matches from this editor with distance penalty
-                for (position, distance, next_char) in editor_matches {
+                for (position, distance) in editor_matches {
                     all_matches.push(JumpMatch {
                         position,
                         label: String::new(),
                         distance: distance + editor_distance_penalty,
                         editor: editor_entity.clone(),
-                        next_char,
                     });
                 }
             }
@@ -647,16 +628,9 @@ impl JumpBar {
         // Sort all matches globally by distance
         all_matches.sort_by_key(|m| m.distance);
 
-        // Collect next characters for label generation (forbidden chars)
-        let next_chars: HashSet<char> = all_matches
-            .iter()
-            .filter_map(|m| m.next_char)
-            .flat_map(|c| vec![c.to_ascii_lowercase(), c.to_ascii_uppercase()])
-            .collect();
-
         // Generate labels globally
         let match_count = all_matches.len();
-        let labels = Self::generate_labels(match_count, &next_chars);
+        let labels = Self::generate_labels(match_count);
 
         // Assign labels
         for (match_item, label) in all_matches.iter_mut().zip(labels.iter()) {
