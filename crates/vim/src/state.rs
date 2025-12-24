@@ -154,6 +154,7 @@ pub enum Operator {
 pub struct HelixJumpLabel {
     pub label: [char; 2],
     pub range: Range<Anchor>,
+    pub match_len: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

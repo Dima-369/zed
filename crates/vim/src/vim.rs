@@ -21,12 +21,11 @@ mod visual;
 
 use crate::normal::paste::Paste as VimPaste;
 use collections::{HashMap, HashSet};
-use editor::display_map::{BlockProperties, CustomBlockId};
+use editor::display_map::{BlockProperties, CustomBlockId, ToDisplayPoint};
 use editor::{
     Anchor, Bias, Editor, EditorEvent, EditorSettings, HideMouseCursorOrigin, MultiBufferOffset,
     SelectionEffects, ToPoint,
     actions::Paste,
-    display_map::ToDisplayPoint,
     movement::{self, FindRange},
 };
 use gpui::{
@@ -529,12 +528,8 @@ impl Render for Vim {
     }
 }
 
-pub(crate) struct HelixJumpHighlight;
-
 #[derive(Default)]
-struct HelixJumpUi {
-    block_ids: Vec<CustomBlockId>,
-}
+struct HelixJumpUi;
 
 enum VimEvent {
     Focused,
@@ -1680,9 +1675,16 @@ impl Vim {
         popped_operator
     }
 
+    pub(crate) fn helix_clear_jump_ui(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        self.helix_jump_ui.take();
+        self.update_editor(cx, move |_, editor, cx| {
+            editor.set_jump_labels(Vec::new(), cx);
+        });
+    }
+
     fn clear_operator(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if matches!(self.active_operator(), Some(Operator::HelixJump { .. })) {
-            self.clear_helix_jump_ui(window, cx);
+            self.helix_clear_jump_ui(window, cx);
         }
         Vim::take_count(cx);
         Vim::take_forced_motion(cx);
@@ -1692,50 +1694,24 @@ impl Vim {
     }
 
     fn clear_helix_jump_ui(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        let state = self.helix_jump_ui.take();
+        self.helix_jump_ui.take();
         self.update_editor(cx, move |_, editor, cx| {
-            editor.clear_highlights::<HelixJumpHighlight>(cx);
-            if let Some(state) = state {
-                if !state.block_ids.is_empty() {
-                    let block_ids: HashSet<_> = state.block_ids.into_iter().collect();
-                    editor.remove_blocks(block_ids, None, cx);
-                }
-            }
+            editor.set_jump_labels(Vec::new(), cx);
         });
     }
 
     fn apply_helix_jump_ui(
-        &mut self,
-        highlight_ranges: Vec<Range<Anchor>>,
-        blocks: Vec<BlockProperties<Anchor>>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
+        &self,
+        _highlight_ranges: Vec<Range<Anchor>>,
+        _blocks: Vec<BlockProperties<Anchor>>,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
     ) -> bool {
-        self.clear_helix_jump_ui(window, cx);
-        let Some(block_ids) = self.update_editor(cx, |_, editor, cx| {
-            if !highlight_ranges.is_empty() {
-                editor.highlight_text::<HelixJumpHighlight>(
-                    highlight_ranges,
-                    HighlightStyle {
-                        fade_out: Some(1.0),
-                        ..Default::default()
-                    },
-                    cx,
-                );
-            }
-            if blocks.is_empty() {
-                Vec::new()
-            } else {
-                editor.insert_blocks(blocks, None, cx)
-            }
-        }) else {
-            return false;
-        };
-        self.helix_jump_ui = Some(HelixJumpUi { block_ids });
+        // Deprecated: UI is applied via update_helix_jump_labels
         true
     }
 
-    fn handle_helix_jump_input(
+    pub(crate) fn helix_handle_jump_input(
         &mut self,
         operator: Operator,
         input_char: char,
@@ -1762,14 +1738,14 @@ impl Vim {
             }) {
                 self.finish_helix_jump(candidate, behaviour, window, cx);
             } else {
-                self.clear_helix_jump_ui(window, cx);
+                self.helix_clear_jump_ui(window, cx);
             }
         } else {
             if !labels
                 .iter()
                 .any(|label| label.label[0].eq_ignore_ascii_case(&input))
             {
-                self.clear_helix_jump_ui(window, cx);
+                self.helix_clear_jump_ui(window, cx);
                 return;
             }
 
@@ -1777,12 +1753,41 @@ impl Vim {
                 Operator::HelixJump {
                     behaviour,
                     first_char: Some(input),
-                    labels,
+                    labels: labels.clone(),
                 },
                 window,
                 cx,
             );
+            self.update_helix_jump_labels(&labels, Some(input), window, cx);
         }
+    }
+
+    pub(crate) fn update_helix_jump_labels(
+        &mut self,
+        labels: &[HelixJumpLabel],
+        typed_char: Option<char>,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let typed_count = if typed_char.is_some() { 1 } else { 0 };
+
+        self.update_editor(cx, |_, editor, cx| {
+            let snapshot = editor.display_snapshot(cx);
+            let jump_labels = labels
+                .iter()
+                .filter(|l| {
+                    typed_char.map_or(true, |c| l.label[0].eq_ignore_ascii_case(&c))
+                        && l.range.start.is_valid(snapshot.buffer_snapshot())
+                })
+                .map(|l| editor::JumpLabel {
+                    label: l.label.iter().collect(),
+                    position: l.range.start.to_display_point(&snapshot),
+                    match_length: l.match_len,
+                    typed_count,
+                })
+                .collect();
+            editor.set_jump_labels(jump_labels, cx);
+        });
     }
 
     fn finish_helix_jump(
@@ -1817,7 +1822,7 @@ impl Vim {
                 });
             }
         });
-        self.clear_helix_jump_ui(window, cx);
+        self.helix_clear_jump_ui(window, cx);
     }
 
     fn active_operator(&self) -> Option<Operator> {
@@ -2005,7 +2010,7 @@ impl Vim {
             }
             Some(operator @ Operator::HelixJump { .. }) => {
                 if let Some(input_char) = text.chars().next() {
-                    self.handle_helix_jump_input(operator, input_char, window, cx);
+                    self.helix_handle_jump_input(operator, input_char, window, cx);
                 }
             }
             Some(Operator::Replace) => match self.mode {

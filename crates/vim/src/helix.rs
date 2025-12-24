@@ -9,12 +9,10 @@ mod select;
 
 pub use jump_list::{JumpEntry, JumpList};
 
-use editor::display_map::{
-    BlockContext, BlockPlacement, BlockProperties, BlockStyle, DisplayRow, DisplaySnapshot,
-};
+use editor::display_map::{BlockContext, BlockPlacement, BlockProperties, BlockStyle, DisplayRow, DisplaySnapshot, ToDisplayPoint};
 use editor::{
-    Anchor, DisplayPoint, Editor, EditorSettings, HideMouseCursorOrigin, MultiBufferOffset,
-    MultibufferSelectionMode, SelectionEffects, ToOffset, ToPoint, movement,
+    Anchor, DisplayPoint, Editor, EditorSettings, HideMouseCursorOrigin, JumpLabel,
+    MultiBufferOffset, MultibufferSelectionMode, SelectionEffects, ToOffset, ToPoint, movement,
 };
 use gpui::actions;
 use gpui::{Context, Entity, Hsla, Window};
@@ -1125,24 +1123,23 @@ impl Vim {
         cx: &mut Context<Self>,
     ) {
         let is_visual = self.mode.is_visual();
-        let Some(data) = self.collect_helix_jump_data(is_visual, window, cx) else {
+        let Some(labels) = self.collect_helix_jump_data(is_visual, window, cx) else {
             return;
         };
 
-        if data.labels.is_empty() {
+        if labels.is_empty() {
             self.clear_helix_jump_ui(window, cx);
             return;
         }
 
-        if !self.apply_helix_jump_ui(data.highlights, data.blocks, window, cx) {
-            return;
-        }
+        self.update_helix_jump_labels(&labels, None, window, cx);
+        self.helix_jump_ui = Some(crate::HelixJumpUi);
 
         self.push_operator(
             Operator::HelixJump {
                 behaviour,
                 first_char: None,
-                labels: data.labels,
+                labels,
             },
             window,
             cx,
@@ -1154,7 +1151,7 @@ impl Vim {
         is_visual: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> Option<HelixJumpUiData> {
+    ) -> Option<Vec<HelixJumpLabel>> {
         self.update_editor(cx, |_, editor, cx| {
             let snapshot = editor.snapshot(window, cx);
             let display_snapshot = &snapshot.display_snapshot;
@@ -1197,30 +1194,27 @@ impl Vim {
                 .map(|s| buffer_snapshot.point_to_offset(s.head()))
                 .unwrap_or(start_offset);
 
-            let accent = HelixSettings::get_global(cx).jump_label_accent;
-            Self::build_helix_jump_ui_data(
+            Self::build_helix_jump_labels(
                 buffer_snapshot,
                 start_offset,
                 end_offset,
                 cursor_offset,
-                accent,
                 &skip_points,
                 &skip_ranges,
             )
         })
     }
 
-    fn build_helix_jump_ui_data(
+    fn build_helix_jump_labels(
         buffer: &MultiBufferSnapshot,
         start_offset: MultiBufferOffset,
         end_offset: MultiBufferOffset,
         cursor_offset: MultiBufferOffset,
-        accent: Hsla,
         skip_points: &[MultiBufferOffset],
         skip_ranges: &[Range<MultiBufferOffset>],
-    ) -> HelixJumpUiData {
+    ) -> Vec<HelixJumpLabel> {
         if start_offset >= end_offset {
-            return HelixJumpUiData::default();
+            return Vec::new();
         }
 
         // First pass: collect all word candidates without assigning labels
@@ -1233,7 +1227,7 @@ impl Vim {
         );
 
         if candidates.is_empty() {
-            return HelixJumpUiData::default();
+            return Vec::new();
         }
 
         // Partition candidates into forward (>= cursor) and backward (< cursor)
@@ -1281,15 +1275,11 @@ impl Vim {
 
         // Now assign labels and build UI data
         let mut labels = Vec::with_capacity(ordered_candidates.len());
-        let mut highlights = Vec::with_capacity(ordered_candidates.len());
-        let mut blocks = Vec::with_capacity(ordered_candidates.len());
 
         for (label_index, candidate) in ordered_candidates.into_iter().enumerate() {
             let start_anchor = buffer.anchor_after(candidate.word_start);
             let end_anchor = buffer.anchor_after(candidate.word_end);
-            let first_two_anchor = buffer.anchor_after(candidate.first_two_end);
-
-            highlights.push(start_anchor..first_two_anchor);
+            let match_len = candidate.first_two_end - candidate.word_start;
 
             let label = [
                 HELIX_JUMP_ALPHABET[label_index / HELIX_JUMP_ALPHABET.len()],
@@ -1299,24 +1289,11 @@ impl Vim {
             labels.push(HelixJumpLabel {
                 label,
                 range: start_anchor..end_anchor,
+                match_len,
             });
-
-            blocks.push(Self::jump_label_block(
-                start_anchor,
-                label,
-                accent,
-                label_index,
-            ));
         }
 
-        // Sort highlights by position - the editor's binary search expects them sorted
-        highlights.sort_by(|a, b| a.start.cmp(&b.start, buffer));
-
-        HelixJumpUiData {
-            labels,
-            highlights,
-            blocks,
-        }
+        labels
     }
 
     fn collect_jump_candidates(
@@ -1457,6 +1434,7 @@ impl Vim {
             priority: label_index,
         }
     }
+
 }
 
 #[derive(RegisterSetting)]
@@ -1490,12 +1468,6 @@ struct JumpCandidate {
     first_two_end: MultiBufferOffset,
 }
 
-#[derive(Default)]
-struct HelixJumpUiData {
-    labels: Vec<HelixJumpLabel>,
-    highlights: Vec<Range<Anchor>>,
-    blocks: Vec<BlockProperties<Anchor>>,
-}
 
 #[cfg(test)]
 mod test {
