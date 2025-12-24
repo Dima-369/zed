@@ -23,13 +23,6 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 - improve `jump::Toggle` to not allow entering extra characters, like currently one can enter " buffer" with leading space (plus buffer) and it trims down candidates. This is annoying because if you just want to jump to a space, only a few hints are shown, you first need to enter more. I want: Instantly after hitting space, I want to see all space characters highlighted to jump to (probably 2 characters in the ordering provided)
 
-# improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
-
-- fix warnings, handle errors properly, check how other code handles them
-
-## impossible
-
-- can the left candidate be centered, currently is always at either top or bottom when holding arrow up/down (this is not implemented anywhere else in Zed, so probably too difficult to implement)
 
 
 
@@ -189,3 +182,9 @@ https://github.com/zed-industries/zed/pull/43733
 I tried to fix with my yek file merger through Gemini and via auggie, but both failed.
 
 https://github.com/zed-industries/zed/issues/45532
+
+## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+
+### Can the left candidate be centered, currently is always at either top or bottom when holding arrow up/down?
+
+This is not implemented anywhere else in Zed, so probably too difficult to implement.
