@@ -224,9 +224,9 @@ impl Render for BufferSearchModal {
 
         let viewport_size = window.viewport_size();
 
-        let modal_width = (viewport_size.width).min(viewport_size.width);
+        let modal_width = (viewport_size.width * 0.95).min(viewport_size.width);
         // needs to be a bit lower than the viewport height to avoid the dialog going off screen at the bottom
-        let modal_height = (viewport_size.height * 0.9).min(viewport_size.height);
+        let modal_height = (viewport_size.height * 0.85).min(viewport_size.height);
 
         let border_color = cx.theme().colors().border;
 
@@ -704,22 +704,20 @@ impl BufferSearchDelegate {
         let syntax_theme = cx.theme().syntax();
         let mut match_highlights = Vec::new();
 
-        for (i, range) in list_match_ranges.iter().enumerate() {
-            if !is_valid_range(range) {
-                continue;
+        if selected {
+            if let Some(i) = item.active_match_index_in_list {
+                if let Some(range) = list_match_ranges.get(i) {
+                    if is_valid_range(range) {
+                        let color = cx.theme().colors().search_active_match_background;
+                        let match_style = HighlightStyle {
+                            font_weight: Some(gpui::FontWeight::BOLD),
+                            background_color: Some(color),
+                            ..Default::default()
+                        };
+                        match_highlights.push((range.clone(), match_style));
+                    }
+                }
             }
-            let is_active = item.active_match_index_in_list == Some(i);
-            let color = if is_active {
-                cx.theme().colors().search_active_match_background
-            } else {
-                cx.theme().colors().search_match_background
-            };
-            let match_style = HighlightStyle {
-                font_weight: Some(gpui::FontWeight::BOLD),
-                background_color: Some(color),
-                ..Default::default()
-            };
-            match_highlights.push((range.clone(), match_style));
         }
 
         let mut highlights: Vec<(Range<usize>, HighlightStyle)> = syntax_highlights
