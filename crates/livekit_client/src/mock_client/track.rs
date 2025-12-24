@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    ParticipantIdentity, TrackSid,
-    mock_client::WeakRoom,
-};
+use crate::{ParticipantIdentity, TrackSid, mock_client::WeakRoom};
 
 #[derive(Clone, Debug)]
 pub struct TestServerAudioTrack {

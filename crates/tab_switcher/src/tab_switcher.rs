@@ -399,7 +399,10 @@ impl TabSwitcherDelegate {
         let Some(workspace) = self.workspace.upgrade() else {
             return;
         };
-        let active_item_id = workspace.read(cx).active_item(cx).map(|item| item.item_id());
+        let active_item_id = workspace
+            .read(cx)
+            .active_item(cx)
+            .map(|item| item.item_id());
 
         let mut all_items = Vec::new();
         let mut item_index = 0;

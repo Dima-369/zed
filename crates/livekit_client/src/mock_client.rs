@@ -16,11 +16,11 @@ pub type LocalParticipant = participant::LocalParticipant;
 
 pub use shared_types::{ConnectionState, ParticipantIdentity, TrackSid};
 
-use std::sync::{Arc, Mutex};
-use collections::HashSet;
 use anyhow;
-use gpui::{App, AsyncApp};
+use collections::HashSet;
 use futures::channel::mpsc;
+use gpui::{App, AsyncApp};
+use std::sync::{Arc, Mutex};
 
 // Mock Room type for when webrtc is disabled
 #[derive(Clone, Debug)]
@@ -71,19 +71,36 @@ impl Room {
         ConnectionState::Connected
     }
 
-    pub fn remote_participants(&self) -> collections::HashMap<ParticipantIdentity, participant::RemoteParticipant> {
+    pub fn remote_participants(
+        &self,
+    ) -> collections::HashMap<ParticipantIdentity, participant::RemoteParticipant> {
         collections::HashMap::default()
     }
 
-    pub fn play_remote_audio_track(&self, _track: &track::RemoteAudioTrack, _cx: &App) -> anyhow::Result<AudioStream> {
+    pub fn play_remote_audio_track(
+        &self,
+        _track: &track::RemoteAudioTrack,
+        _cx: &App,
+    ) -> anyhow::Result<AudioStream> {
         Err(anyhow::anyhow!("WebRTC disabled - cannot play audio track"))
     }
 
-    pub async fn publish_local_microphone_track(&self, _user_name: String, _is_staff: bool, _cx: &mut AsyncApp) -> anyhow::Result<(publication::LocalTrackPublication, AudioStream)> {
-        Err(anyhow::anyhow!("WebRTC disabled - cannot publish microphone track"))
+    pub async fn publish_local_microphone_track(
+        &self,
+        _user_name: String,
+        _is_staff: bool,
+        _cx: &mut AsyncApp,
+    ) -> anyhow::Result<(publication::LocalTrackPublication, AudioStream)> {
+        Err(anyhow::anyhow!(
+            "WebRTC disabled - cannot publish microphone track"
+        ))
     }
 
-    pub async fn unpublish_local_track(&self, _track_sid: TrackSid, _cx: &mut AsyncApp) -> anyhow::Result<publication::LocalTrackPublication> {
+    pub async fn unpublish_local_track(
+        &self,
+        _track_sid: TrackSid,
+        _cx: &mut AsyncApp,
+    ) -> anyhow::Result<publication::LocalTrackPublication> {
         Err(anyhow::anyhow!("WebRTC disabled - cannot unpublish track"))
     }
 
@@ -91,7 +108,11 @@ impl Room {
         participant::LocalParticipant::new()
     }
 
-    pub async fn connect(_server_url: String, _token: String, _cx: &mut AsyncApp) -> anyhow::Result<(Self, mpsc::UnboundedReceiver<crate::RoomEvent>)> {
+    pub async fn connect(
+        _server_url: String,
+        _token: String,
+        _cx: &mut AsyncApp,
+    ) -> anyhow::Result<(Self, mpsc::UnboundedReceiver<crate::RoomEvent>)> {
         Err(anyhow::anyhow!("WebRTC disabled - cannot connect to room"))
     }
 }
@@ -103,11 +124,19 @@ impl MockTestServer {
         Ok(())
     }
 
-    pub async fn publish_audio_track(&self, _token: &str, _track: &track::LocalAudioTrack) -> anyhow::Result<TrackSid> {
+    pub async fn publish_audio_track(
+        &self,
+        _token: &str,
+        _track: &track::LocalAudioTrack,
+    ) -> anyhow::Result<TrackSid> {
         Ok(TrackSid("mock_audio_track".to_string()))
     }
 
-    pub async fn publish_video_track(&self, _token: &str, _track: track::LocalVideoTrack) -> anyhow::Result<TrackSid> {
+    pub async fn publish_video_track(
+        &self,
+        _token: &str,
+        _track: track::LocalVideoTrack,
+    ) -> anyhow::Result<TrackSid> {
         Ok(TrackSid("mock_video_track".to_string()))
     }
 
@@ -119,7 +148,12 @@ impl MockTestServer {
         Ok(vec![])
     }
 
-    pub async fn set_track_muted(&self, _token: &str, _track: &TrackSid, _mute: bool) -> anyhow::Result<()> {
+    pub async fn set_track_muted(
+        &self,
+        _token: &str,
+        _track: &TrackSid,
+        _mute: bool,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 

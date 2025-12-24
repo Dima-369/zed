@@ -1,8 +1,8 @@
+use editor::actions::MoveToEnd;
 use editor::{
     DisplayPoint, Editor, EditorEvent, JumpLabel, MultiBufferOffset, ToOffset,
     display_map::ToDisplayPoint,
 };
-use editor::actions::MoveToEnd;
 use gpui::{
     Action, App, Context, DismissEvent, Entity, EventEmitter, Focusable, IntoElement, Render,
     Styled, Window, div,

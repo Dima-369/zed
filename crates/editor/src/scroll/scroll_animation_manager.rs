@@ -49,11 +49,7 @@ impl Anim {
     ) -> Anim {
         let start = from.y;
         let end = destination_anchor.offset.y
-            + destination_anchor
-                .anchor
-                .to_display_point(&map)
-                .row()
-                .0 as f64;
+            + destination_anchor.anchor.to_display_point(&map).row().0 as f64;
         let delta = end - start;
         Anim {
             start,

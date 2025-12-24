@@ -72,7 +72,12 @@ impl RemoteTrackPublication {
 
     pub fn is_enabled(&self) -> bool {
         if let Some(room) = self.room.upgrade() {
-            !room.0.lock().unwrap().paused_audio_tracks.contains(&self.sid)
+            !room
+                .0
+                .lock()
+                .unwrap()
+                .paused_audio_tracks
+                .contains(&self.sid)
         } else {
             false
         }

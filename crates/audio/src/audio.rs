@@ -103,10 +103,7 @@ impl Default for Audio {
             output_mixer: Default::default(),
             #[cfg(all(
                 feature = "webrtc",
-                not(any(
-                    all(target_os = "windows", target_env = "gnu"),
-                    target_os = "freebsd"
-                ))
+                not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd"))
             ))]
             echo_canceller: Arc::new(Mutex::new(apm::AudioProcessingModule::new(
                 true, false, false, false,

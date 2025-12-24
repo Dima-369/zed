@@ -10,7 +10,7 @@ use gpui::{
 };
 use language::{Buffer, Capability};
 use picker::{Picker, PickerDelegate};
-use project::{git_store::Repository, Project};
+use project::{Project, git_store::Repository};
 use std::sync::Arc;
 use ui::{ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
@@ -87,7 +87,7 @@ impl BranchDiffPickerDelegate {
         project: Entity<Project>,
         _cx: &mut Context<BranchDiffPicker>,
     ) -> Self {
-        // Filter out branches that are likely not useful for diffing (like the current one? 
+        // Filter out branches that are likely not useful for diffing (like the current one?
         // keeping all for now allows diffing against upstream/origin easily).
         Self {
             all_branches: branches.clone(),
@@ -280,11 +280,16 @@ impl PickerDelegate for BranchDiffPickerDelegate {
                     h_flex()
                         .w_full()
                         .gap_2()
-                        .child(Icon::new(IconName::GitBranch).size(IconSize::Small).color(Color::Muted))
                         .child(
-                            Label::new(branch_name)
-                                .color(if selected { Color::Default } else { Color::Muted })
+                            Icon::new(IconName::GitBranch)
+                                .size(IconSize::Small)
+                                .color(Color::Muted),
                         )
+                        .child(Label::new(branch_name).color(if selected {
+                            Color::Default
+                        } else {
+                            Color::Muted
+                        })),
                 ),
         )
     }

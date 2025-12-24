@@ -1,15 +1,15 @@
 use crate::{
-    AudioStream, LocalAudioTrack, LocalTrackPublication, LocalVideoTrack, Participant,
-    RemoteTrack, RemoteTrackPublication, TrackSid,
-    mock_client::{Room, WeakRoom, RemoteAudioTrack, RemoteVideoTrack},
+    AudioStream, LocalAudioTrack, LocalTrackPublication, LocalVideoTrack, Participant, RemoteTrack,
+    RemoteTrackPublication, TrackSid,
+    mock_client::{RemoteAudioTrack, RemoteVideoTrack, Room, WeakRoom},
     shared_types::ParticipantIdentity,
 };
-use std::sync::Arc;
 use anyhow::Result;
 use collections::HashMap;
 use gpui::{
     AsyncApp, DevicePixels, ScreenCaptureSource, ScreenCaptureStream, SourceMetadata, size,
 };
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct LocalParticipant {

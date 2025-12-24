@@ -7503,7 +7503,14 @@ impl EditorElement {
             });
 
             shaped_label
-                .paint(label_origin, line_height, gpui::TextAlign::Left, None, window, cx)
+                .paint(
+                    label_origin,
+                    line_height,
+                    gpui::TextAlign::Left,
+                    None,
+                    window,
+                    cx,
+                )
                 .log_err();
         }
     }

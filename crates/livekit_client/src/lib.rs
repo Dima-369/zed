@@ -52,13 +52,7 @@ mod shared_types;
     target_os = "freebsd"
 ))]
 mod mock_client;
-#[cfg(all(
-    feature = "webrtc",
-    any(
-        test,
-        feature = "test-support"
-    )
-))]
+#[cfg(all(feature = "webrtc", any(test, feature = "test-support")))]
 pub mod test;
 #[cfg(any(
     not(feature = "webrtc"),

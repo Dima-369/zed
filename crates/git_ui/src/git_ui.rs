@@ -25,14 +25,17 @@ use onboarding::GitOnboardingModal;
 use project::git_store::Repository;
 use project_diff::ProjectDiff;
 use ui::prelude::*;
-use workspace::{ModalView, Toast, Workspace, notifications::{DetachAndPromptErr, NotificationId}};
+use workspace::{
+    ModalView, Toast, Workspace,
+    notifications::{DetachAndPromptErr, NotificationId},
+};
 use zed_actions;
 
 use crate::{git_panel::GitPanel, text_diff_view::TextDiffView};
 
 mod askpass_modal;
-pub mod branch_picker;
 pub mod branch_diff_picker;
+pub mod branch_picker;
 pub mod commit_diff_picker;
 mod commit_modal;
 pub mod commit_tooltip;
@@ -404,39 +407,52 @@ fn open_branch_diff_picker(
     cx.spawn_in(window, async move |workspace, cx| {
         if let Ok(branches_result) = branches_task.await {
             if let Ok(branches_list) = branches_result {
-                workspace.update_in(cx, |workspace, window, cx| {
-                    workspace.toggle_modal(window, cx, |window, cx| {
-                        branch_diff_picker::BranchDiffPicker::new(
-                            branches_list,
-                            repo_path,
-                            buffer_clone,
-                            repo_weak,
-                            workspace_weak,
-                            project_clone,
-                            window,
-                            cx,
-                        )
-                    });
-                }).ok();
+                workspace
+                    .update_in(cx, |workspace, window, cx| {
+                        workspace.toggle_modal(window, cx, |window, cx| {
+                            branch_diff_picker::BranchDiffPicker::new(
+                                branches_list,
+                                repo_path,
+                                buffer_clone,
+                                repo_weak,
+                                workspace_weak,
+                                project_clone,
+                                window,
+                                cx,
+                            )
+                        });
+                    })
+                    .ok();
             } else {
                 // Handle error - internal result failure
-                workspace.update_in(cx, |workspace, _window, cx| {
-                    workspace.show_toast(
-                        Toast::new(NotificationId::unique::<()>(), "Failed to retrieve branches"),
-                        cx,
-                    );
-                }).ok();
+                workspace
+                    .update_in(cx, |workspace, _window, cx| {
+                        workspace.show_toast(
+                            Toast::new(
+                                NotificationId::unique::<()>(),
+                                "Failed to retrieve branches",
+                            ),
+                            cx,
+                        );
+                    })
+                    .ok();
             }
         } else {
             // Handle error - receiver failure
-            workspace.update_in(cx, |workspace, _window, cx| {
-                workspace.show_toast(
-                    Toast::new(NotificationId::unique::<()>(), "Failed to retrieve branches"),
-                    cx,
-                );
-            }).ok();
+            workspace
+                .update_in(cx, |workspace, _window, cx| {
+                    workspace.show_toast(
+                        Toast::new(
+                            NotificationId::unique::<()>(),
+                            "Failed to retrieve branches",
+                        ),
+                        cx,
+                    );
+                })
+                .ok();
         }
-    }).detach();
+    })
+    .detach();
 }
 
 fn open_modified_files(

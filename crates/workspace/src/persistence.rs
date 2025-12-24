@@ -34,10 +34,10 @@ use sqlez::{
     thread_safe_connection::ThreadSafeConnection,
 };
 
+use project::WorktreeId;
 use ui::{App, SharedString, px};
 use util::{ResultExt, maybe, rel_path::RelPath};
 use uuid::Uuid;
-use project::WorktreeId;
 
 use crate::{
     WorkspaceId,
