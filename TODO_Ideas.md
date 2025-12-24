@@ -1,13 +1,12 @@
 - revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
 
-# improve `jump::Toggle`
+# improve `vim::HelixJumpToWord`
 
-- can `jump::Toggle` work in multi buffers? currently, no hints are displayed at all
-https://github.com/zed-industries/zed/pull/43733 is a jump hint implementation and its hints work in multi buffers
+- do not enter visual mode on jumping to word and jump to start of word, where the hints are shown
 
----
 
-# Later (low prio)
+
+# >>> Later (low prio)
 
 ## improve code around `MIN_NAVIGATION_HISTORY_ROW_DELTA` for proper jumping
 
@@ -26,7 +25,7 @@ does it improve my key i issues? namely directly selecting everything inside quo
 
 ## Add Terminal CLI for programmatic terminal control
 
-Hmm, but do I have any real use for it? Maybe launching a terminal from Kotlin Emacs file explorer?
+Hmm, but do I have any real use for it? Maybe launching a terminal from Kotlin Emacs file explorer? Does it automatically grab focus of Zed?
 
 https://github.com/zed-industries/zed/pull/45558
 
@@ -38,13 +37,13 @@ https://github.com/zed-industries/zed/pull/45547
 
 ## Add a button to copy diagnostic messages from the hover popover to the clipboard
 
+A button is okayish. How about a new action which copies all diagnostic messages at cursor to clipboard?
+
 https://github.com/zed-industries/zed/pull/45625
 
 
 
----
-
-# Investigations
+# >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
 
@@ -169,9 +168,7 @@ https://github.com/zed-industries/zed/pull/43733
 
 
 
----
-
-# Impossible to fix from my side
+# >>> Impossible to fix from my side
 
 ## Fix that the git: blame action inside a git blame commit tab is not working and only showing an error notification
 

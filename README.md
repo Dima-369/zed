@@ -77,7 +77,11 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - fixed bug that hints did not appear correctly
   - set the opacity of the dialog to 50% to see hints below
   - implemented `jump::JumpToUrl` based on this code to jump to `http...` URLs
-  - BUG: does not work in multi buffers
+  - note that it does not work in multi buffers, but it works to jump across panes of regular text editors
+- `vim::HelixJumpToWord` from https://github.com/zed-industries/zed/pull/43733
+  - improved UI to look like the `jump::Toggle`
+  - modified key jump hints to my custom Dvorak Programmer keyboard layout
+  - I am only using this is inside multi buffers, whereas `jump::Toggle` does not. And this also does not work to jump across editor panes
 - [DEPRECATED due to smooth scrolling PR merge] `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit. Bind like this:
 
 ```json
