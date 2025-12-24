@@ -25,8 +25,6 @@ I tried with AI and it fails to do, how about checking other jump hint PRs if it
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
-- remove the border around the search bar, it's not needed and looks bad
-
 - fix warnings, handle errors properly, check how other code handles them
 
 ## impossible
