@@ -14,6 +14,10 @@ But when cursor is on the characters before on that line, it is correctly copied
 this also happens on `main`
 WRITE Github issue, then attempt AI fix in `editor::Copy` when in visual line mode and cursor is detected to be on the right most newline character
 
+In vim visual line mode when cursor is on the newline character at very right, then the line below is also incorrectly copied.
+But when cursor is on the characters before on that line, it is correctly copied.
+Attempt a fix in `editor::Copy` when in visual line mode and cursor is detected to be on the right most newline character, to not include the next line.
+
 - revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
 
 # improve `jump::Toggle`
