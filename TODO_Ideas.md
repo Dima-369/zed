@@ -134,25 +134,19 @@ I tried to fix with my yek file merger through Gemini and via auggie, but both f
 I created an issue for this:
 https://github.com/zed-industries/zed/issues/45532
 
-## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
-
-### Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down?
-
-I mean the selected row should be centered.
-
-This is not implemented anywhere else in Zed, so probably too difficult to implement.
-
 ## improve `vim::HelixJumpToWord`
 
 - in  `fn helix_handle_jump_input` can you make escape cancel out of the jump mode?
 
 I tried, but escape is not propagated to `input_ignored`, so no idea how to fix this.
 
-## improve `buffer_search_modal::ToggleBufferSearch`
+## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
 ### Center top candidates list always
 
 Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down? I mean the selected row should be centered. Real centered movement is not implemented anywhere else in Zed, so too difficult to implement. I tried with Windsurf Penguin Alpha and it was not able to.
+
+This is not implemented anywhere else in Zed, so probably too difficult to implement.
 
 ### Incorrect bottom padding in no line mode
 
