@@ -1,3 +1,6 @@
+- try to reproduce broken markdown breadcrumbs in Zed.app
+only filled when on heading or line below
+
 - sometimes undo when at very right on newline character, it does not go back to newline character
 
 - can `file_finder::Toggle` nucleo matching work with negations? it works in my nucleo-tester CLI
