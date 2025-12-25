@@ -1,9 +1,3 @@
-## sometimes undo when at very right on newline character, it does not go back to newline character
-
-how to reproduce exactly?
-
-
-
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
