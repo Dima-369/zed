@@ -32,8 +32,7 @@ use workspace::searchable::SearchableItem;
 use workspace::{ModalView, Workspace};
 
 use crate::{
-    NextHistoryQuery, PreviousHistoryQuery, SearchOption, SearchOptions, ToggleCaseSensitive,
-    ToggleIncludeIgnored, ToggleRegex, ToggleWholeWord,
+    NextHistoryQuery, PreviousHistoryQuery,
 };
 use project::search_history::{SearchHistory, SearchHistoryCursor};
 
@@ -183,7 +182,6 @@ fn preview_content_len(preview_text: &str) -> usize {
 pub struct BufferSearchDelegate {
     target_editor: Entity<Editor>,
     target_buffer: Entity<MultiBuffer>,
-    search_options: SearchOptions,
     line_mode: bool,
     items: Vec<LineMatchData>,
     selected_index: usize,
@@ -415,10 +413,7 @@ impl BufferSearchModal {
             });
         });
 
-        workspace.register_action(Self::toggle_case_sensitive);
-        workspace.register_action(Self::toggle_whole_word);
-        workspace.register_action(Self::toggle_regex);
-        workspace.register_action(Self::toggle_include_ignored);
+
         workspace.register_action(Self::toggle_line_mode);
     }
 
@@ -439,58 +434,11 @@ impl BufferSearchModal {
         }
     }
 
-    fn toggle_search_option(
-        workspace: &mut Workspace,
-        option: SearchOptions,
-        window: &mut Window,
-        cx: &mut Context<Workspace>,
-    ) {
-        if let Some(modal) = workspace.active_modal::<Self>(cx) {
-            modal.update(cx, |modal, cx| {
-                modal.picker.update(cx, |picker, cx| {
-                    picker.delegate.toggle_search_option(option);
-                    let query = picker.delegate.current_query.clone();
-                    picker.set_query(query, window, cx);
-                });
-            });
-        }
-    }
 
-    fn toggle_case_sensitive(
-        workspace: &mut Workspace,
-        _: &ToggleCaseSensitive,
-        window: &mut Window,
-        cx: &mut Context<Workspace>,
-    ) {
-        Self::toggle_search_option(workspace, SearchOptions::CASE_SENSITIVE, window, cx);
-    }
 
-    fn toggle_whole_word(
-        workspace: &mut Workspace,
-        _: &ToggleWholeWord,
-        window: &mut Window,
-        cx: &mut Context<Workspace>,
-    ) {
-        Self::toggle_search_option(workspace, SearchOptions::WHOLE_WORD, window, cx);
-    }
 
-    fn toggle_regex(
-        workspace: &mut Workspace,
-        _: &ToggleRegex,
-        window: &mut Window,
-        cx: &mut Context<Workspace>,
-    ) {
-        Self::toggle_search_option(workspace, SearchOptions::REGEX, window, cx);
-    }
 
-    fn toggle_include_ignored(
-        workspace: &mut Workspace,
-        _: &ToggleIncludeIgnored,
-        window: &mut Window,
-        cx: &mut Context<Workspace>,
-    ) {
-        Self::toggle_search_option(workspace, SearchOptions::INCLUDE_IGNORED, window, cx);
-    }
+
 
     fn new(
         _workspace: WeakEntity<Workspace>,
@@ -506,7 +454,6 @@ impl BufferSearchModal {
         let delegate = BufferSearchDelegate {
             target_editor,
             target_buffer: target_buffer.clone(),
-            search_options: SearchOptions::NONE,
             line_mode: true,
             items: Vec::new(),
             selected_index: 0,
@@ -671,38 +618,22 @@ impl BufferSearchModal {
     }
 }
 
-fn build_search_query(query: &str, search_options: SearchOptions) -> Result<SearchQuery, String> {
-    if search_options.contains(SearchOptions::REGEX) {
-        SearchQuery::regex(
-            query,
-            search_options.contains(SearchOptions::WHOLE_WORD),
-            search_options.contains(SearchOptions::CASE_SENSITIVE),
-            search_options.contains(SearchOptions::INCLUDE_IGNORED),
-            false,
-            PathMatcher::default(),
-            PathMatcher::default(),
-            false,
-            None,
-        )
-    } else {
-        SearchQuery::text(
-            query,
-            search_options.contains(SearchOptions::WHOLE_WORD),
-            search_options.contains(SearchOptions::CASE_SENSITIVE),
-            search_options.contains(SearchOptions::INCLUDE_IGNORED),
-            PathMatcher::default(),
-            PathMatcher::default(),
-            false,
-            None,
-        )
-    }
+fn build_search_query(query: &str) -> Result<SearchQuery, String> {
+    SearchQuery::text(
+        query,
+        false, // whole_word: always false
+        true,  // case_sensitive: always true
+        false, // include_ignored: always false
+        PathMatcher::default(),
+        PathMatcher::default(),
+        false,
+        None,
+    )
     .map_err(|e| e.to_string())
 }
 
 impl BufferSearchDelegate {
-    fn toggle_search_option(&mut self, option: SearchOptions) {
-        self.search_options.toggle(option);
-    }
+
 
     fn spawn_line_search(
         &self,
@@ -719,13 +650,6 @@ impl BufferSearchDelegate {
             }
 
             let terms: Vec<String> = query.split_whitespace().map(str::to_string).collect();
-            let smart_case = terms.iter().any(|s| s.chars().any(|c| c.is_uppercase()));
-            let case_sensitive = smart_case;
-            let terms_lower: Vec<String> = if !case_sensitive {
-                terms.iter().map(|s| s.to_lowercase()).collect()
-            } else {
-                Vec::new()
-            };
 
             let line_count = buffer_snapshot.max_point().row + 1;
             let mut new_items = Vec::new();
@@ -750,16 +674,11 @@ impl BufferSearchDelegate {
                 let mut line_match_ranges = Vec::new();
                 let mut matches = true;
 
-                let (check_text, check_terms) = if case_sensitive {
-                    (std::borrow::Cow::Borrowed(&line_text), &terms)
-                } else {
-                    (std::borrow::Cow::Owned(line_text.to_lowercase()), &terms_lower)
-                };
-
-                for term in check_terms {
+                // Always case sensitive search
+                for term in &terms {
                     let mut start = 0;
                     let mut term_matches = false;
-                    while let Some(relative_idx) = check_text[start..].find(term.as_str()) {
+                    while let Some(relative_idx) = line_text[start..].find(term.as_str()) {
                         let idx = start + relative_idx;
                         line_match_ranges.push(idx..idx + term.len());
                         start = idx + term.len();
@@ -1052,29 +971,7 @@ impl PickerDelegate for BufferSearchDelegate {
         _window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Div {
-        let search_options = self.search_options;
-        let focus_handle = self.focus_handle.clone();
 
-        let render_option_button_fn = |option: SearchOption, cx: &mut Context<Picker<Self>>| {
-            let is_active = search_options.contains(option.as_options());
-            let action = option.to_toggle_action();
-            let label = option.label();
-            let fh = focus_handle.clone();
-            let options = option.as_options();
-
-            IconButton::new(label, option.icon())
-                .on_click(cx.listener(move |picker, _, window, cx| {
-                    picker.delegate.toggle_search_option(options);
-                    let query = picker.delegate.current_query.clone();
-                    picker.set_query(query, window, cx);
-                }))
-                .style(ButtonStyle::Subtle)
-                .shape(IconButtonShape::Square)
-                .toggle_state(is_active)
-                .when_some(fh, |this, fh| {
-                    this.tooltip(move |_window, cx| Tooltip::for_action_in(label, action, &fh, cx))
-                })
-        };
 
         v_flex()
             .bg(cx.theme().colors().toolbar_background)
@@ -1097,9 +994,7 @@ impl PickerDelegate for BufferSearchDelegate {
                             .child(
                                 h_flex()
                                     .gap_1()
-                                    .child(render_option_button_fn(SearchOption::CaseSensitive, cx))
-                                    .child(render_option_button_fn(SearchOption::WholeWord, cx))
-                                    .child(render_option_button_fn(SearchOption::Regex, cx))
+
                                     .child(
                                         IconButton::new("line-mode", IconName::ToolSearch)
                                             .style(ButtonStyle::Subtle)
@@ -1135,7 +1030,7 @@ impl PickerDelegate for BufferSearchDelegate {
         let cancelled = Arc::new(AtomicBool::new(false));
         self.search_cancelled = Some(cancelled.clone());
 
-        let search_options = self.search_options;
+
         let initial_cursor = self.initial_cursor_offset;
         let buffer_snapshot = self.target_buffer.read(cx).snapshot(cx);
 
@@ -1299,7 +1194,7 @@ impl PickerDelegate for BufferSearchDelegate {
                 return;
             }
 
-            let search_query = match build_search_query(&query, search_options) {
+            let search_query = match build_search_query(&query) {
                 Ok(q) => {
                     picker
                         .update(cx, |picker, cx| {
@@ -1323,22 +1218,53 @@ impl PickerDelegate for BufferSearchDelegate {
                 }
             };
 
-            let matches: Result<Vec<usize>, _> = cx
+            let matches: Result<Vec<AnchorRange>, _> = cx
                 .background_executor()
                 .spawn({
                     let snapshot = buffer_snapshot.clone();
                     let query = search_query.clone();
                     async move {
-                        // Convert MultiBufferSnapshot to BufferSnapshot for search
-                        if let Some(singleton_buffer) = snapshot.as_singleton() {
-                            // For now, we'll need to handle this differently
-                            // Return empty results for multi-buffer
-                            Ok::<Vec<usize>, anyhow::Error>(Vec::new())
-                        } else {
-                            // For multi-buffer, we need to search each buffer
-                            // For now, return empty results
-                            Ok::<Vec<usize>, anyhow::Error>(Vec::new())
+                        let mut ranges = Vec::new();
+
+                        // Search the entire multi-buffer range
+                        let full_range = snapshot.anchor_before(MultiBufferOffset(0))..snapshot.anchor_after(snapshot.len());
+
+                        // Break down multi-buffer into individual buffer ranges, following Editor::find_matches pattern
+                        for (search_buffer, search_range, excerpt_id, deleted_hunk_anchor) in
+                            snapshot.range_to_buffer_ranges_with_deleted_hunks(full_range)
+                        {
+                            // Perform search on this buffer segment
+                            let buffer_matches = query
+                                .search(
+                                    search_buffer,
+                                    Some(search_range.start.0..search_range.end.0),
+                                )
+                                .await;
+
+                            // Convert buffer-relative matches to multi-buffer anchor ranges
+                            ranges.extend(
+                                buffer_matches
+                                    .into_iter()
+                                    .map(|match_range| {
+                                        if let Some(deleted_hunk_anchor) = deleted_hunk_anchor {
+                                            let start = search_buffer
+                                                .anchor_after(search_range.start + match_range.start);
+                                            let end = search_buffer
+                                                .anchor_before(search_range.start + match_range.end);
+                                            deleted_hunk_anchor.with_diff_base_anchor(start)
+                                                ..deleted_hunk_anchor.with_diff_base_anchor(end)
+                                        } else {
+                                            let start = search_buffer
+                                                .anchor_after(search_range.start + match_range.start);
+                                            let end = search_buffer
+                                                .anchor_before(search_range.start + match_range.end);
+                                            MultiBufferAnchor::range_in_buffer(excerpt_id, start..end)
+                                        }
+                                    }),
+                            );
                         }
+
+                        Ok::<Vec<AnchorRange>, anyhow::Error>(ranges)
                     }
                 })
                 .await;
@@ -1347,34 +1273,25 @@ impl PickerDelegate for BufferSearchDelegate {
                 return;
             }
 
-            let matches = if let Ok(matches) = matches {
-                matches
+            let all_match_ranges = if let Ok(matches) = matches {
+                Arc::new(matches)
             } else {
-                Vec::new()
+                Arc::new(Vec::new())
             };
-            let all_match_ranges: Vec<AnchorRange> = matches
-                .iter()
-                .map(|r| {
-                    let start = MultiBufferOffset(*r);
-                    let end = MultiBufferOffset(*r);
-                    buffer_snapshot.anchor_at(start, Bias::Left)
-                        ..buffer_snapshot.anchor_at(end, Bias::Right)
-                })
-                .collect();
-            let all_match_ranges = Arc::new(all_match_ranges);
 
             // Group matches by line to compute preview text once per line
             let mut lines_data: HashMap<u32, Vec<Range<MultiBufferOffset>>> = HashMap::default();
-            for &range in &matches {
-                let start_offset = MultiBufferOffset(range);
+            for range in all_match_ranges.iter() {
+                let start_offset = range.start.to_offset(&buffer_snapshot);
                 let start_point = buffer_snapshot.offset_to_point(start_offset);
+                let end_offset = range.end.to_offset(&buffer_snapshot);
                 lines_data
                     .entry(start_point.row)
                     .or_default()
-                    .push(start_offset..MultiBufferOffset(range));
+                    .push(start_offset..end_offset);
             }
 
-            let mut new_items: Vec<LineMatchData> = Vec::with_capacity(matches.len());
+            let mut new_items: Vec<LineMatchData> = Vec::with_capacity(all_match_ranges.len());
             let mut sorted_lines: Vec<u32> = lines_data.keys().cloned().collect();
             sorted_lines.sort();
 
@@ -1508,7 +1425,7 @@ impl PickerDelegate for BufferSearchDelegate {
                         return;
                     }
 
-                    picker.delegate.match_count = matches.len();
+                    picker.delegate.match_count = all_match_ranges.len();
                     picker.delegate.items = new_items;
                     picker.delegate.is_searching = false;
                     picker.delegate.all_matches = all_match_ranges;
