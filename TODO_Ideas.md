@@ -1,3 +1,5 @@
+- sometimes undo when at very right on newline character, it does not go back to newline character
+
 # nucleo
 
 - can `file_finder::Toggle` use `nucleo` crate for matching?
