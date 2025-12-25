@@ -65,6 +65,8 @@ struct LineMatchData {
     syntax_highlights: Option<Arc<Vec<(Range<usize>, HighlightId)>>>,
     // The offset of the match this item specifically represents (for sorting/selection)
     primary_match_offset: usize,
+    // The range of match indices in all_matches that this line contains
+    match_indices: Range<usize>,
 }
 
 // Helper to find safe char boundaries for highlighting
@@ -564,7 +566,7 @@ impl BufferSearchModal {
     fn navigate_and_highlight_matches(
         editor: &mut Editor,
         match_offset: usize,
-        active_match_index: usize,
+        active_match_indices: Range<usize>,
         match_ranges: &[AnchorRange],
         window: &mut Window,
         cx: &mut Context<Editor>,
@@ -582,7 +584,7 @@ impl BufferSearchModal {
             editor.highlight_background::<BufferSearchHighlights>(
                 &multi_buffer_ranges,
                 move |index, theme| {
-                    if index == &active_match_index {
+                    if active_match_indices.contains(index) {
                         theme.colors().search_active_match_background
                     } else {
                         theme.colors().search_match_background
@@ -595,7 +597,7 @@ impl BufferSearchModal {
 
     fn schedule_preview_update(
         &mut self,
-        data: Option<(usize, usize, Arc<Vec<AnchorRange>>)>,
+        data: Option<(usize, Range<usize>, Arc<Vec<AnchorRange>>)>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -613,11 +615,11 @@ impl BufferSearchModal {
 
     fn update_preview(
         &mut self,
-        data: Option<(usize, usize, Arc<Vec<AnchorRange>>)>,
+        data: Option<(usize, Range<usize>, Arc<Vec<AnchorRange>>)>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some((match_offset, active_index, match_ranges)) = data else {
+        let Some((match_offset, active_indices, match_ranges)) = data else {
             self.preview_editor = None;
             self._preview_editor_subscription = None;
             cx.notify();
@@ -629,7 +631,7 @@ impl BufferSearchModal {
                 Self::navigate_and_highlight_matches(
                     editor,
                     match_offset,
-                    active_index,
+                    active_indices.clone(),
                     &match_ranges,
                     window,
                     cx,
@@ -653,7 +655,7 @@ impl BufferSearchModal {
             Self::navigate_and_highlight_matches(
                 editor,
                 match_offset,
-                active_index,
+                active_indices,
                 &match_ranges,
                 window,
                 cx,
@@ -770,6 +772,7 @@ impl BufferSearchDelegate {
                 if matches {
                     line_match_ranges.sort_by_key(|r| r.start);
 
+                    let start_match_index = all_match_ranges.len();
                     for range in &line_match_ranges {
                         let start = line_start_offset + range.start;
                         let end = line_start_offset + range.end;
@@ -778,6 +781,7 @@ impl BufferSearchDelegate {
                                 ..buffer_snapshot.anchor_at(end, Bias::Right),
                         );
                     }
+                    let end_match_index = all_match_ranges.len();
 
                     let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
                     let trimmed_line = line_text.trim();
@@ -844,6 +848,7 @@ impl BufferSearchDelegate {
                         syntax_highlights,
                         primary_match_offset: line_start_offset
                             + line_match_ranges.first().map(|r| r.start).unwrap_or(0),
+                        match_indices: start_match_index..end_match_index,
                     });
                 }
             }
@@ -861,7 +866,11 @@ impl BufferSearchDelegate {
                     picker.delegate.all_matches = all_match_ranges.clone();
                     picker.delegate.selected_index = 0;
                     let preview_data = picker.delegate.items.get(0).map(|item| {
-                        (item.primary_match_offset, 0, all_match_ranges)
+                        (
+                            item.primary_match_offset,
+                            item.match_indices.clone(),
+                            all_match_ranges,
+                        )
                     });
                     if let Some(modal) = picker.delegate.buffer_search_modal.upgrade() {
                         window_handle
@@ -1002,7 +1011,11 @@ impl PickerDelegate for BufferSearchDelegate {
         let buffer_search_modal = self.buffer_search_modal.clone();
 
         let preview_data = if let Some(item) = self.items.get(ix) {
-            Some((item.primary_match_offset, ix, self.all_matches.clone()))
+            Some((
+                item.primary_match_offset,
+                item.match_indices.clone(),
+                self.all_matches.clone(),
+            ))
         } else {
             None
         };
@@ -1211,6 +1224,7 @@ impl PickerDelegate for BufferSearchDelegate {
                         active_match_index_in_list: None,
                         syntax_highlights,
                         primary_match_offset: line_start,
+                        match_indices: 0..0,
                     });
                 }
 
@@ -1235,7 +1249,7 @@ impl PickerDelegate for BufferSearchDelegate {
                         let preview_data = picker.delegate.items.get(selected_index).map(|item| {
                             (
                                 item.primary_match_offset,
-                                selected_index,
+                                item.match_indices.clone(),
                                 picker.delegate.all_matches.clone(),
                             )
                         });
@@ -1321,6 +1335,8 @@ impl PickerDelegate for BufferSearchDelegate {
             let mut new_items: Vec<LineMatchData> = Vec::with_capacity(matches.len());
             let mut sorted_lines: Vec<u32> = lines_data.keys().cloned().collect();
             sorted_lines.sort();
+
+            let mut match_indices_counter = 0;
 
             for line in sorted_lines {
                 if cancelled.load(Ordering::Relaxed) {
@@ -1427,7 +1443,9 @@ impl PickerDelegate for BufferSearchDelegate {
                             active_match_index_in_list,
                             syntax_highlights,
                             primary_match_offset: range.start,
+                            match_indices: match_indices_counter..(match_indices_counter + 1),
                         });
+                        match_indices_counter += 1;
                     }
                 }
             }
@@ -1467,7 +1485,7 @@ impl PickerDelegate for BufferSearchDelegate {
                     let preview_data = picker.delegate.items.get(best_index).map(|item| {
                         (
                             item.primary_match_offset,
-                            best_index,
+                            item.match_indices.clone(),
                             picker.delegate.all_matches.clone(),
                         )
                     });
