@@ -1,9 +1,16 @@
 # improve `buffer_search_modal::ToggleBufferSearch`
 
-TEST other no line mode
+- fix that in no line mode the candidate item list lines have incorrect bottom padding, they look weird, the ones for the line mode are fine
 
-- add a keybinding to toggle between line and other mode
+- set background of input text to usual modal background like the candidate item bg list. AND I wonder if the background of the editor can also be changed to that background instead of the usual editor background color?
 
+- add a keybinding to toggle between line and other mode, I think you need an action? check how the file_finder does it for its ignore files toggle
+
+- Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down?
+
+I mean the selected row should be centered.
+
+This is not implemented anywhere else in Zed, so probably too difficult to implement.
 
 
 # >>> Investigations
