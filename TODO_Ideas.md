@@ -1,5 +1,5 @@
-- implement a new action which does: `Stop all language servers`, right now there is `editor: stop language server`, BUT it only stops certain one depending on file type, the editor is currently open. I see that there is already such functionality
-`crates/language_tools/src/lsp_button.rs` has `Stop All Servers`, the action should work the same
+- try out https://github.com/zed-industries/zed/pull/45643
+Add structured outline for Markdown
 
 - try out https://github.com/zed-industries/zed/pull/45625 (Add a button to copy diagnostic messages from the hover popover to the clipboard)
 

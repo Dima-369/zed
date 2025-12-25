@@ -18950,6 +18950,22 @@ impl Editor {
         }
     }
 
+    pub fn stop_all_language_servers(
+        &mut self,
+        _: &StopAllLanguageServers,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(project) = self.project.clone() {
+            project.update(cx, |project, cx| {
+                project.lsp_store().update(cx, |lsp_store, cx| {
+                    lsp_store.stop_all_language_servers(cx);
+                });
+            });
+            self.refresh_inlay_hints(InlayHintRefreshReason::NewLinesShown, cx);
+        }
+    }
+
     fn cancel_language_server_work(
         workspace: &mut Workspace,
         _: &actions::CancelLanguageServerWork,
