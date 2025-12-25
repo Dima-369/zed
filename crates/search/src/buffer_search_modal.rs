@@ -32,8 +32,12 @@ use crate::{
     ToggleIncludeIgnored, ToggleRegex, ToggleWholeWord,
 };
 use project::search_history::{SearchHistory, SearchHistoryCursor};
+use nucleo::{Matcher, Utf32Str};
+use nucleo::pattern::{Pattern, CaseMatching, Normalization};
+use nucleo::Config;
+use unicode_segmentation::UnicodeSegmentation;
 
-actions!(buffer_search_modal, [ToggleBufferSearch]);
+actions!(buffer_search_modal, [ToggleBufferSearch, ToggleLineMode]);
 
 struct BufferSearchHistory(SearchHistory);
 impl Global for BufferSearchHistory {}
@@ -178,6 +182,7 @@ pub struct BufferSearchDelegate {
     target_editor: Entity<Editor>,
     target_buffer: Entity<Buffer>,
     search_options: SearchOptions,
+    line_mode: bool,
     items: Vec<LineMatchData>,
     selected_index: usize,
     initial_cursor_offset: usize,
@@ -411,6 +416,24 @@ impl BufferSearchModal {
         workspace.register_action(Self::toggle_whole_word);
         workspace.register_action(Self::toggle_regex);
         workspace.register_action(Self::toggle_include_ignored);
+        workspace.register_action(Self::toggle_line_mode);
+    }
+
+    fn toggle_line_mode(
+        workspace: &mut Workspace,
+        _: &ToggleLineMode,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        if let Some(modal) = workspace.active_modal::<Self>(cx) {
+            modal.update(cx, |modal, cx| {
+                modal.picker.update(cx, |picker, cx| {
+                    picker.delegate.line_mode = !picker.delegate.line_mode;
+                    let query = picker.delegate.current_query.clone();
+                    picker.set_query(query, window, cx);
+                });
+            });
+        }
     }
 
     fn toggle_search_option(
@@ -481,6 +504,7 @@ impl BufferSearchModal {
             target_editor,
             target_buffer: target_buffer.clone(),
             search_options: SearchOptions::NONE,
+            line_mode: true,
             items: Vec::new(),
             selected_index: 0,
             initial_cursor_offset,
@@ -680,6 +704,152 @@ impl BufferSearchDelegate {
         self.search_options.toggle(option);
     }
 
+    fn spawn_fuzzy_search(
+        &self,
+        query: String,
+        buffer_snapshot: language::BufferSnapshot,
+        cancelled: Arc<AtomicBool>,
+        window: &mut Window,
+        cx: &mut Context<Picker<Self>>,
+    ) -> Task<()> {
+        let window_handle = window.window_handle();
+        cx.spawn(async move |picker, cx| {
+            if cancelled.load(Ordering::Relaxed) {
+                return;
+            }
+
+            let mut matcher = Matcher::new(Config::DEFAULT);
+            let pattern = Pattern::parse(&query, CaseMatching::Smart, Normalization::Smart);
+
+            let line_count = buffer_snapshot.max_point().row + 1;
+            let mut new_items_with_score = Vec::new();
+            let mut all_match_ranges = Vec::new();
+            let mut char_buf = Vec::new();
+
+            for line in 0..line_count {
+                if cancelled.load(Ordering::Relaxed) {
+                    return;
+                }
+
+                let line_start_offset = buffer_snapshot.point_to_offset(language::Point::new(line, 0));
+                let line_len = buffer_snapshot.line_len(line);
+                let line_end_offset = buffer_snapshot.point_to_offset(language::Point::new(line, line_len));
+
+                let line_text: String = buffer_snapshot
+                    .text_for_range(line_start_offset..line_end_offset)
+                    .collect();
+
+                let haystack = Utf32Str::new(&line_text, &mut char_buf);
+                let mut indices = Vec::new();
+
+                if let Some(score) = pattern.indices(haystack, &mut matcher, &mut indices) {
+                    indices.sort_unstable();
+                    let mut byte_ranges = Vec::new();
+
+                    if haystack.is_ascii() {
+                        for &idx in &indices {
+                            let idx = idx as usize;
+                            byte_ranges.push(idx..idx + 1);
+                        }
+                    } else {
+                        // Map char indices to byte ranges using unicode-segmentation
+                        let mut current_g_idx = 0;
+                        let mut nucleo_idx_iter = indices.iter();
+                        let mut next_nucleo_idx = nucleo_idx_iter.next();
+
+                        for (byte_offset, grapheme) in line_text.grapheme_indices(true) {
+                            if let Some(&target_idx) = next_nucleo_idx {
+                                if current_g_idx == target_idx as usize {
+                                    byte_ranges.push(byte_offset..byte_offset + grapheme.len());
+                                    next_nucleo_idx = nucleo_idx_iter.next();
+                                }
+                            }
+                            current_g_idx += 1;
+                        }
+                    }
+
+                    for range in &byte_ranges {
+                        let start = line_start_offset + range.start;
+                        let end = line_start_offset + range.end;
+                        all_match_ranges.push(buffer_snapshot.anchor_at(start, Bias::Left)..buffer_snapshot.anchor_at(end, Bias::Right));
+                    }
+
+                    let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
+                    let trimmed_line = line_text.trim();
+                    let left_trimmed_len = line_text.len() - line_text.trim_start().len();
+                    let preview_len = preview_content_len(&preview_text);
+
+                    let mut list_match_ranges = Vec::new();
+                    for range in &byte_ranges {
+                        let start_in_trimmed = range.start.saturating_sub(left_trimmed_len);
+                        let end_in_trimmed = range.end.saturating_sub(left_trimmed_len);
+
+                        if start_in_trimmed < trimmed_line.len() {
+                            let p_start = start_in_trimmed;
+                            let p_end = end_in_trimmed;
+
+                            if p_start < preview_len {
+                                let valid_p_end = p_end.min(preview_len);
+                                if p_start < valid_p_end {
+                                    list_match_ranges.push(p_start..valid_p_end);
+                                }
+                            }
+                        }
+                    }
+
+                    // Re-calculate syntax highlights as in text search
+                    let syntax_highlights = {
+                        let mut highlights = Vec::new();
+                        let trimmed_line = line_text.trim();
+                        let left_trimmed_len = line_text.len() - line_text.trim_start().len();
+                        let mut current_offset: usize = 0;
+                        for chunk in buffer_snapshot.chunks(line_start_offset..line_end_offset, true) {
+                            let chunk_len = chunk.text.len();
+                            if let Some(highlight_id) = chunk.syntax_highlight_id {
+                                let chunk_in_trimmed_start = current_offset.saturating_sub(left_trimmed_len);
+                                let chunk_in_trimmed_end = (current_offset + chunk_len).saturating_sub(left_trimmed_len);
+                                if chunk_in_trimmed_start < trimmed_line.len() {
+                                    let start = chunk_in_trimmed_start.max(0).min(preview_len);
+                                    let end = chunk_in_trimmed_end.min(trimmed_line.len()).min(preview_len);
+                                    if start < end { highlights.push((start..end, highlight_id)); }
+                                }
+                            }
+                            current_offset += chunk_len;
+                        }
+                        if highlights.is_empty() { None } else { Some(Arc::new(highlights)) }
+                    };
+
+                    new_items_with_score.push((score, LineMatchData {
+                        line_label: (line + 1).to_string().into(),
+                        preview_text,
+                        list_match_ranges: Arc::new(list_match_ranges),
+                        active_match_index_in_list: None,
+                        syntax_highlights,
+                        primary_match_offset: line_start_offset + byte_ranges.first().map(|r| r.start).unwrap_or(0),
+                    }));
+                }
+            }
+
+            new_items_with_score.sort_by(|a, b| b.0.cmp(&a.0));
+            let new_items: Vec<_> = new_items_with_score.into_iter().map(|(_, item)| item).collect();
+            let all_match_ranges = Arc::new(all_match_ranges);
+
+            picker.update(cx, |picker, cx| {
+                if cancelled.load(Ordering::Relaxed) { return; }
+                picker.delegate.match_count = new_items.len();
+                picker.delegate.items = new_items;
+                picker.delegate.is_searching = false;
+                picker.delegate.all_matches = all_match_ranges.clone();
+                picker.delegate.selected_index = 0;
+                let preview_data = picker.delegate.items.get(0).map(|item| (item.primary_match_offset, 0, all_match_ranges));
+                if let Some(modal) = picker.delegate.buffer_search_modal.upgrade() {
+                    window_handle.update(cx, |_, window, cx| modal.update(cx, |modal, cx| modal.update_preview(preview_data, window, cx))).log_err();
+                }
+                cx.notify();
+            }).log_err();
+        })
+    }
+
     fn render_match(&self, ix: usize, selected: bool, cx: &App) -> ListItem {
         let item = &self.items[ix];
 
@@ -700,8 +870,19 @@ impl BufferSearchDelegate {
         let syntax_theme = cx.theme().syntax();
         let mut match_highlights = Vec::new();
 
-        if selected {
-            if let Some(i) = item.active_match_index_in_list {
+        if selected || self.line_mode {
+            if self.line_mode {
+                for range in list_match_ranges.iter() {
+                    if is_valid_range(range) {
+                        let match_style = HighlightStyle {
+                            font_weight: Some(gpui::FontWeight::BOLD),
+                            color: Some(cx.theme().colors().text_accent),
+                            ..Default::default()
+                        };
+                        match_highlights.push((range.clone(), match_style));
+                    }
+                }
+            } else if let Some(i) = item.active_match_index_in_list {
                 if let Some(range) = list_match_ranges.get(i) {
                     if is_valid_range(range) {
                         let color = cx.theme().colors().search_active_match_background;
@@ -865,7 +1046,21 @@ impl PickerDelegate for BufferSearchDelegate {
                                     .gap_1()
                                     .child(render_option_button_fn(SearchOption::CaseSensitive, cx))
                                     .child(render_option_button_fn(SearchOption::WholeWord, cx))
-                                    .child(render_option_button_fn(SearchOption::Regex, cx)),
+                                    .child(render_option_button_fn(SearchOption::Regex, cx))
+                                    .child(
+                                        IconButton::new("line-mode", IconName::ToolSearch)
+                                            .style(ButtonStyle::Subtle)
+                                            .shape(IconButtonShape::Square)
+                                            .toggle_state(self.line_mode)
+                                            .on_click(cx.listener(move |picker, _, window, cx| {
+                                                picker.delegate.line_mode = !picker.delegate.line_mode;
+                                                let query = picker.delegate.current_query.clone();
+                                                picker.set_query(query, window, cx);
+                                            }))
+                                            .tooltip(|window, cx| {
+                                                Tooltip::text("Toggle Line Mode")(window, cx)
+                                            })
+                                    ),
                             ),
                     ),
             )
@@ -892,6 +1087,10 @@ impl PickerDelegate for BufferSearchDelegate {
         let buffer_snapshot = self.target_buffer.read(cx).snapshot();
 
         self.is_searching = true;
+
+        if self.line_mode && !query.is_empty() {
+            return self.spawn_fuzzy_search(query, buffer_snapshot, cancelled, window, cx);
+        }
 
         if query.is_empty() {
             // Populate with all lines
