@@ -1,4 +1,6 @@
 - can file finder and command palette modals also has scrollbar?
+`file_finder::Toggle` and `command_palette::Toggle`
+can recent projects `workspace::OpenRecentFile` also get it?
 
 
 # >>> Investigations
