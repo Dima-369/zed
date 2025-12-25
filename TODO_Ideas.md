@@ -1,5 +1,7 @@
 # improve `buffer_search_modal::ToggleBufferSearch`
 
+- make line mode matching case insensitive, currently it is case sensitive
+
 - add a keybinding to toggle between line and other mode, I think you need an action? check how the file_finder does it for its ignore files toggle, by default, bind it to cmd-r
 
 - fix that in no line mode the candidate item list lines have incorrect bottom padding, they look weird, the ones for the line mode are fine
