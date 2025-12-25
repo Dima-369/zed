@@ -1,4 +1,14 @@
-- how to fix key b search in uncommitted changes buffer? it is multibuffer, is my search not working there?
+# improve `buffer_search_modal::ToggleBufferSearch`
+
+- I recently added support that it is displayed in multi buffers, but upon confirming, it does not change the cursor position, can you fix that?
+- the line numbers are incorrect in multi buffers, since the line numbers can be arbitrary and jump across multi buffer file sections
+
+I know that buffer_search.rs has support for it, can you check how it is doing and then implementing?
+
+
+  - note that it does not work in multi buffers, it opens but shows incorrect line numbers and one can not jump to matches
+
+
 
 # >>> Investigations
 
