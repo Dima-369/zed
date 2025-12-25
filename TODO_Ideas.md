@@ -1,14 +1,20 @@
-- implement a new action which does: `Stop all language servers`, right now there is `editor: stop language server`, BUT it only stops certain one depending on file type, the editor is currently open. I see that there is already such functionality
-`crates/language_tools/src/lsp_button.rs` has `Stop All Servers`, the action should work the same
+-  create github issue about incorrect markdown breadcrumbs with this:
+I think I already have it fixed
 
-- when I am inside a markdown file and I have inline code like like `foo bar one`, when I trigger the editor::SelectLargerSyntaxNode action, it always instantly includes the quotes and ALL inside the quotes, is there a way to fix this?
-it should first select a word like `foo`, then invocation all text INSIDE the quotes (excluding the quotes), and on next invocation ALL PLUS quotes
+```json
+  "sticky_scroll": {
+    "enabled": true
+  },
+```
 
-- try out https://github.com/zed-industries/zed/pull/45625 (Add a button to copy diagnostic messages from the hover popover to the clipboard)
+only filled when on heading or line below
 
-- can `file_finder::Toggle` use `nucleo` crate for matching?
+- sometimes undo when at very right on newline character, it does not go back to newline character
 
-## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+# improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+
+TRY out in release mode for performance, or maybe do it async?
+this was implemented, but is very slow in debug mode:
 
 - is there a way to implement a 'line' mode? maybe with a new button, enabled by default when launching the modal. it behaves a bit differently than the other modes, and only searches for the first match in a line. use the `nucleo` crate, I pasted in its source below. so even if a line has `editor the editor` and I search for `editor`, it only highlights the first match. I suppose you have to run `nucleo` algorithm with its `!`, etc. handling on each line and get first match? and also use that for highlighting code
 
@@ -21,16 +27,6 @@ it should first select a word like `foo`, then invocation all text INSIDE the qu
 Investigate how I did the jumping in Emacs, I think there, it was always scoped to a single buffer.
 And then only on certain actions, I appended to the jump list.
 
-## Better node selection code?
-
-editor: Expand selection to word under cursor before expanding to next enclosing syntax node
-PR merged: https://github.com/zed-industries/zed/pull/28864
-
-setting: Add editor.select_word_as_node setting for syntax node selection behavior
-PR open: https://github.com/zed-industries/zed/pull/45580
-
-does it improve my key i issues? namely directly selecting everything inside quotes like `foo bar` instead of just the inner word
-
 ## Add Terminal CLI for programmatic terminal control
 
 Hmm, but do I have any real use for it? Maybe launching a terminal from Kotlin Emacs file explorer? Does it automatically grab focus of Zed?
@@ -42,15 +38,6 @@ https://github.com/zed-industries/zed/pull/45558
 Try this out. Will it get merged?
 
 https://github.com/zed-industries/zed/pull/45547
-
-## Add a button to copy diagnostic messages from the hover popover to the clipboard
-
-A button is okayish. 
-Try it out in project diagnostic, it would be very useful there
-
-Later LOW prio: How about a new action which copies all diagnostic messages at cursor to clipboard?
-
-https://github.com/zed-industries/zed/pull/45625
 
 
 
@@ -197,4 +184,4 @@ This is not implemented anywhere else in Zed, so probably too difficult to imple
 
 - in  `fn helix_handle_jump_input` can you make escape cancel out of the jump mode?
 
-I tried, but escape is not propogated to `input_ignored`, so no idea how to fix this.
+I tried, but escape is not propagated to `input_ignored`, so no idea how to fix this.

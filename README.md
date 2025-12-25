@@ -51,6 +51,10 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - improved `outline::Toggle` to work in multi buffers, it shows the file headings only
 - remove abbreviated `cwd` display in terminal title
 - fix bug that when in vim visual line mode and cursor is on right newline character, that the line below is incorrectly copied on `editor::Copy`. This mostly happens in my own Zed config because I mixing `editor` and `vim` actions to ensure that I can move cursor on the right newline character, and usually not in proper Zed keybindings.
+- improve `editor::SelectLargerSyntaxNode` for inline code blocks in Markdown files (`foo bar`), so that it first extends the selection to the word inside the quotes, then the text inside the quotes and only then to the inner text plus the outer quotes
+- add structured outline for Markdown, modifies `crates/languages/src/markdown/outline.scm` (from https://github.com/zed-industries/zed/pull/45643)
+- add a button to copy diagnostic messages from the hover popover to the clipboard (from https://github.com/zed-industries/zed/pull/45625)
+- improve `file_finder::Toggle` matching to use substring through `nucleo` crate. I dislike fuzzy matching which is annoying. Based on https://github.com/zed-industries/zed/pull/37123, but that had fuzzy matching
 
 ### Command palette
 
@@ -70,6 +74,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - `editor::CreateNavHistoryEntry`
 - `editor::CopyAll` to copy entire buffer content to clipboard
 - `editor::CountTokens` which counts the tokens in the current buffer using `o200k_base` via the `tiktoken` crate
+- `editor::StopAllLanguageServers` which stops all language servers. It works like the bottom button in `Language Servers > Stop All Servers`
 - `git::DiffWithCommit` from https://github.com/zed-industries/zed/pull/44467 and based on that code, `git::DiffWithBranch` is implemented
 - `jump::Toggle` from https://github.com/tebben/zed/tree/feature/jump with the following changes:
   - modified key jump hints to my custom Dvorak Programmer keyboard layout

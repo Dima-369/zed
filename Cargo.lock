@@ -6172,6 +6172,7 @@ dependencies = [
  "gpui",
  "language",
  "menu",
+ "nucleo",
  "picker",
  "pretty_assertions",
  "project",
@@ -6712,7 +6713,9 @@ version = "0.1.0"
 dependencies = [
  "gpui",
  "log",
+ "nucleo",
  "util",
+ "util_macros",
 ]
 
 [[package]]

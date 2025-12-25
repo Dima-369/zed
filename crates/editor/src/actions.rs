@@ -805,6 +805,8 @@ actions!(
         SortLinesCaseInsensitive,
         /// Sorts selected lines case-sensitively.
         SortLinesCaseSensitive,
+        /// Stops all language servers.
+        StopAllLanguageServers,
         /// Stops the language server for the current file.
         StopLanguageServer,
         /// Switches between source and header files.
