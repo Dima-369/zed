@@ -1,3 +1,5 @@
+- can `outline::Toggle` have a scrollbar? currently, it has none
+
 - can one tune the color of headlines in multi buffers?
 
 # improve `buffer_search_modal::ToggleBufferSearch`
