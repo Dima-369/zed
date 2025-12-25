@@ -360,11 +360,13 @@ impl BufferSearchModal {
                 return;
             };
 
-            let selected_text = editor.update(cx, |editor, cx| {
+            let (selected_text, buffer, cursor_offset) = editor.update(cx, |editor, cx| {
                 let snapshot = editor.buffer().read(cx).snapshot(cx);
                 let selection = editor.selections.newest_anchor();
                 let range = selection.range();
-                if range.start.cmp(&range.end, &snapshot).is_ne() {
+                let head = selection.head();
+
+                let selected_text = if range.start.cmp(&range.end, &snapshot).is_ne() {
                     editor.buffer().read(cx).as_singleton().and_then(|buffer| {
                         let buffer = buffer.read(cx);
                         let start = range.start.text_anchor.to_offset(&buffer);
@@ -377,24 +379,32 @@ impl BufferSearchModal {
                     })
                 } else if !VimModeSetting::get_global(cx).0 {
                     let query = editor.query_suggestion(window, cx);
-                    if query.is_empty() { None } else { Some(query) }
+                    if query.is_empty() {
+                        None
+                    } else {
+                        Some(query)
+                    }
                 } else {
                     None
-                }
+                };
+
+                let multibuffer = editor.buffer().read(cx);
+                let buffer = head
+                    .text_anchor
+                    .buffer_id
+                    .and_then(|buffer_id| multibuffer.buffer(buffer_id))
+                    .or_else(|| multibuffer.as_singleton());
+
+                let cursor_offset: Option<usize> = buffer.as_ref().map(|buffer: &Entity<Buffer>| {
+                    let snapshot = buffer.read(cx).snapshot();
+                    head.text_anchor.to_offset(&snapshot)
+                });
+
+                (selected_text, buffer, cursor_offset)
             });
 
-            let buffer = editor.read(cx).buffer().read(cx).as_singleton();
             let Some(buffer) = buffer else { return };
-
-            // Capture cursor offset for centering search results
-            let singleton_buffer_snapshot = buffer.read(cx).snapshot();
-            let cursor_offset = editor
-                .read(cx)
-                .selections
-                .newest_anchor()
-                .head()
-                .text_anchor
-                .to_offset(&singleton_buffer_snapshot);
+            let Some(cursor_offset) = cursor_offset else { return };
 
             let weak_workspace = cx.entity().downgrade();
             workspace.toggle_modal(window, cx, |window, cx| {
