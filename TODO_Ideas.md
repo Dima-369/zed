@@ -1,3 +1,5 @@
+- how to fix key b search in uncommitted changes buffer? it is multibuffer, is my search not working there?
+
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
