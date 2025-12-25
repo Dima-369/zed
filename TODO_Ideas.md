@@ -9,6 +9,10 @@ you can maybe check how the `crates/outline/src/outline.rs` or `crates/project_p
 This is not implemented anywhere else in Zed, so probably too difficult to implement.
 
 - fix that in no line mode the candidate item list lines have incorrect bottom padding, they look weird, the ones for the line mode are fine
+weirdly, when no character is typed in, then in no line mode, the candidate rows have correct paddinge only as soon as anything is typed in.
+It is hard to debug.
+
+Reflect on 5-7 different possible sources of the problem, distill those down to 1-2 most likely sources, and then add logs to validate your assumptions before we move onto implementing the actual code fix.
 
 
 
