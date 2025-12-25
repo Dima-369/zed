@@ -1,6 +1,4 @@
-- can `outline::Toggle` have a scrollbar? currently, it has none
-the outline panel has the scrollbar
-
+- can file finder and command palette modals also has scrollbar?
 
 
 # >>> Investigations
