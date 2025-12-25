@@ -10893,12 +10893,6 @@ impl StickyHeaders {
                     );
                     window.paint_quad(fill(text_bounds, self.content_background));
 
-                    if line.hitbox.is_hovered(window) {
-                        let hover_overlay = cx.theme().colors().panel_overlay_hover;
-                        window.paint_quad(fill(gutter_bounds, hover_overlay));
-                        window.paint_quad(fill(text_bounds, hover_overlay));
-                    }
-
                     line.paint(
                         layout,
                         self.gutter_right_padding,
