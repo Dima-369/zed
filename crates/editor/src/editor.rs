@@ -16199,7 +16199,7 @@ impl Editor {
 
                 if let Some((node, _)) = buffer.syntax_ancestor(old_range.clone()) {
                     // manually select word at selection
-                    if ["string_content", "inline"].contains(&node.kind()) {
+                    if ["string_content", "inline", "code_span"].contains(&node.kind()) {
                         let (word_range, _) = buffer.surrounding_word(old_range.start, None);
                         // ignore if word is already selected
                         if !word_range.is_empty() && old_range != word_range {
@@ -16220,8 +16220,45 @@ impl Editor {
                 }
 
                 let mut new_range = old_range.clone();
-                while let Some((node, range)) = buffer.syntax_ancestor(new_range.clone()) {
-                    new_range = range;
+                while let Some((node, node_mb_range)) = buffer.syntax_ancestor(new_range.clone()) {
+                    if node.kind() == "code_span" {
+                        if let (Some(start_child), Some(end_child)) = (
+                            node.child(0),
+                            node.child(node.child_count().saturating_sub(1) as u32),
+                        ) {
+                            if start_child.id() != end_child.id() {
+                                // Calculate the actual byte range of the content inside the code span (excluding backticks)
+                                let start_byte = start_child.end_byte();
+                                let end_byte = end_child.start_byte();
+                                if start_byte < end_byte {
+                                    // Convert byte offsets to MultiBuffer offsets using the node's range as reference
+                                    let node_start_byte = node.start_byte();
+                                    let node_mb_start = node_mb_range.start.0;
+
+                                    // Calculate the MultiBuffer offset for the content start and end
+                                    let content_start_byte_offset = (start_byte - node_start_byte) as u32;
+                                    let content_end_byte_offset = (end_byte - node_start_byte) as u32;
+
+                                    // Create content range by adding the byte offset to the node's MultiBuffer start
+                                    let content_start = MultiBufferOffset(node_mb_start + content_start_byte_offset as usize);
+                                    let content_end = MultiBufferOffset(node_mb_start + content_end_byte_offset as usize);
+
+                                    let content_range = content_start..content_end;
+
+                                    // Check if current selection is smaller than the content range
+                                    let current_len = (new_range.end.0 as isize - new_range.start.0 as isize).abs() as usize;
+                                    let content_len = (content_end.0 as isize - content_start.0 as isize).abs() as usize;
+
+                                    if content_len > current_len {
+                                        new_range = content_range;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    new_range = node_mb_range;
                     if !node.is_named() {
                         continue;
                     }

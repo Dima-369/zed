@@ -1,9 +1,6 @@
 - implement a new action which does: `Stop all language servers`, right now there is `editor: stop language server`, BUT it only stops certain one depending on file type, the editor is currently open. I see that there is already such functionality
 `crates/language_tools/src/lsp_button.rs` has `Stop All Servers`, the action should work the same
 
-- when I am inside a markdown file and I have inline code like like `foo bar one`, when I trigger the editor::SelectLargerSyntaxNode action, it always instantly includes the quotes and ALL inside the quotes, is there a way to fix this?
-it should first select a word like `foo`, then invocation all text INSIDE the quotes (excluding the quotes), and on next invocation ALL PLUS quotes
-
 - try out https://github.com/zed-industries/zed/pull/45625 (Add a button to copy diagnostic messages from the hover popover to the clipboard)
 
 - can `file_finder::Toggle` use `nucleo` crate for matching?

@@ -51,6 +51,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - improved `outline::Toggle` to work in multi buffers, it shows the file headings only
 - remove abbreviated `cwd` display in terminal title
 - fix bug that when in vim visual line mode and cursor is on right newline character, that the line below is incorrectly copied on `editor::Copy`. This mostly happens in my own Zed config because I mixing `editor` and `vim` actions to ensure that I can move cursor on the right newline character, and usually not in proper Zed keybindings.
+- improve `editor::SelectLargerSyntaxNode` for inline code blocks in Markdown files (`foo bar`), so that it first extends the selection to the word inside the quotes, then the text inside the quotes and only then to the inner text plus the outer quotes
 
 ### Command palette
 
