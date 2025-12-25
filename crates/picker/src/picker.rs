@@ -760,10 +760,9 @@ impl<D: PickerDelegate> Picker<D> {
             ElementContainer::UniformList(scroll_handle) => {
                 match self.scroll_strategy {
                     ScrollStrategy::Center => {
-                        // Use scroll_to_item_with_offset for smoother centering
-                        // The offset creates a reduced viewport where centering feels more natural
-                        println!("scroll_to_item_index: Centering item {} with offset 0", ix);
-                        scroll_handle.scroll_to_item_with_offset(ix, ScrollStrategy::Center, 0);
+                        // Try regular scroll_to_item with Center strategy
+                        println!("scroll_to_item_index: Centering item {} with regular scroll_to_item", ix);
+                        scroll_handle.scroll_to_item(ix, ScrollStrategy::Center);
                     }
                     _ => {
                         println!("scroll_to_item_index: Using strategy {:?} for item {}", self.scroll_strategy, ix);
