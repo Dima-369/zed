@@ -224,6 +224,25 @@ where
     items.sort_by(compare);
 }
 
+pub fn truncate_to_bottom_n_sorted<T: Ord>(items: &mut Vec<T>, limit: usize) {
+    if limit == 0 {
+        items.truncate(0);
+    }
+    if items.len() <= limit {
+        items.sort();
+        return;
+    }
+    // When limit is near to items.len() it may be more efficient to sort the whole list and
+    // truncate, rather than always doing selection first as is done below. It's hard to analyze
+    // where the threshold for this should be since the quickselect style algorithm used by
+    // `select_nth_unstable_by` makes the prefix partially sorted, and so its work is not wasted -
+    // the expected number of comparisons needed by `sort` is less than it is for some arbitrary
+    // unsorted input.
+    items.select_nth_unstable_by(limit, |a, b| a.cmp(b));
+    items.truncate(limit);
+    items.sort();
+}
+
 /// Prevents execution of the application with root privileges on Unix systems.
 ///
 /// This function checks if the current process is running with root privileges
@@ -1322,5 +1341,15 @@ Line 3"#
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], (0..6, "héllo")); // 'é' is 2 bytes
         assert_eq!(result[1], (10..15, "world")); // '🦀' is 4 bytes
+    }
+}
+
+pub trait SliceExt<T> {
+    fn is_sorted(&self) -> bool;
+}
+
+impl<T: PartialOrd> SliceExt<T> for [T] {
+    fn is_sorted(&self) -> bool {
+        self.windows(2).all(|w| w[0] <= w[1])
     }
 }

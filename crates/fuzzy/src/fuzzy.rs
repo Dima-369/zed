@@ -1,5 +1,5 @@
 mod char_bag;
-mod matcher;
+pub mod matcher;
 mod paths;
 mod strings;
 
