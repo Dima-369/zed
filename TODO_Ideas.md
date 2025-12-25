@@ -1,23 +1,17 @@
-- sometimes undo when at very right on newline character, it does not go back to newline character
+
+## sometimes undo when at very right on newline character, it does not go back to newline character
+
 how to reproduce exactly?
-
-
-# >>> Later (low prio)
 
 ## improve code around `MIN_NAVIGATION_HISTORY_ROW_DELTA` for proper jumping
 
 Investigate how I did the jumping in Emacs, I think there, it was always scoped to a single buffer.
 And then only on certain actions, I appended to the jump list.
 
-## Add Terminal CLI for programmatic terminal control
-
-Hmm, but do I have any real use for it? Maybe launching a terminal from Kotlin Emacs file explorer? Does it automatically grab focus of Zed?
-
-https://github.com/zed-industries/zed/pull/45558
-
 ##  Multibuffer breadcrumbs toolbar redesign
 
 Try this out. Will it get merged?
+Seems to be from Zed dude since the branch is not from a fork.
 
 https://github.com/zed-industries/zed/pull/45547
 
