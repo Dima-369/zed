@@ -734,6 +734,12 @@ impl BufferSearchDelegate {
             highlights = merge_highlights(&highlights, &match_highlights);
         }
 
+        let label_color = if item.primary_match_offset < self.initial_cursor_offset {
+            Color::Accent
+        } else {
+            Color::Muted
+        };
+
         ListItem::new(ix).inset(true).toggle_state(selected).child(
             h_flex()
                 .w_full()
@@ -752,7 +758,7 @@ impl BufferSearchDelegate {
                 .child(
                     Label::new(line_label.clone())
                         .size(ui::LabelSize::Small)
-                        .color(Color::Muted),
+                        .color(label_color),
                 ),
         )
     }
