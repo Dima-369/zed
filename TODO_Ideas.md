@@ -1,5 +1,10 @@
 - how to fix key b search in uncommitted changes buffer? it is multibuffer, is my search not working there?
 
+# improve `vim::HelixJumpToWord`
+
+- the hints can be too close together overlapping each other, `jump.rs` has special handling for that
+can that also be applied to `vim::HelixJumpToWord`?
+
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
