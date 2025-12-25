@@ -1,13 +1,15 @@
+-  create github issue about incorrect markdown breadcrumbs with this:
+I think I already have it fixed
+
+```json
+  "sticky_scroll": {
+    "enabled": true
+  },
+```
+
+only filled when on heading or line below
+
 - sometimes undo when at very right on newline character, it does not go back to newline character
-
-# nucleo
-
-- can `file_finder::Toggle` use `nucleo` crate for matching?
-test with `project sear` string in it
-
-- investigate https://github.com/zed-industries/zed/pull/37123
-Use nucleo for fuzzy string matching
-does it work on `file_finder::Toggle`?
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
