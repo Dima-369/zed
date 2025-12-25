@@ -180,4 +180,4 @@ This is not implemented anywhere else in Zed, so probably too difficult to imple
 
 - in  `fn helix_handle_jump_input` can you make escape cancel out of the jump mode?
 
-I tried, but escape is not propogated to `input_ignored`, so no idea how to fix this.
+I tried, but escape is not propagated to `input_ignored`, so no idea how to fix this.
