@@ -1,11 +1,15 @@
+# nucleo
+
 - can `file_finder::Toggle` use `nucleo` crate for matching?
+test with `project sear` string in it
 
 - investigate https://github.com/zed-industries/zed/pull/37123
 Use nucleo for fuzzy string matching
 does it work on `file_finder::Toggle`?
 
-## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+# improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
+TRY out in release mode for performance, or maybe do it async?
 this was implemented, but is very slow in debug mode:
 
 - is there a way to implement a 'line' mode? maybe with a new button, enabled by default when launching the modal. it behaves a bit differently than the other modes, and only searches for the first match in a line. use the `nucleo` crate, I pasted in its source below. so even if a line has `editor the editor` and I search for `editor`, it only highlights the first match. I suppose you have to run `nucleo` algorithm with its `!`, etc. handling on each line and get first match? and also use that for highlighting code
@@ -18,16 +22,6 @@ this was implemented, but is very slow in debug mode:
 
 Investigate how I did the jumping in Emacs, I think there, it was always scoped to a single buffer.
 And then only on certain actions, I appended to the jump list.
-
-## Better node selection code?
-
-editor: Expand selection to word under cursor before expanding to next enclosing syntax node
-PR merged: https://github.com/zed-industries/zed/pull/28864
-
-setting: Add editor.select_word_as_node setting for syntax node selection behavior
-PR open: https://github.com/zed-industries/zed/pull/45580
-
-does it improve my key i issues? namely directly selecting everything inside quotes like `foo bar` instead of just the inner word
 
 ## Add Terminal CLI for programmatic terminal control
 
