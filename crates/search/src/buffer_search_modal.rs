@@ -601,6 +601,9 @@ impl BufferSearchModal {
         });
 
         editor.update(cx, |editor, cx| {
+            let mut style = editor.style(cx).clone();
+            style.background = cx.theme().colors().elevated_surface_background;
+            editor.set_style(style, window, cx);
             Self::navigate_and_highlight_matches(
                 editor,
                 match_offset,
@@ -893,6 +896,7 @@ impl BufferSearchDelegate {
             h_flex()
                 .items_center()
                 .w_full()
+                .h_full()
                 .pl(px(8.))
                 .justify_between()
                 .child(
@@ -991,6 +995,7 @@ impl PickerDelegate for BufferSearchDelegate {
                             .pl_1()
                             .pr_1()
                             .rounded_md()
+                            .bg(cx.theme().colors().elevated_surface_background)
                             .child(editor.clone())
                             .child(
                                 h_flex()
