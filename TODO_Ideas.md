@@ -13,6 +13,9 @@ only filled when on heading or line below
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
+there is a bug in line match mode, when a line has 2 matches, say a line has twice "editor" and I search for editor
+then the preview editor has a wrong 1 index offset, like it jumps to both matches in the same line, but that is incorrect, every current match line (even when line has multiple matches) should have the active match background
+
 there is a line mode implemented using nucleo, but it is very slow
 can you instead remove the nucleo crate and just do a proper substring match, based on this logic:
 split everything by space
