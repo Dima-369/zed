@@ -275,6 +275,42 @@ impl Render for BufferSearchBar {
             })
             .when(!find_in_results, |el| {
                 let query_focus = self.query_editor.focus_handle(cx);
+                let matches_column = h_flex()
+                    .pl_2()
+                    .ml_2()
+                    .border_l_1()
+                    .border_color(theme_colors.border_variant)
+                    .child(render_action_button(
+                        "buffer-search-nav-button",
+                        ui::IconName::ChevronLeft,
+                        self.active_match_index
+                            .is_none()
+                            .then_some(ActionButtonState::Disabled),
+                        "Select Previous Match",
+                        &SelectPreviousMatch,
+                        query_focus.clone(),
+                    ))
+                    .child(render_action_button(
+                        "buffer-search-nav-button",
+                        ui::IconName::ChevronRight,
+                        self.active_match_index
+                            .is_none()
+                            .then_some(ActionButtonState::Disabled),
+                        "Select Next Match",
+                        &SelectNextMatch,
+                        query_focus.clone(),
+                    ))
+                    .when(!narrow_mode, |this| {
+                        this.child(div().ml_2().min_w(rems_from_px(40.)).child(
+                            Label::new(match_text).size(LabelSize::Small).color(
+                                if self.active_match_index.is_some() {
+                                    Color::Default
+                                } else {
+                                    Color::Disabled
+                                },
+                            ),
+                        ))
+                    });
 
                 el.child(render_action_button(
                     "buffer-search-nav-button",
@@ -284,6 +320,7 @@ impl Render for BufferSearchBar {
                     &SelectAllMatches,
                     query_focus,
                 ))
+                .child(matches_column)
             })
             .when(find_in_results, |el| {
                 el.child(render_action_button(
@@ -351,39 +388,6 @@ impl Render for BufferSearchBar {
                 .ml_2()
         });
 
-        let matches_row = h_flex().gap_1().px_2().when(!find_in_results, |this| {
-            let query_focus = self.query_editor.focus_handle(cx);
-            this.child(div().min_w(rems_from_px(40.)).child(
-                Label::new(match_text).size(LabelSize::Small).color(
-                    if self.active_match_index.is_some() {
-                        Color::Default
-                    } else {
-                        Color::Disabled
-                    },
-                ),
-            ))
-            .child(render_action_button(
-                "buffer-search-nav-button",
-                ui::IconName::ChevronLeft,
-                self.active_match_index
-                    .is_none()
-                    .then_some(ActionButtonState::Disabled),
-                "Select Previous Match",
-                &SelectPreviousMatch,
-                query_focus.clone(),
-            ))
-            .child(render_action_button(
-                "buffer-search-nav-button",
-                ui::IconName::ChevronRight,
-                self.active_match_index
-                    .is_none()
-                    .then_some(ActionButtonState::Disabled),
-                "Select Next Match",
-                &SelectNextMatch,
-                query_focus.clone(),
-            ))
-        });
-
         let search_line =
             h_flex()
                 .relative()
@@ -446,7 +450,6 @@ impl Render for BufferSearchBar {
                 this.on_action(cx.listener(Self::toggle_selection))
             })
             .child(search_line)
-            .child(matches_row)
             .children(query_error_line)
             .children(replace_line)
     }
@@ -2984,7 +2987,6 @@ mod tests {
                 include_ignored: false,
                 regex: false,
                 center_on_match: false,
-                search_on_input: false,
             },
             cx,
         );
@@ -3048,7 +3050,6 @@ mod tests {
                 include_ignored: false,
                 regex: false,
                 center_on_match: false,
-                search_on_input: false,
             },
             cx,
         );
@@ -3087,7 +3088,6 @@ mod tests {
                 include_ignored: false,
                 regex: false,
                 center_on_match: false,
-                search_on_input: false,
             },
             cx,
         );
@@ -3170,96 +3170,9 @@ mod tests {
                         include_ignored: Some(search_settings.include_ignored),
                         regex: Some(search_settings.regex),
                         center_on_match: Some(search_settings.center_on_match),
-                        search_on_input: Some(search_settings.search_on_input),
                     });
                 });
             });
-        });
-    }
-    #[gpui::test]
-    async fn test_search_on_input_setting(cx: &mut TestAppContext) {
-        let (editor, search_bar, cx) = init_test(cx);
-
-        // Test with search_on_input disabled
-        update_search_settings(
-            SearchSettings {
-                button: true,
-                whole_word: false,
-                case_sensitive: false,
-                include_ignored: false,
-                regex: false,
-                center_on_match: false,
-                search_on_input: false,
-            },
-            cx,
-        );
-
-        search_bar.update_in(cx, |search_bar, window, cx| {
-            search_bar.show(window, cx);
-            // Simulate typing in the query editor
-            search_bar.query_editor.update(cx, |query_editor, cx| {
-                query_editor.buffer().update(cx, |buffer, cx| {
-                    buffer.edit(
-                        [(MultiBufferOffset(0)..MultiBufferOffset(0), "expression")],
-                        None,
-                        cx,
-                    );
-                });
-            });
-        });
-
-        // With search_on_input disabled, typing should not trigger a search immediately
-        cx.background_executor.run_until_parked();
-
-        editor.update_in(cx, |editor, window, cx| {
-            let highlights = editor.all_text_background_highlights(window, cx);
-            assert!(
-                highlights.is_empty(),
-                "No highlights should appear when search_on_input is false"
-            );
-        });
-
-        // Test with search_on_input enabled
-        update_search_settings(
-            SearchSettings {
-                button: true,
-                whole_word: false,
-                case_sensitive: false,
-                include_ignored: false,
-                regex: false,
-                center_on_match: false,
-                search_on_input: true,
-            },
-            cx,
-        );
-
-        search_bar.update_in(cx, |search_bar, window, cx| {
-            search_bar.dismiss(&Dismiss, window, cx);
-            search_bar.show(window, cx);
-        });
-
-        search_bar
-            .update_in(cx, |search_bar, window, cx| {
-                search_bar.search("expression", None, true, window, cx)
-            })
-            .await
-            .unwrap();
-
-        // With search_on_input enabled, search should execute and show highlights
-        editor.update_in(cx, |editor, window, cx| {
-            let highlights = display_points_of(editor.all_text_background_highlights(window, cx));
-            assert_eq!(
-                highlights.len(),
-                2,
-                "Should find 2 matches for 'expression' when search_on_input is true"
-            );
-            assert_eq!(
-                highlights,
-                &[
-                    DisplayPoint::new(DisplayRow(0), 10)..DisplayPoint::new(DisplayRow(0), 20),
-                    DisplayPoint::new(DisplayRow(1), 9)..DisplayPoint::new(DisplayRow(1), 19),
-                ]
-            );
         });
     }
 }

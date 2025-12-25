@@ -134,7 +134,6 @@ Since it was too difficult to only render tab borders where exactly required, ev
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
 - lower horizontal scroll bar height to half of vertical one (the default one is huge)
 - hide horizontal scroll bar when soft wrap is enabled
-- move search bar hit count `1/30` below the search text field, above the replace text field because it is hard too see at very right
 
 # Original README
 
