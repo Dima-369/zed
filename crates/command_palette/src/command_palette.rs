@@ -11,14 +11,14 @@ use command_palette_hooks::{CommandInterceptItem, CommandInterceptResult, Comman
 
 use gpui::{
     Action, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    ParentElement, Render, Styled, Task, WeakEntity, Window,
+    ParentElement, Render, Styled, Task, UniformListScrollHandle, WeakEntity, Window,
 };
 use persistence::COMMAND_PALETTE_HISTORY;
 use picker::Direction;
 use picker::{Picker, PickerDelegate};
 use postage::{sink::Sink, stream::Stream};
 use settings::Settings;
-use ui::{HighlightedLabel, KeyBinding, ListItem, ListItemSpacing, prelude::*};
+use ui::{HighlightedLabel, KeyBinding, ListItem, ListItemSpacing, prelude::*, Scrollbars, ScrollAxes, WithScrollbar};
 use util::ResultExt;
 use workspace::{ModalView, Workspace, WorkspaceSettings};
 use zed_actions::command_palette::Toggle;
@@ -32,6 +32,7 @@ impl ModalView for CommandPalette {}
 
 pub struct CommandPalette {
     picker: Entity<Picker<CommandPaletteDelegate>>,
+    scroll_handle: UniformListScrollHandle,
 }
 
 /// Removes subsequent whitespace characters and double colons from the query.
@@ -87,7 +88,7 @@ impl CommandPalette {
     fn new(
         previous_focus_handle: FocusHandle,
         query: &str,
-        entity: WeakEntity<Workspace>,
+        workspace_entity: WeakEntity<Workspace>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -98,29 +99,34 @@ impl CommandPalette {
             .into_iter()
             .filter_map(|action| {
                 if filter.is_some_and(|filter| filter.is_hidden(&*action)) {
-                    return None;
+                    None
+                } else {
+                    Some(Command {
+                        name: action.name().to_string(),
+                        action: action.boxed_clone(),
+                    })
                 }
-
-                Some(Command {
-                    name: humanize_action_name(action.name()),
-                    action,
-                })
             })
             .collect();
 
         let delegate = CommandPaletteDelegate::new(
             cx.entity().downgrade(),
-            entity,
+            workspace_entity,
             commands,
             previous_focus_handle,
         );
 
+        let scroll_handle = UniformListScrollHandle::new();
         let picker = cx.new(|cx| {
-            let picker = Picker::uniform_list(delegate, window, cx);
+            let picker = Picker::uniform_list(delegate, window, cx)
+                .track_scroll(scroll_handle.clone());
             picker.set_query(query, window, cx);
             picker
         });
-        Self { picker }
+        Self {
+            picker,
+            scroll_handle,
+        }
     }
 
     pub fn set_query(&mut self, query: &str, window: &mut Window, cx: &mut Context<Self>) {
@@ -138,11 +144,21 @@ impl Focusable for CommandPalette {
 }
 
 impl Render for CommandPalette {
-    fn render(&mut self, _window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
             .key_context("CommandPalette")
             .w(rems(34.))
-            .child(self.picker.clone())
+            .child(
+                div()
+                    .child(self.picker.clone())
+                    .custom_scrollbars(
+                        Scrollbars::new(ScrollAxes::Vertical)
+                            .tracked_scroll_handle(&self.scroll_handle)
+                            .tracked_entity(cx.entity_id()),
+                        _window,
+                        cx,
+                    ),
+            )
     }
 }
 

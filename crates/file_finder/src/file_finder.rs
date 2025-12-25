@@ -16,8 +16,8 @@ use file_icons::FileIcons;
 use fuzzy::{CharBag, PathMatch, PathMatchCandidate};
 use gpui::{
     Action, AnyElement, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    KeyContext, Modifiers, ModifiersChangedEvent, ParentElement, Render, Styled, Task, WeakEntity,
-    Window, actions, rems,
+    KeyContext, Modifiers, ModifiersChangedEvent, ParentElement, Render, Styled, Task, UniformListScrollHandle,
+    WeakEntity, Window, actions, rems,
 };
 use open_path_prompt::OpenPathPrompt;
 use picker::{Picker, PickerDelegate};
@@ -39,7 +39,7 @@ use std::{
 use text::Point;
 use ui::{
     ButtonLike, ContextMenu, HighlightedLabel, Indicator, KeyBinding, ListItem, ListItemSpacing,
-    PopoverMenu, PopoverMenuHandle, TintColor, Tooltip, prelude::*,
+    PopoverMenu, PopoverMenuHandle, TintColor, Tooltip, prelude::*, Scrollbars, ScrollAxes, WithScrollbar,
 };
 use util::{
     ResultExt, maybe,
@@ -88,6 +88,7 @@ pub struct FileFinder {
     picker: Entity<Picker<FileFinderDelegate>>,
     picker_focus_handle: FocusHandle,
     init_modifiers: Option<Modifiers>,
+    scroll_handle: UniformListScrollHandle,
 }
 
 pub fn init(cx: &mut App) {
@@ -186,7 +187,11 @@ impl FileFinder {
     }
 
     fn new(delegate: FileFinderDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
+        let scroll_handle = UniformListScrollHandle::new();
+        let picker = cx.new(|cx| {
+            Picker::uniform_list(delegate, window, cx)
+                .track_scroll(scroll_handle.clone())
+        });
         let picker_focus_handle = picker.focus_handle(cx);
         picker.update(cx, |picker, _| {
             picker.delegate.focus_handle = picker_focus_handle.clone();
@@ -195,6 +200,7 @@ impl FileFinder {
             picker,
             picker_focus_handle,
             init_modifiers: window.modifiers().modified().then_some(window.modifiers()),
+            scroll_handle,
         }
     }
 
@@ -386,7 +392,17 @@ impl Render for FileFinder {
             .on_action(cx.listener(Self::go_to_file_split_right))
             .on_action(cx.listener(Self::go_to_file_split_up))
             .on_action(cx.listener(Self::go_to_file_split_down))
-            .child(self.picker.clone())
+            .child(
+                div()
+                    .child(self.picker.clone())
+                    .custom_scrollbars(
+                        Scrollbars::new(ScrollAxes::Vertical)
+                            .tracked_scroll_handle(&self.scroll_handle)
+                            .tracked_entity(cx.entity_id()),
+                        window,
+                        cx,
+                    ),
+            )
     }
 }
 
