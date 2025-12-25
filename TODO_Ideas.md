@@ -2,19 +2,8 @@
 
 # improve `buffer_search_modal::ToggleBufferSearch`
 
-- Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down?
+- revert my picker centering code
 
-I mean the selected row should be centered.
-you can maybe check how the `crates/outline/src/outline.rs` or `crates/project_panel/src/project_panel.rs` does it. they don't have a full centered mode, but center a bit when using arrow up/down at edges
-
-
-This is not implemented anywhere else in Zed, so probably too difficult to implement.
-
-- fix that in no line mode the candidate item list lines have incorrect bottom padding, they look weird, the ones for the line mode are fine
-weirdly, when no character is typed in, then in no line mode, the candidate rows have correct paddinge only as soon as anything is typed in.
-It is hard to debug.
-
-Reflect on 5-7 different possible sources of the problem, distill those down to 1-2 most likely sources, and then add logs to validate your assumptions before we move onto implementing the actual code fix.
 
 
 
@@ -167,3 +156,15 @@ This is not implemented anywhere else in Zed, so probably too difficult to imple
 - in  `fn helix_handle_jump_input` can you make escape cancel out of the jump mode?
 
 I tried, but escape is not propagated to `input_ignored`, so no idea how to fix this.
+
+## improve `buffer_search_modal::ToggleBufferSearch`
+
+### Center top candidates list always
+
+Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down? I mean the selected row should be centered. Real centered movement is not implemented anywhere else in Zed, so too difficult to implement. I tried with Windsurf Penguin Alpha and it was not able to.
+
+### Incorrect bottom padding in no line mode
+
+Fix that in no line mode the candidate item list lines have incorrect bottom padding, They look weird, the ones for the line mode are fine weirdly, when no character is typed in, then in no line mode, the candidate rows have correct paddinge only as soon as anything is typed in.
+
+I have no idea why this is happening, and it would be amazing to fix, but I can not figure it out.
