@@ -1,4 +1,3 @@
-
 # My workflow for macOS
 
 To test modifications, I am only using `cargo run --no-default-features` (so it compiles without webrtc-sys) to compile and start Zed in debug mode which is faster than building the release binaries.
@@ -56,6 +55,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add structured outline for Markdown, modifies `crates/languages/src/markdown/outline.scm` (from https://github.com/zed-industries/zed/pull/45643)
 - add a button to copy diagnostic messages from the hover popover to the clipboard (from https://github.com/zed-industries/zed/pull/45625)
 - improve `file_finder::Toggle` matching to use substring through `nucleo` crate. I dislike fuzzy matching which is annoying. Based on https://github.com/zed-industries/zed/pull/37123, but that had fuzzy matching
+- integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
 
 ### Command palette
 
