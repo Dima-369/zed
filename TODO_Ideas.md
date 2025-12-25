@@ -13,6 +13,12 @@ only filled when on heading or line below
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
+there is a line mode implemented using nucleo, but it is very slow
+can you instead remove the nucleo crate and just do a proper substring match, based on this logic:
+split everything by space
+and then only include lines matching where ALL space segments match
+on enter on matching line you should jump to first matching segment
+
 TRY out in release mode for performance, or maybe do it async?
 this was implemented, but is very slow in debug mode:
 
