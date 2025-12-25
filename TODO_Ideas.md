@@ -1,9 +1,10 @@
-- try out https://github.com/zed-industries/zed/pull/45643
-Add structured outline for Markdown
-
 - try out https://github.com/zed-industries/zed/pull/45625 (Add a button to copy diagnostic messages from the hover popover to the clipboard)
 
 - can `file_finder::Toggle` use `nucleo` crate for matching?
+
+- investigate https://github.com/zed-industries/zed/pull/37123
+Use nucleo for fuzzy string matching
+does it work on `file_finder::Toggle`?
 
 ## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
