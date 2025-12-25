@@ -1790,9 +1790,8 @@ impl Vim {
         self.update_editor(cx, |_, editor, cx| match behaviour {
             HelixJumpBehaviour::Move => {
                 editor.change_selections(Default::default(), window, cx, |s| {
-                    let display_map = s.display_snapshot();
-                    let start = candidate.range.start.to_display_point(&display_map).to_point(&display_map);
-                    s.select_ranges([start..start])
+                    let start = candidate.range.start;
+                    s.select_anchor_ranges([start.clone()..start])
                 });
             }
             HelixJumpBehaviour::Extend => {
