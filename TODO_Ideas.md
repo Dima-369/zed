@@ -1,4 +1,5 @@
 - fix `cargo test -p search`
+- fix `cargo test --package vim helix`
 
 - how to fix key b search in uncommitted changes buffer? it is multibuffer, is my search not working there?
 
