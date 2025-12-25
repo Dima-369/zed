@@ -88,7 +88,6 @@ pub struct FileFinder {
     picker: Entity<Picker<FileFinderDelegate>>,
     picker_focus_handle: FocusHandle,
     init_modifiers: Option<Modifiers>,
-    scroll_handle: UniformListScrollHandle,
 }
 
 pub fn init(cx: &mut App) {
@@ -201,7 +200,6 @@ impl FileFinder {
             picker,
             picker_focus_handle,
             init_modifiers: window.modifiers().modified().then_some(window.modifiers()),
-            scroll_handle,
         }
     }
 

@@ -32,7 +32,6 @@ impl ModalView for CommandPalette {}
 
 pub struct CommandPalette {
     picker: Entity<Picker<CommandPaletteDelegate>>,
-    scroll_handle: UniformListScrollHandle,
 }
 
 /// Removes subsequent whitespace characters and double colons from the query.
@@ -124,10 +123,7 @@ impl CommandPalette {
             picker.set_query(query, window, cx);
             picker
         });
-        Self {
-            picker,
-            scroll_handle,
-        }
+        Self { picker }
     }
 
     pub fn set_query(&mut self, query: &str, window: &mut Window, cx: &mut Context<Self>) {

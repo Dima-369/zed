@@ -7,7 +7,7 @@ use editor::{
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Global,
     HighlightStyle, KeyBinding, KeyContext, Render, SharedString, StyledText, Subscription, Task,
-    UpdateGlobal, WeakEntity, Window, actions, ScrollStrategy,
+    UpdateGlobal, WeakEntity, Window, actions,
 };
 use language::language_settings::SoftWrap;
 use language::{HighlightId, Point, ToOffset as _};

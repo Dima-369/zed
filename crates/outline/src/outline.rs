@@ -60,7 +60,6 @@ pub fn toggle(
 
 pub struct OutlineView {
     picker: Entity<Picker<OutlineViewDelegate>>,
-    scroll_handle: UniformListScrollHandle,
 }
 
 impl Focusable for OutlineView {
@@ -128,10 +127,7 @@ impl OutlineView {
                 .track_scroll(scroll_handle.clone())
                 .show_scrollbar(true)
         });
-        OutlineView {
-            picker,
-            scroll_handle,
-        }
+        OutlineView { picker }
     }
 }
 

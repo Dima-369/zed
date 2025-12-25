@@ -348,7 +348,6 @@ pub fn init(cx: &mut App) {
 
 struct RecentFiles {
     picker: Entity<Picker<RecentFilesDelegate>>,
-    scroll_handle: UniformListScrollHandle,
     _subscription: Subscription,
 }
 
@@ -365,7 +364,6 @@ impl RecentFiles {
         let _subscription = cx.subscribe(&picker, |_, _, _, cx| cx.emit(DismissEvent));
         Self {
             picker,
-            scroll_handle,
             _subscription,
         }
     }
