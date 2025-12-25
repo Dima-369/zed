@@ -10,15 +10,15 @@ use editor::{MultiBufferOffset, RowHighlightOptions, SelectionEffects};
 use fuzzy::StringMatch;
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, HighlightStyle,
-    ParentElement, Point, Render, Styled, StyledText, Task, TextStyle, WeakEntity, Window, div,
-    rems,
+    ParentElement, Point, Render, Styled, StyledText, Task, TextStyle, UniformListScrollHandle,
+    WeakEntity, Window, div, rems,
 };
 use language::{Outline, OutlineItem};
 use ordered_float::OrderedFloat;
 use picker::{Picker, PickerDelegate};
 use settings::Settings;
 use theme::{ActiveTheme, ThemeSettings};
-use ui::{ListItem, ListItemSpacing, prelude::*};
+use ui::{ListItem, ListItemSpacing, prelude::*, Scrollbars, ScrollAxes, WithScrollbar};
 use util::ResultExt;
 use workspace::{DismissDecision, ModalView, Workspace};
 
@@ -60,6 +60,7 @@ pub fn toggle(
 
 pub struct OutlineView {
     picker: Entity<Picker<OutlineViewDelegate>>,
+    scroll_handle: UniformListScrollHandle,
 }
 
 impl Focusable for OutlineView {
@@ -95,7 +96,17 @@ impl Render for OutlineView {
                     cx.emit(DismissEvent);
                 },
             ))
-            .child(self.picker.clone())
+            .child(
+                div()
+                    .child(self.picker.clone())
+                    .custom_scrollbars(
+                        Scrollbars::new(ScrollAxes::Vertical)
+                            .tracked_scroll_handle(&self.scroll_handle)
+                            .tracked_entity(cx.entity_id()),
+                        _window,
+                        cx,
+                    ),
+            )
     }
 }
 
@@ -120,10 +131,16 @@ impl OutlineView {
         cx: &mut Context<Self>,
     ) -> OutlineView {
         let delegate = OutlineViewDelegate::new(cx.entity().downgrade(), outline, editor, cx);
+        let scroll_handle = UniformListScrollHandle::new();
         let picker = cx.new(|cx| {
-            Picker::uniform_list(delegate, window, cx).max_height(Some(vh(0.75, window)))
+            Picker::uniform_list(delegate, window, cx)
+                .max_height(Some(vh(0.75, window)))
+                .track_scroll(scroll_handle.clone())
         });
-        OutlineView { picker }
+        OutlineView {
+            picker,
+            scroll_handle,
+        }
     }
 }
 

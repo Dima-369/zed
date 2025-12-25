@@ -119,8 +119,8 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - `editor::MoveToStartOfLargerSyntaxNode` from https://github.com/zed-industries/zed/pull/45331
 - `buffer_search_modal::ToggleBufferSearch` which shows a modal to search the current buffer content (code is in `crates/search/src/buffer_search_modal.rs`) based on https://github.com/zed-industries/zed/pull/44530 (Add quick search modal). This is a basic implementation of Swiper from Emacs or `Snacks.picker.lines()` from Neovim. I tried matching every line with `nucleo`, but it was kinda slow, so it just split on spaces and then every line which has all words from the query is matched.
   - `ctrl-c` and `ctrl-t` can be used to insert history items into the search field
-  - `ctrl-r` is to toggle between line (case-insensitive)and exact match (case-sensitive) mode
-  - it also works in multi buffers
+  - `ctrl-r` is to toggle between line (case-insensitive) and exact match (case-sensitive) mode
+  - it also works in multi buffers, although the preview editor mixes lines
 
 ## UI changes
 
@@ -128,6 +128,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
 - lower excessive tab height
 - lower status bar height, see `impl Render for StatusBar`
+- add scrollbar to `outline::Toggle` modal
 - implement vertical tabs which go to next rows without scrollbars. Enable in `settings.json` with:
 
 ```json

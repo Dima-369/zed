@@ -373,6 +373,16 @@ impl<D: PickerDelegate> Picker<D> {
         self
     }
 
+    pub fn track_scroll(mut self, scroll_handle: UniformListScrollHandle) -> Self {
+        match &mut self.element_container {
+            ElementContainer::UniformList(_) => {
+                self.element_container = ElementContainer::UniformList(scroll_handle);
+            }
+            _ => {}
+        }
+        self
+    }
+
     pub fn list_measure_all(mut self) -> Self {
         match self.element_container {
             ElementContainer::List(state) => {
