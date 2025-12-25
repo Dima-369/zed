@@ -1,5 +1,26 @@
-- sometimes undo when at very right on newline character, it does not go back to newline character
+- remove those debug prints:
 
+"crates/acp_thread/src/diff.rs": 76, "crates/acp_thread/src/mention.rs" 76
+"crates/acp_thread/src/diff.rs": 76, "crates/acp_thread/src/mention.rs" 76
+"crates/acp_thread/src/mention.rs": 76, "crates/acp_thread/src/terminal.rs" 76
+"crates/acp_thread/src/mention.rs": 76, "crates/acp_thread/src/terminal.rs" 76
+"crates/acp_thread/src/mention.rs": 76, "crates/acp_thread/src/acp_thread.rs" 76
+"crates/acp_thread/src/terminal.rs": 76, "crates/acp_thread/src/acp_thread.rs" 76
+"crates/acp_thread/src/terminal.rs": 76, "crates/acp_thread/src/acp_thread.rs" 76
+"crates/acp_thread/src/acp_thread.rs": 76, "crates/acp_thread/src/connection.rs" 76
+"crates/acp_thread/src/acp_thread.rs": 76, "crates/acp_thread/src/connection.rs" 76
+"crates/terminal_view/README.md": 109, "crates/sqlez/src/thread_safe_connection.rs" 76
+"crates/ui/src/components/thread_item.rs": 76, "crates/sqlez/src/thread_safe_connection.rs" 76
+"crates/agent/src/legacy_thread.rs": 76, "crates/sqlez/src/thread_safe_connection.rs" 76
+"crates/agent_ui/src/text_thread_editor.rs": 76, "crates/sqlez/src/thread_safe_connection.rs" 76
+"crates/eval/src/judge_thread_prompt.hbs": 76, "crates/sqlez/src/thread_safe_connection.rs" 76
+"crates/agent_ui_v2/src/thread_history.rs": 76, "crates/sqlez/src/thread_safe_connection.rs" 76
+"crates/agent_ui_v2/src/thread_history.rs": 76, "crates/sqlez/src/thread_safe_connection.rs" 76
+"crates/acp_thread/src/connection.rs": 76, "crates/assistant_text_thread/src/text_thread.rs" 76
+"crates/acp_thread/src/connection.rs": 76, "crates/assistant_text_thread/src/text_thread.rs" 76
+
+- sometimes undo when at very right on newline character, it does not go back to newline character
+how to reproduce exactly?
 
 
 # >>> Later (low prio)
