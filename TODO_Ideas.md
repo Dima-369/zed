@@ -1,12 +1,11 @@
 - can `outline::Toggle` have a scrollbar? currently, it has none
-
-- can one tune the color of headlines in multi buffers?
+the outline panel has the scrollbar
 
 # improve `buffer_search_modal::ToggleBufferSearch`
 
 - revert my picker centering code
 I reverted picker.rs, does anything else need to be reverted in `buffer_search_modal.rs`?
-
+try it out, I do not even want that edgy jump
 
 
 
