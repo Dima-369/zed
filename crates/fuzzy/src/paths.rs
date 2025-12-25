@@ -126,7 +126,7 @@ pub fn match_fixed_path_set(
             CaseMatching::Ignore
         },
         Normalization::Smart,
-        AtomKind::Fuzzy,
+        AtomKind::Substring,
     );
 
     let mut results = Vec::with_capacity(candidates.len());
@@ -246,7 +246,7 @@ pub async fn match_path_sets<'a, Set: PathMatchCandidateSet<'a>>(
             CaseMatching::Ignore
         },
         Normalization::Smart,
-        AtomKind::Fuzzy,
+        AtomKind::Substring,
     );
 
     let num_cpus = executor.num_cpus().min(path_count);

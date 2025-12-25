@@ -142,7 +142,7 @@ where
             CaseMatching::Ignore
         },
         Normalization::Smart,
-        AtomKind::Fuzzy,
+        AtomKind::Substring,
     );
 
     let segment_size = candidates.len().div_ceil(matchers.len());
