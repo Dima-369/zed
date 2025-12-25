@@ -47,7 +47,6 @@ pub trait PathMatchCandidateSet<'a>: Send + Sync {
     fn path_style(&self) -> PathStyle;
 }
 
-
 impl PartialEq for PathMatch {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other).is_eq()
@@ -64,10 +63,6 @@ impl PartialOrd for PathMatch {
 
 impl Ord for PathMatch {
     fn cmp(&self, other: &Self) -> Ordering {
-        println!(
-            "{:?}: {}, {:?} {}",
-            self.path, self.score, other.path, other.score
-        );
         self.score
             .total_cmp(&other.score)
             .reverse()
