@@ -1,5 +1,3 @@
-- try out https://github.com/zed-industries/zed/pull/45625 (Add a button to copy diagnostic messages from the hover popover to the clipboard)
-
 - can `file_finder::Toggle` use `nucleo` crate for matching?
 
 - investigate https://github.com/zed-industries/zed/pull/37123
