@@ -1,5 +1,5 @@
 use gpui::BackgroundExecutor;
-use nucleo::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
+use nucleo::pattern::{CaseMatching, Normalization, Pattern};
 use std::{
     cmp::{self, Ordering},
     sync::{
@@ -128,7 +128,7 @@ pub fn match_fixed_path_set(
         format!("'{}", query)
     };
 
-    let pattern = Pattern::new(
+    let pattern = Pattern::parse(
         &pattern_string,
         if smart_case {
             CaseMatching::Smart
@@ -136,7 +136,6 @@ pub fn match_fixed_path_set(
             CaseMatching::Ignore
         },
         Normalization::Smart,
-        AtomKind::Substring,
     );
 
     let mut results = Vec::with_capacity(candidates.len());
@@ -257,7 +256,7 @@ pub async fn match_path_sets<'a, Set: PathMatchCandidateSet<'a>>(
         format!("'{}", query)
     };
 
-    let pattern = Pattern::new(
+    let pattern = Pattern::parse(
         &pattern_string,
         if smart_case {
             CaseMatching::Smart
@@ -265,7 +264,6 @@ pub async fn match_path_sets<'a, Set: PathMatchCandidateSet<'a>>(
             CaseMatching::Ignore
         },
         Normalization::Smart,
-        AtomKind::Substring,
     );
 
     let num_cpus = executor.num_cpus().min(path_count);

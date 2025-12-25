@@ -1,6 +1,6 @@
 use crate::{CharBag, matcher};
 use gpui::BackgroundExecutor;
-use nucleo::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
+use nucleo::pattern::{CaseMatching, Normalization, Pattern};
 use std::{
     borrow::Borrow,
     cmp::{self, Ordering},
@@ -144,7 +144,7 @@ where
         format!("'{}", query)
     };
 
-    let pattern = Pattern::new(
+    let pattern = Pattern::parse(
         &pattern_string,
         if smart_case {
             CaseMatching::Smart
@@ -152,7 +152,6 @@ where
             CaseMatching::Ignore
         },
         Normalization::Smart,
-        AtomKind::Substring,
     );
 
     let segment_size = candidates.len().div_ceil(matchers.len());
