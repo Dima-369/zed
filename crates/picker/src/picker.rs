@@ -68,8 +68,6 @@ pub struct Picker<D: PickerDelegate> {
     max_height: Option<Length>,
     /// An external control to display a scrollbar in the `Picker`.
     show_scrollbar: bool,
-    /// Scroll strategy to use when scrolling to items
-    scroll_strategy: ScrollStrategy,
     /// Whether the `Picker` is rendered as a self-contained modal.
     ///
     /// Set this to `false` when rendering the `Picker` as part of a larger modal.
@@ -330,7 +328,6 @@ impl<D: PickerDelegate> Picker<D> {
             widest_item: None,
             max_height: Some(rems(24.).into()),
             show_scrollbar: false,
-            scroll_strategy: ScrollStrategy::Nearest,
             is_modal: true,
         };
         this.update_matches("".to_string(), window, cx);
@@ -368,11 +365,6 @@ impl<D: PickerDelegate> Picker<D> {
 
     pub fn show_scrollbar(mut self, show_scrollbar: bool) -> Self {
         self.show_scrollbar = show_scrollbar;
-        self
-    }
-
-    pub fn scroll_strategy(mut self, scroll_strategy: ScrollStrategy) -> Self {
-        self.scroll_strategy = scroll_strategy;
         self
     }
 
@@ -453,23 +445,12 @@ impl<D: PickerDelegate> Picker<D> {
         let current_index = self.delegate.selected_index();
 
         if previous_index != current_index {
-            println!("set_selected_index: {} -> {}, scroll_to_index: {}, strategy: {:?}", 
-                previous_index, current_index, scroll_to_index, self.scroll_strategy);
             if let Some(action) = self.delegate.selected_index_changed(ix, window, cx) {
                 action(window, cx);
             }
             if scroll_to_index {
-                println!("set_selected_index: Calling scroll_to_item_index due to scroll_to_index=true");
                 self.scroll_to_item_index(ix);
-            } else if matches!(self.scroll_strategy, ScrollStrategy::Center) {
-                // Always scroll when using center strategy, even if scroll_to_index is false
-                println!("set_selected_index: Calling scroll_to_item_index due to center strategy");
-                self.scroll_to_item_index(ix);
-            } else {
-                println!("set_selected_index: NOT scrolling (scroll_to_index=false, strategy={:?})", self.scroll_strategy);
             }
-        } else {
-            println!("set_selected_index: No change (index stays at {})", current_index);
         }
     }
 
@@ -479,20 +460,21 @@ impl<D: PickerDelegate> Picker<D> {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        println!("select_next called");
         let query = self.query(cx);
         if let Some(query) = self
             .delegate
             .select_history(Direction::Down, &query, window, cx)
         {
             self.set_query(query, window, cx);
-        } else {
-            let current_index = self.delegate.selected_index();
-            let next_index = (current_index + 1).min(self.delegate.match_count() - 1);
-            println!("select_next: Moving from {} to {}", current_index, next_index);
-            self.set_selected_index(next_index, Some(Direction::Down), true, window, cx);
+            return;
         }
-        cx.notify();
+        let count = self.delegate.match_count();
+        if count > 0 {
+            let index = self.delegate.selected_index();
+            let ix = if index == count - 1 { 0 } else { index + 1 };
+            self.set_selected_index(ix, Some(Direction::Down), true, window, cx);
+            cx.notify();
+        }
     }
 
     pub fn editor_move_up(&mut self, _: &MoveUp, window: &mut Window, cx: &mut Context<Self>) {
@@ -505,22 +487,21 @@ impl<D: PickerDelegate> Picker<D> {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        println!("select_previous called");
         let query = self.query(cx);
         if let Some(query) = self
             .delegate
             .select_history(Direction::Up, &query, window, cx)
         {
             self.set_query(query, window, cx);
-        } else {
-            let current_index = self.delegate.selected_index();
-            if current_index > 0 {
-                let prev_index = current_index - 1;
-                println!("select_previous: Moving from {} to {}", current_index, prev_index);
-                self.set_selected_index(prev_index, Some(Direction::Up), true, window, cx);
-            }
+            return;
         }
-        cx.notify();
+        let count = self.delegate.match_count();
+        if count > 0 {
+            let index = self.delegate.selected_index();
+            let ix = if index == 0 { count - 1 } else { index - 1 };
+            self.set_selected_index(ix, Some(Direction::Up), true, window, cx);
+            cx.notify();
+        }
     }
 
     pub fn editor_move_down(&mut self, _: &MoveDown, window: &mut Window, cx: &mut Context<Self>) {
@@ -758,17 +739,7 @@ impl<D: PickerDelegate> Picker<D> {
         match &mut self.element_container {
             ElementContainer::List(state) => state.scroll_to_reveal_item(ix),
             ElementContainer::UniformList(scroll_handle) => {
-                match self.scroll_strategy {
-                    ScrollStrategy::Center => {
-                        // Try regular scroll_to_item with Center strategy
-                        println!("scroll_to_item_index: Centering item {} with regular scroll_to_item", ix);
-                        scroll_handle.scroll_to_item(ix, ScrollStrategy::Center);
-                    }
-                    _ => {
-                        println!("scroll_to_item_index: Using strategy {:?} for item {}", self.scroll_strategy, ix);
-                        scroll_handle.scroll_to_item(ix, self.scroll_strategy)
-                    }
-                }
+                scroll_handle.scroll_to_item(ix, ScrollStrategy::Nearest)
             }
         }
     }
