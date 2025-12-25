@@ -1,6 +1,9 @@
-# rebind b and B for  `buffer_search_modal::ToggleBufferSearch`
+# improve `buffer_search_modal::ToggleBufferSearch`
 
-it works in multi buffers finally!
+TEST other no line mode
+
+- add a keybinding to toggle between line and other mode
+
 
 
 # >>> Investigations
@@ -53,6 +56,8 @@ https://github.com/zed-industries/zed/pull/43826
 
 I already have his v1 (https://github.com/zed-industries/zed/pull/43961 (PR closed)) integrated. It is bound at `file_explorer::Toggle`.
 I only see the v2 improvement that it has a full text field at the top, which can go outside the project root directory, but that is just a minor thing. I do not think I need it, since I can just do it via the `neovim` task.
+
+v2 does not have the ignore files button/functionality anymore which sucks.
 
 https://github.com/zed-industries/zed/pull/45307
 
