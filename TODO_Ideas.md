@@ -5,6 +5,10 @@ git checkout main -- crates/search/src/buffer_search.rs
 
 why is there search_on_input in my code diff? Is it from the project search?
 
+- improve: does it improve my key i issues? namely directly selecting everything inside quotes like `foo bar` instead of just the inner word
+maybe when there is no selection yet try to select word first always to word boundaries
+
+- try out https://github.com/zed-industries/zed/pull/45625
 
 
 
