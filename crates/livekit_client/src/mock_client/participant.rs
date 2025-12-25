@@ -47,6 +47,7 @@ impl LocalParticipant {
             .await
     }
 
+    #[allow(dead_code)] // Only used when webrtc feature is enabled
     pub(crate) async fn publish_microphone_track(
         &self,
         _cx: &AsyncApp,

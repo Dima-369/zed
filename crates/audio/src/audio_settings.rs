@@ -58,6 +58,7 @@ impl Settings for AudioSettings {
 pub(crate) struct LiveSettings {
     pub(crate) auto_microphone_volume: AtomicBool,
     pub(crate) auto_speaker_volume: AtomicBool,
+    #[allow(dead_code)] // Only used when webrtc feature is enabled
     pub(crate) denoise: AtomicBool,
 }
 

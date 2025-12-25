@@ -25,6 +25,7 @@ use webrtc_deps::*;
 use rodio::{
     Decoder, OutputStream, OutputStreamBuilder, Source, mixer::Mixer, nz, source::Buffered,
 };
+#[allow(unused_imports)] // Only used when webrtc feature is enabled
 use settings::Settings;
 use std::{io::Cursor, num::NonZero, path::PathBuf, sync::atomic::Ordering, time::Duration};
 use util::ResultExt;
