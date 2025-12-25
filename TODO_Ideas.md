@@ -5,6 +5,7 @@
 # improve `buffer_search_modal::ToggleBufferSearch`
 
 - revert my picker centering code
+I reverted picker.rs, does anything else need to be reverted in `buffer_search_modal.rs`?
 
 
 
