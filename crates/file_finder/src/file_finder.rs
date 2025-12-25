@@ -39,7 +39,7 @@ use std::{
 use text::Point;
 use ui::{
     ButtonLike, ContextMenu, HighlightedLabel, Indicator, KeyBinding, ListItem, ListItemSpacing,
-    PopoverMenu, PopoverMenuHandle, TintColor, Tooltip, prelude::*, Scrollbars, ScrollAxes, WithScrollbar,
+    PopoverMenu, PopoverMenuHandle, TintColor, Tooltip, prelude::*,
 };
 use util::{
     ResultExt, maybe,
@@ -191,6 +191,7 @@ impl FileFinder {
         let picker = cx.new(|cx| {
             Picker::uniform_list(delegate, window, cx)
                 .track_scroll(scroll_handle.clone())
+                .show_scrollbar(true)
         });
         let picker_focus_handle = picker.focus_handle(cx);
         picker.update(cx, |picker, _| {
@@ -392,17 +393,7 @@ impl Render for FileFinder {
             .on_action(cx.listener(Self::go_to_file_split_right))
             .on_action(cx.listener(Self::go_to_file_split_up))
             .on_action(cx.listener(Self::go_to_file_split_down))
-            .child(
-                div()
-                    .child(self.picker.clone())
-                    .custom_scrollbars(
-                        Scrollbars::new(ScrollAxes::Vertical)
-                            .tracked_scroll_handle(&self.scroll_handle)
-                            .tracked_entity(cx.entity_id()),
-                        window,
-                        cx,
-                    ),
-            )
+            .child(self.picker.clone())
     }
 }
 

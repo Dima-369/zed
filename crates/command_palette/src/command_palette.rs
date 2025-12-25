@@ -18,7 +18,7 @@ use picker::Direction;
 use picker::{Picker, PickerDelegate};
 use postage::{sink::Sink, stream::Stream};
 use settings::Settings;
-use ui::{HighlightedLabel, KeyBinding, ListItem, ListItemSpacing, prelude::*, Scrollbars, ScrollAxes, WithScrollbar};
+use ui::{HighlightedLabel, KeyBinding, ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
 use workspace::{ModalView, Workspace, WorkspaceSettings};
 use zed_actions::command_palette::Toggle;
@@ -119,7 +119,8 @@ impl CommandPalette {
         let scroll_handle = UniformListScrollHandle::new();
         let picker = cx.new(|cx| {
             let picker = Picker::uniform_list(delegate, window, cx)
-                .track_scroll(scroll_handle.clone());
+                .track_scroll(scroll_handle.clone())
+                .show_scrollbar(true);
             picker.set_query(query, window, cx);
             picker
         });
@@ -144,21 +145,11 @@ impl Focusable for CommandPalette {
 }
 
 impl Render for CommandPalette {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
             .key_context("CommandPalette")
             .w(rems(34.))
-            .child(
-                div()
-                    .child(self.picker.clone())
-                    .custom_scrollbars(
-                        Scrollbars::new(ScrollAxes::Vertical)
-                            .tracked_scroll_handle(&self.scroll_handle)
-                            .tracked_entity(cx.entity_id()),
-                        _window,
-                        cx,
-                    ),
-            )
+            .child(self.picker.clone())
     }
 }
 
@@ -486,12 +477,22 @@ impl PickerDelegate for CommandPaletteDelegate {
 
                     for (ix, command) in commands.iter().enumerate() {
                         let candidate_lower = command.name.to_lowercase();
-                        if words.iter().all(|word| candidate_lower.contains(word)) {
-                            // Find positions for highlighting
+                        let humanized_lower = humanize_action_name(&command.name).to_lowercase();
+
+                        // Check if all query words match either the original name or the humanized name
+                        if words.iter().all(|word| candidate_lower.contains(word) || humanized_lower.contains(word)) {
+                            // Find positions for highlighting - prioritize matches in the original name
                             let mut positions = Vec::new();
                             for word in &words {
+                                // First try to match in the original name
                                 for (start, matched_word) in candidate_lower.match_indices(word) {
                                     positions.extend(start..(start + matched_word.len()));
+                                }
+                                // If no match in original, try humanized name
+                                if positions.is_empty() {
+                                    for (start, matched_word) in humanized_lower.match_indices(word) {
+                                        positions.extend(start..(start + matched_word.len()));
+                                    }
                                 }
                             }
                             positions.sort_unstable();
