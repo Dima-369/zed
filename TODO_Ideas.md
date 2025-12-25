@@ -7,6 +7,8 @@
 
 ## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
+this was implemented, but is very slow in debug mode:
+
 - is there a way to implement a 'line' mode? maybe with a new button, enabled by default when launching the modal. it behaves a bit differently than the other modes, and only searches for the first match in a line. use the `nucleo` crate, I pasted in its source below. so even if a line has `editor the editor` and I search for `editor`, it only highlights the first match. I suppose you have to run `nucleo` algorithm with its `!`, etc. handling on each line and get first match? and also use that for highlighting code
 
 
