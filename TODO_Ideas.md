@@ -134,11 +134,14 @@ https://github.com/zed-industries/zed/pull/43733
 
 I tried to fix with my yek file merger through Gemini and via auggie, but both failed.
 
+I created an issue for this:
 https://github.com/zed-industries/zed/issues/45532
 
 ## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
-### Can the left candidate be centered, currently is always at either top or bottom when holding arrow up/down?
+### Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down?
+
+I mean the selected row should be centered.
 
 This is not implemented anywhere else in Zed, so probably too difficult to implement.
 
