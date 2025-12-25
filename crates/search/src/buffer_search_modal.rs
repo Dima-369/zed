@@ -579,7 +579,7 @@ impl BufferSearchModal {
             editor.update(cx, |editor, cx| {
                 editor.set_background(cx.theme().colors().elevated_surface_background, window, cx);
                 editor.set_gutter_background(cx.theme().colors().elevated_surface_background, window, cx);
-                editor.set_current_line_highlight_color(gpui::hsla(0.0, 0.0, 0.1, 1.0), window, cx);
+                editor.set_current_line_highlight_color(cx.theme().colors().ghost_element_selected, window, cx);
                 Self::navigate_and_highlight_matches(
                     editor,
                     match_offset,
@@ -606,7 +606,7 @@ impl BufferSearchModal {
         editor.update(cx, |editor, cx| {
             editor.set_background(cx.theme().colors().elevated_surface_background, window, cx);
             editor.set_gutter_background(cx.theme().colors().elevated_surface_background, window, cx);
-            editor.set_current_line_highlight_color(gpui::hsla(0.0, 0.0, 0.1, 1.0), window, cx);
+            editor.set_current_line_highlight_color(cx.theme().colors().ghost_element_selected, window, cx);
             Self::navigate_and_highlight_matches(
                 editor,
                 match_offset,
