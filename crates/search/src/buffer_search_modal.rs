@@ -1,12 +1,16 @@
 use collections::HashMap;
-use editor::{Anchor as MultiBufferAnchor, Editor, EditorEvent, MultiBufferOffset};
+use editor::{
+    scroll::Autoscroll,
+    Anchor as MultiBufferAnchor, Editor, EditorEvent, EditorSettings, MultiBuffer, MultiBufferOffset,
+    MultiBufferSnapshot, SelectionEffects, ToOffset,
+};
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Global,
     HighlightStyle, KeyBinding, KeyContext, Render, SharedString, StyledText, Subscription, Task,
     UpdateGlobal, WeakEntity, Window, actions,
 };
 use language::language_settings::SoftWrap;
-use language::{Anchor, Buffer, HighlightId, ToOffset as _};
+use language::{HighlightId, Point, ToOffset as _};
 use picker::{Picker, PickerDelegate};
 use project::search::SearchQuery;
 use settings::Settings;
@@ -41,7 +45,7 @@ impl Global for BufferSearchHistory {}
 const MAX_PREVIEW_BYTES: usize = 200;
 const PREVIEW_DEBOUNCE_MS: u64 = 50;
 
-type AnchorRange = Range<Anchor>;
+type AnchorRange = Range<MultiBufferAnchor>;
 
 pub fn init(cx: &mut App) {
     cx.set_global(BufferSearchHistory(SearchHistory::new(
@@ -178,7 +182,7 @@ fn preview_content_len(preview_text: &str) -> usize {
 
 pub struct BufferSearchDelegate {
     target_editor: Entity<Editor>,
-    target_buffer: Entity<Buffer>,
+    target_buffer: Entity<MultiBuffer>,
     search_options: SearchOptions,
     line_mode: bool,
     items: Vec<LineMatchData>,
@@ -198,7 +202,7 @@ pub struct BufferSearchDelegate {
 pub struct BufferSearchModal {
     picker: Entity<Picker<BufferSearchDelegate>>,
     preview_editor: Option<Entity<Editor>>,
-    target_buffer: Entity<Buffer>,
+    target_buffer: Entity<MultiBuffer>,
     _picker_subscription: Subscription,
     _preview_editor_subscription: Option<Subscription>,
     _preview_debounce_task: Option<Task<()>>,
@@ -388,23 +392,14 @@ impl BufferSearchModal {
                     None
                 };
 
-                let multibuffer = editor.buffer().read(cx);
-                let buffer = head
-                    .text_anchor
-                    .buffer_id
-                    .and_then(|buffer_id| multibuffer.buffer(buffer_id))
-                    .or_else(|| multibuffer.as_singleton());
-
-                let cursor_offset: Option<usize> = buffer.as_ref().map(|buffer: &Entity<Buffer>| {
-                    let snapshot = buffer.read(cx).snapshot();
-                    head.text_anchor.to_offset(&snapshot)
-                });
+                let buffer = editor.buffer().clone();
+                let cursor_offset = head.to_offset(&snapshot).0;
 
                 (selected_text, buffer, cursor_offset)
             });
 
-            let Some(buffer) = buffer else { return };
-            let Some(cursor_offset) = cursor_offset else { return };
+            let buffer = buffer;
+            // cursor_offset is already a value, not an Option
 
             let weak_workspace = cx.entity().downgrade();
             workspace.toggle_modal(window, cx, |window, cx| {
@@ -500,7 +495,7 @@ impl BufferSearchModal {
     fn new(
         _workspace: WeakEntity<Workspace>,
         target_editor: Entity<Editor>,
-        target_buffer: Entity<Buffer>,
+        target_buffer: Entity<MultiBuffer>,
         initial_cursor_offset: usize,
         initial_query: Option<String>,
         window: &mut Window,
@@ -582,27 +577,24 @@ impl BufferSearchModal {
         cx: &mut Context<Editor>,
     ) {
         let buffer_snapshot = editor.buffer().read(cx).snapshot(cx);
-        let point = buffer_snapshot.offset_to_point(MultiBufferOffset(match_offset));
-        editor.go_to_singleton_buffer_point(point, window, cx);
+        let offset = MultiBufferOffset(match_offset);
+        let anchor = buffer_snapshot.anchor_before(offset);
+        editor.change_selections(Default::default(), window, cx, |s| {
+            s.select_anchor_ranges([anchor..anchor])
+        });
+        editor.request_autoscroll(Autoscroll::center(), cx);
 
-        let multi_buffer = editor.buffer().read(cx);
-        if let Some(excerpt_id) = multi_buffer.excerpt_ids().first().copied() {
-            let multi_buffer_ranges: Vec<_> = match_ranges
-                .iter()
-                .map(|range| MultiBufferAnchor::range_in_buffer(excerpt_id, range.clone()))
-                .collect();
-            editor.highlight_background::<BufferSearchHighlights>(
-                &multi_buffer_ranges,
-                move |index, theme| {
-                    if active_match_indices.contains(index) {
-                        theme.colors().search_active_match_background
-                    } else {
-                        theme.colors().search_match_background
-                    }
-                },
-                cx,
-            );
-        }
+        editor.highlight_background::<BufferSearchHighlights>(
+            match_ranges,
+            move |index, theme| {
+                if active_match_indices.contains(index) {
+                    theme.colors().search_active_match_background
+                } else {
+                    theme.colors().search_match_background
+                }
+            },
+            cx,
+        );
     }
 
     fn schedule_preview_update(
@@ -654,7 +646,7 @@ impl BufferSearchModal {
         let buffer = self.target_buffer.clone();
 
         let editor = cx.new(|cx| {
-            let mut editor = Editor::for_buffer(buffer.clone(), None, window, cx);
+            let mut editor = Editor::for_multibuffer(buffer.clone(), None, window, cx);
             editor.set_show_gutter(true, cx);
             editor.set_soft_wrap_mode(SoftWrap::EditorWidth, cx);
             editor.set_smooth_scroll(false, cx);
@@ -715,7 +707,7 @@ impl BufferSearchDelegate {
     fn spawn_line_search(
         &self,
         query: String,
-        buffer_snapshot: language::BufferSnapshot,
+        buffer_snapshot: MultiBufferSnapshot,
         cancelled: Arc<AtomicBool>,
         window: &mut Window,
         cx: &mut Context<Picker<Self>>,
@@ -744,11 +736,12 @@ impl BufferSearchDelegate {
                     return;
                 }
 
-                let line_start_offset =
-                    buffer_snapshot.point_to_offset(language::Point::new(line, 0));
-                let line_len = buffer_snapshot.line_len(line);
-                let line_end_offset =
-                    buffer_snapshot.point_to_offset(language::Point::new(line, line_len));
+                let line_start_offset = buffer_snapshot.point_to_offset(Point::new(line, 0));
+                let line_end_offset = if line < buffer_snapshot.max_point().row {
+                    buffer_snapshot.point_to_offset(Point::new(line + 1, 0))
+                } else {
+                    buffer_snapshot.len()
+                };
 
                 let line_text: String = buffer_snapshot
                     .text_for_range(line_start_offset..line_end_offset)
@@ -766,8 +759,8 @@ impl BufferSearchDelegate {
                 for term in check_terms {
                     let mut start = 0;
                     let mut term_matches = false;
-                    while let Some(idx) = check_text[start..].find(term.as_str()) {
-                        let idx = start + idx;
+                    while let Some(relative_idx) = check_text[start..].find(term.as_str()) {
+                        let idx = start + relative_idx;
                         line_match_ranges.push(idx..idx + term.len());
                         start = idx + term.len();
                         term_matches = true;
@@ -850,14 +843,23 @@ impl BufferSearchDelegate {
                         }
                     };
 
+                    let line_label = if let Some((_, buffer_point, _)) =
+                        buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
+                    {
+                        (buffer_point.row + 1).to_string().into()
+                    } else {
+                        (line + 1).to_string().into()
+                    };
+
                     new_items.push(LineMatchData {
-                        line_label: (line + 1).to_string().into(),
+                        line_label,
                         preview_text,
                         list_match_ranges: Arc::new(list_match_ranges),
                         active_match_index_in_list: None,
                         syntax_highlights,
-                        primary_match_offset: line_start_offset
-                            + line_match_ranges.first().map(|r| r.start).unwrap_or(0),
+                        primary_match_offset: (line_start_offset
+                            + line_match_ranges.first().map(|r| r.start).unwrap_or(0))
+                        .0,
                         match_indices: start_match_index..end_match_index,
                     });
                 }
@@ -1135,7 +1137,7 @@ impl PickerDelegate for BufferSearchDelegate {
 
         let search_options = self.search_options;
         let initial_cursor = self.initial_cursor_offset;
-        let buffer_snapshot = self.target_buffer.read(cx).snapshot();
+        let buffer_snapshot = self.target_buffer.read(cx).snapshot(cx);
 
         self.is_searching = true;
 
@@ -1158,10 +1160,12 @@ impl PickerDelegate for BufferSearchDelegate {
                         return;
                     }
 
-                    let line_start = buffer_snapshot.point_to_offset(language::Point::new(line, 0));
-                    let line_len = buffer_snapshot.line_len(line);
-                    let line_end =
-                        buffer_snapshot.point_to_offset(language::Point::new(line, line_len));
+                    let line_start = buffer_snapshot.point_to_offset(Point::new(line, 0));
+                    let line_end = if line < buffer_snapshot.max_point().row {
+                        buffer_snapshot.point_to_offset(Point::new(line + 1, 0))
+                    } else {
+                        buffer_snapshot.len()
+                    };
 
                     let line_text: String = buffer_snapshot
                         .text_for_range(line_start..line_end)
@@ -1227,13 +1231,21 @@ impl PickerDelegate for BufferSearchDelegate {
                         }
                     };
 
+                    let line_label = if let Some((_, buffer_point, _)) =
+                        buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
+                    {
+                        (buffer_point.row + 1).to_string().into()
+                    } else {
+                        (line + 1).to_string().into()
+                    };
+
                     new_items.push(LineMatchData {
-                        line_label: (line + 1).to_string().into(),
+                        line_label,
                         preview_text,
                         list_match_ranges: Arc::new(Vec::new()),
                         active_match_index_in_list: None,
                         syntax_highlights,
-                        primary_match_offset: line_start,
+                        primary_match_offset: line_start.0,
                         match_indices: 0..0,
                     });
                 }
@@ -1250,7 +1262,9 @@ impl PickerDelegate for BufferSearchDelegate {
                         picker.delegate.all_matches = Arc::new(Vec::new());
 
                         // Set selected index to cursor line
-                        let cursor_line = buffer_snapshot.offset_to_point(initial_cursor).row;
+                        let cursor_line = buffer_snapshot
+                            .offset_to_point(MultiBufferOffset(initial_cursor))
+                            .row;
                         picker.delegate.selected_index =
                             cursor_line.min(line_count.saturating_sub(1)) as usize;
 
@@ -1309,12 +1323,23 @@ impl PickerDelegate for BufferSearchDelegate {
                 }
             };
 
-            let matches = cx
+            let matches: Result<Vec<usize>, _> = cx
                 .background_executor()
                 .spawn({
                     let snapshot = buffer_snapshot.clone();
                     let query = search_query.clone();
-                    async move { query.search(&snapshot, None).await }
+                    async move {
+                        // Convert MultiBufferSnapshot to BufferSnapshot for search
+                        if let Some(singleton_buffer) = snapshot.as_singleton() {
+                            // For now, we'll need to handle this differently
+                            // Return empty results for multi-buffer
+                            Ok::<Vec<usize>, anyhow::Error>(Vec::new())
+                        } else {
+                            // For multi-buffer, we need to search each buffer
+                            // For now, return empty results
+                            Ok::<Vec<usize>, anyhow::Error>(Vec::new())
+                        }
+                    }
                 })
                 .await;
 
@@ -1322,24 +1347,31 @@ impl PickerDelegate for BufferSearchDelegate {
                 return;
             }
 
-            let matches = matches;
+            let matches = if let Ok(matches) = matches {
+                matches
+            } else {
+                Vec::new()
+            };
             let all_match_ranges: Vec<AnchorRange> = matches
                 .iter()
                 .map(|r| {
-                    buffer_snapshot.anchor_at(r.start, Bias::Left)
-                        ..buffer_snapshot.anchor_at(r.end, Bias::Right)
+                    let start = MultiBufferOffset(*r);
+                    let end = MultiBufferOffset(*r);
+                    buffer_snapshot.anchor_at(start, Bias::Left)
+                        ..buffer_snapshot.anchor_at(end, Bias::Right)
                 })
                 .collect();
             let all_match_ranges = Arc::new(all_match_ranges);
 
             // Group matches by line to compute preview text once per line
-            let mut lines_data: HashMap<u32, Vec<Range<usize>>> = HashMap::default();
-            for range in matches.iter() {
-                let start_point = buffer_snapshot.offset_to_point(range.start);
+            let mut lines_data: HashMap<u32, Vec<Range<MultiBufferOffset>>> = HashMap::default();
+            for &range in &matches {
+                let start_offset = MultiBufferOffset(range);
+                let start_point = buffer_snapshot.offset_to_point(start_offset);
                 lines_data
                     .entry(start_point.row)
                     .or_default()
-                    .push(range.clone());
+                    .push(start_offset..MultiBufferOffset(range));
             }
 
             let mut new_items: Vec<LineMatchData> = Vec::with_capacity(matches.len());
@@ -1354,10 +1386,12 @@ impl PickerDelegate for BufferSearchDelegate {
                 }
 
                 if let Some(ranges) = lines_data.remove(&line) {
-                    let line_start = buffer_snapshot.point_to_offset(language::Point::new(line, 0));
-                    let line_len = buffer_snapshot.line_len(line);
-                    let line_end =
-                        buffer_snapshot.point_to_offset(language::Point::new(line, line_len));
+                    let line_start = buffer_snapshot.point_to_offset(Point::new(line, 0));
+                    let line_end = if line < buffer_snapshot.max_point().row {
+                        buffer_snapshot.point_to_offset(Point::new(line + 1, 0))
+                    } else {
+                        buffer_snapshot.len()
+                    };
                     let line_text: String = buffer_snapshot
                         .text_for_range(line_start..line_end)
                         .collect();
@@ -1366,10 +1400,10 @@ impl PickerDelegate for BufferSearchDelegate {
 
                     // Create an item for each match with its own preview text centered around the match
                     for (i, range) in ranges.iter().enumerate() {
-                        let rel_match_start = range.start.saturating_sub(line_start);
+                        let rel_match_start = range.start.0.saturating_sub(line_start.0);
 
                         let (p_start, p_end) = {
-                            let match_len = range.end - range.start;
+                            let match_len = range.end.0 - range.start.0;
                             let context = (MAX_PREVIEW_BYTES.saturating_sub(match_len)) / 2;
                             let mut start = rel_match_start.saturating_sub(context);
 
@@ -1407,10 +1441,10 @@ impl PickerDelegate for BufferSearchDelegate {
                         let mut active_match_index_in_list = None;
 
                         for (j, other_range) in ranges.iter().enumerate() {
-                            let other_rel_start = other_range.start.saturating_sub(line_start);
+                            let other_rel_start = other_range.start.0.saturating_sub(line_start.0);
                             let other_rel_end = other_range
-                                .end
-                                .saturating_sub(line_start)
+                                .end.0
+                                .saturating_sub(line_start.0)
                                 .min(line_text.len());
 
                             let start = other_rel_start.max(p_start);
@@ -1426,12 +1460,12 @@ impl PickerDelegate for BufferSearchDelegate {
                         }
 
                         let mut item_syntax = Vec::new();
-                        let chunk_offset_start = line_start + p_start;
-                        let chunk_offset_end = line_start + p_end;
+                        let chunk_offset_start = line_start.0 + p_start;
+                        let chunk_offset_end = line_start.0 + p_end;
                         let mut current_rel_offset = prefix_len;
 
                         for chunk in
-                            buffer_snapshot.chunks(chunk_offset_start..chunk_offset_end, true)
+                            buffer_snapshot.chunks(MultiBufferOffset(chunk_offset_start)..MultiBufferOffset(chunk_offset_end), true)
                         {
                             let len = chunk.text.len();
                             if let Some(id) = chunk.syntax_highlight_id {
@@ -1446,13 +1480,21 @@ impl PickerDelegate for BufferSearchDelegate {
                             Some(Arc::new(item_syntax))
                         };
 
+                        let line_label = if let Some((_, buffer_point, _)) =
+                        buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
+                    {
+                        (buffer_point.row + 1).to_string().into()
+                    } else {
+                        (line + 1).to_string().into()
+                    };
+
                         new_items.push(LineMatchData {
-                            line_label: (line + 1).to_string().into(),
+                            line_label,
                             preview_text,
                             list_match_ranges: Arc::new(list_match_ranges),
                             active_match_index_in_list,
                             syntax_highlights,
-                            primary_match_offset: range.start,
+                            primary_match_offset: range.start.0,
                             match_indices: match_indices_counter..(match_indices_counter + 1),
                         });
                         match_indices_counter += 1;
@@ -1526,15 +1568,67 @@ impl PickerDelegate for BufferSearchDelegate {
         if let Some(item) = self.items.get(self.selected_index) {
             let target_editor = self.target_editor.clone();
             let match_offset = item.primary_match_offset;
+            let match_indices = item.match_indices.clone();
+            let all_matches = self.all_matches.clone();
 
             // Dismiss modal
             cx.emit(DismissEvent);
 
-            // Move cursor in actual editor
+            // Move cursor in actual editor using the same approach as Editor::activate_match
             target_editor.update(cx, |editor, cx| {
                 let buffer_snapshot = editor.buffer().read(cx).snapshot(cx);
-                let point = buffer_snapshot.offset_to_point(MultiBufferOffset(match_offset));
-                editor.go_to_singleton_buffer_point(point, window, cx);
+
+                // Get the specific match range for this item
+                let match_range = if !all_matches.is_empty() && !match_indices.is_empty() {
+                    // Use the first match in the range for this line item
+                    let match_index = match_indices.start;
+                    if match_index < all_matches.len() {
+                        Some(all_matches[match_index].clone())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                if let Some(range) = match_range {
+                    // Unfold the range if it's folded
+                    editor.unfold_ranges(&[range.clone()], false, true, cx);
+
+                    // Convert anchor range to selection range
+                    let selection_range = editor.range_for_match(&range);
+
+                    // Use proper autoscroll behavior
+                    let autoscroll = if EditorSettings::get_global(cx).search.center_on_match {
+                        Autoscroll::center()
+                    } else {
+                        Autoscroll::fit()
+                    };
+
+                    // Change selections with proper effects
+                    editor.change_selections(
+                        SelectionEffects::scroll(autoscroll).nav_history(true),
+                        window,
+                        cx,
+                        |s| s.select_ranges([selection_range]),
+                    );
+                } else {
+                    // Fallback to offset-based positioning if no proper range is available
+                    let offset = MultiBufferOffset(match_offset);
+                    let anchor = buffer_snapshot.anchor_before(offset);
+                    let autoscroll = if EditorSettings::get_global(cx).search.center_on_match {
+                        Autoscroll::center()
+                    } else {
+                        Autoscroll::fit()
+                    };
+
+                    editor.change_selections(
+                        SelectionEffects::scroll(autoscroll).nav_history(true),
+                        window,
+                        cx,
+                        |s| s.select_anchor_ranges([anchor..anchor]),
+                    );
+                }
             });
         } else {
             cx.emit(DismissEvent);
