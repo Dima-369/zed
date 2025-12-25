@@ -1,5 +1,5 @@
 - can the sticky scroll not have a mouse hover, sometimes my mouse moves there and it looks weird
-
+    
 # improve `buffer_search_modal::ToggleBufferSearch`
 
 - fix that in no line mode the candidate item list lines have incorrect bottom padding, they look weird, the ones for the line mode are fine
