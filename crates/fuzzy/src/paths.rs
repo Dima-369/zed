@@ -98,10 +98,9 @@ impl PathMatch {
         let len = self.path_prefix.as_unix_str().chars().count()
             + 1
             + self.path.as_unix_str().chars().count(); // add one for path separator
-        dbg!(&self.path, &self.path_prefix);
         self.positions
             .iter()
-            .map(|p| (dbg!(len) - dbg!(p)) as f32 / 1000.0)
+            .map(|p| (len - p) as f32 / 1000.0)
             .sum()
     }
 }
@@ -189,7 +188,7 @@ fn path_match_helper<'a>(
         candidate_buf.push_str(c.path.as_unix_str());
         // TODO: need to convert indices/positions from char offsets to byte offsets.
         if let Some(score) = pattern.indices(
-            nucleo::Utf32Str::new(dbg!(&candidate_buf), &mut buf),
+            nucleo::Utf32Str::new(&candidate_buf, &mut buf),
             matcher,
             &mut indices,
         ) {
@@ -237,7 +236,6 @@ pub async fn match_path_sets<'a, Set: PathMatchCandidateSet<'a>>(
     if path_count == 0 {
         return Vec::new();
     }
-    dbg!(relative_to);
 
     let path_style = candidate_sets[0].path_style();
 
