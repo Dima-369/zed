@@ -588,6 +588,8 @@ pub struct EditorStyle {
     pub edit_prediction_styles: EditPredictionStyles,
     pub unnecessary_code_fade: f32,
     pub show_underlines: bool,
+    pub gutter_background: Option<Hsla>,
+    pub current_line_highlight: Option<Hsla>,
 }
 
 impl Default for EditorStyle {
@@ -610,6 +612,8 @@ impl Default for EditorStyle {
             },
             unnecessary_code_fade: Default::default(),
             show_underlines: true,
+            gutter_background: None,
+            current_line_highlight: None,
         }
     }
 }
@@ -20889,6 +20893,18 @@ impl Editor {
         self.set_style(style, window, cx);
     }
 
+    pub fn set_gutter_background(&mut self, gutter_background: Hsla, window: &mut Window, cx: &mut Context<Self>) {
+        let mut style = self.style(cx).clone();
+        style.gutter_background = Some(gutter_background);
+        self.set_style(style, window, cx);
+    }
+
+    pub fn set_current_line_highlight_color(&mut self, current_line_highlight: Hsla, window: &mut Window, cx: &mut Context<Self>) {
+        let mut style = self.style(cx).clone();
+        style.current_line_highlight = Some(current_line_highlight);
+        self.set_style(style, window, cx);
+    }
+
     pub fn style(&mut self, cx: &App) -> &EditorStyle {
         if self.style.is_none() {
             self.style = Some(self.create_style(cx));
@@ -23804,6 +23820,8 @@ impl Editor {
             edit_prediction_styles: make_suggestion_styles(cx),
             unnecessary_code_fade: settings.unnecessary_code_fade,
             show_underlines: self.diagnostics_enabled(),
+            gutter_background: None,
+            current_line_highlight: None,
         }
     }
     fn breadcrumbs_inner(&self, variant: &Theme, cx: &App) -> Option<Vec<BreadcrumbText>> {

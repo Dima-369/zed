@@ -578,6 +578,8 @@ impl BufferSearchModal {
         if let Some(editor) = &self.preview_editor {
             editor.update(cx, |editor, cx| {
                 editor.set_background(cx.theme().colors().elevated_surface_background, window, cx);
+                editor.set_gutter_background(cx.theme().colors().elevated_surface_background, window, cx);
+                editor.set_current_line_highlight_color(gpui::hsla(0.0, 0.0, 0.1, 1.0), window, cx);
                 Self::navigate_and_highlight_matches(
                     editor,
                     match_offset,
@@ -603,6 +605,8 @@ impl BufferSearchModal {
 
         editor.update(cx, |editor, cx| {
             editor.set_background(cx.theme().colors().elevated_surface_background, window, cx);
+            editor.set_gutter_background(cx.theme().colors().elevated_surface_background, window, cx);
+            editor.set_current_line_highlight_color(gpui::hsla(0.0, 0.0, 0.1, 1.0), window, cx);
             Self::navigate_and_highlight_matches(
                 editor,
                 match_offset,
@@ -895,7 +899,6 @@ impl BufferSearchDelegate {
             h_flex()
                 .items_center()
                 .w_full()
-                .min_h(px(20.))
                 .pl(px(8.))
                 .justify_between()
                 .child(

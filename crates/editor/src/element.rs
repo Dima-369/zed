@@ -4709,7 +4709,7 @@ impl EditorElement {
 
         Some(StickyHeaders {
             lines,
-            gutter_background: cx.theme().colors().editor_gutter_background,
+            gutter_background: self.style.gutter_background.unwrap_or_else(|| cx.theme().colors().editor_gutter_background),
             content_background: self.style.background,
             gutter_right_padding: gutter_dimensions.right_padding,
         })
@@ -5944,7 +5944,7 @@ impl EditorElement {
     fn paint_background(&self, layout: &EditorLayout, window: &mut Window, cx: &mut App) {
         window.paint_layer(layout.hitbox.bounds, |window| {
             let scroll_top = layout.position_map.snapshot.scroll_position().y;
-            let gutter_bg = cx.theme().colors().editor_gutter_background;
+            let gutter_bg = self.style.gutter_background.unwrap_or_else(|| cx.theme().colors().editor_gutter_background);
             window.paint_quad(fill(layout.gutter_hitbox.bounds, gutter_bg));
             window.paint_quad(fill(
                 layout.position_map.text_hitbox.bounds,
@@ -5995,7 +5995,7 @@ impl EditorElement {
                                 CurrentLineHighlight::None => None,
                             };
                         if let Some(range) = highlight_h_range {
-                            let active_line_bg = cx.theme().colors().editor_active_line_background;
+                            let active_line_bg = self.style.current_line_highlight.unwrap_or_else(|| cx.theme().colors().editor_active_line_background);
                             let bounds = Bounds {
                                 origin: point(
                                     range.start,
