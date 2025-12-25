@@ -1,14 +1,6 @@
-
 ## sometimes undo when at very right on newline character, it does not go back to newline character
 
 how to reproduce exactly?
-
-##  Multibuffer breadcrumbs toolbar redesign
-
-Try this out. Will it get merged?
-Seems to be from Zed dude since the branch is not from a fork.
-
-https://github.com/zed-industries/zed/pull/45547
 
 
 
