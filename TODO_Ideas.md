@@ -10,6 +10,12 @@ maybe when there is no selection yet try to select word first always to word bou
 
 - try out https://github.com/zed-industries/zed/pull/45625
 
+## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
+
+- highlight previous line numbers with accent theme color, so if i am on line 2 when launching it, line number 1 in the modal at the top in the candidate items needs to be highlighted, so I know that those lines will bring the cursor back
+
+- is there a way to implement a 'line' mode? maybe with a new button, enabled by default when launching the modal. it behaves a bit differently than the other modes, and only searches for the first match in a line. use the `nucleo` crate, I pasted in its source below. so even if a line has `editor the editor` and I search for `editor`, it only highlights the first match
+
 
 
 # >>> Later (low prio)
