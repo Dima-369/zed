@@ -3,11 +3,6 @@
 
 how to reproduce exactly?
 
-## improve code around `MIN_NAVIGATION_HISTORY_ROW_DELTA` for proper jumping
-
-Investigate how I did the jumping in Emacs, I think there, it was always scoped to a single buffer.
-And then only on certain actions, I appended to the jump list.
-
 ##  Multibuffer breadcrumbs toolbar redesign
 
 Try this out. Will it get merged?
