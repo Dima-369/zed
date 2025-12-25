@@ -20883,6 +20883,12 @@ impl Editor {
         self.style = Some(style);
     }
 
+    pub fn set_background(&mut self, background: Hsla, window: &mut Window, cx: &mut Context<Self>) {
+        let mut style = self.style(cx).clone();
+        style.background = background;
+        self.set_style(style, window, cx);
+    }
+
     pub fn style(&mut self, cx: &App) -> &EditorStyle {
         if self.style.is_none() {
             self.style = Some(self.create_style(cx));
@@ -26098,7 +26104,12 @@ impl Focusable for Editor {
 
 impl Render for Editor {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        EditorElement::new(&cx.entity(), self.create_style(cx))
+        let style = if let Some(existing_style) = &self.style {
+            existing_style.clone()
+        } else {
+            self.create_style(cx)
+        };
+        EditorElement::new(&cx.entity(), style)
     }
 }
 
