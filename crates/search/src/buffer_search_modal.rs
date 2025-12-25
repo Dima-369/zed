@@ -54,6 +54,7 @@ pub fn init(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("ctrl-c", NextHistoryQuery, Some("BufferSearchModal")),
         KeyBinding::new("ctrl-t", PreviousHistoryQuery, Some("BufferSearchModal")),
+        KeyBinding::new("ctrl-r", ToggleLineMode, Some("BufferSearchModal")),
     ]);
     cx.observe_new(BufferSearchModal::register).detach();
 }
@@ -680,11 +681,13 @@ impl BufferSearchDelegate {
                 let mut line_match_ranges = Vec::new();
                 let mut matches = true;
 
-                // Always case sensitive search
+                // Case insensitive search for line mode
                 for term in &terms {
                     let mut start = 0;
                     let mut term_matches = false;
-                    while let Some(relative_idx) = line_text[start..].find(term.as_str()) {
+                    let term_lower = term.to_lowercase();
+                    let line_text_lower = line_text.to_lowercase();
+                    while let Some(relative_idx) = line_text_lower[start..].find(&term_lower) {
                         let idx = start + relative_idx;
                         line_match_ranges.push(idx..idx + term.len());
                         start = idx + term.len();
