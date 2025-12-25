@@ -246,7 +246,7 @@ impl Render for BufferSearchModal {
             .relative()
             .flex_1()
             .overflow_hidden()
-            .bg(cx.theme().colors().editor_background)
+            .bg(cx.theme().colors().elevated_surface_background)
             .on_click(move |_, window, cx| {
                 window.focus(&picker.focus_handle(cx), cx);
             })
@@ -891,6 +891,7 @@ impl BufferSearchDelegate {
 
         ListItem::new(ix).inset(true).toggle_state(selected).child(
             h_flex()
+                .items_center()
                 .w_full()
                 .pl(px(8.))
                 .justify_between()
@@ -974,7 +975,7 @@ impl PickerDelegate for BufferSearchDelegate {
 
 
         v_flex()
-            .bg(cx.theme().colors().toolbar_background)
+            .bg(cx.theme().colors().elevated_surface_background)
             .child(
                 h_flex()
                     .overflow_hidden()
