@@ -7,7 +7,7 @@ use editor::{
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Global,
     HighlightStyle, KeyBinding, KeyContext, Render, SharedString, StyledText, Subscription, Task,
-    UpdateGlobal, WeakEntity, Window, actions,
+    UpdateGlobal, WeakEntity, Window, actions, ScrollStrategy,
 };
 use language::language_settings::SoftWrap;
 use language::{HighlightId, Point, ToOffset as _};
@@ -474,7 +474,9 @@ impl BufferSearchModal {
             let mut picker = Picker::uniform_list(delegate, window, cx)
                 .modal(false)
                 .max_height(None)
-                .show_scrollbar(true);
+                .show_scrollbar(true)
+                .scroll_strategy(ScrollStrategy::Center);
+            println!("BufferSearchModal: Created picker with ScrollStrategy::Center");
             picker.delegate.focus_handle = Some(picker.focus_handle(cx));
             if let Some(q) = initial_query {
                 picker.set_query(q, window, cx);
@@ -829,7 +831,6 @@ impl BufferSearchDelegate {
 
     fn render_match(&self, ix: usize, selected: bool, cx: &App) -> ListItem {
         let item = &self.items[ix];
-
         let preview_text = &item.preview_text;
         let line_label = &item.line_label;
         let list_match_ranges = &item.list_match_ranges;
