@@ -585,15 +585,15 @@ impl Matches {
 
     /// If a < b, then a is a worse match, aligning with the `ProjectPanelOrdMatch` ordering.
     fn cmp_matches(
-        separate_history: bool,
+        _separate_history: bool,
         currently_opened: Option<&FoundPath>,
         a: &Match,
         b: &Match,
     ) -> cmp::Ordering {
         // Handle CreateNew variant - always put it at the end
         match (a, b) {
-            (Match::CreateNew(_), _) => return cmp::Ordering::Less,
-            (_, Match::CreateNew(_)) => return cmp::Ordering::Greater,
+            (Match::CreateNew(_), _) => return cmp::Ordering::Greater,
+            (_, Match::CreateNew(_)) => return cmp::Ordering::Less,
             _ => {}
         }
         debug_assert!(a.panel_match().is_some() && b.panel_match().is_some());
@@ -601,22 +601,20 @@ impl Matches {
         match (&a, &b) {
             // bubble currently opened files to the top
             (Match::History { path, .. }, _) if Some(path) == currently_opened => {
-                return cmp::Ordering::Greater;
+                return cmp::Ordering::Less;
             }
             (_, Match::History { path, .. }) if Some(path) == currently_opened => {
-                return cmp::Ordering::Less;
+                return cmp::Ordering::Greater;
             }
 
             _ => {}
         }
 
-        if separate_history {
-            match (a, b) {
-                (Match::History { .. }, Match::Search(_)) => return cmp::Ordering::Greater,
-                (Match::Search(_), Match::History { .. }) => return cmp::Ordering::Less,
+        match (a, b) {
+            (Match::History { .. }, Match::Search(_)) => return cmp::Ordering::Less,
+            (Match::Search(_), Match::History { .. }) => return cmp::Ordering::Greater,
 
-                _ => {}
-            }
+            _ => {}
         }
 
         let a_panel_match = match a.panel_match() {
