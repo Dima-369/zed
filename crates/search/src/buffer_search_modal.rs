@@ -32,10 +32,6 @@ use crate::{
     ToggleIncludeIgnored, ToggleRegex, ToggleWholeWord,
 };
 use project::search_history::{SearchHistory, SearchHistoryCursor};
-use nucleo::{Matcher, Utf32Str};
-use nucleo::pattern::{Pattern, CaseMatching, Normalization};
-use nucleo::Config;
-use unicode_segmentation::UnicodeSegmentation;
 
 actions!(buffer_search_modal, [ToggleBufferSearch, ToggleLineMode]);
 
@@ -704,7 +700,7 @@ impl BufferSearchDelegate {
         self.search_options.toggle(option);
     }
 
-    fn spawn_fuzzy_search(
+    fn spawn_line_search(
         &self,
         query: String,
         buffer_snapshot: language::BufferSnapshot,
@@ -718,60 +714,69 @@ impl BufferSearchDelegate {
                 return;
             }
 
-            let mut matcher = Matcher::new(Config::DEFAULT);
-            let pattern = Pattern::parse(&query, CaseMatching::Smart, Normalization::Smart);
+            let terms: Vec<String> = query.split_whitespace().map(str::to_string).collect();
+            let smart_case = terms.iter().any(|s| s.chars().any(|c| c.is_uppercase()));
+            let case_sensitive = smart_case;
+            let terms_lower: Vec<String> = if !case_sensitive {
+                terms.iter().map(|s| s.to_lowercase()).collect()
+            } else {
+                Vec::new()
+            };
 
             let line_count = buffer_snapshot.max_point().row + 1;
-            let mut new_items_with_score = Vec::new();
+            let mut new_items = Vec::new();
             let mut all_match_ranges = Vec::new();
-            let mut char_buf = Vec::new();
 
             for line in 0..line_count {
                 if cancelled.load(Ordering::Relaxed) {
                     return;
                 }
 
-                let line_start_offset = buffer_snapshot.point_to_offset(language::Point::new(line, 0));
+                let line_start_offset =
+                    buffer_snapshot.point_to_offset(language::Point::new(line, 0));
                 let line_len = buffer_snapshot.line_len(line);
-                let line_end_offset = buffer_snapshot.point_to_offset(language::Point::new(line, line_len));
+                let line_end_offset =
+                    buffer_snapshot.point_to_offset(language::Point::new(line, line_len));
 
                 let line_text: String = buffer_snapshot
                     .text_for_range(line_start_offset..line_end_offset)
                     .collect();
 
-                let haystack = Utf32Str::new(&line_text, &mut char_buf);
-                let mut indices = Vec::new();
+                let mut line_match_ranges = Vec::new();
+                let mut matches = true;
 
-                if let Some(score) = pattern.indices(haystack, &mut matcher, &mut indices) {
-                    indices.sort_unstable();
-                    let mut byte_ranges = Vec::new();
+                let (check_text, check_terms) = if case_sensitive {
+                    (std::borrow::Cow::Borrowed(&line_text), &terms)
+                } else {
+                    (std::borrow::Cow::Owned(line_text.to_lowercase()), &terms_lower)
+                };
 
-                    if haystack.is_ascii() {
-                        for &idx in &indices {
-                            let idx = idx as usize;
-                            byte_ranges.push(idx..idx + 1);
-                        }
-                    } else {
-                        // Map char indices to byte ranges using unicode-segmentation
-                        let mut current_g_idx = 0;
-                        let mut nucleo_idx_iter = indices.iter();
-                        let mut next_nucleo_idx = nucleo_idx_iter.next();
-
-                        for (byte_offset, grapheme) in line_text.grapheme_indices(true) {
-                            if let Some(&target_idx) = next_nucleo_idx {
-                                if current_g_idx == target_idx as usize {
-                                    byte_ranges.push(byte_offset..byte_offset + grapheme.len());
-                                    next_nucleo_idx = nucleo_idx_iter.next();
-                                }
-                            }
-                            current_g_idx += 1;
-                        }
+                for term in check_terms {
+                    let mut start = 0;
+                    let mut term_matches = false;
+                    while let Some(idx) = check_text[start..].find(term.as_str()) {
+                        let idx = start + idx;
+                        line_match_ranges.push(idx..idx + term.len());
+                        start = idx + term.len();
+                        term_matches = true;
                     }
 
-                    for range in &byte_ranges {
+                    if !term_matches {
+                        matches = false;
+                        break;
+                    }
+                }
+
+                if matches {
+                    line_match_ranges.sort_by_key(|r| r.start);
+
+                    for range in &line_match_ranges {
                         let start = line_start_offset + range.start;
                         let end = line_start_offset + range.end;
-                        all_match_ranges.push(buffer_snapshot.anchor_at(start, Bias::Left)..buffer_snapshot.anchor_at(end, Bias::Right));
+                        all_match_ranges.push(
+                            buffer_snapshot.anchor_at(start, Bias::Left)
+                                ..buffer_snapshot.anchor_at(end, Bias::Right),
+                        );
                     }
 
                     let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
@@ -780,7 +785,7 @@ impl BufferSearchDelegate {
                     let preview_len = preview_content_len(&preview_text);
 
                     let mut list_match_ranges = Vec::new();
-                    for range in &byte_ranges {
+                    for range in &line_match_ranges {
                         let start_in_trimmed = range.start.saturating_sub(left_trimmed_len);
                         let end_in_trimmed = range.end.saturating_sub(left_trimmed_len);
 
@@ -803,50 +808,73 @@ impl BufferSearchDelegate {
                         let trimmed_line = line_text.trim();
                         let left_trimmed_len = line_text.len() - line_text.trim_start().len();
                         let mut current_offset: usize = 0;
-                        for chunk in buffer_snapshot.chunks(line_start_offset..line_end_offset, true) {
+                        for chunk in
+                            buffer_snapshot.chunks(line_start_offset..line_end_offset, true)
+                        {
                             let chunk_len = chunk.text.len();
                             if let Some(highlight_id) = chunk.syntax_highlight_id {
-                                let chunk_in_trimmed_start = current_offset.saturating_sub(left_trimmed_len);
-                                let chunk_in_trimmed_end = (current_offset + chunk_len).saturating_sub(left_trimmed_len);
+                                let chunk_in_trimmed_start =
+                                    current_offset.saturating_sub(left_trimmed_len);
+                                let chunk_in_trimmed_end = (current_offset + chunk_len)
+                                    .saturating_sub(left_trimmed_len);
                                 if chunk_in_trimmed_start < trimmed_line.len() {
                                     let start = chunk_in_trimmed_start.max(0).min(preview_len);
-                                    let end = chunk_in_trimmed_end.min(trimmed_line.len()).min(preview_len);
-                                    if start < end { highlights.push((start..end, highlight_id)); }
+                                    let end = chunk_in_trimmed_end
+                                        .min(trimmed_line.len())
+                                        .min(preview_len);
+                                    if start < end {
+                                        highlights.push((start..end, highlight_id));
+                                    }
                                 }
                             }
                             current_offset += chunk_len;
                         }
-                        if highlights.is_empty() { None } else { Some(Arc::new(highlights)) }
+                        if highlights.is_empty() {
+                            None
+                        } else {
+                            Some(Arc::new(highlights))
+                        }
                     };
 
-                    new_items_with_score.push((score, LineMatchData {
+                    new_items.push(LineMatchData {
                         line_label: (line + 1).to_string().into(),
                         preview_text,
                         list_match_ranges: Arc::new(list_match_ranges),
                         active_match_index_in_list: None,
                         syntax_highlights,
-                        primary_match_offset: line_start_offset + byte_ranges.first().map(|r| r.start).unwrap_or(0),
-                    }));
+                        primary_match_offset: line_start_offset
+                            + line_match_ranges.first().map(|r| r.start).unwrap_or(0),
+                    });
                 }
             }
 
-            new_items_with_score.sort_by(|a, b| b.0.cmp(&a.0));
-            let new_items: Vec<_> = new_items_with_score.into_iter().map(|(_, item)| item).collect();
             let all_match_ranges = Arc::new(all_match_ranges);
 
-            picker.update(cx, |picker, cx| {
-                if cancelled.load(Ordering::Relaxed) { return; }
-                picker.delegate.match_count = new_items.len();
-                picker.delegate.items = new_items;
-                picker.delegate.is_searching = false;
-                picker.delegate.all_matches = all_match_ranges.clone();
-                picker.delegate.selected_index = 0;
-                let preview_data = picker.delegate.items.get(0).map(|item| (item.primary_match_offset, 0, all_match_ranges));
-                if let Some(modal) = picker.delegate.buffer_search_modal.upgrade() {
-                    window_handle.update(cx, |_, window, cx| modal.update(cx, |modal, cx| modal.update_preview(preview_data, window, cx))).log_err();
-                }
-                cx.notify();
-            }).log_err();
+            picker
+                .update(cx, |picker, cx| {
+                    if cancelled.load(Ordering::Relaxed) {
+                        return;
+                    }
+                    picker.delegate.match_count = new_items.len();
+                    picker.delegate.items = new_items;
+                    picker.delegate.is_searching = false;
+                    picker.delegate.all_matches = all_match_ranges.clone();
+                    picker.delegate.selected_index = 0;
+                    let preview_data = picker.delegate.items.get(0).map(|item| {
+                        (item.primary_match_offset, 0, all_match_ranges)
+                    });
+                    if let Some(modal) = picker.delegate.buffer_search_modal.upgrade() {
+                        window_handle
+                            .update(cx, |_, window, cx| {
+                                modal.update(cx, |modal, cx| {
+                                    modal.update_preview(preview_data, window, cx)
+                                })
+                            })
+                            .log_err();
+                    }
+                    cx.notify();
+                })
+                .log_err();
         })
     }
 
@@ -1089,7 +1117,7 @@ impl PickerDelegate for BufferSearchDelegate {
         self.is_searching = true;
 
         if self.line_mode && !query.is_empty() {
-            return self.spawn_fuzzy_search(query, buffer_snapshot, cancelled, window, cx);
+            return self.spawn_line_search(query, buffer_snapshot, cancelled, window, cx);
         }
 
         if query.is_empty() {
