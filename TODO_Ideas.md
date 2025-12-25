@@ -1,16 +1,15 @@
 # improve `buffer_search_modal::ToggleBufferSearch`
 
-- make line mode matching case insensitive, currently it is case sensitive
-
-- add a keybinding to toggle between line and other mode, I think you need an action? check how the file_finder does it for its ignore files toggle, by default, bind it to cmd-r
-
-- fix that in no line mode the candidate item list lines have incorrect bottom padding, they look weird, the ones for the line mode are fine
-
 - Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down?
 
 I mean the selected row should be centered.
+you can maybe check how the `crates/outline/src/outline.rs` or `crates/project_panel/src/project_panel.rs` does it. they don't have a full centered mode, but center a bit when using arrow up/down at edges
+
 
 This is not implemented anywhere else in Zed, so probably too difficult to implement.
+
+- fix that in no line mode the candidate item list lines have incorrect bottom padding, they look weird, the ones for the line mode are fine
+
 
 
 # >>> Investigations
