@@ -474,9 +474,7 @@ impl BufferSearchModal {
             let mut picker = Picker::uniform_list(delegate, window, cx)
                 .modal(false)
                 .max_height(None)
-                .show_scrollbar(true)
-                .scroll_strategy(ScrollStrategy::Center);
-            println!("BufferSearchModal: Created picker with ScrollStrategy::Center");
+                .show_scrollbar(true);
             picker.delegate.focus_handle = Some(picker.focus_handle(cx));
             if let Some(q) = initial_query {
                 picker.set_query(q, window, cx);
