@@ -1,13 +1,6 @@
 - sometimes undo when at very right on newline character, it does not go back to newline character
 
-# nucleo
-
-- can `file_finder::Toggle` use `nucleo` crate for matching?
-test with `project sear` string in it
-
-- investigate https://github.com/zed-industries/zed/pull/37123
-Use nucleo for fuzzy string matching
-does it work on `file_finder::Toggle`?
+- can `file_finder::Toggle` nucleo matching work with negations? it works in my nucleo-tester CLI
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
