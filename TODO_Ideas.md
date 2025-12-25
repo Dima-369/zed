@@ -1,3 +1,5 @@
+- can one tune the color of headlines in multi buffers?
+
 # improve `buffer_search_modal::ToggleBufferSearch`
 
 - Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down?
