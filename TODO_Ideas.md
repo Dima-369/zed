@@ -1,8 +1,3 @@
-- can file finder and command palette modals also has scrollbar?
-`file_finder::Toggle` and `command_palette::Toggle`
-can recent projects `workspace::OpenRecentFile` also get it?
-
-
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file

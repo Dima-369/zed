@@ -33,7 +33,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3, from 10, as a test which seems fine
 - allow AI edit predictions in Zed's `settings.json` and `keymap.json` and in buffers without files like ones from `workspace: new file` or in the agent text thread pane (although here in the text thread it does not trigger as often?)
 - opening a workspace which has no tabs initially, will trigger `workspace::NewFile` for proper editor focus. Before, there seems to be a bug where the project panel does not have proper focus
-- implement new recent file functionality which tracks every opened buffer to quickly jump to file/open new workspace. Action is `workspace::OpenRecentFile`
 - improved the `go to next/previous diagnostic` action to always jump to errors first. Only if there are no errors, it jumps to warnings. Before, this was mixed
 - moving up/down in outline panel does not wrap around anymore
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the code for opening as plain text is still untested since I do not use agents inside Zed anymore, and just use CLI)
@@ -66,6 +65,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## New actions
 
+`workspace::OpenRecentFile` for recent file functionality which tracks every opened buffer to quickly jump to a recent file or open a recent workspace
 - `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scroll a quarter of a page
 - `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window
 - `workspace::NewFileFromClipboard` which pastes in the clipboard contents
@@ -128,7 +128,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
 - lower excessive tab height
 - lower status bar height, see `impl Render for StatusBar`
-- add scrollbar to `outline::Toggle` modal
+- add scrollbar to `outline::Toggle`, `file_finder::Toggle` and `command_palette::Toggle` (why is it not shown in the first place?)
 - implement vertical tabs which go to next rows without scrollbars. Enable in `settings.json` with:
 
 ```json

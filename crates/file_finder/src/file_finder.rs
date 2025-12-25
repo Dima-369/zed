@@ -16,8 +16,8 @@ use file_icons::FileIcons;
 use fuzzy::{CharBag, PathMatch, PathMatchCandidate};
 use gpui::{
     Action, AnyElement, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    KeyContext, Modifiers, ModifiersChangedEvent, ParentElement, Render, Styled, Task, WeakEntity,
-    Window, actions, rems,
+    KeyContext, Modifiers, ModifiersChangedEvent, ParentElement, Render, Styled, Task, UniformListScrollHandle,
+    WeakEntity, Window, actions, rems,
 };
 use open_path_prompt::OpenPathPrompt;
 use picker::{Picker, PickerDelegate};
@@ -88,6 +88,7 @@ pub struct FileFinder {
     picker: Entity<Picker<FileFinderDelegate>>,
     picker_focus_handle: FocusHandle,
     init_modifiers: Option<Modifiers>,
+    scroll_handle: UniformListScrollHandle,
 }
 
 pub fn init(cx: &mut App) {
@@ -186,7 +187,12 @@ impl FileFinder {
     }
 
     fn new(delegate: FileFinderDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
+        let scroll_handle = UniformListScrollHandle::new();
+        let picker = cx.new(|cx| {
+            Picker::uniform_list(delegate, window, cx)
+                .track_scroll(scroll_handle.clone())
+                .show_scrollbar(true)
+        });
         let picker_focus_handle = picker.focus_handle(cx);
         picker.update(cx, |picker, _| {
             picker.delegate.focus_handle = picker_focus_handle.clone();
@@ -195,6 +201,7 @@ impl FileFinder {
             picker,
             picker_focus_handle,
             init_modifiers: window.modifiers().modified().then_some(window.modifiers()),
+            scroll_handle,
         }
     }
 

@@ -2,7 +2,7 @@ use file_icons::FileIcons;
 use fuzzy::{StringMatch, StringMatchCandidate};
 use gpui::{
     App, AsyncApp, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    Subscription, Task, WeakEntity, Window,
+    Subscription, Task, UniformListScrollHandle, WeakEntity, Window,
 };
 use gpui::{Pixels, px};
 use ordered_float::OrderedFloat;
@@ -348,6 +348,7 @@ pub fn init(cx: &mut App) {
 
 struct RecentFiles {
     picker: Entity<Picker<RecentFilesDelegate>>,
+    scroll_handle: UniformListScrollHandle,
     _subscription: Subscription,
 }
 
@@ -355,10 +356,16 @@ impl ModalView for RecentFiles {}
 
 impl RecentFiles {
     fn new(delegate: RecentFilesDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
+        let scroll_handle = UniformListScrollHandle::new();
+        let picker = cx.new(|cx| {
+            Picker::uniform_list(delegate, window, cx)
+                .track_scroll(scroll_handle.clone())
+                .show_scrollbar(true)
+        });
         let _subscription = cx.subscribe(&picker, |_, _, _, cx| cx.emit(DismissEvent));
         Self {
             picker,
+            scroll_handle,
             _subscription,
         }
     }

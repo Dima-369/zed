@@ -18,7 +18,7 @@ use ordered_float::OrderedFloat;
 use picker::{Picker, PickerDelegate};
 use settings::Settings;
 use theme::{ActiveTheme, ThemeSettings};
-use ui::{ListItem, ListItemSpacing, prelude::*, Scrollbars, ScrollAxes, WithScrollbar};
+use ui::{ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
 use workspace::{DismissDecision, ModalView, Workspace};
 
@@ -96,17 +96,7 @@ impl Render for OutlineView {
                     cx.emit(DismissEvent);
                 },
             ))
-            .child(
-                div()
-                    .child(self.picker.clone())
-                    .custom_scrollbars(
-                        Scrollbars::new(ScrollAxes::Vertical)
-                            .tracked_scroll_handle(&self.scroll_handle)
-                            .tracked_entity(cx.entity_id()),
-                        _window,
-                        cx,
-                    ),
-            )
+            .child(self.picker.clone())
     }
 }
 
@@ -136,6 +126,7 @@ impl OutlineView {
             Picker::uniform_list(delegate, window, cx)
                 .max_height(Some(vh(0.75, window)))
                 .track_scroll(scroll_handle.clone())
+                .show_scrollbar(true)
         });
         OutlineView {
             picker,
