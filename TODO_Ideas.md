@@ -1,14 +1,10 @@
-- revert my deploy buffer search code with the positioning to easen diff, since I prefer `buffer_search_modal::ToggleBufferSearch`
-see `crates/search/src/buffer_search.rs`
+- implement a new action which does: `Stop all language servers`, right now there is `editor: stop language server`, BUT it only stops certain one depending on file type, the editor is currently open. I see that there is already such functionality
+`crates/language_tools/src/lsp_button.rs` has `Stop All Servers`, the action should work the same
 
-git checkout main -- crates/search/src/buffer_search.rs
+- when I am inside a markdown file and I have inline code like like `foo bar one`, when I trigger the editor::SelectLargerSyntaxNode action, it always instantly includes the quotes and ALL inside the quotes, is there a way to fix this?
+it should first select a word like `foo`, then invocation all text INSIDE the quotes (excluding the quotes), and on next invocation ALL PLUS quotes
 
-why is there search_on_input in my code diff? Is it from the project search?
-
-- improve: does it improve my key i issues? namely directly selecting everything inside quotes like `foo bar` instead of just the inner word
-maybe when there is no selection yet try to select word first always to word boundaries
-
-- try out https://github.com/zed-industries/zed/pull/45625
+- try out https://github.com/zed-industries/zed/pull/45625 (Add a button to copy diagnostic messages from the hover popover to the clipboard)
 
 ## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
@@ -47,7 +43,10 @@ https://github.com/zed-industries/zed/pull/45547
 
 ## Add a button to copy diagnostic messages from the hover popover to the clipboard
 
-A button is okayish. How about a new action which copies all diagnostic messages at cursor to clipboard?
+A button is okayish. 
+Try it out in project diagnostic, it would be very useful there
+
+Later LOW prio: How about a new action which copies all diagnostic messages at cursor to clipboard?
 
 https://github.com/zed-industries/zed/pull/45625
 
