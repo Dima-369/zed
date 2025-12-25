@@ -41,15 +41,6 @@ Try this out. Will it get merged?
 
 https://github.com/zed-industries/zed/pull/45547
 
-## Add a button to copy diagnostic messages from the hover popover to the clipboard
-
-A button is okayish. 
-Try it out in project diagnostic, it would be very useful there
-
-Later LOW prio: How about a new action which copies all diagnostic messages at cursor to clipboard?
-
-https://github.com/zed-industries/zed/pull/45625
-
 
 
 # >>> Investigations
