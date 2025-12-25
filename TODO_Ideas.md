@@ -1,9 +1,15 @@
-- try to reproduce broken markdown breadcrumbs in Zed.app
+-  create github issue about incorrect markdown breadcrumbs with this:
+I think I already have it fixed
+
+```json
+  "sticky_scroll": {
+    "enabled": true
+  },
+```
+
 only filled when on heading or line below
 
 - sometimes undo when at very right on newline character, it does not go back to newline character
-
-- can `file_finder::Toggle` nucleo matching work with negations? it works in my nucleo-tester CLI
 
 # improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
