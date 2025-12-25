@@ -134,12 +134,6 @@ I tried to fix with my yek file merger through Gemini and via auggie, but both f
 I created an issue for this:
 https://github.com/zed-industries/zed/issues/45532
 
-## improve `vim::HelixJumpToWord`
-
-- in  `fn helix_handle_jump_input` can you make escape cancel out of the jump mode?
-
-I tried, but escape is not propagated to `input_ignored`, so no idea how to fix this.
-
 ## improve `buffer_search_modal::ToggleBufferSearch` in `crates/search/src/buffer_search_modal.rs`
 
 ### Center top candidates list always
