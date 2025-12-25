@@ -9,10 +9,10 @@ mod select;
 
 pub use jump_list::{JumpEntry, JumpList};
 
-use editor::display_map::{DisplayRow, DisplaySnapshot};
+use editor::display_map::{DisplayRow, DisplaySnapshot, ToDisplayPoint};
 use editor::{
-    DisplayPoint, Editor, EditorSettings, HideMouseCursorOrigin,
-    MultiBufferOffset, MultibufferSelectionMode, SelectionEffects, ToOffset, ToPoint, movement,
+    DisplayPoint, Editor, EditorSettings, HideMouseCursorOrigin, MultiBufferOffset,
+    MultibufferSelectionMode, SelectionEffects, ToOffset, ToPoint, movement,
 };
 use gpui::actions;
 use gpui::{Context, Entity, Window};
@@ -33,7 +33,6 @@ use crate::{
     state::{HelixJumpBehaviour, HelixJumpLabel, Mode, Operator},
 };
 use std::ops::Range;
-
 
 actions!(
     vim,
@@ -1189,6 +1188,7 @@ impl Vim {
 
             Self::build_helix_jump_labels(
                 buffer_snapshot,
+                display_snapshot,
                 start_offset,
                 end_offset,
                 cursor_offset,
@@ -1200,6 +1200,7 @@ impl Vim {
 
     fn build_helix_jump_labels(
         buffer: &MultiBufferSnapshot,
+        display_map: &DisplaySnapshot,
         start_offset: MultiBufferOffset,
         end_offset: MultiBufferOffset,
         cursor_offset: MultiBufferOffset,
@@ -1213,6 +1214,7 @@ impl Vim {
         // First pass: collect all word candidates without assigning labels
         let candidates = Self::collect_jump_candidates(
             buffer,
+            display_map,
             start_offset,
             end_offset,
             skip_points,
@@ -1291,6 +1293,7 @@ impl Vim {
 
     fn collect_jump_candidates(
         buffer: &MultiBufferSnapshot,
+        display_map: &DisplaySnapshot,
         start_offset: MultiBufferOffset,
         end_offset: MultiBufferOffset,
         skip_points: &[MultiBufferOffset],
@@ -1304,6 +1307,7 @@ impl Vim {
         let mut word_start = start_offset;
         let mut first_two_end = start_offset;
         let mut char_count = 0;
+        let mut last_display_point: Option<DisplayPoint> = None;
 
         'chunks: for chunk in buffer.text_for_range(start_offset..end_offset) {
             for (idx, ch) in chunk.char_indices() {
@@ -1330,11 +1334,26 @@ impl Vim {
                             skip_ranges,
                         )
                     {
-                        candidates.push(JumpCandidate {
-                            word_start,
-                            word_end: absolute,
-                            first_two_end,
-                        });
+                        let anchor = buffer.anchor_after(word_start);
+                        let point = anchor.to_display_point(display_map);
+
+                        let mut overlaps = false;
+                        if let Some(last_point) = last_display_point {
+                            if last_point.row() == point.row()
+                            && point.column() < last_point.column() + 5
+                            {
+                                overlaps = true;
+                            }
+                        }
+
+                        if !overlaps {
+                            candidates.push(JumpCandidate {
+                                word_start,
+                                word_end: absolute,
+                                first_two_end,
+                            });
+                            last_display_point = Some(point);
+                        }
                     }
                     in_word = false;
                     if candidates.len() >= limit {
@@ -1351,11 +1370,23 @@ impl Vim {
             && candidates.len() < limit
             && !Self::should_skip_jump_candidate(word_start, end_offset, skip_points, skip_ranges)
         {
-            candidates.push(JumpCandidate {
-                word_start,
-                word_end: end_offset,
-                first_two_end,
-            });
+            let anchor = buffer.anchor_after(word_start);
+            let point = anchor.to_display_point(display_map);
+
+            let mut overlaps = false;
+            if let Some(last_point) = last_display_point {
+                if last_point.row() == point.row() && point.column() < last_point.column() + 5 {
+                    overlaps = true;
+                }
+            }
+
+            if !overlaps {
+                candidates.push(JumpCandidate {
+                    word_start,
+                    word_end: end_offset,
+                    first_two_end,
+                });
+            }
         }
 
         candidates
@@ -1402,17 +1433,14 @@ impl Vim {
                 .iter()
                 .any(|range| range.start < word_end && word_start < range.end)
     }
-
-
 }
-
 
 /// Same as in jump.rs.
 /// My custom Dvorak Programmer keyboard layout.
 /// First home row, then top row, then bottom row without pinky finger keys (s and l).
 const HELIX_JUMP_ALPHABET: &[char] = &[
-    'h', 't', 'n', 'd', 'u', 'e', 'o', 'i', 'f', 'g', 'c', 'r', 'y', 'p', 'z',
-    'b', 'm', 'w', 'v', 'x', 'k', 'j', 'q',
+    'h', 't', 'n', 'd', 'u', 'e', 'o', 'i', 'f', 'g', 'c', 'r', 'y', 'p', 'z', 'b', 'm', 'w', 'v',
+    'x', 'k', 'j', 'q',
 ];
 
 fn is_jump_word_char(ch: char) -> bool {
@@ -1426,7 +1454,6 @@ struct JumpCandidate {
     word_end: MultiBufferOffset,
     first_two_end: MultiBufferOffset,
 }
-
 
 #[cfg(test)]
 mod test {
