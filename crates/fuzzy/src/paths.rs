@@ -118,8 +118,18 @@ pub fn match_fixed_path_set(
     let mut config = nucleo::Config::DEFAULT;
     config.set_match_paths();
     let mut matcher = matcher::get_matcher(config);
+
+    // Check if the user is typing a negation
+    let pattern_string = if let Some(stripped) = query.strip_prefix('!') {
+        // User typed "!", we want negated substring: "!'text"
+        format!("!'{}", stripped)
+    } else {
+        // Normal substring matching: "'text"
+        format!("'{}", query)
+    };
+
     let pattern = Pattern::new(
-        query,
+        &pattern_string,
         if smart_case {
             CaseMatching::Smart
         } else {
@@ -238,8 +248,17 @@ pub async fn match_path_sets<'a, Set: PathMatchCandidateSet<'a>>(
         query.to_owned()
     };
 
+    // Check if the user is typing a negation
+    let pattern_string = if let Some(stripped) = query.strip_prefix('!') {
+        // User typed "!", we want negated substring: "!'text"
+        format!("!'{}", stripped)
+    } else {
+        // Normal substring matching: "'text"
+        format!("'{}", query)
+    };
+
     let pattern = Pattern::new(
-        &query,
+        &pattern_string,
         if smart_case {
             CaseMatching::Smart
         } else {

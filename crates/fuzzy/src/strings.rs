@@ -130,12 +130,22 @@ where
             .collect();
     }
 
-    let mut config = nucleo::Config::DEFAULT;
+    let config = nucleo::Config::DEFAULT;
     // Note: penalize_length is not used in nucleo implementation
     let _ = penalize_length; // Suppress unused variable warning
     let mut matchers = matcher::get_matchers(executor.num_cpus().min(candidates.len()), config);
+
+    // Check if the user is typing a negation
+    let pattern_string = if let Some(stripped) = query.strip_prefix('!') {
+        // User typed "!", we want negated substring: "!'text"
+        format!("!'{}", stripped)
+    } else {
+        // Normal substring matching: "'text"
+        format!("'{}", query)
+    };
+
     let pattern = Pattern::new(
-        query,
+        &pattern_string,
         if smart_case {
             CaseMatching::Smart
         } else {
