@@ -628,7 +628,7 @@ impl PickerDelegate for CommandPaletteDelegate {
                         .py_px()
                         .justify_between()
                         .child(HighlightedLabel::new(
-                            command.name.clone(),
+                            humanize_action_name(&command.name),
                             matching_command.positions.clone(),
                         ))
                         .child(KeyBinding::for_action_in(
