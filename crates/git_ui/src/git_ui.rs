@@ -401,8 +401,8 @@ fn open_branch_diff_picker(
     let branches_task = repo.update(cx, |repo, _cx| repo.branches());
     let workspace_weak = workspace.weak_handle();
     let repo_weak = repo.downgrade();
-    let buffer_clone = buffer.clone();
-    let project_clone = project.clone();
+    let buffer_clone = buffer;
+    let project_clone = project;
 
     cx.spawn_in(window, async move |workspace, cx| {
         if let Ok(branches_result) = branches_task.await {

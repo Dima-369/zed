@@ -26,17 +26,9 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone, Debug)]
 pub struct Room(pub Arc<Mutex<RoomState>>);
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RoomState {
     pub paused_audio_tracks: HashSet<TrackSid>,
-}
-
-impl Default for RoomState {
-    fn default() -> Self {
-        Self {
-            paused_audio_tracks: HashSet::default(),
-        }
-    }
 }
 
 pub type WeakRoom = std::sync::Weak<Room>;

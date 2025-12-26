@@ -123,7 +123,7 @@ where
                     } else {
                         candidate_string.to_lowercase().find(&word_lower)
                     } {
-                        let word_byte_len = word.as_bytes().len();
+                        let word_byte_len = word.len();
                         for i in 0..word_byte_len {
                             let pos = original_byte_pos + i;
                             if pos < candidate_string.len()
@@ -1030,6 +1030,7 @@ impl RecentProjectsZoxide {
 
         // Load zoxide directories asynchronously
         cx.spawn_in(window, async move |this, cx| {
+            #[allow(clippy::disallowed_methods)]
             let output = std::process::Command::new("zoxide")
                 .args(&["query", "--list"])
                 .output();
@@ -1220,6 +1221,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
             let path = std::path::PathBuf::from(directory_path);
 
             // Add to zoxide
+            #[allow(clippy::disallowed_methods)]
             let _ = std::process::Command::new("zoxide")
                 .args(&["add", directory_path])
                 .output();
@@ -1324,7 +1326,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
             color: Color::Default,
         };
 
-        let tooltip_text = display_path.clone();
+        let tooltip_text = display_path;
         Some(
             ListItem::new(ix)
                 .toggle_state(selected)

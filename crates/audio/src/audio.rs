@@ -85,6 +85,7 @@ impl Sound {
     }
 }
 
+#[allow(clippy::derivable_impls)]
 pub struct Audio {
     output_handle: Option<OutputStream>,
     output_mixer: Option<Mixer>,
@@ -97,6 +98,7 @@ pub struct Audio {
     replays: replays::Replays,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for Audio {
     fn default() -> Self {
         Self {

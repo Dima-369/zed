@@ -108,7 +108,7 @@ where
                     } else {
                         candidate_string.to_lowercase().find(&word_lower)
                     } {
-                        let word_byte_len = word.as_bytes().len();
+                        let word_byte_len = word.len();
                         for i in 0..word_byte_len {
                             let pos = original_byte_pos + i;
                             if pos < candidate_string.len()
@@ -167,10 +167,10 @@ fn add_recent_file(path: PathBuf) {
 /// Expand tilde (~) in path to the user's home directory
 fn expand_tilde(path: &Path) -> PathBuf {
     if let Some(path_str) = path.to_str() {
-        if path_str.starts_with("~/") {
+        if let Some(stripped) = path_str.strip_prefix("~/") {
             if let Some(home) = std::env::var_os("HOME") {
                 let mut home_path = PathBuf::from(home);
-                home_path.push(&path_str[2..]);
+                home_path.push(stripped);
                 return home_path;
             }
         }
@@ -503,7 +503,7 @@ impl PickerDelegate for RecentFilesDelegate {
 
             if let Some(workspace) = self.workspace.upgrade() {
                 // Try to find a recent workspace that contains this file
-                let workspace_handle = workspace.clone();
+                let workspace_handle = workspace;
                 cx.spawn_in(window, async move |_, cx| {
                     if let Some((workspace_id, location, _workspace_paths)) =
                         find_workspace_for_file(&path).await

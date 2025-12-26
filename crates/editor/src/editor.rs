@@ -349,14 +349,14 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
             workspace.register_action(|workspace, action, window, cx| {
-                workspace.active_item_as::<Editor>(cx).map(|editor| {
+                if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
                     editor.update(cx, |editor, cx| editor.count_tokens(action, window, cx))
-                });
+                }
             });
             workspace.register_action(|workspace, action, window, cx| {
-                workspace.active_item_as::<Editor>(cx).map(|editor| {
+                if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
                     editor.update(cx, |editor, cx| editor.copy_all(action, window, cx))
-                });
+                }
             });
         },
     )
@@ -2877,7 +2877,6 @@ impl Editor {
         let language = action.language.as_deref().or(Some("Markdown"));
         let language = language.map(|s| s.to_string());
         let project = workspace.project().clone();
-        let content = content.to_string();
 
         cx.spawn_in(window, async move |workspace, cx| {
             let language = if let Some(language_name) = language {
@@ -2903,7 +2902,7 @@ impl Editor {
                     editor.move_to_beginning(&Default::default(), window, cx);
                 });
                 buffer.update(cx, |buffer, cx| {
-                    buffer.did_save(buffer.version().clone(), None, cx);
+                    buffer.did_save(buffer.version(), None, cx);
                 });
                 editor
             })
@@ -16148,10 +16147,10 @@ impl Editor {
                                     // Check if current selection is smaller than the content range
                                     let current_len =
                                         (new_range.end.0 as isize - new_range.start.0 as isize)
-                                            .abs() as usize;
+                                            .unsigned_abs();
                                     let content_len =
-                                        (content_end.0 as isize - content_start.0 as isize).abs()
-                                            as usize;
+                                        (content_end.0 as isize - content_start.0 as isize)
+                                            .unsigned_abs();
 
                                     if content_len > current_len {
                                         new_range = content_range;

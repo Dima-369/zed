@@ -370,7 +370,7 @@ impl BufferSearchModal {
                 let head = selection.head();
 
                 let selected_text = if range.start.cmp(&range.end, &snapshot).is_ne() {
-                    editor.buffer().read(cx).as_singleton().and_then(|buffer| {
+                    editor.buffer().read(cx).as_singleton().map(|buffer| {
                         let buffer = buffer.read(cx);
                         let start = range.start.text_anchor.to_offset(&buffer);
                         let end = range.end.text_anchor.to_offset(&buffer);
@@ -378,7 +378,7 @@ impl BufferSearchModal {
                         if text.ends_with('\n') {
                             text.pop();
                         }
-                        Some(text)
+                        text
                     })
                 } else if !VimModeSetting::get_global(cx).0 {
                     let query = editor.query_suggestion(window, cx);
@@ -1446,11 +1446,7 @@ impl PickerDelegate for BufferSearchDelegate {
                     let mut min_distance = usize::MAX;
 
                     for (idx, item) in picker.delegate.items.iter().enumerate() {
-                        let dist = if item.primary_match_offset >= initial_cursor {
-                            item.primary_match_offset - initial_cursor
-                        } else {
-                            initial_cursor - item.primary_match_offset
-                        };
+                        let dist = item.primary_match_offset.abs_diff(initial_cursor);
 
                         if dist < min_distance {
                             min_distance = dist;
@@ -1520,7 +1516,7 @@ impl PickerDelegate for BufferSearchDelegate {
 
                 if let Some(range) = match_range {
                     // Unfold the range if it's folded
-                    editor.unfold_ranges(&[range.clone()], false, true, cx);
+                    editor.unfold_ranges(std::slice::from_ref(&range), false, true, cx);
 
                     // Convert anchor range to selection range
                     let selection_range = editor.range_for_match(&range);

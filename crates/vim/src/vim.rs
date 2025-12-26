@@ -1791,7 +1791,7 @@ impl Vim {
             HelixJumpBehaviour::Move => {
                 editor.change_selections(Default::default(), window, cx, |s| {
                     let start = candidate.range.start;
-                    s.select_anchor_ranges([start.clone()..start])
+                    s.select_anchor_ranges([start..start])
                 });
             }
             HelixJumpBehaviour::Extend => {

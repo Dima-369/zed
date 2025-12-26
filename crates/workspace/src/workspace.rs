@@ -8141,7 +8141,7 @@ pub fn open_paths(
             // state initialization and focus
             let has_opened_items = opened_items.iter().any(|item| item.is_some());
             if !has_opened_items {
-                let workspace_handle = workspace.clone();
+                let workspace_handle = workspace;
                 cx.spawn(async move |cx| {
                     // Small delay to ensure workspace is fully initialized
                     cx.background_executor().timer(std::time::Duration::from_millis(50)).await;

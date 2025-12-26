@@ -926,7 +926,7 @@ fn deepl_translate(
     let source_lang = action.source_lang.clone();
     let target_lang = action.target_lang.clone();
     let formality = action.formality.clone();
-    let http_client = workspace.app_state().client.http_client().clone();
+    let http_client = workspace.app_state().client.http_client();
 
     cx.spawn_in(window, async move |workspace, cx| {
         // Prepare form data
