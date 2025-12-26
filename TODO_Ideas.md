@@ -51,7 +51,7 @@ I only see the v2 improvement that it has a full text field at the top, which ca
 
 v2 does not have the ignore files button/functionality anymore which sucks.
 
-I tried out the branch and I really don't think I need it.
+I tried out the branch and I really don't think I need it. I think it also mixes sorting of files and directories?
 
 https://github.com/zed-industries/zed/pull/45307
 
