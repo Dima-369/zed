@@ -617,7 +617,6 @@ impl Settings for ProjectSettings {
             session: SessionSettings {
                 restore_unsaved_buffers: content
                     .session
-                    .clone()
                     .unwrap_or_default()
                     .restore_unsaved_buffers
                     .unwrap_or(true),
