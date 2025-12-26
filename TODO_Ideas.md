@@ -146,7 +146,7 @@ https://github.com/zed-industries/zed/issues/45532
 ### Center top candidates list always
 
 Can the top candidate list be centered, currently is always at either top or bottom when holding arrow up/down? I mean the selected row should be centered. Real centered movement is not implemented anywhere else in Zed, so too difficult to implement. I tried with Windsurf Penguin Alpha and it was not able to.
-  
+
 This is not implemented anywhere else in Zed, so probably too difficult to implement.
 
 ### Incorrect bottom padding in no line mode
