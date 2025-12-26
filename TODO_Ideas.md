@@ -1,8 +1,3 @@
-- fix humanize name action not working in comman palette yet
-
-
-
-
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
