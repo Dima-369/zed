@@ -921,16 +921,16 @@ impl PickerDelegate for FileExplorerDelegate {
                                                 menu.context(focus_handle)
                                                     .action(
                                                         "Split Left",
-                                                        pane::SplitLeft.boxed_clone(),
+                                                        pane::SplitLeft::default().boxed_clone(),
                                                     )
                                                     .action(
                                                         "Split Right",
-                                                        pane::SplitRight.boxed_clone(),
+                                                        pane::SplitRight::default().boxed_clone(),
                                                     )
-                                                    .action("Split Up", pane::SplitUp.boxed_clone())
+                                                    .action("Split Up", pane::SplitUp::default().boxed_clone())
                                                     .action(
                                                         "Split Down",
-                                                        pane::SplitDown.boxed_clone(),
+                                                        pane::SplitDown::default().boxed_clone(),
                                                     )
                                             }
                                         }))
