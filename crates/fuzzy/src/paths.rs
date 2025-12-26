@@ -139,7 +139,6 @@ pub fn match_fixed_path_set(
         candidates.into_iter(),
         worktree_id,
         &worktree_root_name
-            .clone()
             .unwrap_or(RelPath::empty().into()),
         &None,
         path_style,
