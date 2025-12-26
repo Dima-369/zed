@@ -1,6 +1,6 @@
 use crate::{AudioStream, Participant, RemoteTrack, RoomEvent, TrackPublication};
-
-use crate::mock_client::{participant::*, publication::*, track::*};
+use crate::shared_types::{ParticipantIdentity, TrackSid, ConnectionState};
+use crate::mock_client::{participant::*, publication::*, track::*, WeakRoom};
 use anyhow::{Context as _, Result};
 use async_trait::async_trait;
 use collections::{BTreeMap, HashMap, HashSet, btree_map::Entry as BTreeEntry, hash_map::Entry};
@@ -13,32 +13,6 @@ use std::sync::{
     atomic::{AtomicBool, Ordering::SeqCst},
 };
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-pub struct ParticipantIdentity(pub String);
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-pub struct TrackSid(pub(crate) String);
-
-impl std::fmt::Display for TrackSid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl TryFrom<String> for TrackSid {
-    type Error = anyhow::Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        Ok(TrackSid(value))
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-#[non_exhaustive]
-pub enum ConnectionState {
-    Connected,
-    Disconnected,
-}
 
 static SERVERS: Mutex<BTreeMap<String, Arc<TestServer>>> = Mutex::new(BTreeMap::new());
 
