@@ -51,6 +51,8 @@ I only see the v2 improvement that it has a full text field at the top, which ca
 
 v2 does not have the ignore files button/functionality anymore which sucks.
 
+I tried out the branch and I really don't think I need it.
+
 https://github.com/zed-industries/zed/pull/45307
 
 ## telescope/quick search
