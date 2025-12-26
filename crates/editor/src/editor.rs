@@ -1259,10 +1259,6 @@ pub struct Editor {
     accent_data: Option<AccentData>,
     fetched_tree_sitter_chunks: HashMap<ExcerptId, HashSet<Range<BufferRow>>>,
     use_base_text_line_numbers: bool,
-    // Smooth movement state
-    smooth_movement_task: Option<Task<()>>,
-    smooth_movement_queue: VecDeque<(bool, u32)>, // (up, line_count) pairs
-    smooth_movement_last_direction: Option<bool>, // Last movement direction (up=true, down=false)
 }
 
 #[derive(Debug, PartialEq)]
@@ -2460,10 +2456,6 @@ impl Editor {
             accent_data: None,
             fetched_tree_sitter_chunks: HashMap::default(),
             use_base_text_line_numbers: false,
-            // Initialize smooth movement state
-            smooth_movement_task: None,
-            smooth_movement_queue: VecDeque::new(),
-            smooth_movement_last_direction: None,
         };
 
         if is_minimap {
@@ -13855,109 +13847,6 @@ impl Editor {
         })
     }
 
-    pub fn move_lines_smooth(
-        &mut self,
-        action: &MoveLinesSmooth,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        if self.take_rename(true, window, cx).is_some() {
-            return;
-        }
-
-        if self.mode.is_single_line() {
-            cx.propagate();
-            return;
-        }
-
-        // Check if direction changed - if so, clear the queue
-        if let Some(last_direction) = self.smooth_movement_last_direction {
-            if last_direction != action.up {
-                self.smooth_movement_queue.clear();
-                // Cancel existing task if direction changed
-                if let Some(task) = self.smooth_movement_task.take() {
-                    drop(task); // This cancels the task
-                }
-            }
-        }
-
-        // Update last direction
-        self.smooth_movement_last_direction = Some(action.up);
-
-        // Add to queue
-        self.smooth_movement_queue
-            .push_back((action.up, action.line_count));
-
-        // If no task is running, start one
-        if self.smooth_movement_task.is_none() {
-            let delay_ms = action.delay_ms;
-
-            self.smooth_movement_task =
-                Some(cx.spawn_in(window, async move |editor_handle, cx| {
-                    loop {
-                        // Check if we should continue
-                        let should_continue = cx
-                            .update(|window, cx| {
-                                editor_handle
-                                    .update(cx, |editor, cx| {
-                                        if let Some((up, line_count)) =
-                                            editor.smooth_movement_queue.pop_front()
-                                        {
-                                            // Perform one line movement
-                                            let lines_to_move = 1.min(line_count);
-                                            let remaining_lines =
-                                                line_count.saturating_sub(lines_to_move);
-
-                                            // Put back remaining lines if any
-                                            if remaining_lines > 0 {
-                                                editor
-                                                    .smooth_movement_queue
-                                                    .push_front((up, remaining_lines));
-                                            }
-
-                                            // Perform the movement using the existing methods
-                                            if up {
-                                                let action = MoveUpByLines {
-                                                    lines: lines_to_move,
-                                                };
-                                                editor.move_up_by_lines(&action, window, cx);
-                                            } else {
-                                                let action = MoveDownByLines {
-                                                    lines: lines_to_move,
-                                                };
-                                                editor.move_down_by_lines(&action, window, cx);
-                                            }
-
-                                            // Continue if there are more items in queue
-                                            !editor.smooth_movement_queue.is_empty()
-                                        } else {
-                                            false
-                                        }
-                                    })
-                                    .unwrap_or(false)
-                            })
-                            .unwrap_or(false);
-
-                        if !should_continue {
-                            break;
-                        }
-
-                        // Wait for the specified delay
-                        cx.background_executor()
-                            .timer(std::time::Duration::from_millis(delay_ms))
-                            .await;
-                    }
-
-                    // Clear the task when done
-                    let _ = cx.update(|_, cx| {
-                        editor_handle.update(cx, |editor, _| {
-                            editor.smooth_movement_task = None;
-                        })
-                    });
-                }));
-        }
-    }
-
     pub fn select_down_by_lines(
         &mut self,
         action: &SelectDownByLines,
@@ -16241,18 +16130,28 @@ impl Editor {
                                     let node_mb_start = node_mb_range.start.0;
 
                                     // Calculate the MultiBuffer offset for the content start and end
-                                    let content_start_byte_offset = (start_byte - node_start_byte) as u32;
-                                    let content_end_byte_offset = (end_byte - node_start_byte) as u32;
+                                    let content_start_byte_offset =
+                                        (start_byte - node_start_byte) as u32;
+                                    let content_end_byte_offset =
+                                        (end_byte - node_start_byte) as u32;
 
                                     // Create content range by adding the byte offset to the node's MultiBuffer start
-                                    let content_start = MultiBufferOffset(node_mb_start + content_start_byte_offset as usize);
-                                    let content_end = MultiBufferOffset(node_mb_start + content_end_byte_offset as usize);
+                                    let content_start = MultiBufferOffset(
+                                        node_mb_start + content_start_byte_offset as usize,
+                                    );
+                                    let content_end = MultiBufferOffset(
+                                        node_mb_start + content_end_byte_offset as usize,
+                                    );
 
                                     let content_range = content_start..content_end;
 
                                     // Check if current selection is smaller than the content range
-                                    let current_len = (new_range.end.0 as isize - new_range.start.0 as isize).abs() as usize;
-                                    let content_len = (content_end.0 as isize - content_start.0 as isize).abs() as usize;
+                                    let current_len =
+                                        (new_range.end.0 as isize - new_range.start.0 as isize)
+                                            .abs() as usize;
+                                    let content_len =
+                                        (content_end.0 as isize - content_start.0 as isize).abs()
+                                            as usize;
 
                                     if content_len > current_len {
                                         new_range = content_range;
@@ -20887,19 +20786,34 @@ impl Editor {
         self.style = Some(style);
     }
 
-    pub fn set_background(&mut self, background: Hsla, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_background(
+        &mut self,
+        background: Hsla,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let mut style = self.style(cx).clone();
         style.background = background;
         self.set_style(style, window, cx);
     }
 
-    pub fn set_gutter_background(&mut self, gutter_background: Hsla, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_gutter_background(
+        &mut self,
+        gutter_background: Hsla,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let mut style = self.style(cx).clone();
         style.gutter_background = Some(gutter_background);
         self.set_style(style, window, cx);
     }
 
-    pub fn set_current_line_highlight_color(&mut self, current_line_highlight: Hsla, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_current_line_highlight_color(
+        &mut self,
+        current_line_highlight: Hsla,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let mut style = self.style(cx).clone();
         style.current_line_highlight = Some(current_line_highlight);
         self.set_style(style, window, cx);

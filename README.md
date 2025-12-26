@@ -91,19 +91,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - modified key jump hints to my custom Dvorak Programmer keyboard layout
   - I am only using this is inside multi buffers, whereas `jump::Toggle` does not. And this also does not work to jump across editor panes
   - note that escape does not work to break out of this mode, apparently. I have no idea how to adjust the code for it
-- [DEPRECATED due to smooth scrolling PR merge] `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit. Bind like this:
-
-```json
-"v": [
-  "editor::MoveLinesSmooth",
-  {
-    "up": true,
-    "line_count": 9,
-    "delay_ms": 1
-  }
-],
-```
-
 -  `zed::DeeplTranslate` which translates the current selection or the current line. It needs the `DEEPL_API_KEY` environment variable to be set. Bind like this:
 
 ```json

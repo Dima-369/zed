@@ -1,3 +1,18 @@
+- fix key q in visual line mode on commit tabs when opening a file from diff
+
+- remove [DEPRECATED due to smooth scrolling PR merge] `editor::MoveLinesSmooth` which can be used like this. Do not set a too high `line_count` as it will keep scrolling even when key is released. It is not perfect, and sometimes, under high system load, it can happen that when you jump to top/bottom of file, it still scrolls a bit. Bind like this:
+
+```json
+"v": [
+  "editor::MoveLinesSmooth",
+  {
+    "up": true,
+    "line_count": 9,
+    "delay_ms": 1
+  }
+],
+```
+
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
