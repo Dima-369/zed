@@ -13,8 +13,8 @@ Summary of crates that depend on webrtc-sys:
 # Improve Search Everywhere: opt-in actions, JetBrains keybindings, tab switching
 
 there is the search everywhere functionality, but it does way too much.
-only extract the project symbol search, rename it to `project_lsp_treesitter_symbol_search`, since it uses both
-so remove the tabs at top, and have only one action to open that symbol search
+only extract the project symbol search, rename the crate to `project_lsp_treesitter_symbol_search`, since it uses both
+so remove the tabs at top, and have only one action to open that symbol search. remove all the other code for the other tabs
 
 - can you adjust the search everywhere action to have an optional parameter, so the initial tab can be specified
 like in my own keybinding
