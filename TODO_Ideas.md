@@ -1,7 +1,4 @@
-- fix inline assist keys not working anymore?
-
-- try out https://github.com/zed-industries/zed/pull/45724
-edit predictions: Amp Tab support
+- figure out why latest Zed Dev app crashes in inline assistant?
 
 - try out https://github.com/zed-industries/zed/pull/45720
 Improve Search Everywhere: opt-in actions, JetBrains keybindings, tab switching
@@ -9,6 +6,11 @@ and with https://github.com/zed-industries/zed/pull/45719 (Extract SymbolIndex t
 does this allow for project wide symbol search like in intellij?
 
 # >>> Investigations
+
+## edit predictions: Amp Tab support
+
+The completions suck hard! Often wants to jump to something off-screen in file and does weird edits.
+https://github.com/zed-industries/zed/pull/45724
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
 
