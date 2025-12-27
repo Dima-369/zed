@@ -1,20 +1,10 @@
-use gpui::{Action, Entity, SharedString};
+use gpui::{Entity, SharedString};
 use language::{Anchor, Buffer};
-use project::{ProjectPath, Symbol};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SearchResultCategory {
-    File,
-    Symbol,
-    Action,
-}
+use project::Symbol;
 
 pub struct SearchResult {
     pub label: SharedString,
     pub detail: Option<SharedString>,
-    pub category: SearchResultCategory,
-    pub path: Option<ProjectPath>,
-    pub action: Option<Box<dyn Action>>,
     pub symbol: Option<Symbol>,
     pub document_symbol: Option<DocumentSymbolResult>,
 }

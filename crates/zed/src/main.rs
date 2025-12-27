@@ -634,7 +634,7 @@ fn main() {
         go_to_line::init(cx);
         file_finder::init(cx);
         file_explorer::init(cx);
-        search_everywhere::init(cx);
+        project_lsp_treesitter_symbol_search::init(cx);
         tab_switcher::init(cx);
         outline::init(cx);
         project_symbols::init(cx);

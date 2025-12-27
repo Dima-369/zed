@@ -8,8 +8,8 @@ use parking_lot::Mutex;
 use project::{Project, Symbol};
 use util::ResultExt;
 
-use crate::SearchEverywhereDelegate;
-use crate::providers::{DocumentSymbolResult, SearchResult, SearchResultCategory};
+use crate::ProjectSymbolSearchDelegate;
+use crate::providers::{DocumentSymbolResult, SearchResult};
 
 // Global cache for symbol providers, keyed by project entity ID
 static SYMBOL_CACHES: Mutex<Option<HashMap<EntityId, Arc<SymbolCache>>>> = Mutex::new(None);
@@ -256,7 +256,7 @@ impl SymbolProvider {
     pub fn search(
         &self,
         query: &str,
-        cx: &mut gpui::Context<picker::Picker<SearchEverywhereDelegate>>,
+        cx: &mut gpui::Context<picker::Picker<ProjectSymbolSearchDelegate>>,
     ) -> GpuiTask<Vec<(SearchResult, StringMatch)>> {
         if query.is_empty() {
             return GpuiTask::ready(Vec::new());
@@ -305,9 +305,6 @@ impl SymbolProvider {
                             SearchResult {
                                 label: SharedString::from(label),
                                 detail: Some(SharedString::from(detail)),
-                                category: SearchResultCategory::Symbol,
-                                path: None,
-                                action: None,
                                 symbol: Some(symbol.clone()),
                                 document_symbol: None,
                             }
@@ -320,9 +317,6 @@ impl SymbolProvider {
                         } => SearchResult {
                             label: SharedString::from(name.clone()),
                             detail: Some(SharedString::from(path.clone())),
-                            category: SearchResultCategory::Symbol,
-                            path: None,
-                            action: None,
                             symbol: None,
                             document_symbol: Some(DocumentSymbolResult {
                                 buffer: buffer.clone(),

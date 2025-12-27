@@ -5140,7 +5140,7 @@ mod tests {
                 "repl",
                 "rules_library",
                 "search",
-                "search_everywhere",
+                "project_lsp_treesitter_symbol_search",
                 "settings_editor",
                 "settings_profile_selector",
                 "snippets",

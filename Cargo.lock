@@ -12668,6 +12668,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "project_lsp_treesitter_symbol_search"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "collections",
+ "ctor",
+ "editor",
+ "futures 0.3.31",
+ "fuzzy",
+ "gpui",
+ "language",
+ "log",
+ "parking_lot",
+ "picker",
+ "project",
+ "ui",
+ "util",
+ "workspace",
+]
+
+[[package]]
 name = "project_panel"
 version = "0.1.0"
 dependencies = [
@@ -14689,28 +14710,6 @@ dependencies = [
  "workspace",
  "zed_actions",
  "ztracing",
-]
-
-[[package]]
-name = "search_everywhere"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "collections",
- "command_palette_hooks",
- "ctor",
- "editor",
- "futures 0.3.31",
- "fuzzy",
- "gpui",
- "language",
- "log",
- "parking_lot",
- "picker",
- "project",
- "ui",
- "util",
- "workspace",
 ]
 
 [[package]]
@@ -20877,6 +20876,7 @@ dependencies = [
  "pretty_assertions",
  "profiling",
  "project",
+ "project_lsp_treesitter_symbol_search",
  "project_panel",
  "project_symbols",
  "prompt_store",
@@ -20890,7 +20890,6 @@ dependencies = [
  "reqwest_client",
  "rope",
  "search",
- "search_everywhere",
  "semver",
  "serde",
  "serde_json",
