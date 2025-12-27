@@ -3,6 +3,7 @@ mod agent_configuration;
 mod agent_diff;
 mod agent_model_selector;
 mod agent_panel;
+mod agent_panel_tab;
 mod buffer_codegen;
 mod completion_provider;
 mod context;
@@ -124,6 +125,8 @@ actions!(
         ContinueWithBurnMode,
         /// Toggles burn mode for faster responses.
         ToggleBurnMode,
+        /// Closes the currently active thread tab.
+        CloseActiveThreadTab,
     ]
 );
 

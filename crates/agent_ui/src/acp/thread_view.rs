@@ -817,6 +817,16 @@ impl AcpThreadView {
         cx.notify();
     }
 
+    pub fn session_id(&self, cx: &App) -> Option<acp::SessionId> {
+        if let Some(thread) = self.thread() {
+            Some(thread.read(cx).session_id().clone())
+        } else {
+            self.resume_thread_metadata
+                .as_ref()
+                .map(|metadata| metadata.id.clone())
+        }
+    }
+
     fn handle_agent_servers_updated(
         &mut self,
         _agent_server_store: &Entity<project::AgentServerStore>,
