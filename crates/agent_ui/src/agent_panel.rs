@@ -70,7 +70,7 @@ use settings::{Settings, SettingsStore, update_settings_file};
 use theme::ThemeSettings;
 use ui::{
     Button, ButtonStyle, Callout, Color, ContextMenu, ContextMenuEntry, DynamicSpacing, IconButton,
-    IconName, IconSize, Label, LabelSize, PopoverMenu, PopoverMenuHandle, Severity, Tab, Tooltip,
+    IconName, IconSize, Label, LabelSize, PopoverMenu, PopoverMenuHandle, Severity, Tab, TabBar, TabCloseSide, TabPosition, Tooltip, Toggleable, VisibleOnHover,
     Window, div, h_flex, px, rems_from_px, v_flex,
 };
 use ui::{ButtonCommon, Clickable, LabelCommon, ProgressBar, Icon};
@@ -2024,38 +2024,19 @@ impl AgentPanel {
             })
     }
 
-    fn render_title_view(&self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        match self.active_view() {
-            ActiveView::History => Label::new("History").size(LabelSize::Small),
-            ActiveView::Configuration => Label::new("Configuration").size(LabelSize::Small),
-            _ => Label::new(self.selected_agent.label()).size(LabelSize::Small),
-        }
-    }
-
+    
     fn render_tab_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let agent_server_store = self.project.read(cx).agent_server_store().clone();
         let focus_handle = self.focus_handle(cx);
 
-        let (selected_agent_custom_icon, selected_agent_label) =
-            if let AgentType::Custom { name, .. } = &self.selected_agent {
-                let store = agent_server_store.read(cx);
-                let icon = store.agent_icon(&ExternalAgentServerName(name.clone()));
-
-                let label = store
-                    .agent_display_name(&ExternalAgentServerName(name.clone()))
-                    .unwrap_or_else(|| self.selected_agent.label());
-                (icon, label)
-            } else {
-                (None, self.selected_agent.label())
-            };
-
-        let active_thread = match &self.active_view() {
+        let active_thread = match self.active_view() {
             ActiveView::ExternalAgentThread { thread_view } => {
                 thread_view.read(cx).as_native_thread(cx)
             }
             ActiveView::TextThread { .. } | ActiveView::History | ActiveView::Configuration => None,
         };
 
+        let new_thread_menu_store = agent_server_store.clone();
         let new_thread_menu = PopoverMenu::new("new_thread_menu")
             .trigger_with_tooltip(
                 IconButton::new("new_thread_menu_btn", IconName::Plus).icon_size(IconSize::Small),
@@ -2074,15 +2055,13 @@ impl AgentPanel {
             .anchor(Corner::TopRight)
             .with_handle(self.new_thread_menu_handle.clone())
             .menu({
-                let selected_agent = self.selected_agent.clone();
-                let is_agent_selected = move |agent_type: AgentType| selected_agent == agent_type;
-
                 let workspace = self.workspace.clone();
                 let is_via_collab = workspace
                     .update(cx, |workspace, cx| {
                         workspace.project().read(cx).is_via_collab()
                     })
                     .unwrap_or_default();
+                let agent_server_store = new_thread_menu_store.clone();
 
                 move |window, cx| {
                     telemetry::event!("New Thread Clicked");
@@ -2090,6 +2069,7 @@ impl AgentPanel {
                     let active_thread = active_thread.clone();
                     Some(ContextMenu::build(window, cx, |menu, _window, cx| {
                         menu.context(focus_handle.clone())
+                            .header("Zed Agent")
                             .when_some(active_thread, |this, active_thread| {
                                 let thread = active_thread.read(cx);
 
@@ -2113,11 +2093,9 @@ impl AgentPanel {
                                 }
                             })
                             .item(
-                                ContextMenuEntry::new("Zed Agent")
-                                    .when(is_agent_selected(AgentType::NativeAgent) | is_agent_selected(AgentType::TextThread) , |this| {
-                                        this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                    })
-                                    .icon(IconName::ZedAgent)
+                                ContextMenuEntry::new("New Thread")
+                                    .action(NewThread.boxed_clone())
+                                    .icon(IconName::Thread)
                                     .icon_color(Color::Muted)
                                     .handler({
                                         let workspace = workspace.clone();
@@ -2140,155 +2118,28 @@ impl AgentPanel {
                                         }
                                     }),
                             )
-                            .item(
-                                ContextMenuEntry::new("Text Thread")
-                                    .action(NewTextThread.boxed_clone())
-                                    .icon(IconName::TextThread)
-                                    .icon_color(Color::Muted)
-                                    .handler({
-                                        let workspace = workspace.clone();
-                                        move |window, cx| {
-                                            if let Some(workspace) = workspace.upgrade() {
-                                                workspace.update(cx, |workspace, cx| {
-                                                    if let Some(panel) =
-                                                        workspace.panel::<AgentPanel>(cx)
-                                                    {
-                                                        panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::TextThread,
-                                                                window,
-                                                                cx,
-                                                            );
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }),
-                            )
                             .separator()
-                            .header("External Agents")
-                            .item(
-                                ContextMenuEntry::new("Claude Code")
-                                    .when(is_agent_selected(AgentType::ClaudeCode), |this| {
-                                        this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                    })
-                                    .icon(IconName::AiClaude)
-                                    .disabled(is_via_collab)
-                                    .icon_color(Color::Muted)
-                                    .handler({
-                                        let workspace = workspace.clone();
-                                        move |window, cx| {
-                                            if let Some(workspace) = workspace.upgrade() {
-                                                workspace.update(cx, |workspace, cx| {
-                                                    if let Some(panel) =
-                                                        workspace.panel::<AgentPanel>(cx)
-                                                    {
-                                                        panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::ClaudeCode,
-                                                                window,
-                                                                cx,
-                                                            );
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }),
-                            )
-                            .item(
-                                ContextMenuEntry::new("Codex CLI")
-                                    .when(is_agent_selected(AgentType::Codex), |this| {
-                                        this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                    })
-                                    .icon(IconName::AiOpenAi)
-                                    .disabled(is_via_collab)
-                                    .icon_color(Color::Muted)
-                                    .handler({
-                                        let workspace = workspace.clone();
-                                        move |window, cx| {
-                                            if let Some(workspace) = workspace.upgrade() {
-                                                workspace.update(cx, |workspace, cx| {
-                                                    if let Some(panel) =
-                                                        workspace.panel::<AgentPanel>(cx)
-                                                    {
-                                                        panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::Codex,
-                                                                window,
-                                                                cx,
-                                                            );
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }),
-                            )
-                            .item(
-                                ContextMenuEntry::new("Gemini CLI")
-                                    .when(is_agent_selected(AgentType::Gemini), |this| {
-                                        this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                    })
-                                    .icon(IconName::AiGemini)
-                                    .icon_color(Color::Muted)
-                                    .disabled(is_via_collab)
-                                    .handler({
-                                        let workspace = workspace.clone();
-                                        move |window, cx| {
-                                            if let Some(workspace) = workspace.upgrade() {
-                                                workspace.update(cx, |workspace, cx| {
-                                                    if let Some(panel) =
-                                                        workspace.panel::<AgentPanel>(cx)
-                                                    {
-                                                        panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::Gemini,
-                                                                window,
-                                                                cx,
-                                                            );
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }),
-                            )
                             .map(|mut menu| {
-                                let agent_server_store = agent_server_store.read(cx);
-                                let agent_names = agent_server_store
+                                let mut agents = agent_server_store
+                                    .read(cx)
                                     .external_agents()
-                                    .filter(|name| {
-                                        name.0 != GEMINI_NAME
-                                            && name.0 != CLAUDE_CODE_NAME
-                                            && name.0 != CODEX_NAME
-                                    })
                                     .cloned()
                                     .collect::<Vec<_>>();
+                                agents.sort_by(|a, b| a.0.cmp(&b.0));
 
-                                for agent_name in agent_names {
-                                    let icon_path = agent_server_store.agent_icon(&agent_name);
-                                    let display_name = agent_server_store
-                                        .agent_display_name(&agent_name)
-                                        .unwrap_or_else(|| agent_name.0.clone());
+                                for agent_name in agents {
+                                    let icon_path = agent_server_store
+                                        .read(cx)
+                                        .agent_icon(&agent_name)
+                                        .map(|path| path.clone());
 
-                                    let mut entry = ContextMenuEntry::new(display_name);
-
+                                    let mut entry = ContextMenuEntry::new(agent_name.0.clone());
                                     if let Some(icon_path) = icon_path {
                                         entry = entry.custom_icon_svg(icon_path);
                                     } else {
-                                        entry = entry.icon(IconName::Sparkle);
+                                        entry = entry.icon(IconName::Terminal);
                                     }
                                     entry = entry
-                                        .when(
-                                            is_agent_selected(AgentType::Custom {
-                                                name: agent_name.0.clone(),
-                                            }),
-                                            |this| {
-                                                this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                            },
-                                        )
                                         .icon_color(Color::Muted)
                                         .disabled(is_via_collab)
                                         .handler({
@@ -2316,7 +2167,6 @@ impl AgentPanel {
                                                 }
                                             }
                                         });
-
                                     menu = menu.item(entry);
                                 }
 
@@ -2342,80 +2192,95 @@ impl AgentPanel {
                 }
             });
 
-        let is_thread_loading = self
-            .active_thread_view()
-            .map(|thread| thread.read(cx).is_loading())
-            .unwrap_or(false);
+        let end_slot = h_flex()
+            .gap(DynamicSpacing::Base02.rems(cx))
+            .pl(DynamicSpacing::Base04.rems(cx))
+            .pr(DynamicSpacing::Base06.rems(cx))
+            .child(new_thread_menu)
+            .child(self.render_recent_entries_menu(IconName::MenuAltTemp, Corner::TopRight, cx))
+            .child(self.render_panel_options_menu(window, cx));
 
-        let has_custom_icon = selected_agent_custom_icon.is_some();
+        let mut tab_bar = TabBar::new("agent-tab-bar")
+            .track_scroll(&self.tab_bar_scroll_handle)
+            .end_child(end_slot);
 
-        let selected_agent = div()
-            .id("selected_agent_icon")
-            .when_some(selected_agent_custom_icon, |this, icon_path| {
-                this.px_1()
-                    .child(Icon::from_external_svg(icon_path).color(Color::Muted))
-            })
-            .when(!has_custom_icon, |this| {
-                this.when_some(self.selected_agent.icon(), |this, icon| {
-                    this.px_1().child(Icon::new(icon).color(Color::Muted))
-                })
-            })
-            .tooltip(move |_, cx| {
-                Tooltip::with_meta(selected_agent_label.clone(), None, "Selected Agent", cx)
-            });
+        if let Some(overlay_view) = &self.overlay_view {
+            let TabLabelRender {
+                element: overlay_label,
+                ..
+            } = self.render_tab_label(&overlay_view, true, cx);
 
-        let selected_agent = if is_thread_loading {
-            selected_agent
-                .with_animation(
-                    "pulsating-icon",
-                    Animation::new(Duration::from_secs(1))
-                        .repeat()
-                        .with_easing(pulsating_between(0.2, 0.6)),
-                    |icon, delta| icon.opacity(delta),
-                )
-                .into_any_element()
-        } else {
-            selected_agent.into_any_element()
-        };
+            let overlay_title = h_flex()
+                .flex_grow()
+                .h(Tab::content_height(cx))
+                .px(DynamicSpacing::Base04.px(cx))
+                .gap(DynamicSpacing::Base04.rems(cx))
+                .bg(cx.theme().colors().tab_bar_background)
+                .child(self.render_toolbar_back_button(cx).into_any_element())
+                .child(overlay_label)
+                .into_any_element();
 
-        h_flex()
-            .id("agent-panel-toolbar")
-            .h(Tab::container_height(cx))
-            .max_w_full()
-            .flex_none()
-            .justify_between()
-            .gap_2()
-            .bg(cx.theme().colors().tab_bar_background)
-            .border_b_1()
-            .border_color(cx.theme().colors().border)
-            .child(
-                h_flex()
-                    .size_full()
-                    .gap(DynamicSpacing::Base04.rems(cx))
-                    .pl(DynamicSpacing::Base04.rems(cx))
-                    .child(match &self.active_view() {
-                        ActiveView::History | ActiveView::Configuration => {
-                            self.render_toolbar_back_button(cx).into_any_element()
-                        }
-                        _ => selected_agent.into_any_element(),
-                    })
-                    .child(self.render_title_view(window, cx)),
-            )
-            .child(
-                h_flex()
-                    .flex_none()
-                    .gap(DynamicSpacing::Base02.rems(cx))
-                    .pl(DynamicSpacing::Base04.rems(cx))
-                    .pr(DynamicSpacing::Base06.rems(cx))
-                    .child(new_thread_menu)
-                    .child(self.render_recent_entries_menu(
-                        IconName::MenuAltTemp,
-                        Corner::TopRight,
-                        cx,
-                    ))
-                    .child(self.render_panel_options_menu(window, cx)),
-            )
-            .into_any_element()
+            return tab_bar.child(overlay_title).into_any_element();
+        }
+
+        if let Some(overlay_editor) = self.render_overlay_title_editor(cx) {
+            return tab_bar.child(overlay_editor).into_any_element();
+        }
+
+        let active_index = self.active_tab_id;
+        for (index, tab) in self.tabs.iter().enumerate() {
+            let is_active = index == active_index;
+            let position = if index == 0 {
+                TabPosition::First
+            } else if index == self.tabs.len() - 1 {
+                TabPosition::Last
+            } else {
+                let ordering = if index < active_index {
+                    Ordering::Less
+                } else if index > active_index {
+                    Ordering::Greater
+                } else {
+                    Ordering::Equal
+                };
+                TabPosition::Middle(ordering)
+            };
+
+            let TabLabelRender {
+                element: tab_label,
+                tooltip,
+            } = self.render_tab_label(tab.view(), is_active, cx);
+
+            let mut tab_component = Tab::new(("agent-tab", index))
+                .position(position)
+                .close_side(TabCloseSide::End)
+                .toggle_state(is_active)
+                .on_click(cx.listener(move |this: &mut Self, _, window, cx| {
+                    if is_active {
+                        this.focus_title_editor(window, cx);
+                    } else {
+                        this.set_active_tab_by_id(index, window, cx);
+                    }
+                }))
+                .child(tab_label)
+                .start_slot(self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, cx))
+                .end_slot(
+                    IconButton::new(("close-agent-tab", index), IconName::Close)
+                        .shape(IconButtonShape::Square)
+                        .icon_size(IconSize::Small)
+                        .visible_on_hover("")
+                        .on_click(cx.listener(move |this: &mut Self, _, window, cx| {
+                            this.remove_tab_by_id(index, window, cx);
+                        }))
+                        .tooltip(|_window, cx| cx.new(|_| Tooltip::new("Close Thread")).into()),
+                );
+
+            if let Some(tooltip_text) = tooltip {
+                tab_component = tab_component.tooltip(Tooltip::text(tooltip_text));
+            }
+            tab_bar = tab_bar.child(tab_component);
+        }
+
+        tab_bar.into_any_element()
     }
 
     fn should_render_trial_end_upsell(&self, cx: &mut Context<Self>) -> bool {
