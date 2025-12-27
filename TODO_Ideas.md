@@ -1,8 +1,3 @@
-# figure out why latest Zed Dev app crashes in inline assistant?
-
-
-
-
 # >>> Investigations
 
 ## edit predictions: Amp Tab support
