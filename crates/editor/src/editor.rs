@@ -7845,17 +7845,37 @@ impl Editor {
                         if let Some(text) = insertion {
                             let text_to_insert = match granularity {
                                 EditPredictionGranularity::Word => {
-                                    let mut partial = text
-                                        .chars()
-                                        .by_ref()
-                                        .take_while(|c| c.is_alphabetic())
-                                        .collect::<String>();
-                                    if partial.is_empty() {
-                                        partial = text
-                                            .chars()
-                                            .by_ref()
-                                            .take_while(|c| c.is_whitespace() || !c.is_alphabetic())
-                                            .collect::<String>();
+                                    let mut chars = text.chars().peekable();
+                                    let mut partial = String::new();
+                                    while let Some(c) = chars.peek() {
+                                        if c.is_whitespace() {
+                                            partial.push(*c);
+                                            chars.next();
+                                        } else {
+                                            break;
+                                        }
+                                    }
+
+                                    if let Some(c) = chars.peek() {
+                                        if c.is_alphabetic() {
+                                            while let Some(c) = chars.peek() {
+                                                if c.is_alphabetic() {
+                                                    partial.push(*c);
+                                                    chars.next();
+                                                } else {
+                                                    break;
+                                                }
+                                            }
+                                        } else {
+                                            while let Some(c) = chars.peek() {
+                                                if c.is_whitespace() || !c.is_alphabetic() {
+                                                    partial.push(*c);
+                                                    chars.next();
+                                                } else {
+                                                    break;
+                                                }
+                                            }
+                                        }
                                     }
                                     partial
                                 }
