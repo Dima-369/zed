@@ -56,7 +56,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add a button to copy diagnostic messages from the hover popover to the clipboard (from https://github.com/zed-industries/zed/pull/45625)
 - improve `file_finder::Toggle` matching to use substring through `nucleo` crate. I dislike fuzzy matching which is annoying. Based on https://github.com/zed-industries/zed/pull/37123, but that had fuzzy matching
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
-- integrated `search_everywhere::Toggle` from https://github.com/zed-industries/zed/pull/45720
 
 ### Command palette
 
@@ -78,6 +77,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - `editor::CopyAll` to copy entire buffer content to clipboard
 - `editor::CountTokens` which counts the tokens in the current buffer using `o200k_base` via the `tiktoken` crate
 - `editor::StopAllLanguageServers` which stops all language servers. It works like the bottom button in `Language Servers > Stop All Servers`
+- `project_lsp_treesitter_symbol_search::Toggle` based on `search_everywhere::Toggle` from https://github.com/zed-industries/zed/pull/45720. I ripped out everything else except the project search
 - `git::DiffWithCommit` from https://github.com/zed-industries/zed/pull/44467 and based on that code, `git::DiffWithBranch` is implemented
 - `jump::Toggle` from https://github.com/tebben/zed/tree/feature/jump with the following changes:
   - modified key jump hints to my custom Dvorak Programmer keyboard layout
