@@ -1,3 +1,5 @@
+- can ACP threads actually preview command output? running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords
+
 - ACP threads should show token usage
 
 - remove `editor::SearchInCurrentFileViaMultiBuffer`
