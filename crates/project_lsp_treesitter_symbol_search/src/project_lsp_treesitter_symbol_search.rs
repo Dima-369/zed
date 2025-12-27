@@ -166,7 +166,7 @@ impl PickerDelegate for ProjectSymbolSearchDelegate {
     }
 
     fn placeholder_text(&self, _window: &mut Window, _cx: &mut App) -> Arc<str> {
-        "Search project symbols...".into()
+        "Search project symbols via LSP and Tree-sitter...".into()
     }
 
     fn no_matches_text(&self, _window: &mut Window, _cx: &mut App) -> Option<SharedString> {
