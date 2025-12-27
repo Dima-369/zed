@@ -1,5 +1,3 @@
-- increase width of file finder picker
-
 Support external agent history
 https://github.com/zed-industries/zed/pull/45734
 
