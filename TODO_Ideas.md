@@ -1,3 +1,5 @@
+- remove `editor::SearchInCurrentFileViaMultiBuffer`
+
 Support external agent history
 https://github.com/zed-industries/zed/pull/45734
 
