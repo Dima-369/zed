@@ -2,6 +2,7 @@
 
 ## edit predictions: Amp Tab support
 
+BUT I tested while the PR was not done!
 The completions suck hard! Often wants to jump to something off-screen in file and does weird edits.
 https://github.com/zed-industries/zed/pull/45724
 
