@@ -1,3 +1,10 @@
+- try out https://github.com/zed-industries/zed/pull/45724
+edit predictions: Amp Tab support
+
+- try out https://github.com/zed-industries/zed/pull/45720
+Improve Search Everywhere: opt-in actions, JetBrains keybindings, tab switching
+
+
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
