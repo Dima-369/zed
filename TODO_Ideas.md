@@ -1,3 +1,14 @@
+- increase width of file finder picker
+
+Support external agent history
+https://github.com/zed-industries/zed/pull/45734
+
+Concurrent Agent Chat with tabbed threads
+https://github.com/zed-industries/zed/pull/42387
+
+agent: History and recent conversations persistence per workspace 
+https://github.com/zed-industries/zed/pull/41874
+
 # >>> Investigations
 
 ## edit predictions: Amp Tab support
