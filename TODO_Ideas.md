@@ -1,3 +1,5 @@
+- fix inline assist keys not working anymore?
+
 - try out https://github.com/zed-industries/zed/pull/45724
 edit predictions: Amp Tab support
 
