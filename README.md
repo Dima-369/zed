@@ -77,7 +77,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - `editor::CopyAll` to copy entire buffer content to clipboard
 - `editor::CountTokens` which counts the tokens in the current buffer using `o200k_base` via the `tiktoken` crate
 - `editor::StopAllLanguageServers` which stops all language servers. It works like the bottom button in `Language Servers > Stop All Servers`
-- `project_lsp_treesitter_symbol_search::Toggle` based on `search_everywhere::Toggle` from https://github.com/zed-industries/zed/pull/45720. I ripped out everything else except the project search
+- `project_lsp_treesitter_symbol_search::Toggle` based on `search_everywhere::Toggle` from https://github.com/zed-industries/zed/pull/45720. I ripped out everything else except the symbol search. The reason this is better than the built-in `project_symbols::Toggle` is that it uses both Tree-sitter and LSP with indexing which is faster and more reliable.
 - `git::DiffWithCommit` from https://github.com/zed-industries/zed/pull/44467 and based on that code, `git::DiffWithBranch` is implemented
 - `jump::Toggle` from https://github.com/tebben/zed/tree/feature/jump with the following changes:
   - modified key jump hints to my custom Dvorak Programmer keyboard layout

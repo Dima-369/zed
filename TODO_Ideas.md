@@ -1,30 +1,11 @@
+# can markdown headings not be in bold?
+
 # figure out why latest Zed Dev app crashes in inline assistant?
 
-# remove webrtc-sys code fully?
+# improve project_lsp_treesitter_symbol_search.rs
 
-Summary of crates that depend on webrtc-sys:
-
-  The dependency chain is as follows:
-   1. webrtc-sys is a dependency of libwebrtc (as seen in Cargo.lock)
-   2. libwebrtc is used by the following crates when the webrtc feature is enabled:
-      - crates/audio/Cargo.toml - has libwebrtc = { ..., optional = true }
-      - crates/livekit_client/Cargo.toml - has libwebrtc = { ..., optional = true }
-
-# Improve Search Everywhere: opt-in actions, JetBrains keybindings, tab switching
-
-there is the search everywhere functionality, but it does way too much.
-only extract the project symbol search, rename the crate to `project_lsp_treesitter_symbol_search`, since it uses both
-so remove the tabs at top, and have only one action to open that symbol search. remove all the other code for the other tabs
-
-- can you adjust the search everywhere action to have an optional parameter, so the initial tab can be specified
-like in my own keybinding
-"cmd-w": ["...", { "tab": "symbols" }],
-
-try out https://github.com/zed-industries/zed/pull/45720
-
-and with https://github.com/zed-industries/zed/pull/45719 (Extract SymbolIndex to project crate for Tree-sitter based symbol search)
-does this allow for project wide symbol search like in intellij?
-
+it should highlight matched strings just like `file_finder::Toggle`
+currently, there is no highlighting at all
 
 
 # >>> Investigations
