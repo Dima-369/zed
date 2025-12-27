@@ -1,9 +1,23 @@
-- figure out why latest Zed Dev app crashes in inline assistant?
+# figure out why latest Zed Dev app crashes in inline assistant?
 
-- try out https://github.com/zed-industries/zed/pull/45720
-Improve Search Everywhere: opt-in actions, JetBrains keybindings, tab switching
+# remove webrtc-sys code fully?
+
+Summary of crates that depend on webrtc-sys:
+
+  The dependency chain is as follows:
+   1. webrtc-sys is a dependency of libwebrtc (as seen in Cargo.lock)
+   2. libwebrtc is used by the following crates when the webrtc feature is enabled:
+      - crates/audio/Cargo.toml - has libwebrtc = { ..., optional = true }
+      - crates/livekit_client/Cargo.toml - has libwebrtc = { ..., optional = true }
+
+# Improve Search Everywhere: opt-in actions, JetBrains keybindings, tab switching
+
+try out https://github.com/zed-industries/zed/pull/45720
+
 and with https://github.com/zed-industries/zed/pull/45719 (Extract SymbolIndex to project crate for Tree-sitter based symbol search)
 does this allow for project wide symbol search like in intellij?
+
+
 
 # >>> Investigations
 
