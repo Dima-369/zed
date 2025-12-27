@@ -118,6 +118,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - lower excessive tab height
 - lower status bar height, see `impl Render for StatusBar`
 - add scrollbar to `outline::Toggle`, `file_finder::Toggle` and `command_palette::Toggle` (why is it not shown in the first place?)
+- `file_finder > modal_max_width=full` does not take full width anymore because it looks weird, but subtracts 128 pixels
 - implement vertical tabs which go to next rows without scrollbars. Enable in `settings.json` with:
 
 ```json
