@@ -1,3 +1,6 @@
+- improve `editor::AcceptNextWordEditPrediction` when it suggests ` foo bar`
+meaning when the completion next character is space, when I trigger that action, it always inserts the space ONLY, then I have to invoke the action again to actually insert the word. can that be improved, so the word after space is inserted automatically?
+
 # can markdown headings not be in bold?
 
 # figure out why latest Zed Dev app crashes in inline assistant?
