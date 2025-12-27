@@ -1,14 +1,6 @@
-- improve `editor::AcceptNextWordEditPrediction` when it suggests ` foo bar`
-meaning when the completion next character is space, when I trigger that action, it always inserts the space ONLY, then I have to invoke the action again to actually insert the word. can that be improved, so the word after space is inserted automatically?
-
-# can markdown headings not be in bold?
-
 # figure out why latest Zed Dev app crashes in inline assistant?
 
-# improve project_lsp_treesitter_symbol_search.rs
 
-it should highlight matched strings just like `file_finder::Toggle`
-currently, there is no highlighting at all
 
 
 # >>> Investigations
