@@ -56,6 +56,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add a button to copy diagnostic messages from the hover popover to the clipboard (from https://github.com/zed-industries/zed/pull/45625)
 - improve `file_finder::Toggle` matching to use substring through `nucleo` crate. I dislike fuzzy matching which is annoying. Based on https://github.com/zed-industries/zed/pull/37123, but that had fuzzy matching
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
+- integrated `search_everywhere::Toggle` from https://github.com/zed-industries/zed/pull/45720
 
 ### Command palette
 

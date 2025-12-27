@@ -12,6 +12,10 @@ Summary of crates that depend on webrtc-sys:
 
 # Improve Search Everywhere: opt-in actions, JetBrains keybindings, tab switching
 
+- can you adjust the search everywhere action to have an optional parameter, so the initial tab can be specified
+like in my own keybinding
+"cmd-w": ["...", { "tab": "symbols" }],
+
 try out https://github.com/zed-industries/zed/pull/45720
 
 and with https://github.com/zed-industries/zed/pull/45719 (Extract SymbolIndex to project crate for Tree-sitter based symbol search)
