@@ -13,7 +13,7 @@ use language::ToPoint;
 use picker::{Picker, PickerDelegate};
 use providers::SearchResult;
 use symbols::SymbolProvider;
-use ui::{Divider, IconName, ListItem, ListItemSpacing, prelude::*};
+use ui::{Divider, HighlightedLabel, IconName, ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
 use workspace::{ModalView, Workspace};
 
@@ -358,7 +358,32 @@ impl PickerDelegate for ProjectSymbolSearchDelegate {
         let search_match = self.matches.get(ix)?;
         let result = &search_match.result;
 
+        let highlights = search_match.string_match.positions.clone();
         let icon = IconName::Code;
+
+        let (label_element, detail_element) = if result.document_symbol.is_some() {
+            // Outline: Matched on `name` (label). Detail is `path` (no match).
+            (
+                HighlightedLabel::new(result.label.clone(), highlights).into_any_element(),
+                result.detail.as_ref().map(|detail| {
+                    Label::new(detail.clone())
+                        .size(LabelSize::Small)
+                        .color(Color::Muted)
+                        .into_any_element()
+                }),
+            )
+        } else {
+            // Workspace: Matched on `filter_text` (detail). Label is `text` (no match).
+            (
+                Label::new(result.label.clone()).into_any_element(),
+                result.detail.as_ref().map(|detail| {
+                    HighlightedLabel::new(detail.clone(), highlights)
+                        .size(LabelSize::Small)
+                        .color(Color::Muted)
+                        .into_any_element()
+                }),
+            )
+        };
 
         Some(
             ListItem::new(ix)
@@ -369,14 +394,8 @@ impl PickerDelegate for ProjectSymbolSearchDelegate {
                 .child(
                     h_flex()
                         .gap_2()
-                        .child(Label::new(result.label.clone()))
-                        .when_some(result.detail.clone(), |this, detail| {
-                            this.child(
-                                Label::new(detail)
-                                    .size(LabelSize::Small)
-                                    .color(Color::Muted),
-                            )
-                        }),
+                        .child(label_element)
+                        .children(detail_element),
                 ),
         )
     }
