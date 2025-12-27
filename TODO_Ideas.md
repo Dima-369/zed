@@ -3,6 +3,7 @@ https://github.com/zed-industries/zed/pull/45734
 
 Concurrent Agent Chat with tabbed threads
 https://github.com/zed-industries/zed/pull/42387
+https://github.com/zed-industries/zed/pull/42387#issuecomment-3522431903 (has animating tab title?)
 
 agent: History and recent conversations persistence per workspace 
 https://github.com/zed-industries/zed/pull/41874
