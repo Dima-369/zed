@@ -74,9 +74,9 @@ use ui::{
     Window, div, h_flex, px, rems_from_px, v_flex,
 };
 use ui::{ButtonCommon, Clickable, LabelCommon, ProgressBar, Icon};
-use gpui::{Div, KeyBinding};
+use gpui::{Div};
 use theme::ActiveTheme;
-use ui::{IconButtonShape, utils::WithRemSize};
+use ui::{KeyBinding, IconButtonShape, utils::WithRemSize};
 use util::ResultExt as _;
 use workspace::{
     CollaboratorId, DraggedSelection, DraggedTab, ToggleZoom, ToolbarItemView, Workspace,
@@ -1242,7 +1242,7 @@ impl AgentPanel {
         let context_server_store = self.project.read(cx).context_server_store();
         let fs = self.fs.clone();
 
-        self.set_active_view(ActiveView::Configuration, true, window, cx);
+        self.set_tab_overlay_view(ActiveView::Configuration, window, cx);
         self.configuration = Some(cx.new(|cx| {
             AgentConfiguration::new(
                 fs,
@@ -1277,7 +1277,7 @@ impl AgentPanel {
             return;
         };
 
-        match &self.active_view {
+        match &self.active_view() {
             ActiveView::ExternalAgentThread { thread_view } => {
                 thread_view
                     .update(cx, |thread_view, cx| {
@@ -1330,7 +1330,7 @@ impl AgentPanel {
     }
 
     pub(crate) fn active_agent_thread(&self, cx: &App) -> Option<Entity<AcpThread>> {
-        match &self.active_view {
+        match &self.active_view() {
             ActiveView::ExternalAgentThread { thread_view, .. } => {
                 thread_view.read(cx).thread().cloned()
             }
@@ -1339,7 +1339,7 @@ impl AgentPanel {
     }
 
     pub(crate) fn active_native_agent_thread(&self, cx: &App) -> Option<Entity<agent::Thread>> {
-        match &self.active_view {
+        match &self.active_view() {
             ActiveView::ExternalAgentThread { thread_view, .. } => {
                 thread_view.read(cx).as_native_thread(cx)
             }
@@ -1348,7 +1348,7 @@ impl AgentPanel {
     }
 
     pub(crate) fn active_text_thread_editor(&self) -> Option<Entity<TextThreadEditor>> {
-        match &self.active_view {
+        match &self.active_view() {
             ActiveView::TextThread {
                 text_thread_editor, ..
             } => Some(text_thread_editor.clone()),
@@ -1528,7 +1528,7 @@ impl AgentPanel {
     ) {
         let selected_agent = AgentType::from(ext_agent);
         if self.selected_agent != selected_agent {
-            self.selected_agent = selected_agent;
+            self.selected_agent = selected_agent.clone();
             self.serialize(cx);
         }
 
@@ -1547,9 +1547,9 @@ impl AgentPanel {
             )
         });
 
-        self.set_active_view(
+        self.push_tab(
             ActiveView::ExternalAgentThread { thread_view },
-            !loading,
+            selected_agent,
             window,
             cx,
         );
@@ -1668,7 +1668,7 @@ impl AgentPanel {
         let tab = self.tabs.get(tab_id)?;
         let content = match tab.view() {
             ActiveView::ExternalAgentThread { thread_view } => {
-                let is_generating_title = thread_view
+                let _is_generating_title = thread_view
                     .read(cx)
                     .as_native_thread(cx)
                     .map_or(false, |t| t.read(cx).is_generating_title());
@@ -1818,13 +1818,13 @@ impl AgentPanel {
 
         let selected_agent = self.selected_agent.clone();
 
-        let text_thread_view = match &self.active_view {
+        let text_thread_view = match &self.active_view() {
             ActiveView::TextThread {
                 text_thread_editor, ..
             } => Some(text_thread_editor.clone()),
             _ => None,
         };
-        let text_thread_with_messages = match &self.active_view {
+        let text_thread_with_messages = match &self.active_view() {
             ActiveView::TextThread {
                 text_thread_editor, ..
             } => text_thread_editor
@@ -1836,11 +1836,11 @@ impl AgentPanel {
             _ => false,
         };
 
-        let thread_view = match &self.active_view {
+        let thread_view = match &self.active_view() {
             ActiveView::ExternalAgentThread { thread_view } => Some(thread_view.clone()),
             _ => None,
         };
-        let thread_with_messages = match &self.active_view {
+        let thread_with_messages = match &self.active_view() {
             ActiveView::ExternalAgentThread { thread_view } => {
                 thread_view.read(cx).has_user_submitted_prompt(cx)
             }
@@ -2024,6 +2024,14 @@ impl AgentPanel {
             })
     }
 
+    fn render_title_view(&self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        match self.active_view() {
+            ActiveView::History => Label::new("History").size(LabelSize::Small),
+            ActiveView::Configuration => Label::new("Configuration").size(LabelSize::Small),
+            _ => Label::new(self.selected_agent.label()).size(LabelSize::Small),
+        }
+    }
+
     fn render_tab_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let agent_server_store = self.project.read(cx).agent_server_store().clone();
         let focus_handle = self.focus_handle(cx);
@@ -2041,7 +2049,7 @@ impl AgentPanel {
                 (None, self.selected_agent.label())
             };
 
-        let active_thread = match &self.active_view {
+        let active_thread = match &self.active_view() {
             ActiveView::ExternalAgentThread { thread_view } => {
                 thread_view.read(cx).as_native_thread(cx)
             }
@@ -2385,7 +2393,7 @@ impl AgentPanel {
                     .size_full()
                     .gap(DynamicSpacing::Base04.rems(cx))
                     .pl(DynamicSpacing::Base04.rems(cx))
-                    .child(match &self.active_view {
+                    .child(match &self.active_view() {
                         ActiveView::History | ActiveView::Configuration => {
                             self.render_toolbar_back_button(cx).into_any_element()
                         }
@@ -2407,6 +2415,7 @@ impl AgentPanel {
                     ))
                     .child(self.render_panel_options_menu(window, cx)),
             )
+            .into_any_element()
     }
 
     fn should_render_trial_end_upsell(&self, cx: &mut Context<Self>) -> bool {
@@ -2414,7 +2423,7 @@ impl AgentPanel {
             return false;
         }
 
-        match &self.active_view {
+        match &self.active_view() {
             ActiveView::TextThread { .. } => {
                 if LanguageModelRegistry::global(cx)
                     .read(cx)
@@ -2459,7 +2468,7 @@ impl AgentPanel {
             return false;
         }
 
-        match &self.active_view {
+        match &self.active_view() {
             ActiveView::History | ActiveView::Configuration => false,
             ActiveView::ExternalAgentThread { thread_view, .. }
                 if thread_view.read(cx).as_native_thread(cx).is_none() =>
@@ -2491,7 +2500,7 @@ impl AgentPanel {
             return None;
         }
 
-        let text_thread_view = matches!(&self.active_view, ActiveView::TextThread { .. });
+        let text_thread_view = matches!(&self.active_view(), ActiveView::TextThread { .. });
 
         Some(
             div()
@@ -2589,7 +2598,7 @@ impl AgentPanel {
                         .style(ButtonStyle::Tinted(ui::TintColor::Warning))
                         .label_size(LabelSize::Small)
                         .key_binding(
-                            KeyBinding::for_action_in(&OpenSettings, focus_handle, cx)
+                            KeyBinding::for_action_in(&OpenSettings, &focus_handle, cx)
                                 .map(|kb| kb.size(rems_from_px(12.))),
                         )
                         .on_click(|_event, window, cx| {
@@ -2613,7 +2622,7 @@ impl AgentPanel {
         cx: &mut Context<Self>,
     ) -> Div {
         let mut registrar = buffer_search::DivRegistrar::new(
-            |this, _, _cx| match &this.active_view {
+            |this, _, _cx| match &this.active_view() {
                 ActiveView::TextThread {
                     buffer_search_bar, ..
                 } => Some(buffer_search_bar.clone()),
@@ -2711,7 +2720,7 @@ impl AgentPanel {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        match &self.active_view {
+        match &self.active_view() {
             ActiveView::ExternalAgentThread { thread_view } => {
                 thread_view.update(cx, |thread_view, cx| {
                     thread_view.insert_dragged_files(paths, added_worktrees, window, cx);
@@ -2769,7 +2778,7 @@ impl AgentPanel {
     fn key_context(&self) -> KeyContext {
         let mut key_context = KeyContext::new_with_defaults();
         key_context.add("AgentPanel");
-        match &self.active_view {
+        match &self.active_view() {
             ActiveView::ExternalAgentThread { .. } => key_context.add("acp_thread"),
             ActiveView::TextThread { .. } => key_context.add("text_thread"),
             ActiveView::History | ActiveView::Configuration => {}
