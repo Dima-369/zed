@@ -1,3 +1,5 @@
+- ACP threads should show token usage
+
 - remove `editor::SearchInCurrentFileViaMultiBuffer`
 
 Support external agent history
