@@ -57,6 +57,10 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
 
+## Zed CLI
+
+- added `--stdin-cursor-at-end` flag to CLI to position cursor at end of buffer when reading from stdin instead of at start which is useful for reading terminal scrollback buffers
+
 ## Agent UI changes
 
 - add agent tabs from https://github.com/wzulfikar/zed/pull/8
