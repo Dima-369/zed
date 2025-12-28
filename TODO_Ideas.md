@@ -1,3 +1,5 @@
+- adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
+
 - fix cmd-w behavior in agent panel
 
 - can ACP allow all edits be enabled by default?
