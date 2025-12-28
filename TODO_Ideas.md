@@ -12,9 +12,6 @@
 
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? I think an array of regexes in settings would be great
 
-TEST from AI
-- in agent::OpenActiveThreadAsMarkdown it shows the buffer as unsaved, can you check how workspace::NewFileFromClipboard circumvents it?
-
 # Support external agent history
 
 https://github.com/zed-industries/zed/pull/45734
