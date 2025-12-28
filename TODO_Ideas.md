@@ -1,19 +1,16 @@
 - can ACP threads actually preview command output? running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords
 
-- ACP threads should show token usage
 - can ACP allow all edits be enabled by default?
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
 
 - remove `editor::SearchInCurrentFileViaMultiBuffer`
 
-Support external agent history
+# Support external agent history
+
 https://github.com/zed-industries/zed/pull/45734
 
-Concurrent Agent Chat with tabbed threads
-https://github.com/zed-industries/zed/pull/42387
-https://github.com/zed-industries/zed/pull/42387#issuecomment-3522431903 (has animating tab title?)
+# agent: History and recent conversations persistence per workspace 
 
-agent: History and recent conversations persistence per workspace 
 https://github.com/zed-industries/zed/pull/41874
 
 
