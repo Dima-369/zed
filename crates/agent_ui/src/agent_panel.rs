@@ -11,7 +11,7 @@ use agent_servers::AgentServer;
 use db::kvp::{Dismissable, KEY_VALUE_STORE};
 use project::{
     ExternalAgentServerName,
-    agent_server_store::{AgentServerStore, GEMINI_NAME, CLAUDE_CODE_NAME, CODEX_NAME},
+    agent_server_store::{AgentServerStore, CLAUDE_CODE_NAME, CODEX_NAME, GEMINI_NAME},
 };
 use serde::{Deserialize, Serialize};
 use settings::{
@@ -23,10 +23,10 @@ use zed_actions::agent::{OpenClaudeCodeOnboardingModal, ReauthenticateAgent};
 use crate::agent_panel_tab::{AgentPanelTab, AgentPanelTabIdentity, TabId, TabLabelRender};
 use crate::ui::{AcpOnboardingModal, ClaudeCodeOnboardingModal};
 use crate::{
-    AddContextServer, AgentDiffPane, CloseActiveThreadTab, Follow,
-    InlineAssistant, ManageProfiles, NewTextThread, NewThread, OpenActiveThreadAsMarkdown,
-    OpenAgentDiff, OpenHistory, ResetTrialEndUpsell, ResetTrialUpsell, ToggleNavigationMenu,
-    ToggleNewThreadMenu, ToggleOptionsMenu,
+    AddContextServer, AgentDiffPane, CloseActiveThreadTab, Follow, InlineAssistant, ManageProfiles,
+    NewTextThread, NewThread, OpenActiveThreadAsMarkdown, OpenAgentDiff, OpenHistory,
+    ResetTrialEndUpsell, ResetTrialUpsell, ToggleNavigationMenu, ToggleNewThreadMenu,
+    ToggleOptionsMenu,
     acp::AcpThreadView,
     agent_configuration::{AgentConfiguration, AssistantConfigurationEvent},
     slash_command::SlashCommandCompletionProvider,
@@ -88,7 +88,6 @@ use zed_actions::{
 
 const AGENT_PANEL_KEY: &str = "agent_panel";
 const LOADING_SUMMARY_PLACEHOLDER: &str = "Loading Summary…";
-
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SerializedAgentPanel {
