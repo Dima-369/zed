@@ -10,6 +10,12 @@
 
 - in ACP threads, add a new action `agent::TogglePlan` which toggling showing the plan of the current thread. Currently, I always need to mouse click it
 
+start like this:
+
+in `crates/agent_ui/src/agent_ui.rs`:
+        /// Toggles the plan of the current thread.
+        TogglePlan,
+
 # Support external agent history
 
 https://github.com/zed-industries/zed/pull/45734
