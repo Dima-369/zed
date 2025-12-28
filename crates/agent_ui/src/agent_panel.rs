@@ -3,7 +3,6 @@ use std::ops::Range;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::Duration;
 
 use acp_thread::{AcpThread, ThreadStatus};
 use agent::{ContextServerRegistry, DbThreadMetadata, HistoryEntry, HistoryStore};
@@ -51,9 +50,9 @@ use extension_host::ExtensionStore;
 use fs::Fs;
 use gpui::Div;
 use gpui::{
-    Action, Animation, AnimationExt, AnyElement, App, AsyncWindowContext, Corner, DismissEvent,
+    Action, AnyElement, App, AsyncWindowContext, Corner, DismissEvent,
     Entity, EventEmitter, ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels, ScrollHandle,
-    SharedString, Subscription, Task, UpdateGlobal, WeakEntity, prelude::*, pulsating_between,
+    SharedString, Subscription, Task, UpdateGlobal, WeakEntity, prelude::*,
 };
 use language::LanguageRegistry;
 use language_model::{ConfigurationError, LanguageModelRegistry};
@@ -66,7 +65,7 @@ use settings::{Settings, update_settings_file};
 use theme::ActiveTheme;
 use theme::ThemeSettings;
 use ui::{
-    Button, ButtonSize, ButtonStyle, Callout, Color, ContextMenu, ContextMenuEntry, DynamicSpacing,
+    Button, ButtonSize, ButtonStyle, Callout, Color, CommonAnimationExt, ContextMenu, ContextMenuEntry, DynamicSpacing,
     IconButton, IconName, IconSize, Indicator, Label, LabelSize, PopoverMenu, PopoverMenuHandle,
     Severity, Tab, TabBar, TabCloseSide, TabPosition, Toggleable, Tooltip, VisibleOnHover, Window,
     div, h_flex, px, rems_from_px, v_flex,
@@ -1711,13 +1710,6 @@ impl AgentPanel {
                             Label::new(LOADING_SUMMARY_PLACEHOLDER)
                                 .truncate()
                                 .color(Color::Muted)
-                                .with_animation(
-                                    "generating_title",
-                                    Animation::new(Duration::from_secs(2))
-                                        .repeat()
-                                        .with_easing(pulsating_between(0.4, 0.8)),
-                                    |label, delta| label.alpha(delta),
-                                )
                                 .into_any_element()
                         }
                     }
@@ -2378,8 +2370,10 @@ impl AgentPanel {
                 tooltip,
             } = self.render_tab_label(tab.view(), is_active, cx);
 
+            let is_generating = self.is_tab_generating(tab.view(), cx);
+
             let indicator = self.render_agent_tab_indicator(index, tab, cx);
-            let agent_icon_element = self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, cx);
+            let agent_icon_element = self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, is_generating, cx);
             let tab_component = Tab::new(("agent-tab", index))
                 .position(position)
                 .close_side(TabCloseSide::End)
@@ -3166,14 +3160,7 @@ impl AgentPanel {
                     Label::new(label_text)
                         .truncate()
                         .when(!is_active, |label| label.color(Color::Muted))
-                        .color(Color::Accent)
-                        .with_animation(
-                            "pulsating-tab-label",
-                            Animation::new(Duration::from_secs(2))
-                                .repeat()
-                                .with_easing(pulsating_between(0.4, 0.8)),
-                            |label, delta| label.alpha(delta),
-                        )
+                        .when(is_active, |label| label.color(Color::Default))
                         .into_any_element()
                 } else {
                     Label::new(label_text)
@@ -3208,14 +3195,7 @@ impl AgentPanel {
                             Label::new(TextThreadSummary::DEFAULT)
                                 .truncate()
                                 .when(!is_active, |label| label.color(Color::Muted))
-                                .color(Color::Accent)
-                                .with_animation(
-                                    "pulsating-tab-label",
-                                    Animation::new(Duration::from_secs(2))
-                                        .repeat()
-                                        .with_easing(pulsating_between(0.4, 0.8)),
-                                    |label, delta| label.alpha(delta),
-                                )
+                                .when(is_active, |label| label.color(Color::Default))
                                 .into_any_element()
                         } else {
                             Label::new(TextThreadSummary::DEFAULT)
@@ -3242,14 +3222,7 @@ impl AgentPanel {
                                 Label::new(label_text)
                                     .truncate()
                                     .when(!is_active, |label| label.color(Color::Muted))
-                                    .color(Color::Accent)
-                                    .with_animation(
-                                        "pulsating-tab-label",
-                                        Animation::new(Duration::from_secs(2))
-                                            .repeat()
-                                            .with_easing(pulsating_between(0.4, 0.8)),
-                                        |label, delta| label.alpha(delta),
-                                    )
+                                    .when(is_active, |label| label.color(Color::Default))
                                     .into_any_element()
                             } else {
                                 Label::new(label_text)
@@ -3281,13 +3254,7 @@ impl AgentPanel {
                             Label::new(label_text)
                                 .truncate()
                                 .when(!is_active, |label| label.color(Color::Muted))
-                                .with_animation(
-                                    "pulsating-tab-label",
-                                    Animation::new(Duration::from_secs(2))
-                                        .repeat()
-                                        .with_easing(pulsating_between(0.4, 0.8)),
-                                    |label, delta| label.alpha(delta),
-                                )
+                                .when(is_active, |label| label.color(Color::Default))
                                 .into_any_element()
                         } else {
                             Label::new(label_text)
@@ -3314,11 +3281,36 @@ impl AgentPanel {
         }
     }
 
+    fn is_tab_generating(&self, view: &ActiveView, cx: &App) -> bool {
+        match view {
+            ActiveView::ExternalAgentThread { thread_view } => {
+                thread_view
+                    .read(cx)
+                    .thread()
+                    .map(|thread| thread.read(cx).status() == ThreadStatus::Generating)
+                    .unwrap_or(false)
+            }
+            ActiveView::TextThread {
+                text_thread_editor,
+                ..
+            } => {
+                text_thread_editor
+                    .read(cx)
+                    .text_thread()
+                    .read(cx)
+                    .messages(cx)
+                    .any(|message| message.status == assistant_text_thread::MessageStatus::Pending)
+            }
+            ActiveView::History | ActiveView::Configuration => false,
+        }
+    }
+
     fn render_tab_agent_icon(
         &self,
         index: usize,
         agent: &AgentType,
         agent_server_store: &Entity<AgentServerStore>,
+        is_generating: bool,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let agent_label = agent.label();
@@ -3332,25 +3324,32 @@ impl AgentPanel {
         };
 
         let has_custom_icon = agent_custom_icon.is_some();
+
+        let icon_element = if has_custom_icon {
+            Icon::from_path(agent_custom_icon.unwrap()).color(Color::Muted)
+        } else if let Some(icon) = agent.icon() {
+            Icon::new(icon).color(Color::Muted)
+        } else {
+            // Default to AI icon for native agent
+            Icon::new(IconName::Ai).color(Color::Muted)
+        };
+
+        // Apply rotation animation when generating
+        let icon_element = if is_generating {
+            Icon::new(IconName::LoadCircle)
+                .color(Color::Default)
+                .with_rotate_animation(2)
+                .into_any_element()
+        } else {
+            icon_element.into_any_element()
+        };
+
         div()
             .id(("agent-tab-agent-icon", index))
-            .when_some(agent_custom_icon, |this, icon_path| {
-                let label = agent_label.clone();
-                this.px(DynamicSpacing::Base02.rems(cx))
-                    .child(Icon::from_path(icon_path).color(Color::Muted))
-                    .tooltip(move |_window, cx| {
-                        Tooltip::with_meta(label.clone(), None, tooltip_title, cx)
-                    })
-            })
-            .when(!has_custom_icon, |this| {
-                this.when_some(agent.icon(), |this, icon| {
-                    let label = agent_label.clone();
-                    this.px(DynamicSpacing::Base02.rems(cx))
-                        .child(Icon::new(icon).color(Color::Muted))
-                        .tooltip(move |_window, cx| {
-                            Tooltip::with_meta(label.clone(), None, tooltip_title, cx)
-                        })
-                })
+            .px(DynamicSpacing::Base02.rems(cx))
+            .child(icon_element)
+            .tooltip(move |_window, cx| {
+                Tooltip::with_meta(agent_label.clone(), None, tooltip_title, cx)
             })
             .into_any_element()
     }

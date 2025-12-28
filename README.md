@@ -64,6 +64,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ## Agent UI changes
 
 - add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
+  - I removed the opacity animation for the tabs and instead rotate a circle like Windsurf
 - estimate tokens for ACP agents, or displays its token info when it provides it
 - added `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
 - added `agent::DismissErrorNotification` and `agent::CopyErrorNotification`
