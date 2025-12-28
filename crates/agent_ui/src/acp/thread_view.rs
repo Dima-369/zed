@@ -4970,7 +4970,7 @@ impl AcpThreadView {
 
         let project = workspace.read(cx).project().clone();
         window.spawn(cx, async move |cx| {
-            let language = if markdown.lines().count() < 20000 {
+            let language = if markdown.lines().count() < 90_000 {
                 markdown_language_task.await?
             } else {
                 plain_text_language_task.await?

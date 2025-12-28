@@ -61,7 +61,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - add agent tabs from https://github.com/wzulfikar/zed/pull/8
 - added `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
-- changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the code for opening as plain text is still untested since I do not use agents inside Zed anymore, and just use CLI)
+- changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
 
 ### Command palette
 
