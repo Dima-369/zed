@@ -13,9 +13,6 @@
 
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication in real-time. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
 
-- implement `agent::CloseActiveThreadTabOrDock` for ACP threads, see `agent::CloseActiveThreadTab`
-it behaves the same except when there is only one tab, then it closes the dock
-
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? 
 first investigate without changing code how it currently works and where it stores the info when I click "Allow always"
 I think an array of regexes in settings would be great
