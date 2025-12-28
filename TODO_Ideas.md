@@ -1,7 +1,3 @@
-- remove `editor::SearchInCurrentFileViaMultiBuffer`
-
-- fix cmd-s in terminal when already having stuff selected
-
 - unify text thread and agent editor keybindings around enter and cmd-enter, also think about vim_mode insert and normal
 
 ## insert mode: enter: submit
