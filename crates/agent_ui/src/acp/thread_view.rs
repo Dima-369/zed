@@ -69,6 +69,7 @@ use crate::{
     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, ContinueThread, ContinueWithBurnMode,
     CycleFavoriteModels, CycleModeSelector, ExpandMessageEditor, Follow, KeepAll, NewThread,
     OpenAgentDiff, OpenHistory, RejectAll, RejectOnce, ToggleBurnMode, TogglePlan, ToggleProfileSelector,
+    DismissErrorNotification, CopyErrorNotification,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -4542,6 +4543,34 @@ impl AcpThreadView {
         cx.notify();
     }
 
+    fn dismiss_error_notification(
+        &mut self,
+        _: &DismissErrorNotification,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.clear_thread_error(cx);
+    }
+
+    fn copy_error_notification(
+        &mut self,
+        _: &CopyErrorNotification,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(error) = &self.thread_error {
+            let error_message = match error {
+                ThreadError::PaymentRequired => "Free tier exceeded. Subscribe and add payment to continue using Zed LLMs. You'll be billed at cost for tokens used.".to_string(),
+                ThreadError::ModelRequestLimitReached(_) => "Model request limit reached. Please try again later.".to_string(),
+                ThreadError::ToolUseLimitReached => "Tool use limit reached. Please try again later.".to_string(),
+                ThreadError::Refusal => "Request was refused by the model.".to_string(),
+                ThreadError::AuthenticationRequired(msg) => format!("Authentication required: {}", msg),
+                ThreadError::Other(msg) => msg.to_string(),
+            };
+            cx.write_to_clipboard(ClipboardItem::new_string(error_message));
+        }
+    }
+
     fn keep_all(&mut self, _: &KeepAll, _window: &mut Window, cx: &mut Context<Self>) {
         let Some(thread) = self.thread() else {
             return;
@@ -6118,6 +6147,8 @@ impl Render for AcpThreadView {
             .key_context("AcpThread")
             .on_action(cx.listener(Self::toggle_burn_mode))
             .on_action(cx.listener(Self::toggle_plan))
+            .on_action(cx.listener(Self::dismiss_error_notification))
+            .on_action(cx.listener(Self::copy_error_notification))
             .on_action(cx.listener(Self::keep_all))
             .on_action(cx.listener(Self::reject_all))
             .on_action(cx.listener(Self::allow_always))

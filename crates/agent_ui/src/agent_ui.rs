@@ -133,6 +133,10 @@ actions!(
         ActivateNextTab,
         /// Activates the previous tab in the agent panel.
         ActivatePreviousTab,
+        /// Dismisses the error notification in the agent panel.
+        DismissErrorNotification,
+        /// Copies the error notification content to the clipboard in the agent panel.
+        CopyErrorNotification,
     ]
 );
 
