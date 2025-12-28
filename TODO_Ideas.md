@@ -1,11 +1,14 @@
-- can ACP threads actually preview command output? maybe just last 20 lines. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords
+- remove `editor::SearchInCurrentFileViaMultiBuffer`
 
-- can ACP allow all edits be enabled by default? It keeps asking me every single time when I launch ACP, or is there a setting for it?
+# ACP
+
+- can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
+
+- can ACP threads allow all edits be enabled by default? It keeps asking me every single time for "Allow all edits" when I launch ACP, or is there a setting for it?
+
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
 
 - in ACP threads, add a new action `agent::TogglePlan` which toggling showing the plan of the current thread
-
-- remove `editor::SearchInCurrentFileViaMultiBuffer`
 
 # Support external agent history
 
@@ -18,7 +21,7 @@ https://github.com/zed-industries/zed/pull/41874
 
 # adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
 
-- test out terminal integration via `zed - --stdin-cursor-at-end` for terminal scrollback buffer once Zed Dev is updated
+- test out terminal integration via `zed - --stdin-cursor-at-end` for terminal scrollback buffer once Zed Dev is compiled
 
 
 
