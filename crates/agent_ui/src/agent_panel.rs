@@ -11,7 +11,7 @@ use agent_servers::AgentServer;
 use db::kvp::{Dismissable, KEY_VALUE_STORE};
 use project::{
     ExternalAgentServerName,
-    agent_server_store::AgentServerStore,
+    agent_server_store::{AgentServerStore, GEMINI_NAME, CLAUDE_CODE_NAME, CODEX_NAME},
 };
 use serde::{Deserialize, Serialize};
 use settings::{
@@ -2034,7 +2034,7 @@ impl AgentPanel {
             ActiveView::TextThread { .. } | ActiveView::History | ActiveView::Configuration => None,
         };
 
-        let new_thread_menu_store = agent_server_store.clone();
+        let agent_server_store_for_menu = agent_server_store.clone();
         let new_thread_menu = PopoverMenu::new("new_thread_menu")
             .trigger_with_tooltip(
                 IconButton::new("new_thread_menu_btn", IconName::Plus).icon_size(IconSize::Small),
@@ -2053,13 +2053,15 @@ impl AgentPanel {
             .anchor(Corner::TopRight)
             .with_handle(self.new_thread_menu_handle.clone())
             .menu({
+                let selected_agent = self.selected_agent.clone();
+                let is_agent_selected = move |agent_type: AgentType| selected_agent == agent_type;
+
                 let workspace = self.workspace.clone();
                 let is_via_collab = workspace
                     .update(cx, |workspace, cx| {
                         workspace.project().read(cx).is_via_collab()
                     })
                     .unwrap_or_default();
-                let agent_server_store = new_thread_menu_store.clone();
 
                 move |window, cx| {
                     telemetry::event!("New Thread Clicked");
@@ -2233,26 +2235,39 @@ impl AgentPanel {
                                     }),
                             )
                             .map(|mut menu| {
-                                let mut agents = agent_server_store
-                                    .read(cx)
+                                let agent_server_store = agent_server_store_for_menu.read(cx);
+                                let agent_names = agent_server_store
                                     .external_agents()
+                                    .filter(|name| {
+                                        name.0 != GEMINI_NAME
+                                            && name.0 != CLAUDE_CODE_NAME
+                                            && name.0 != CODEX_NAME
+                                    })
                                     .cloned()
                                     .collect::<Vec<_>>();
-                                agents.sort_by(|a, b| a.0.cmp(&b.0));
 
-                                for agent_name in agents {
-                                    let icon_path = agent_server_store
-                                        .read(cx)
-                                        .agent_icon(&agent_name)
-                                        .map(|path| path.clone());
+                                for agent_name in agent_names {
+                                    let icon_path = agent_server_store.agent_icon(&agent_name);
+                                    let display_name = agent_server_store
+                                        .agent_display_name(&agent_name)
+                                        .unwrap_or_else(|| agent_name.0.clone());
 
-                                    let mut entry = ContextMenuEntry::new(agent_name.0.clone());
+                                    let mut entry = ContextMenuEntry::new(display_name);
+
                                     if let Some(icon_path) = icon_path {
                                         entry = entry.custom_icon_svg(icon_path);
                                     } else {
                                         entry = entry.icon(IconName::Sparkle);
                                     }
                                     entry = entry
+                                        .when(
+                                            is_agent_selected(AgentType::Custom {
+                                                name: agent_name.0.clone(),
+                                            }),
+                                            |this| {
+                                                this.action(Box::new(NewExternalAgentThread { agent: None }))
+                                            },
+                                        )
                                         .icon_color(Color::Muted)
                                         .disabled(is_via_collab)
                                         .handler({
