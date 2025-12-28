@@ -2,6 +2,11 @@
 
 - unify text thread and agent editor keybindings around enter and cmd-enter, also think about vim_mode insert and normal
 
+## insert mode: enter: submit
+## insert mode: cmd-enter: insert newline
+## normal mode: enter: submit
+## normal mode: cmd-enter: insert newline
+
 # ACP
 
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication in real-time. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
