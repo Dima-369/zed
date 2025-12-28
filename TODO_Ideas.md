@@ -8,7 +8,7 @@
 
 - add 2 new actions to `agent::...`. First DismissErrorNotification and second CopyErrorNotification
 
-- can ACP threads allow all edits be enabled by default? It keeps asking me every single time for "Allow All Edits" when I launch ACP on editing files the first time. There is a setting: `always_allow_tool_actions` but it also affects bash tools which I do not like
+- 
 
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? I think an array of regexes in settings would be great
 

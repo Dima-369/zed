@@ -6,7 +6,7 @@ use anyhow::anyhow;
 use collections::HashMap;
 use futures::AsyncBufReadExt as _;
 use futures::io::BufReader;
-use paths::{config_dir, local_settings_folder_name};
+use paths::local_settings_folder_name;
 use project::Project;
 use project::agent_server_store::AgentServerCommand;
 use serde::Deserialize;
@@ -22,7 +22,7 @@ use thiserror::Error;
 use anyhow::{Context as _, Result};
 use gpui::{App, AppContext as _, AsyncApp, Entity, SharedString, Task, WeakEntity};
 
-use acp_thread::{AcpThread, AuthRequired, LoadError, TerminalProviderEvent};
+use acp_thread::{AcpThread, AgentThreadEntry, AuthRequired, LoadError, TerminalProviderEvent};
 use terminal::TerminalBuilder;
 use terminal::terminal_settings::{AlternateScroll, CursorShape, TerminalSettings};
 
@@ -710,63 +710,64 @@ impl acp::Client for ClientDelegate {
 
         let cx = &mut self.cx.clone();
 
-        if arguments.tool_call.fields.kind == Some(acp::ToolKind::Edit) {
-            if let Some(raw_input) = &arguments.tool_call.fields.raw_input {
-                if let Some(path_str) = raw_input.get("path").and_then(|v| v.as_str()) {
-                    let path = std::path::Path::new(path_str);
-                    let is_allowed = thread
-                        .update(cx, |thread, cx| {
-                            let project = thread.project().read(cx);
-
-                            let local_settings_folder = local_settings_folder_name();
-                            if path.components().any(|component| {
-                                component.as_os_str()
-                                    == <_ as AsRef<std::ffi::OsStr>>::as_ref(
-                                        &local_settings_folder,
-                                    )
-                            }) {
-                                return false;
-                            }
-
-                            if let Ok(canonical_path) = std::fs::canonicalize(&path) {
-                                if canonical_path.starts_with(config_dir()) {
-                                    return false;
-                                }
-                            }
-
-                            project.find_project_path(path, cx).is_some()
-                        })
-                        .unwrap_or(false);
-
-                    if is_allowed {
-                        if let Some(allow_option) = arguments
-                            .options
-                            .iter()
-                            .find(|o| o.kind == acp::PermissionOptionKind::AllowOnce)
-                        {
-                            return Ok(acp::RequestPermissionResponse::new(
-                                acp::RequestPermissionOutcome::Selected(
-                                    acp::SelectedPermissionOutcome::new(
-                                        allow_option.option_id.clone()
-                                    )
-                                ),
-                            ));
+        let (kind, _raw_input) = thread
+            .update(cx, |thread, _| {
+                let existing = thread.entries().iter().rev().find_map(|e| {
+                    if let AgentThreadEntry::ToolCall(tc) = e {
+                        if tc.id == arguments.tool_call.tool_call_id {
+                            return Some(tc);
                         }
                     }
-                }
+                    None
+                });
+
+                let kind = arguments
+                    .tool_call
+                    .fields
+                    .kind
+                    .or(existing.map(|tc| tc.kind));
+                let raw_input = arguments
+                    .tool_call
+                    .fields
+                    .raw_input
+                    .clone()
+                    .or(existing.and_then(|tc| tc.raw_input.clone()));
+                (kind, raw_input)
+            })
+            .unwrap_or((None, None));
+
+
+        let outcome = if kind == Some(acp::ToolKind::Edit) {
+            // Always allow edit actions by default for ACP threads
+            if let Some(allow_option) = arguments.options.iter().find(|o| o.kind == acp::PermissionOptionKind::AllowOnce) {
+                println!("ACP: Automatically allowing edit tool call (bypassing respect_always_allow_setting)");
+                acp::RequestPermissionOutcome::Selected(
+                    acp::SelectedPermissionOutcome::new(allow_option.option_id.clone()),
+                )
+            } else {
+                // If no AllowOnce option exists, fall back to normal authorization
+                let auth_future = thread.update(cx, |thread, cx| {
+                    thread.request_tool_call_authorization(
+                        arguments.tool_call,
+                        arguments.options,
+                        respect_always_allow_setting,
+                        cx,
+                    )
+                })??;
+                auth_future.await
             }
-        }
-
-        let task = thread.update(cx, |thread, cx| {
-            thread.request_tool_call_authorization(
-                arguments.tool_call,
-                arguments.options,
-                respect_always_allow_setting,
-                cx,
-            )
-        })??;
-
-        let outcome = task.await;
+        } else {
+            // For non-edit tool calls, use the existing logic
+            let auth_future = thread.update(cx, |thread, cx| {
+                thread.request_tool_call_authorization(
+                    arguments.tool_call,
+                    arguments.options,
+                    respect_always_allow_setting,
+                    cx,
+                )
+            })??;
+            auth_future.await
+        };
 
         Ok(acp::RequestPermissionResponse::new(outcome))
     }
