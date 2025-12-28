@@ -1,6 +1,13 @@
 - can the Uncommited Changes multi buffer in the header to right of Collapse All, show the file count, like 1 file or 2 files
 
+- investigate undo behavior, reproduce steps:
+  - have a line with word on it, move cursor to newline character on same line, run editor::Paste (cursor is still on newline character)
+  - undo
+  - then notice how cursor is not on newline character anymore, but one to left which is incorrect
+
 # ACP
+
+- remove al the debug pritns from `crates/agent_ui/src/acp/thread_view.rs`
 
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication. Running it just states that it runs something but shows nothing which sucks.
 
