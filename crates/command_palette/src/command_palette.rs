@@ -476,7 +476,9 @@ impl PickerDelegate for CommandPaletteDelegate {
                         let humanized_lower = humanize_action_name(&command.name).to_lowercase();
 
                         // Check if all query words match either the original name or the humanized name
-                        if words.iter().all(|word| candidate_lower.contains(word) || humanized_lower.contains(word)) {
+                        if words.iter().all(|word| {
+                            candidate_lower.contains(word) || humanized_lower.contains(word)
+                        }) {
                             // Find positions for highlighting - prioritize matches in the original name
                             let mut positions = Vec::new();
                             for word in &words {
@@ -486,7 +488,8 @@ impl PickerDelegate for CommandPaletteDelegate {
                                 }
                                 // If no match in original, try humanized name
                                 if positions.is_empty() {
-                                    for (start, matched_word) in humanized_lower.match_indices(word) {
+                                    for (start, matched_word) in humanized_lower.match_indices(word)
+                                    {
                                         positions.extend(start..(start + matched_word.len()));
                                     }
                                 }

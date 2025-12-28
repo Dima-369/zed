@@ -16165,12 +16165,12 @@ impl Editor {
                                     let content_range = content_start..content_end;
 
                                     // Check if current selection is smaller than the content range
-                                    let current_len =
-                                        (new_range.end.0 as isize - new_range.start.0 as isize)
-                                            .unsigned_abs();
-                                    let content_len =
-                                        (content_end.0 as isize - content_start.0 as isize)
-                                            .unsigned_abs();
+                                    let current_len = (new_range.end.0 as isize
+                                        - new_range.start.0 as isize)
+                                        .unsigned_abs();
+                                    let content_len = (content_end.0 as isize
+                                        - content_start.0 as isize)
+                                        .unsigned_abs();
 
                                     if content_len > current_len {
                                         new_range = content_range;

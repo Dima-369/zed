@@ -127,6 +127,10 @@ struct Args {
     #[arg(long)]
     uninstall: bool,
 
+    /// When reading from stdin, position cursor at end of file
+    #[arg(long)]
+    stdin_cursor_at_end: bool,
+
     /// Used for SSH/Git password authentication, to remove the need for netcat as a dependency,
     /// by having Zed act like netcat communicating over a Unix socket.
     #[arg(long, hide = true)]
@@ -544,6 +548,7 @@ fn main() -> Result<()> {
                     reuse: args.reuse,
                     env,
                     user_data_dir: user_data_dir_for_thread,
+                    stdin_cursor_at_end: args.stdin_cursor_at_end,
                 })?;
 
                 while let Ok(response) = rx.recv() {
