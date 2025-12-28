@@ -2379,10 +2379,13 @@ impl AgentPanel {
             } = self.render_tab_label(tab.view(), is_active, cx);
 
             let indicator = self.render_agent_tab_indicator(index, tab, cx);
-            let mut tab_component = Tab::new(("agent-tab", index))
+            let agent_icon_element = self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, cx);
+            let tab_component = Tab::new(("agent-tab", index))
                 .position(position)
                 .close_side(TabCloseSide::End)
                 .toggle_state(is_active)
+                .start_slot_size(px(2.)) // Reduce start slot size from 12px to 4px
+                .end_slot_size(px(4.)) // Reduce end slot size from 14px to 8px
                 .on_click(cx.listener(move |this: &mut Self, _, window, cx| {
                     if is_active {
                         this.focus_title_editor(window, cx);
@@ -2391,8 +2394,20 @@ impl AgentPanel {
                     }
                 }))
                 .start_slot::<Indicator>(indicator)
-                .child(tab_label)
-                .start_slot(self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, cx))
+                .child(
+                    h_flex()
+                        .gap_1()
+                        .items_center()
+                        .children(
+                            std::iter::once(div().child(agent_icon_element))
+                        )
+                        .child(tab_label)
+                        .id(("agent-tab-content", index))
+                        .map(|this| match tooltip {
+                            Some(tooltip_text) => this.tooltip(Tooltip::text(tooltip_text)),
+                            None => this,
+                        }),
+                )
                 .end_slot(
                     IconButton::new(("close-agent-tab", index), IconName::Close)
                         .shape(IconButtonShape::Square)
@@ -2405,10 +2420,6 @@ impl AgentPanel {
                         }))
                         .tooltip(|_window, cx| cx.new(|_| Tooltip::new("Close Thread")).into()),
                 );
-
-            if let Some(tooltip_text) = tooltip {
-                tab_component = tab_component.tooltip(Tooltip::text(tooltip_text));
-            }
             tab_bar = tab_bar.child(tab_component);
         }
 

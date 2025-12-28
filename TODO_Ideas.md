@@ -6,9 +6,6 @@
 
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication in real-time. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
 
-TEST from AI
-- in the ACP multi tab view the tabs need less padding at outer left and right
-
 TEST from AI, still broken
 - add 2 new actions to `agent::...`. First DismissErrorNotification and second CopyErrorNotification
 currently they are only mouse interactable

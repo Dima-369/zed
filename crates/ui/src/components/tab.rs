@@ -38,6 +38,8 @@ pub struct Tab {
     start_slot: Option<AnyElement>,
     end_slot: Option<AnyElement>,
     children: SmallVec<[AnyElement; 2]>,
+    start_slot_size: Option<Pixels>,
+    end_slot_size: Option<Pixels>,
 }
 
 impl Tab {
@@ -53,6 +55,8 @@ impl Tab {
             start_slot: None,
             end_slot: None,
             children: SmallVec::new(),
+            start_slot_size: None,
+            end_slot_size: None,
         }
     }
 
@@ -73,6 +77,16 @@ impl Tab {
 
     pub fn end_slot<E: IntoElement>(mut self, element: impl Into<Option<E>>) -> Self {
         self.end_slot = element.into().map(IntoElement::into_any_element);
+        self
+    }
+
+    pub fn start_slot_size(mut self, size: Pixels) -> Self {
+        self.start_slot_size = Some(size);
+        self
+    }
+
+    pub fn end_slot_size(mut self, size: Pixels) -> Self {
+        self.end_slot_size = Some(size);
         self
     }
 
@@ -126,12 +140,12 @@ impl RenderOnce for Tab {
 
         let (start_slot, end_slot) = {
             let start_slot = h_flex()
-                .size(START_TAB_SLOT_SIZE)
+                .size(self.start_slot_size.unwrap_or(START_TAB_SLOT_SIZE))
                 .justify_center()
                 .children(self.start_slot);
 
             let end_slot = h_flex()
-                .size(END_TAB_SLOT_SIZE)
+                .size(self.end_slot_size.unwrap_or(END_TAB_SLOT_SIZE))
                 .justify_center()
                 .children(self.end_slot);
 
