@@ -22,10 +22,10 @@ use zed_actions::agent::{OpenClaudeCodeOnboardingModal, ReauthenticateAgent};
 use crate::agent_panel_tab::{AgentPanelTab, AgentPanelTabIdentity, TabId, TabLabelRender};
 use crate::ui::{AcpOnboardingModal, ClaudeCodeOnboardingModal};
 use crate::{
-    AddContextServer, AgentDiffPane, CloseActiveThreadTab, Follow, InlineAssistant, ManageProfiles,
-    NewTextThread, NewThread, OpenActiveThreadAsMarkdown, OpenAgentDiff, OpenHistory,
-    ResetTrialEndUpsell, ResetTrialUpsell, ToggleNavigationMenu, ToggleNewThreadMenu,
-    ToggleOptionsMenu,
+    AddContextServer, AgentDiffPane, CloseActiveThreadTab, CloseActiveThreadTabOrDock, Follow,
+    InlineAssistant, ManageProfiles, NewTextThread, NewThread, OpenActiveThreadAsMarkdown,
+    OpenAgentDiff, OpenHistory, ResetTrialEndUpsell, ResetTrialUpsell, ToggleNavigationMenu,
+    ToggleNewThreadMenu, ToggleOptionsMenu,
     acp::AcpThreadView,
     agent_configuration::{AgentConfiguration, AssistantConfigurationEvent},
     slash_command::SlashCommandCompletionProvider,
@@ -1140,6 +1140,23 @@ impl AgentPanel {
         cx: &mut Context<Self>,
     ) {
         self.agent_panel_menu_handle.toggle(window, cx);
+    }
+
+    pub fn close_active_thread_tab_or_dock(
+        &mut self,
+        _: &CloseActiveThreadTabOrDock,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.tabs.len() > 1 {
+            self.remove_tab_by_id(self.active_tab_id, window, cx);
+        } else if let Some(workspace) = self.workspace.upgrade() {
+            window.defer(cx, move |window, cx| {
+                workspace.update(cx, |workspace, cx| {
+                    workspace.close_panel::<Self>(window, cx);
+                });
+            });
+        }
     }
 
     pub fn toggle_new_thread_menu(
@@ -2827,6 +2844,7 @@ impl Render for AgentPanel {
             .on_action(cx.listener(|this, _: &CloseActiveThreadTab, window, cx| {
                 this.remove_tab_by_id(this.active_tab_id, window, cx);
             }))
+            .on_action(cx.listener(Self::close_active_thread_tab_or_dock))
             .on_action(cx.listener(Self::increase_font_size))
             .on_action(cx.listener(Self::decrease_font_size))
             .on_action(cx.listener(Self::reset_font_size))
