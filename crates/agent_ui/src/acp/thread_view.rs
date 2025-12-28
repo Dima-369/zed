@@ -67,9 +67,9 @@ use crate::profile_selector::{ProfileProvider, ProfileSelector};
 use crate::ui::{AgentNotification, AgentNotificationEvent, BurnModeTooltip};
 use crate::{
     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, ContinueThread, ContinueWithBurnMode,
-    CycleFavoriteModels, CycleModeSelector, ExpandMessageEditor, Follow, KeepAll, NewThread,
-    OpenAgentDiff, OpenHistory, RejectAll, RejectOnce, ToggleBurnMode, TogglePlan, ToggleProfileSelector,
-    DismissErrorNotification, CopyErrorNotification,
+    CopyErrorNotification, CycleFavoriteModels, CycleModeSelector, DismissErrorNotification,
+    ExpandMessageEditor, Follow, KeepAll, NewThread, OpenAgentDiff, OpenHistory, RejectAll,
+    RejectOnce, ToggleBurnMode, TogglePlan, ToggleProfileSelector,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -4500,15 +4500,11 @@ impl AcpThreadView {
                 let used = crate::text_thread_editor::humanize_token_count(estimated_tokens);
 
                 Some(
-                    h_flex()
-                        .flex_shrink_0()
-                        .gap_0p5()
-                        .mr_1p5()
-                        .child(
-                            Label::new(format!("~{}", used))
-                                .size(LabelSize::Small)
-                                .color(Color::Muted),
-                        ),
+                    h_flex().flex_shrink_0().gap_0p5().mr_1p5().child(
+                        Label::new(format!("~{}", used))
+                            .size(LabelSize::Small)
+                            .color(Color::Muted),
+                    ),
                 )
             } else {
                 None

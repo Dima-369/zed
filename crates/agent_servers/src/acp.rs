@@ -735,14 +735,19 @@ impl acp::Client for ClientDelegate {
             })
             .unwrap_or((None, None));
 
-
         let outcome = if kind == Some(acp::ToolKind::Edit) {
             // Always allow edit actions by default for ACP threads
-            if let Some(allow_option) = arguments.options.iter().find(|o| o.kind == acp::PermissionOptionKind::AllowOnce) {
-                println!("ACP: Automatically allowing edit tool call (bypassing respect_always_allow_setting)");
-                acp::RequestPermissionOutcome::Selected(
-                    acp::SelectedPermissionOutcome::new(allow_option.option_id.clone()),
-                )
+            if let Some(allow_option) = arguments
+                .options
+                .iter()
+                .find(|o| o.kind == acp::PermissionOptionKind::AllowOnce)
+            {
+                println!(
+                    "ACP: Automatically allowing edit tool call (bypassing respect_always_allow_setting)"
+                );
+                acp::RequestPermissionOutcome::Selected(acp::SelectedPermissionOutcome::new(
+                    allow_option.option_id.clone(),
+                ))
             } else {
                 // If no AllowOnce option exists, fall back to normal authorization
                 let auth_future = thread.update(cx, |thread, cx| {

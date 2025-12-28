@@ -50,9 +50,9 @@ use extension_host::ExtensionStore;
 use fs::Fs;
 use gpui::Div;
 use gpui::{
-    Action, AnyElement, App, AsyncWindowContext, Corner, DismissEvent,
-    Entity, EventEmitter, ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels, ScrollHandle,
-    SharedString, Subscription, Task, UpdateGlobal, WeakEntity, prelude::*,
+    Action, AnyElement, App, AsyncWindowContext, Corner, DismissEvent, Entity, EventEmitter,
+    ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels, ScrollHandle, SharedString,
+    Subscription, Task, UpdateGlobal, WeakEntity, prelude::*,
 };
 use language::LanguageRegistry;
 use language_model::{ConfigurationError, LanguageModelRegistry};
@@ -65,10 +65,10 @@ use settings::{Settings, update_settings_file};
 use theme::ActiveTheme;
 use theme::ThemeSettings;
 use ui::{
-    Button, ButtonSize, ButtonStyle, Callout, Color, CommonAnimationExt, ContextMenu, ContextMenuEntry, DynamicSpacing,
-    IconButton, IconName, IconSize, Indicator, Label, LabelSize, PopoverMenu, PopoverMenuHandle,
-    Severity, Tab, TabBar, TabCloseSide, TabPosition, Toggleable, Tooltip, VisibleOnHover, Window,
-    div, h_flex, px, rems_from_px, v_flex,
+    Button, ButtonSize, ButtonStyle, Callout, Color, CommonAnimationExt, ContextMenu,
+    ContextMenuEntry, DynamicSpacing, IconButton, IconName, IconSize, Indicator, Label, LabelSize,
+    PopoverMenu, PopoverMenuHandle, Severity, Tab, TabBar, TabCloseSide, TabPosition, Toggleable,
+    Tooltip, VisibleOnHover, Window, div, h_flex, px, rems_from_px, v_flex,
 };
 use ui::{ButtonCommon, Clickable, Icon, LabelCommon, ProgressBar};
 use ui::{IconButtonShape, KeyBinding, utils::WithRemSize};
@@ -2373,7 +2373,13 @@ impl AgentPanel {
             let is_generating = self.is_tab_generating(tab.view(), cx);
 
             let indicator = self.render_agent_tab_indicator(index, tab, cx);
-            let agent_icon_element = self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, is_generating, cx);
+            let agent_icon_element = self.render_tab_agent_icon(
+                index,
+                tab.agent(),
+                &agent_server_store,
+                is_generating,
+                cx,
+            );
             let tab_component = Tab::new(("agent-tab", index))
                 .position(position)
                 .close_side(TabCloseSide::End)
@@ -2392,9 +2398,7 @@ impl AgentPanel {
                     h_flex()
                         .gap_1()
                         .items_center()
-                        .children(
-                            std::iter::once(div().child(agent_icon_element))
-                        )
+                        .children(std::iter::once(div().child(agent_icon_element)))
                         .child(tab_label)
                         .id(("agent-tab-content", index))
                         .map(|this| match tooltip {
@@ -3283,24 +3287,19 @@ impl AgentPanel {
 
     fn is_tab_generating(&self, view: &ActiveView, cx: &App) -> bool {
         match view {
-            ActiveView::ExternalAgentThread { thread_view } => {
-                thread_view
-                    .read(cx)
-                    .thread()
-                    .map(|thread| thread.read(cx).status() == ThreadStatus::Generating)
-                    .unwrap_or(false)
-            }
+            ActiveView::ExternalAgentThread { thread_view } => thread_view
+                .read(cx)
+                .thread()
+                .map(|thread| thread.read(cx).status() == ThreadStatus::Generating)
+                .unwrap_or(false),
             ActiveView::TextThread {
-                text_thread_editor,
-                ..
-            } => {
-                text_thread_editor
-                    .read(cx)
-                    .text_thread()
-                    .read(cx)
-                    .messages(cx)
-                    .any(|message| message.status == assistant_text_thread::MessageStatus::Pending)
-            }
+                text_thread_editor, ..
+            } => text_thread_editor
+                .read(cx)
+                .text_thread()
+                .read(cx)
+                .messages(cx)
+                .any(|message| message.status == assistant_text_thread::MessageStatus::Pending),
             ActiveView::History | ActiveView::Configuration => false,
         }
     }
