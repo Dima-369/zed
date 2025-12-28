@@ -16,8 +16,8 @@ use file_icons::FileIcons;
 use fuzzy::{CharBag, PathMatch, PathMatchCandidate};
 use gpui::{
     Action, AnyElement, App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    KeyContext, Modifiers, ModifiersChangedEvent, ParentElement, Render, Styled, Task, UniformListScrollHandle,
-    WeakEntity, Window, actions, rems,
+    KeyContext, Modifiers, ModifiersChangedEvent, ParentElement, Render, Styled, Task,
+    UniformListScrollHandle, WeakEntity, Window, actions, rems,
 };
 use open_path_prompt::OpenPathPrompt;
 use picker::{Picker, PickerDelegate};
@@ -417,7 +417,6 @@ pub struct FileFinderDelegate {
     include_ignored: Option<bool>,
     include_ignored_refresh: Task<()>,
 }
-
 
 #[derive(Debug, Default)]
 struct Matches {
@@ -897,9 +896,13 @@ impl FileFinderDelegate {
             let did_cancel = cancel_flag.load(atomic::Ordering::Acquire);
             picker
                 .update(cx, |picker, cx| {
-                    picker
-                        .delegate
-                        .set_search_matches(search_id, did_cancel, query, matches.into_iter(), cx)
+                    picker.delegate.set_search_matches(
+                        search_id,
+                        did_cancel,
+                        query,
+                        matches.into_iter(),
+                        cx,
+                    )
                 })
                 .log_err();
         })

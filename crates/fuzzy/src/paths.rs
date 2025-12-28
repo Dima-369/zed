@@ -138,8 +138,7 @@ pub fn match_fixed_path_set(
         &pattern,
         candidates.into_iter(),
         worktree_id,
-        &worktree_root_name
-            .unwrap_or(RelPath::empty().into()),
+        &worktree_root_name.unwrap_or(RelPath::empty().into()),
         &None,
         path_style,
         &AtomicBool::new(false),

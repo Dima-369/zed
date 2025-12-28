@@ -927,7 +927,10 @@ impl PickerDelegate for FileExplorerDelegate {
                                                         "Split Right",
                                                         pane::SplitRight::default().boxed_clone(),
                                                     )
-                                                    .action("Split Up", pane::SplitUp::default().boxed_clone())
+                                                    .action(
+                                                        "Split Up",
+                                                        pane::SplitUp::default().boxed_clone(),
+                                                    )
                                                     .action(
                                                         "Split Down",
                                                         pane::SplitDown::default().boxed_clone(),

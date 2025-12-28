@@ -1,8 +1,7 @@
 use collections::HashMap;
 use editor::{
-    scroll::Autoscroll,
-    Anchor as MultiBufferAnchor, Editor, EditorEvent, EditorSettings, MultiBuffer, MultiBufferOffset,
-    MultiBufferSnapshot, SelectionEffects, ToOffset,
+    Anchor as MultiBufferAnchor, Editor, EditorEvent, EditorSettings, MultiBuffer,
+    MultiBufferOffset, MultiBufferSnapshot, SelectionEffects, ToOffset, scroll::Autoscroll,
 };
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Global,
@@ -31,9 +30,7 @@ use vim_mode_setting::VimModeSetting;
 use workspace::searchable::SearchableItem;
 use workspace::{ModalView, Workspace};
 
-use crate::{
-    NextHistoryQuery, PreviousHistoryQuery,
-};
+use crate::{NextHistoryQuery, PreviousHistoryQuery};
 use project::search_history::{SearchHistory, SearchHistoryCursor};
 
 actions!(buffer_search_modal, [ToggleBufferSearch, ToggleLineMode]);
@@ -382,11 +379,7 @@ impl BufferSearchModal {
                     })
                 } else if !VimModeSetting::get_global(cx).0 {
                     let query = editor.query_suggestion(window, cx);
-                    if query.is_empty() {
-                        None
-                    } else {
-                        Some(query)
-                    }
+                    if query.is_empty() { None } else { Some(query) }
                 } else {
                     None
                 };
@@ -414,7 +407,6 @@ impl BufferSearchModal {
             });
         });
 
-
         workspace.register_action(Self::toggle_line_mode);
     }
 
@@ -434,12 +426,6 @@ impl BufferSearchModal {
             });
         }
     }
-
-
-
-
-
-
 
     fn new(
         _workspace: WeakEntity<Workspace>,
@@ -579,8 +565,16 @@ impl BufferSearchModal {
         if let Some(editor) = &self.preview_editor {
             editor.update(cx, |editor, cx| {
                 editor.set_background(cx.theme().colors().elevated_surface_background, window, cx);
-                editor.set_gutter_background(cx.theme().colors().elevated_surface_background, window, cx);
-                editor.set_current_line_highlight_color(cx.theme().colors().ghost_element_selected, window, cx);
+                editor.set_gutter_background(
+                    cx.theme().colors().elevated_surface_background,
+                    window,
+                    cx,
+                );
+                editor.set_current_line_highlight_color(
+                    cx.theme().colors().ghost_element_selected,
+                    window,
+                    cx,
+                );
                 Self::navigate_and_highlight_matches(
                     editor,
                     match_offset,
@@ -606,8 +600,16 @@ impl BufferSearchModal {
 
         editor.update(cx, |editor, cx| {
             editor.set_background(cx.theme().colors().elevated_surface_background, window, cx);
-            editor.set_gutter_background(cx.theme().colors().elevated_surface_background, window, cx);
-            editor.set_current_line_highlight_color(cx.theme().colors().ghost_element_selected, window, cx);
+            editor.set_gutter_background(
+                cx.theme().colors().elevated_surface_background,
+                window,
+                cx,
+            );
+            editor.set_current_line_highlight_color(
+                cx.theme().colors().ghost_element_selected,
+                window,
+                cx,
+            );
             Self::navigate_and_highlight_matches(
                 editor,
                 match_offset,
@@ -640,8 +642,6 @@ fn build_search_query(query: &str) -> Result<SearchQuery, String> {
 }
 
 impl BufferSearchDelegate {
-
-
     fn spawn_line_search(
         &self,
         query: String,
@@ -750,8 +750,8 @@ impl BufferSearchDelegate {
                             if let Some(highlight_id) = chunk.syntax_highlight_id {
                                 let chunk_in_trimmed_start =
                                     current_offset.saturating_sub(left_trimmed_len);
-                                let chunk_in_trimmed_end = (current_offset + chunk_len)
-                                    .saturating_sub(left_trimmed_len);
+                                let chunk_in_trimmed_end =
+                                    (current_offset + chunk_len).saturating_sub(left_trimmed_len);
                                 if chunk_in_trimmed_start < trimmed_line.len() {
                                     let start = chunk_in_trimmed_start.max(0).min(preview_len);
                                     let end = chunk_in_trimmed_end
@@ -980,8 +980,6 @@ impl PickerDelegate for BufferSearchDelegate {
         _window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Div {
-
-
         v_flex()
             .bg(cx.theme().colors().elevated_surface_background)
             .child(
@@ -1002,23 +1000,20 @@ impl PickerDelegate for BufferSearchDelegate {
                             .bg(cx.theme().colors().elevated_surface_background)
                             .child(editor.clone())
                             .child(
-                                h_flex()
-                                    .gap_1()
-
-                                    .child(
-                                        IconButton::new("line-mode", IconName::ToolSearch)
-                                            .style(ButtonStyle::Subtle)
-                                            .shape(IconButtonShape::Square)
-                                            .toggle_state(self.line_mode)
-                                            .on_click(cx.listener(move |picker, _, window, cx| {
-                                                picker.delegate.line_mode = !picker.delegate.line_mode;
-                                                let query = picker.delegate.current_query.clone();
-                                                picker.set_query(query, window, cx);
-                                            }))
-                                            .tooltip(|window, cx| {
-                                                Tooltip::text("Toggle Line Mode")(window, cx)
-                                            })
-                                    ),
+                                h_flex().gap_1().child(
+                                    IconButton::new("line-mode", IconName::ToolSearch)
+                                        .style(ButtonStyle::Subtle)
+                                        .shape(IconButtonShape::Square)
+                                        .toggle_state(self.line_mode)
+                                        .on_click(cx.listener(move |picker, _, window, cx| {
+                                            picker.delegate.line_mode = !picker.delegate.line_mode;
+                                            let query = picker.delegate.current_query.clone();
+                                            picker.set_query(query, window, cx);
+                                        }))
+                                        .tooltip(|window, cx| {
+                                            Tooltip::text("Toggle Line Mode")(window, cx)
+                                        }),
+                                ),
                             ),
                     ),
             )
@@ -1039,7 +1034,6 @@ impl PickerDelegate for BufferSearchDelegate {
         }
         let cancelled = Arc::new(AtomicBool::new(false));
         self.search_cancelled = Some(cancelled.clone());
-
 
         let initial_cursor = self.initial_cursor_offset;
         let buffer_snapshot = self.target_buffer.read(cx).snapshot(cx);
@@ -1237,7 +1231,8 @@ impl PickerDelegate for BufferSearchDelegate {
                         let mut ranges = Vec::new();
 
                         // Search the entire multi-buffer range
-                        let full_range = snapshot.anchor_before(MultiBufferOffset(0))..snapshot.anchor_after(snapshot.len());
+                        let full_range = snapshot.anchor_before(MultiBufferOffset(0))
+                            ..snapshot.anchor_after(snapshot.len());
 
                         // Break down multi-buffer into individual buffer ranges, following Editor::find_matches pattern
                         for (search_buffer, search_range, excerpt_id, deleted_hunk_anchor) in
@@ -1252,26 +1247,22 @@ impl PickerDelegate for BufferSearchDelegate {
                                 .await;
 
                             // Convert buffer-relative matches to multi-buffer anchor ranges
-                            ranges.extend(
-                                buffer_matches
-                                    .into_iter()
-                                    .map(|match_range| {
-                                        if let Some(deleted_hunk_anchor) = deleted_hunk_anchor {
-                                            let start = search_buffer
-                                                .anchor_after(search_range.start + match_range.start);
-                                            let end = search_buffer
-                                                .anchor_before(search_range.start + match_range.end);
-                                            deleted_hunk_anchor.with_diff_base_anchor(start)
-                                                ..deleted_hunk_anchor.with_diff_base_anchor(end)
-                                        } else {
-                                            let start = search_buffer
-                                                .anchor_after(search_range.start + match_range.start);
-                                            let end = search_buffer
-                                                .anchor_before(search_range.start + match_range.end);
-                                            MultiBufferAnchor::range_in_buffer(excerpt_id, start..end)
-                                        }
-                                    }),
-                            );
+                            ranges.extend(buffer_matches.into_iter().map(|match_range| {
+                                if let Some(deleted_hunk_anchor) = deleted_hunk_anchor {
+                                    let start = search_buffer
+                                        .anchor_after(search_range.start + match_range.start);
+                                    let end = search_buffer
+                                        .anchor_before(search_range.start + match_range.end);
+                                    deleted_hunk_anchor.with_diff_base_anchor(start)
+                                        ..deleted_hunk_anchor.with_diff_base_anchor(end)
+                                } else {
+                                    let start = search_buffer
+                                        .anchor_after(search_range.start + match_range.start);
+                                    let end = search_buffer
+                                        .anchor_before(search_range.start + match_range.end);
+                                    MultiBufferAnchor::range_in_buffer(excerpt_id, start..end)
+                                }
+                            }));
                         }
 
                         Ok::<Vec<AnchorRange>, anyhow::Error>(ranges)
@@ -1370,7 +1361,8 @@ impl PickerDelegate for BufferSearchDelegate {
                         for (j, other_range) in ranges.iter().enumerate() {
                             let other_rel_start = other_range.start.0.saturating_sub(line_start.0);
                             let other_rel_end = other_range
-                                .end.0
+                                .end
+                                .0
                                 .saturating_sub(line_start.0)
                                 .min(line_text.len());
 
@@ -1391,9 +1383,11 @@ impl PickerDelegate for BufferSearchDelegate {
                         let chunk_offset_end = line_start.0 + p_end;
                         let mut current_rel_offset = prefix_len;
 
-                        for chunk in
-                            buffer_snapshot.chunks(MultiBufferOffset(chunk_offset_start)..MultiBufferOffset(chunk_offset_end), true)
-                        {
+                        for chunk in buffer_snapshot.chunks(
+                            MultiBufferOffset(chunk_offset_start)
+                                ..MultiBufferOffset(chunk_offset_end),
+                            true,
+                        ) {
                             let len = chunk.text.len();
                             if let Some(id) = chunk.syntax_highlight_id {
                                 item_syntax
@@ -1408,12 +1402,12 @@ impl PickerDelegate for BufferSearchDelegate {
                         };
 
                         let line_label = if let Some((_, buffer_point, _)) =
-                        buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
-                    {
-                        (buffer_point.row + 1).to_string().into()
-                    } else {
-                        (line + 1).to_string().into()
-                    };
+                            buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
+                        {
+                            (buffer_point.row + 1).to_string().into()
+                        } else {
+                            (line + 1).to_string().into()
+                        };
 
                         new_items.push(LineMatchData {
                             line_label,

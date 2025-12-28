@@ -29,8 +29,8 @@ use editor::{
     movement::{self, FindRange},
 };
 use gpui::{
-    Action, App, AppContext, Axis, Context, Entity, EventEmitter, KeyContext,
-    KeystrokeEvent, Render, Subscription, Task, WeakEntity, Window, actions,
+    Action, App, AppContext, Axis, Context, Entity, EventEmitter, KeyContext, KeystrokeEvent,
+    Render, Subscription, Task, WeakEntity, Window, actions,
 };
 use insert::{NormalBefore, TemporaryNormal};
 use language::{
@@ -1699,7 +1699,6 @@ impl Vim {
             editor.set_jump_labels(Vec::new(), cx);
         });
     }
-
 
     pub(crate) fn helix_handle_jump_input(
         &mut self,
