@@ -4504,11 +4504,6 @@ impl AcpThreadView {
                         .gap_0p5()
                         .mr_1p5()
                         .child(
-                            Icon::new(IconName::CircleHelp)
-                                .size(IconSize::XSmall)
-                                .color(Color::Muted),
-                        )
-                        .child(
                             Label::new(format!("~{}", used))
                                 .size(LabelSize::Small)
                                 .color(Color::Muted),
@@ -5011,6 +5006,7 @@ impl AcpThreadView {
                 buffer.set_text(markdown, cx);
                 buffer.set_language(Some(language), cx);
                 buffer.set_capability(language::Capability::ReadWrite, cx);
+                buffer.did_save(buffer.version(), None, cx);
             })?;
 
             workspace.update_in(cx, |workspace, window, cx| {
