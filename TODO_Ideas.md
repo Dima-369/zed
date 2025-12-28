@@ -1,3 +1,5 @@
+- can the Uncommited Changes multi buffer in the header to right of Collapse All, show the file count, like 1 file or 2 files
+
 # ACP
 
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication in real-time. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
