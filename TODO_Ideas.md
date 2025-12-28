@@ -1,13 +1,18 @@
 - remove `editor::SearchInCurrentFileViaMultiBuffer`
 
+- unify text thread and agent editor keybindings around enter and cmd-enter, also think about vim_mode insert and normal
+
 # ACP
 
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
+
+- add 2 new actions to `agent::...`. First DismissErrorNotification and second CopyErrorNotification
 
 - can ACP threads allow all edits be enabled by default? It keeps asking me every single time for "Allow All Edits" when I launch ACP on editing files the first time. There is a setting: `always_allow_tool_actions` but it also affects bash tools which I do not like
 
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? I think an array of regexes in settings would be great
 
+TEST from AI
 - in agent::OpenActiveThreadAsMarkdown it shows the buffer as unsaved, can you check how workspace::NewFileFromClipboard circumvents it?
 
 # Support external agent history
