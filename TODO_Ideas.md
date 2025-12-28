@@ -1,3 +1,8 @@
+- fix cmd-w behavior in agent panel
+
+- can ACP allow all edits be enabled by default?
+- can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
+
 - ACP threads should show token usage
 can you check this: ACP threads should show token usage, check agent_ui.rs - I see that the "Zed Agent" (you can search for that, it's a menu item) has the token usage displayed in the bottom bar. Can you that also be displayed for external agents?
 
