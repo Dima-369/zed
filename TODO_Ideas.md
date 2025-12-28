@@ -3,6 +3,8 @@
 - can ACP allow all edits be enabled by default? It keeps asking me every single time when I launch ACP, or is there a setting for it?
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
 
+- in ACP threads, add a new action `agent::TogglePlan` which toggling showing the plan of the current thread
+
 - remove `editor::SearchInCurrentFileViaMultiBuffer`
 
 # Support external agent history
