@@ -4,11 +4,11 @@
 
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
 
-- can ACP threads allow all edits be enabled by default? It keeps asking me every single time for "Allow all edits" when I launch ACP, or is there a setting for it?
+- can ACP threads allow all edits be enabled by default? It keeps asking me every single time for "Allow All Edits" when I launch ACP on editing files the first time. There is a setting: `always_allow_tool_actions` but it also affects bash tools which I do not like
 
-- can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
+- can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? I think an array of regexes in settings would be great
 
-- in ACP threads, add a new action `agent::TogglePlan` which toggling showing the plan of the current thread
+- in ACP threads, add a new action `agent::TogglePlan` which toggling showing the plan of the current thread. Currently, I always need to mouse click it
 
 # Support external agent history
 
