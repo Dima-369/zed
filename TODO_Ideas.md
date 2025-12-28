@@ -6,6 +6,8 @@
 
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication in real-time. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
 
+- improve ACP tab animation, currently it fades opacity, but it does not look too good. can you instead make the the agent icon rotate the entire time until it is done, and reset rotation when done
+
 TEST from AI, still broken
 - add 2 new actions to `agent::...`. First DismissErrorNotification and second CopyErrorNotification
 currently they are only mouse interactable
