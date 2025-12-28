@@ -68,7 +68,7 @@ use crate::ui::{AgentNotification, AgentNotificationEvent, BurnModeTooltip};
 use crate::{
     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, ContinueThread, ContinueWithBurnMode,
     CycleFavoriteModels, CycleModeSelector, ExpandMessageEditor, Follow, KeepAll, NewThread,
-    OpenAgentDiff, OpenHistory, RejectAll, RejectOnce, ToggleBurnMode, ToggleProfileSelector,
+    OpenAgentDiff, OpenHistory, RejectAll, RejectOnce, ToggleBurnMode, TogglePlan, ToggleProfileSelector,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -4542,6 +4542,11 @@ impl AcpThreadView {
         });
     }
 
+    fn toggle_plan(&mut self, _: &TogglePlan, _window: &mut Window, cx: &mut Context<Self>) {
+        self.plan_expanded = !self.plan_expanded;
+        cx.notify();
+    }
+
     fn keep_all(&mut self, _: &KeepAll, _window: &mut Window, cx: &mut Context<Self>) {
         let Some(thread) = self.thread() else {
             return;
@@ -6116,6 +6121,7 @@ impl Render for AcpThreadView {
             .size_full()
             .key_context("AcpThread")
             .on_action(cx.listener(Self::toggle_burn_mode))
+            .on_action(cx.listener(Self::toggle_plan))
             .on_action(cx.listener(Self::keep_all))
             .on_action(cx.listener(Self::reject_all))
             .on_action(cx.listener(Self::allow_always))

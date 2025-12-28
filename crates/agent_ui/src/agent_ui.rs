@@ -125,6 +125,8 @@ actions!(
         ContinueWithBurnMode,
         /// Toggles burn mode for faster responses.
         ToggleBurnMode,
+        /// Toggles the plan view visibility.
+        TogglePlan,
         /// Closes the currently active thread tab.
         CloseActiveThreadTab,
         /// Activates the next tab in the agent panel.
