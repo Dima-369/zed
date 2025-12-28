@@ -8,8 +8,6 @@
 
 - add 2 new actions to `agent::...`. First DismissErrorNotification and second CopyErrorNotification
 
-- 
-
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? I think an array of regexes in settings would be great
 
 # Support external agent history
