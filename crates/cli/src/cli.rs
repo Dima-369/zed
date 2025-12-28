@@ -20,6 +20,7 @@ pub enum CliRequest {
         reuse: bool,
         env: Option<HashMap<String, String>>,
         user_data_dir: Option<String>,
+        stdin_cursor_at_end: bool,
     },
 }
 

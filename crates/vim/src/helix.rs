@@ -1340,7 +1340,7 @@ impl Vim {
                         let mut overlaps = false;
                         if let Some(last_point) = last_display_point {
                             if last_point.row() == point.row()
-                            && point.column() < last_point.column() + 5
+                                && point.column() < last_point.column() + 5
                             {
                                 overlaps = true;
                             }

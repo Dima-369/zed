@@ -1163,10 +1163,7 @@ async fn test_history_items_uniqueness_for_multiple_worktree(cx: &mut TestAppCon
         }
 
         if let Match::Search(path_match) = &matches[1] {
-            assert_eq!(
-                WorktreeId::from_usize(path_match.worktree_id),
-                worktree_id2
-            );
+            assert_eq!(WorktreeId::from_usize(path_match.worktree_id), worktree_id2);
             assert_eq!(path_match.path.as_ref(), rel_path("package.json"));
         }
     });

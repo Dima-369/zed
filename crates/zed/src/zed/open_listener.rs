@@ -15,7 +15,7 @@ use futures::future::join_all;
 use futures::{FutureExt, SinkExt, StreamExt};
 use git_ui::file_diff_view::FileDiffView;
 use gpui::{App, AsyncApp, Global, WindowHandle};
-use language::Point;
+use language::{Point, ToPoint};
 use onboarding::FIRST_OPEN;
 use onboarding::show_onboarding_view;
 use recent_projects::{SshSettings, open_remote_project};
@@ -307,6 +307,7 @@ pub async fn open_paths_with_positions(
     diff_paths: &[[String; 2]],
     app_state: Arc<AppState>,
     open_options: workspace::OpenOptions,
+    stdin_cursor_at_end: bool,
     cx: &mut AsyncApp,
 ) -> Result<(
     WindowHandle<Workspace>,
@@ -352,17 +353,42 @@ pub async fn open_paths_with_positions(
         let Some(Ok(item)) = item else {
             continue;
         };
-        let Some(point) = caret_positions.remove(path) else {
-            continue;
+
+        // Check if this is a stdin file (single path and stdin_cursor_at_end is true)
+        let should_position_at_end = stdin_cursor_at_end && paths.len() == 1;
+
+        let point = if should_position_at_end {
+            // For stdin files, position cursor at the end of the file
+            if let Some(active_editor) = item.downcast::<Editor>() {
+                // Get the last line and column of the buffer
+                active_editor
+                    .update(cx, |editor, cx| -> Option<Point> {
+                        if let Some(buffer) = editor.buffer().read(cx).as_singleton() {
+                            Some(buffer.read(cx).len().to_point(&buffer.read(cx)))
+                        } else {
+                            // If not a singleton buffer, use normal caret positioning
+                            caret_positions.remove(path)
+                        }
+                    })
+                    .unwrap_or_else(|_| caret_positions.remove(path))
+            } else {
+                caret_positions.remove(path)
+            }
+        } else {
+            // Use normal caret positioning
+            caret_positions.remove(path)
         };
-        if let Some(active_editor) = item.downcast::<Editor>() {
-            workspace
-                .update(cx, |_, window, cx| {
-                    active_editor.update(cx, |editor, cx| {
-                        editor.go_to_singleton_buffer_point(point, window, cx);
-                    });
-                })
-                .log_err();
+
+        if let Some(point) = point {
+            if let Some(active_editor) = item.downcast::<Editor>() {
+                workspace
+                    .update(cx, |_, window, cx| {
+                        active_editor.update(cx, |editor, cx| {
+                            editor.go_to_singleton_buffer_point(point, window, cx);
+                        });
+                    })
+                    .log_err();
+            }
         }
     }
 
@@ -386,6 +412,7 @@ pub async fn handle_cli_connection(
                 reuse,
                 env,
                 user_data_dir: _,
+                stdin_cursor_at_end,
             } => {
                 if !urls.is_empty() {
                     cx.update(|cx| {
@@ -424,6 +451,7 @@ pub async fn handle_cli_connection(
                     wait,
                     app_state.clone(),
                     env,
+                    stdin_cursor_at_end,
                     cx,
                 )
                 .await;
@@ -444,6 +472,7 @@ async fn open_workspaces(
     wait: bool,
     app_state: Arc<AppState>,
     env: Option<collections::HashMap<String, String>>,
+    stdin_cursor_at_end: bool,
     cx: &mut AsyncApp,
 ) -> Result<()> {
     let grouped_locations = if paths.is_empty() && diff_paths.is_empty() {
@@ -504,6 +533,7 @@ async fn open_workspaces(
                         responses,
                         env.as_ref(),
                         &app_state,
+                        stdin_cursor_at_end,
                         cx,
                     )
                     .await;
@@ -551,6 +581,7 @@ async fn open_local_workspace(
     responses: &IpcSender<CliResponse>,
     env: Option<&HashMap<String, String>>,
     app_state: &Arc<AppState>,
+    stdin_cursor_at_end: bool,
     cx: &mut AsyncApp,
 ) -> bool {
     let paths_with_position =
@@ -579,6 +610,7 @@ async fn open_local_workspace(
             env: env.cloned(),
             ..Default::default()
         },
+        stdin_cursor_at_end,
         cx,
     )
     .await

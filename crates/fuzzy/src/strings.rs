@@ -26,7 +26,6 @@ impl StringMatchCandidate {
     }
 }
 
-
 #[derive(Clone, Debug)]
 pub struct StringMatch {
     pub candidate_id: usize,

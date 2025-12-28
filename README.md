@@ -35,7 +35,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - opening a workspace which has no tabs initially, will trigger `workspace::NewFile` for proper editor focus. Before, there seems to be a bug where the project panel does not have proper focus
 - improved the `go to next/previous diagnostic` action to always jump to errors first. Only if there are no errors, it jumps to warnings. Before, this was mixed
 - moving up/down in outline panel does not wrap around anymore
-- changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 20k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs` (the code for opening as plain text is still untested since I do not use agents inside Zed anymore, and just use CLI)
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
 - modified `vim/.../delete_motion.rs` so `vim::DeleteRight` at end of line stays on the newline character
 - modified `editor::GoToDefinition` to not enter Vim visual mode when jumping to a definition
@@ -57,6 +56,17 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - improve `file_finder::Toggle` matching to use substring through `nucleo` crate. I dislike fuzzy matching which is annoying. Based on https://github.com/zed-industries/zed/pull/37123, but that had fuzzy matching
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
+
+## Zed CLI
+
+- added `--stdin-cursor-at-end` flag to CLI to position cursor at end of buffer when reading from stdin instead of at start which is useful for reading terminal scrollback buffers
+
+## Agent UI changes
+
+- add agent tabs from https://github.com/wzulfikar/zed/pull/8
+- estimate tokens for ACP agents, or displays its token info when it provides it
+- added `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
+- changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
 
 ### Command palette
 

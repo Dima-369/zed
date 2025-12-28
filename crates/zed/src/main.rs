@@ -957,6 +957,7 @@ fn handle_open_request(request: OpenRequest, app_state: Arc<AppState>, cx: &mut 
                         &[],
                         app_state,
                         workspace::OpenOptions::default(),
+                        false, // stdin_cursor_at_end - not relevant for this call
                         cx,
                     )
                     .await?;
@@ -1018,6 +1019,7 @@ fn handle_open_request(request: OpenRequest, app_state: Arc<AppState>, cx: &mut 
                 &request.diff_paths,
                 app_state,
                 workspace::OpenOptions::default(),
+                false, // stdin_cursor_at_end - not relevant for this call
                 cx,
             )
             .await?;
@@ -1437,6 +1439,10 @@ struct Args {
     #[cfg(not(target_os = "windows"))]
     #[arg(hide = true)]
     askpass: Option<String>,
+
+    /// When reading from stdin, position cursor at end of file
+    #[arg(long)]
+    stdin_cursor_at_end: bool,
 
     #[arg(long, hide = true)]
     dump_all_actions: bool,

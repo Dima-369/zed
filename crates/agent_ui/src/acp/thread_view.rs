@@ -64,7 +64,7 @@ use crate::acp::message_editor::{MessageEditor, MessageEditorEvent};
 use crate::agent_diff::AgentDiff;
 use crate::profile_selector::{ProfileProvider, ProfileSelector};
 
-use crate::ui::{AgentNotification, AgentNotificationEvent, BurnModeTooltip, UsageCallout};
+use crate::ui::{AgentNotification, AgentNotificationEvent, BurnModeTooltip};
 use crate::{
     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, ContinueThread, ContinueWithBurnMode,
     CycleFavoriteModels, CycleModeSelector, ExpandMessageEditor, Follow, KeepAll, NewThread,
@@ -815,6 +815,16 @@ impl AcpThreadView {
             self.focus_handle.focus(window, cx)
         }
         cx.notify();
+    }
+
+    pub fn session_id(&self, cx: &App) -> Option<acp::SessionId> {
+        if let Some(thread) = self.thread() {
+            Some(thread.read(cx).session_id().clone())
+        } else {
+            self.resume_thread_metadata
+                .as_ref()
+                .map(|metadata| metadata.id.clone())
+        }
     }
 
     fn handle_agent_servers_updated(
@@ -4440,52 +4450,74 @@ impl AcpThreadView {
             .thread(acp_thread.session_id(), cx)
     }
 
-    fn is_using_zed_ai_models(&self, cx: &App) -> bool {
-        self.as_native_thread(cx)
-            .and_then(|thread| thread.read(cx).model())
-            .is_some_and(|model| model.provider_id() == language_model::ZED_CLOUD_PROVIDER_ID)
-    }
-
     fn render_token_usage(&self, cx: &mut Context<Self>) -> Option<Div> {
-        let thread = self.thread()?.read(cx);
-        let usage = thread.token_usage()?;
-        let is_generating = thread.status() != ThreadStatus::Idle;
+        let thread = self.thread()?;
+        let thread_read = thread.read(cx);
 
-        let used = crate::text_thread_editor::humanize_token_count(usage.used_tokens);
-        let max = crate::text_thread_editor::humanize_token_count(usage.max_tokens);
+        if let Some(usage) = thread_read.token_usage() {
+            let is_generating = thread_read.status() != ThreadStatus::Idle;
+            let used = crate::text_thread_editor::humanize_token_count(usage.used_tokens);
+            let max = crate::text_thread_editor::humanize_token_count(usage.max_tokens);
 
-        Some(
-            h_flex()
-                .flex_shrink_0()
-                .gap_0p5()
-                .mr_1p5()
-                .child(
-                    Label::new(used)
-                        .size(LabelSize::Small)
-                        .color(Color::Muted)
-                        .map(|label| {
-                            if is_generating {
-                                label
-                                    .with_animation(
-                                        "used-tokens-label",
-                                        Animation::new(Duration::from_secs(2))
-                                            .repeat()
-                                            .with_easing(pulsating_between(0.3, 0.8)),
-                                        |label, delta| label.alpha(delta),
-                                    )
-                                    .into_any()
-                            } else {
-                                label.into_any_element()
-                            }
-                        }),
+            Some(
+                h_flex()
+                    .flex_shrink_0()
+                    .gap_0p5()
+                    .mr_1p5()
+                    .child(
+                        Label::new(used)
+                            .size(LabelSize::Small)
+                            .color(Color::Muted)
+                            .map(|label| {
+                                if is_generating {
+                                    label
+                                        .with_animation(
+                                            "used-tokens-label",
+                                            Animation::new(Duration::from_secs(2))
+                                                .repeat()
+                                                .with_easing(pulsating_between(0.3, 0.8)),
+                                            |label, delta| label.alpha(delta),
+                                        )
+                                        .into_any()
+                                } else {
+                                    label.into_any_element()
+                                }
+                            }),
+                    )
+                    .child(
+                        Label::new("/")
+                            .size(LabelSize::Small)
+                            .color(Color::Custom(cx.theme().colors().text_muted.opacity(0.5))),
+                    )
+                    .child(Label::new(max).size(LabelSize::Small).color(Color::Muted)),
+            )
+        } else {
+            // Only show token estimation for external agents, not native Zed agent
+            if self.as_native_connection(cx).is_none() {
+                // Estimate tokens based on thread content
+                let estimated_tokens = thread_read.estimated_token_count(cx);
+                let used = crate::text_thread_editor::humanize_token_count(estimated_tokens);
+
+                Some(
+                    h_flex()
+                        .flex_shrink_0()
+                        .gap_0p5()
+                        .mr_1p5()
+                        .child(
+                            Icon::new(IconName::CircleHelp)
+                                .size(IconSize::XSmall)
+                                .color(Color::Muted),
+                        )
+                        .child(
+                            Label::new(format!("~{}", used))
+                                .size(LabelSize::Small)
+                                .color(Color::Muted),
+                        ),
                 )
-                .child(
-                    Label::new("/")
-                        .size(LabelSize::Small)
-                        .color(Color::Custom(cx.theme().colors().text_muted.opacity(0.5))),
-                )
-                .child(Label::new(max).size(LabelSize::Small).color(Color::Muted)),
-        )
+            } else {
+                None
+            }
+        }
     }
 
     fn toggle_burn_mode(
@@ -4960,7 +4992,7 @@ impl AcpThreadView {
 
         let project = workspace.read(cx).project().clone();
         window.spawn(cx, async move |cx| {
-            let language = if markdown.lines().count() < 20000 {
+            let language = if markdown.lines().count() < 90_000 {
                 markdown_language_task.await?
             } else {
                 plain_text_language_task.await?
@@ -5484,24 +5516,54 @@ impl AcpThreadView {
     }
 
     fn render_usage_callout(&self, line_height: Pixels, cx: &mut Context<Self>) -> Option<Div> {
-        if !self.is_using_zed_ai_models(cx) {
-            return None;
-        }
+        // Show token usage warnings for all ACP agents that have token usage data
+        let thread = self.thread()?;
+        let thread_read = thread.read(cx);
 
-        let user_store = self.project.read(cx).user_store().read(cx);
-        if user_store.is_usage_based_billing_enabled() {
-            return None;
-        }
+        let token_usage = thread_read.token_usage()?;
+        let ratio = token_usage.ratio();
 
-        let plan = user_store
-            .plan()
-            .unwrap_or(cloud_llm_client::Plan::V1(PlanV1::ZedFree));
+        let (severity, icon, title) = match ratio {
+            acp_thread::TokenUsageRatio::Normal => {
+                return None;
+            }
+            acp_thread::TokenUsageRatio::Warning => (
+                Severity::Warning,
+                IconName::Warning,
+                "Thread reaching the token limit soon",
+            ),
+            acp_thread::TokenUsageRatio::Exceeded => (
+                Severity::Error,
+                IconName::XCircle,
+                "Thread reached the token limit",
+            ),
+        };
 
-        let usage = user_store.model_request_usage()?;
+        let used = crate::text_thread_editor::humanize_token_count(token_usage.used_tokens);
+        let max = crate::text_thread_editor::humanize_token_count(token_usage.max_tokens);
 
         Some(
             div()
-                .child(UsageCallout::new(plan, usage))
+                .child(
+                    Callout::new()
+                        .icon(icon)
+                        .title(title)
+                        .severity(severity)
+                        .actions_slot(
+                            h_flex().gap_2().child(
+                                Button::new("new_thread", "New Thread")
+                                    .size(ButtonSize::Compact)
+                                    .style(ButtonStyle::Filled)
+                                    .on_click(cx.listener(|_, _, _window, cx| {
+                                        cx.dispatch_action(&crate::NewThread)
+                                    })),
+                            ),
+                        )
+                        .description_slot(div().child(format!(
+                            "Current thread has used {} of {} tokens.",
+                            used, max
+                        ))),
+                )
                 .line_height(line_height),
         )
     }
