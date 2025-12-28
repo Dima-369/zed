@@ -1,6 +1,5 @@
-- adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
+- how about estimation token usage for ACP's instead of displaying "No ACP token data". is that possible? there is the `agent::OpenActiveThreadAsMarkdown` command, maybe because tokens of that with `~` prefix?
 
-- fix cmd-w behavior in agent panel
 
 - can ACP allow all edits be enabled by default?
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
@@ -19,6 +18,14 @@ https://github.com/zed-industries/zed/pull/42387#issuecomment-3522431903 (has an
 
 agent: History and recent conversations persistence per workspace 
 https://github.com/zed-industries/zed/pull/41874
+
+
+# adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
+
+- test out terminal integration via `zed - --stdin-cursor-at-end` for terminal scrollback buffer once Zed Dev is updated
+
+
+
 
 # >>> Investigations
 

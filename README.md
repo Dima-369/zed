@@ -60,6 +60,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ## Agent UI changes
 
 - add agent tabs from https://github.com/wzulfikar/zed/pull/8
+- estimate tokens for ACP agents, or displays its token info when it provides it
 - added `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
 
