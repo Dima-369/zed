@@ -3048,6 +3048,7 @@ impl AgentPanel {
                     Label::new(label_text)
                         .truncate()
                         .when(!is_active, |label| label.color(Color::Muted))
+                        .when(is_active, |label| label.color(Color::Default)) // Ensure active tabs have proper color
                         .into_any_element()
                 };
 
@@ -3087,9 +3088,9 @@ impl AgentPanel {
                                 .into_any_element()
                         } else {
                             Label::new(TextThreadSummary::DEFAULT)
-                                .color(Color::Muted)
                                 .truncate()
                                 .when(!is_active, |label| label.color(Color::Muted))
+                                .when(is_active, |label| label.color(Color::Default)) // Ensure active tabs have proper color
                                 .into_any_element()
                         };
 
@@ -3123,6 +3124,7 @@ impl AgentPanel {
                                 Label::new(label_text)
                                     .truncate()
                                     .when(!is_active, |label| label.color(Color::Muted))
+                                    .when(is_active, |label| label.color(Color::Default)) // Ensure active tabs have proper color
                                     .into_any_element()
                             };
 
