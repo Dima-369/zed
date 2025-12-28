@@ -7,6 +7,8 @@
 so in agent::OpenActiveThreadAsMarkdown I see that process outputs are successfully logged, can those just be shown after the bash tool usage in ACP? Just below as regular Text.
 Below the `Run Command` text and below the `Shell: ` thing.
 
+In Zed release build, it is also not shown.
+
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? 
 first investigate without changing code how it currently works and where it stores the info when I click "Allow always"
 I think an array of regexes in settings would be great
