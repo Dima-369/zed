@@ -6,7 +6,6 @@ use anyhow::anyhow;
 use collections::HashMap;
 use futures::AsyncBufReadExt as _;
 use futures::io::BufReader;
-use paths::local_settings_folder_name;
 use project::Project;
 use project::agent_server_store::AgentServerCommand;
 use serde::Deserialize;
