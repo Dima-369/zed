@@ -72,6 +72,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
 - added `agent::TogglePlan` which toggles the plan of the current thread
 - always allow all edits, otherwise it kepts asking for "Allow All Edits" every single time a new ACP thread is started which is just annoying. It still asks for tool permissions
+- show command output for ACP bash tools always
 
 ### Command palette
 
