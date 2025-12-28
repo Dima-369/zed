@@ -29,9 +29,9 @@ use crate::agent_panel_tab::{AgentPanelTab, AgentPanelTabIdentity, TabId, TabLab
 use crate::ui::{AcpOnboardingModal, ClaudeCodeOnboardingModal};
 use crate::{
     AddContextServer, AgentDiffPane, CloseActiveThreadTab, DeleteRecentlyOpenThread, Follow,
-    InlineAssistant, ManageProfiles, NewTextThread, NewThread, OpenActiveThreadAsMarkdown, OpenAgentDiff,
-    OpenHistory, ResetTrialEndUpsell, ResetTrialUpsell, ToggleNavigationMenu, ToggleNewThreadMenu,
-    ToggleOptionsMenu,
+    InlineAssistant, ManageProfiles, NewTextThread, NewThread, OpenActiveThreadAsMarkdown,
+    OpenAgentDiff, OpenHistory, ResetTrialEndUpsell, ResetTrialUpsell, ToggleNavigationMenu,
+    ToggleNewThreadMenu, ToggleOptionsMenu,
     acp::AcpThreadView,
     agent_configuration::{AgentConfiguration, AssistantConfigurationEvent},
     slash_command::SlashCommandCompletionProvider,
@@ -54,6 +54,7 @@ use editor::{Anchor, AnchorRangeExt as _, Editor, EditorEvent, MultiBuffer, acti
 use extension::ExtensionEvents;
 use extension_host::ExtensionStore;
 use fs::Fs;
+use gpui::Div;
 use gpui::{
     Action, Animation, AnimationExt, AnyElement, App, AsyncWindowContext, Corner, DismissEvent,
     Entity, EventEmitter, ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels, ScrollHandle,
@@ -67,16 +68,16 @@ use prompt_store::{PromptBuilder, PromptStore, UserPromptId};
 use rules_library::{RulesLibrary, open_rules_library};
 use search::{BufferSearchBar, buffer_search};
 use settings::{Settings, SettingsStore, update_settings_file};
+use theme::ActiveTheme;
 use theme::ThemeSettings;
 use ui::{
-    Button, ButtonStyle, Callout, Color, ContextMenu, ContextMenuEntry, DynamicSpacing, IconButton,
-    IconName, IconSize, Label, LabelSize, PopoverMenu, PopoverMenuHandle, Severity, Tab, TabBar, TabCloseSide, TabPosition, Tooltip, Toggleable, VisibleOnHover,
-    Window, div, h_flex, px, rems_from_px, v_flex,
+    Button, ButtonSize, ButtonStyle, Callout, Color, ContextMenu, ContextMenuEntry, DynamicSpacing,
+    IconButton, IconName, IconSize, Indicator, Label, LabelSize, PopoverMenu, PopoverMenuHandle,
+    Severity, Tab, TabBar, TabCloseSide, TabPosition, Toggleable, Tooltip, VisibleOnHover, Window,
+    div, h_flex, px, rems_from_px, v_flex,
 };
-use ui::{ButtonCommon, Clickable, LabelCommon, ProgressBar, Icon};
-use gpui::{Div};
-use theme::ActiveTheme;
-use ui::{KeyBinding, IconButtonShape, utils::WithRemSize};
+use ui::{ButtonCommon, Clickable, Icon, LabelCommon, ProgressBar};
+use ui::{IconButtonShape, KeyBinding, utils::WithRemSize};
 use util::ResultExt as _;
 use workspace::{
     CollaboratorId, DraggedSelection, DraggedTab, ToggleZoom, ToolbarItemView, Workspace,
@@ -1356,7 +1357,6 @@ impl AgentPanel {
         }
     }
 
-
     fn populate_recently_opened_menu_section(
         mut menu: ContextMenu,
         panel: Entity<Self>,
@@ -2024,7 +2024,6 @@ impl AgentPanel {
             })
     }
 
-    
     fn render_tab_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let agent_server_store = self.project.read(cx).agent_server_store().clone();
         let focus_handle = self.focus_handle(cx);
@@ -2250,6 +2249,7 @@ impl AgentPanel {
                 tooltip,
             } = self.render_tab_label(tab.view(), is_active, cx);
 
+            let indicator = self.render_agent_tab_indicator(index, tab, cx);
             let mut tab_component = Tab::new(("agent-tab", index))
                 .position(position)
                 .close_side(TabCloseSide::End)
@@ -2261,11 +2261,14 @@ impl AgentPanel {
                         this.set_active_tab_by_id(index, window, cx);
                     }
                 }))
+                .start_slot::<Indicator>(indicator)
                 .child(tab_label)
                 .start_slot(self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, cx))
                 .end_slot(
                     IconButton::new(("close-agent-tab", index), IconName::Close)
                         .shape(IconButtonShape::Square)
+                        .icon_color(Color::Muted)
+                        .size(ButtonSize::None)
                         .icon_size(IconSize::Small)
                         .visible_on_hover("")
                         .on_click(cx.listener(move |this: &mut Self, _, window, cx| {
@@ -3022,6 +3025,7 @@ impl AgentPanel {
                     Label::new(label_text)
                         .truncate()
                         .when(!is_active, |label| label.color(Color::Muted))
+                        .color(Color::Accent)
                         .with_animation(
                             "pulsating-tab-label",
                             Animation::new(Duration::from_secs(2))
@@ -3062,6 +3066,7 @@ impl AgentPanel {
                             Label::new(TextThreadSummary::DEFAULT)
                                 .truncate()
                                 .when(!is_active, |label| label.color(Color::Muted))
+                                .color(Color::Accent)
                                 .with_animation(
                                     "pulsating-tab-label",
                                     Animation::new(Duration::from_secs(2))
@@ -3095,6 +3100,7 @@ impl AgentPanel {
                                 Label::new(label_text)
                                     .truncate()
                                     .when(!is_active, |label| label.color(Color::Muted))
+                                    .color(Color::Accent)
                                     .with_animation(
                                         "pulsating-tab-label",
                                         Animation::new(Duration::from_secs(2))
@@ -3204,6 +3210,17 @@ impl AgentPanel {
                 })
             })
             .into_any_element()
+    }
+
+    fn render_agent_tab_indicator(
+        &self,
+        _index: usize,
+        _tab: &AgentPanelTab,
+        _cx: &App,
+    ) -> Option<Indicator> {
+        // For now, agent tabs don't have a concept of "dirty" like file tabs do
+        // This could be extended in the future to show indicators for unsaved changes
+        None
     }
 }
 
