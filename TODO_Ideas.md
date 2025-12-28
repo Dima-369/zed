@@ -7,6 +7,7 @@
 - can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords, but I really don't need it to be that fancy
 
 - add 2 new actions to `agent::...`. First DismissErrorNotification and second CopyErrorNotification
+currently they are only mouse interactable
 
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? I think an array of regexes in settings would be great
 
