@@ -6,6 +6,7 @@ use anyhow::anyhow;
 use collections::HashMap;
 use futures::AsyncBufReadExt as _;
 use futures::io::BufReader;
+use paths::{config_dir, local_settings_folder_name};
 use project::Project;
 use project::agent_server_store::AgentServerCommand;
 use serde::Deserialize;
@@ -708,6 +709,53 @@ impl acp::Client for ClientDelegate {
         }
 
         let cx = &mut self.cx.clone();
+
+        if arguments.tool_call.fields.kind == Some(acp::ToolKind::Edit) {
+            if let Some(raw_input) = &arguments.tool_call.fields.raw_input {
+                if let Some(path_str) = raw_input.get("path").and_then(|v| v.as_str()) {
+                    let path = std::path::Path::new(path_str);
+                    let is_allowed = thread
+                        .update(cx, |thread, cx| {
+                            let project = thread.project().read(cx);
+
+                            let local_settings_folder = local_settings_folder_name();
+                            if path.components().any(|component| {
+                                component.as_os_str()
+                                    == <_ as AsRef<std::ffi::OsStr>>::as_ref(
+                                        &local_settings_folder,
+                                    )
+                            }) {
+                                return false;
+                            }
+
+                            if let Ok(canonical_path) = std::fs::canonicalize(&path) {
+                                if canonical_path.starts_with(config_dir()) {
+                                    return false;
+                                }
+                            }
+
+                            project.find_project_path(path, cx).is_some()
+                        })
+                        .unwrap_or(false);
+
+                    if is_allowed {
+                        if let Some(allow_option) = arguments
+                            .options
+                            .iter()
+                            .find(|o| o.kind == acp::PermissionOptionKind::AllowOnce)
+                        {
+                            return Ok(acp::RequestPermissionResponse::new(
+                                acp::RequestPermissionOutcome::Selected(
+                                    acp::SelectedPermissionOutcome::new(
+                                        allow_option.option_id.clone()
+                                    )
+                                ),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
 
         let task = thread.update(cx, |thread, cx| {
             thread.request_tool_call_authorization(
