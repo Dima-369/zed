@@ -1,22 +1,17 @@
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::ops::Range;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use acp_thread::{AcpThread, AcpThreadEvent, ThreadStatus};
+use acp_thread::{AcpThread, ThreadStatus};
 use agent::{ContextServerRegistry, DbThreadMetadata, HistoryEntry, HistoryStore};
-use agent_client_protocol as acp;
 use agent_servers::AgentServer;
 use db::kvp::{Dismissable, KEY_VALUE_STORE};
 use project::{
     ExternalAgentServerName,
-    agent_server_store::{
-        AgentServerCommand, AgentServerStore, AllAgentServersSettings, CLAUDE_CODE_NAME,
-        CODEX_NAME, GEMINI_NAME,
-    },
+    agent_server_store::AgentServerStore,
 };
 use serde::{Deserialize, Serialize};
 use settings::{
@@ -28,7 +23,7 @@ use zed_actions::agent::{OpenClaudeCodeOnboardingModal, ReauthenticateAgent};
 use crate::agent_panel_tab::{AgentPanelTab, AgentPanelTabIdentity, TabId, TabLabelRender};
 use crate::ui::{AcpOnboardingModal, ClaudeCodeOnboardingModal};
 use crate::{
-    AddContextServer, AgentDiffPane, CloseActiveThreadTab, DeleteRecentlyOpenThread, Follow,
+    AddContextServer, AgentDiffPane, CloseActiveThreadTab, Follow,
     InlineAssistant, ManageProfiles, NewTextThread, NewThread, OpenActiveThreadAsMarkdown,
     OpenAgentDiff, OpenHistory, ResetTrialEndUpsell, ResetTrialUpsell, ToggleNavigationMenu,
     ToggleNewThreadMenu, ToggleOptionsMenu,
@@ -67,7 +62,7 @@ use project::{Project, ProjectPath, Worktree};
 use prompt_store::{PromptBuilder, PromptStore, UserPromptId};
 use rules_library::{RulesLibrary, open_rules_library};
 use search::{BufferSearchBar, buffer_search};
-use settings::{Settings, SettingsStore, update_settings_file};
+use settings::{Settings, update_settings_file};
 use theme::ActiveTheme;
 use theme::ThemeSettings;
 use ui::{
@@ -94,10 +89,6 @@ use zed_actions::{
 const AGENT_PANEL_KEY: &str = "agent_panel";
 const LOADING_SUMMARY_PLACEHOLDER: &str = "Loading Summary…";
 
-struct DetachedThread {
-    _task: Task<()>,
-    _subscriptions: Vec<Subscription>,
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SerializedAgentPanel {
@@ -257,7 +248,7 @@ pub enum ActiveView {
     Configuration,
 }
 
-enum WhichFontSize {
+pub enum WhichFontSize {
     AgentFont,
     BufferFont,
     None,
@@ -478,7 +469,6 @@ pub struct AgentPanel {
     pending_serialization: Option<Task<Result<()>>>,
     onboarding: Entity<AgentPanelOnboarding>,
     selected_agent: AgentType,
-    detached_threads: HashMap<acp::SessionId, DetachedThread>,
     pending_tab_removal: Option<TabId>,
     tabs: Vec<AgentPanelTab>,
     active_tab_id: TabId,
@@ -749,7 +739,6 @@ impl AgentPanel {
             acp_history,
             history_store,
             selected_agent: AgentType::default(),
-            detached_threads: HashMap::new(),
             loading: false,
             pending_tab_removal: None,
             tabs: vec![AgentPanelTab::new(active_view, selected_agent)],
@@ -2709,6 +2698,7 @@ impl Render for AgentPanel {
                 }
             }))
             .child(self.render_tab_bar(window, cx))
+            .children(self.render_workspace_trust_message(cx))
             .children(self.render_onboarding(window, cx))
             .map(|parent| match self.active_view() {
                 ActiveView::ExternalAgentThread { thread_view, .. } => parent
