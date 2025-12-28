@@ -8,10 +8,6 @@
 
 - improve ACP tab animation, currently it fades opacity, but it does not look too good. can you instead make the the agent icon rotate the entire time until it is done, and reset rotation when done
 
-TEST from AI, still broken
-- add 2 new actions to `agent::...`. First DismissErrorNotification and second CopyErrorNotification
-currently they are only mouse interactable
-
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? 
 first investigate without changing code how it currently works and where it stores the info when I click "Allow always"
 I think an array of regexes in settings would be great
