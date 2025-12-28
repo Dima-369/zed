@@ -2365,6 +2365,14 @@ impl AcpThread {
         self.entries.iter().map(|e| e.to_markdown(cx)).collect()
     }
 
+    /// Estimate token count based on character count of the thread's markdown representation.
+    /// Uses a simple heuristic of characters / 4 to estimate tokens.
+    pub fn estimated_token_count(&self, cx: &App) -> u64 {
+        let markdown = self.to_markdown(cx);
+        // Simple heuristic: 4 characters per token (typical for English text)
+        (markdown.len() / 4) as u64
+    }
+
     pub fn emit_load_error(&mut self, error: LoadError, cx: &mut Context<Self>) {
         cx.emit(AcpThreadEvent::LoadError(error));
     }
