@@ -1,6 +1,6 @@
 - can ACP threads actually preview command output? maybe just last 20 lines. Running it just states that it runs something but shows nothing which sucks, Windsurf embeds a real small editor where one can even input sudo passwords
 
-- can ACP allow all edits be enabled by default?
+- can ACP allow all edits be enabled by default? It keeps asking me every single time when I launch ACP, or is there a setting for it?
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
 
 - remove `editor::SearchInCurrentFileViaMultiBuffer`
