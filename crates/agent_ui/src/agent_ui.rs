@@ -127,6 +127,10 @@ actions!(
         ToggleBurnMode,
         /// Closes the currently active thread tab.
         CloseActiveThreadTab,
+        /// Activates the next tab in the agent panel.
+        ActivateNextTab,
+        /// Activates the previous tab in the agent panel.
+        ActivatePreviousTab,
     ]
 );
 

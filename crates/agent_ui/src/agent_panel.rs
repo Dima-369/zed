@@ -227,6 +227,16 @@ pub fn init(cx: &mut App) {
                             panel.reset_agent_zoom(window, cx);
                         });
                     }
+                })
+                .register_action(|workspace, _: &crate::ActivateNextTab, window, cx| {
+                    if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                        panel.update(cx, |panel, cx| panel.activate_next_tab(window, cx));
+                    }
+                })
+                .register_action(|workspace, _: &crate::ActivatePreviousTab, window, cx| {
+                    if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                        panel.update(cx, |panel, cx| panel.activate_previous_tab(window, cx));
+                    }
                 });
         },
     )
@@ -3221,6 +3231,34 @@ impl AgentPanel {
         // For now, agent tabs don't have a concept of "dirty" like file tabs do
         // This could be extended in the future to show indicators for unsaved changes
         None
+    }
+
+    fn activate_next_tab(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
+
+        let next_id = if self.active_tab_id + 1 >= self.tabs.len() {
+            0 // Wrap around to the first tab
+        } else {
+            self.active_tab_id + 1
+        };
+
+        self.set_active_tab_by_id(next_id, window, cx);
+    }
+
+    fn activate_previous_tab(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
+
+        let prev_id = if self.active_tab_id == 0 {
+            self.tabs.len() - 1 // Wrap around to the last tab
+        } else {
+            self.active_tab_id - 1
+        };
+
+        self.set_active_tab_by_id(prev_id, window, cx);
     }
 }
 
