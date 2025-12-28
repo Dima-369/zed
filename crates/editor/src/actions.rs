@@ -659,8 +659,6 @@ actions!(
         OpenSelectionsInMultibuffer,
         /// Opens the URL at cursor position.
         OpenUrl,
-        /// Searches in the current file with project search via multibuffer.
-        SearchInCurrentFileViaMultiBuffer,
         /// Organizes import statements.
         OrganizeImports,
         /// Decreases indentation of selected lines.
