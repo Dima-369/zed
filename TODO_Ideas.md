@@ -1,3 +1,8 @@
+- remove webrtc patching again because Warp seems to work 
+
+- `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
+am I invoking this correctly?
+
 - move commit dialog/modal launched from `git::Commit` to the right side, currently it is centered and on small screens it overlaps the left git panel/dock which shows which files are staged/unstaged
 
 - can the Uncommited Changes multi buffer in the header to right of Collapse All, show the file count, like 1 file or 2 files
