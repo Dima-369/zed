@@ -2934,10 +2934,29 @@ impl AcpThreadView {
         // Handle truncation for Execute tool calls
         let markdown_element = if tool_call_kind == acp::ToolKind::Execute {
             let text = markdown.read(cx).source();
-            let content = if text.len() > 900 {
-                format!("...{}", &text[text.len() - 897..])
+            let processed_text = if text.ends_with("Error: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)") {
+                text.trim_end_matches("Error: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)")
+            } else if let Some(exit_code_pos) = text.rfind("Exit Code:") {
+                let suffix = &text[exit_code_pos..];
+                if let Some(code_start) = suffix.find('1') {
+                    let code_end = suffix.find('\n').unwrap_or(suffix.len());
+                    let exit_code = &suffix[code_start..code_end];
+                    if exit_code == "1" {
+                        &text[..exit_code_pos + code_start + code_end - exit_code_pos]
+                    } else {
+                        text
+                    }
+                } else {
+                    text
+                }
             } else {
-                text.to_string()
+                text
+            };
+            
+            let content = if processed_text.len() > 900 {
+                format!("...{}", &processed_text[processed_text.len() - 897..])
+            } else {
+                processed_text.trim_end().to_string()
             };
             // Create a simple text element with the content
             div()
