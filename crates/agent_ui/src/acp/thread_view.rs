@@ -2710,13 +2710,7 @@ impl AcpThreadView {
             .children(tool_output_display)
             .when(is_terminal_tool && tool_call.content.len() > 0, |this| {
                 this.child({
-                    let command_text = tool_call.label.read(cx).source();
-                    let truncated_label = if command_text.len() > 30 {
-                        format!("...{}", &command_text[command_text.len() - 27..])
-                    } else {
-                        command_text.to_string()
-                    };
-                    Label::new(format!("Command Output: {}", truncated_label))
+                    Label::new("Command Output")
                         .size(LabelSize::XSmall)
                         .color(Color::Muted)
                         .buffer_font(cx)
