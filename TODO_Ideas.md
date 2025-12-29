@@ -1,4 +1,6 @@
-- remove webrtc patching again because Warp seems to work 
+- can git commit modal have different background color? check command palette background color theming, it should be the same
+
+- remove webrtc patching again because Warp seems to work to download better from GitHub releases
 
 - `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
 am I invoking this correctly?
