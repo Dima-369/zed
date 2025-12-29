@@ -1,3 +1,5 @@
+- move commit dialog/modal launched from `git::Commit` to the right side, currently it is centered and on small screens it overlaps the left git panel/dock which shows which files are staged/unstaged
+
 - can the Uncommited Changes multi buffer in the header to right of Collapse All, show the file count, like 1 file or 2 files
 
 - investigate undo behavior, reproduce steps:
@@ -7,14 +9,7 @@
 
 # ACP
 
-- remove al the debug pritns from `crates/agent_ui/src/acp/thread_view.rs`
-
-- can ACP threads actually preview command output? maybe just last 20 lines with little success/error indication. Running it just states that it runs something but shows nothing which sucks.
-
-so in agent::OpenActiveThreadAsMarkdown I see that process outputs are successfully logged, can those just be shown after the bash tool usage in ACP? Just below as regular Text.
-Below the `Run Command` text and below the `Shell: ` thing.
-
-In Zed release build, it is also not shown.
+- improve ACP terminal execute layout, see `"Command Output:"` in crates/agent_ui/src/acp/thread_view.rs 
 
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? 
 first investigate without changing code how it currently works and where it stores the info when I click "Allow always"
