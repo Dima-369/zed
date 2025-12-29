@@ -1,5 +1,43 @@
 - fix `/script/clippy` and start fixing unit tests
 
+- implement a new action which launches a new ACP agent, you pass this action the name of the agent, it my instance "qwen" should open it because I have this in my settings:
+
+  "agent_servers": {
+    "qwen": {
+      "type": "custom",
+      "command": "qwen",
+      "args": ["--experimental-acp"],
+      "env": {}
+    }
+  },
+
+then bind to cmd-t in agentpanel
+
+---
+
+- can this new from summary be used for ACP agents as well?
+
+in crates/agent_ui/src/agent_panel.rs
+is my branch missing this?
+
+                    let active_thread = active_thread.clone();
+                    Some(ContextMenu::build(window, cx, |menu, _window, cx| {
+                        menu.context(focus_handle.clone())
+                            .when_some(active_thread, |this, active_thread| {
+                                let thread = active_thread.read(cx);
+
+                                if !thread.is_empty() {
+                                    let session_id = thread.id().clone();
+                                    this.item(
+                                        ContextMenuEntry::new("New From Summary")
+                                            .icon(IconName::ThreadFromSummary)
+                                            .icon_color(Color::Muted)
+                                            .handler(move |window, cx| {
+                                                window.dispatch_action(
+                                                    Box::new(NewNativeAgentThreadFromSummary {
+                                                        from_session_id: session_id.clone(),
+                                                    }),
+
 - add qwen inline assistant provider (this means as a LLM provider) and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - fix bad undo behavior, reproduce steps:
@@ -11,12 +49,10 @@ I created `test_undo_restores_cursor_position_after_paste_at_line_end`, but firs
 
 # Support external agent history
 
-https://github.com/zed-industries/zed/pull/45734
-
 I am able to merge this without conflicts using auto-resolve conflicts in JetBrains, and ACP threads are shown with history.
-BUT, I can not type in any messages in such restored threads, apparently?
+But, I can not type into message editor. I tested on his plain branch, and it also does not work.
 
-Try this out on the raw branch, to see if it also happens there.
+https://github.com/zed-industries/zed/pull/45734
 
 # agent: History and recent conversations persistence per workspace
 
