@@ -26,9 +26,6 @@ am I invoking this CLI correctly?
 
 # ACP
 
-- improve ACP terminal execute layout, see `"Command Output"` in `crates/agent_ui/src/acp/thread_view.rs`
-can you only print out last 1024 characters of the command output and use `...` if longer?
-
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? 
 first investigate without changing code how it currently works and where it stores the info when I click "Allow always"
 I think an array of regexes in settings would be great
