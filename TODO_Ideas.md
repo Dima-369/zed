@@ -3,7 +3,12 @@
 - add qwen inline assistant provider and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - remove webrtc patching again because Warp seems to work to download better from GitHub releases
-find commit which one modifies
+
+I investigated the git commits and you have undo those commits:
+53e5e75cfb0a
+39de669379f7
+66fc29e7577f
+run git show then undo the changes
 
 - investigate undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line, run editor::Paste (cursor is still on newline character)
