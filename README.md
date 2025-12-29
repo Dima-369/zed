@@ -80,6 +80,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - added `agent::TogglePlan` which toggles the plan of the current thread
 - always allow all edits, otherwise it kepts asking for "Allow All Edits" every single time a new ACP thread is started which is just annoying. It still asks for tool permissions
 - show command output for `acp::ToolKind::Execute` always below the `Run Command` view in a plain text view to preserve newlines
+  - I added `prepare_execute_tool_output_from_qwen()` to strip trailing and leading information for cleaner output
 
 ### Command palette
 

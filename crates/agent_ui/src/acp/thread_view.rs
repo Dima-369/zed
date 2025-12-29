@@ -2708,22 +2708,38 @@ impl AcpThreadView {
                 }
             })
             .children(tool_output_display)
+            // Show output preview for terminal tools even when collapsed
             .when(is_terminal_tool && tool_call.content.len() > 0, |this| {
-                this.children(tool_call.content.iter().enumerate().map(
-                    |(content_ix, content)| {
-                        div().id(("tool-call-preview", entry_ix)).child(
-                            self.render_tool_call_content_preview(
-                                entry_ix,
-                                content,
-                                content_ix,
-                                tool_call,
-                                use_card_layout,
-                                window,
-                                cx,
-                            ),
-                        )
-                    },
-                ))
+                this.child(
+                    div()
+                        .m_2()
+                        .bg(cx.theme().colors().editor_background)
+                        .child(
+                            v_flex()
+                                .gap_1()
+                                .child(
+                                    Label::new("Command Output")
+                                        .size(LabelSize::XSmall)
+                                        .color(Color::Muted)
+                                        .buffer_font(cx),
+                                )
+                                .children(tool_call.content.iter().enumerate().map(
+                                    |(content_ix, content)| {
+                                        div().id(("tool-call-preview", entry_ix)).child(
+                                            self.render_tool_call_content(
+                                                entry_ix,
+                                                content,
+                                                content_ix,
+                                                tool_call,
+                                                use_card_layout,
+                                                window,
+                                                cx,
+                                            ),
+                                        )
+                                    },
+                                )),
+                        ),
+                )
             })
     }
 
@@ -2835,55 +2851,6 @@ impl AcpThreadView {
             .when(!is_edit, |this| this.child(gradient_overlay))
     }
 
-    fn render_tool_call_content_preview(
-        &self,
-        entry_ix: usize,
-        content: &ToolCallContent,
-        context_ix: usize,
-        tool_call: &ToolCall,
-        card_layout: bool,
-        window: &Window,
-        cx: &Context<Self>,
-    ) -> AnyElement {
-        match content {
-            ToolCallContent::Terminal(terminal) => {
-                let terminal_data = terminal.read(cx);
-                if let Some(output) = &terminal_data.output() {
-                    let content = &output.content;
-                    let truncated_content = if content.len() > 30 {
-                        format!("...{}", &content[content.len() - 27..])
-                    } else {
-                        content.clone()
-                    };
-                    div()
-                        .px_2()
-                        .py_1()
-                        .bg(cx.theme().colors().editor_background)
-                        .rounded_md()
-                        .child(
-                            Label::new(truncated_content)
-                                .size(LabelSize::XSmall)
-                                .buffer_font(cx)
-                        )
-                        .into_any_element()
-                } else {
-                    Empty.into_any_element()
-                }
-            }
-            _ => {
-                self.render_tool_call_content(
-                    entry_ix,
-                    content,
-                    context_ix,
-                    tool_call,
-                    card_layout,
-                    window,
-                    cx,
-                )
-            }
-        }
-    }
-
     fn render_tool_call_content(
         &self,
         entry_ix: usize,
@@ -2906,7 +2873,6 @@ impl AcpThreadView {
                         card_layout,
                         window,
                         cx,
-                        tool_call.kind,
                     )
                 } else {
                     Empty.into_any_element()
@@ -2927,47 +2893,8 @@ impl AcpThreadView {
         card_layout: bool,
         window: &Window,
         cx: &Context<Self>,
-        tool_call_kind: acp::ToolKind,
     ) -> AnyElement {
         let button_id = SharedString::from(format!("tool_output-{:?}", tool_call_id));
-
-        // Handle truncation for Execute tool calls
-        let markdown_element = if tool_call_kind == acp::ToolKind::Execute {
-            let text = markdown.read(cx).source();
-            let processed_text = if text.ends_with("Error: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)") {
-                text.trim_end_matches("Error: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)")
-            } else if let Some(exit_code_pos) = text.rfind("Exit Code:") {
-                let suffix = &text[exit_code_pos..];
-                if let Some(code_start) = suffix.find('1') {
-                    let code_end = suffix.find('\n').unwrap_or(suffix.len());
-                    let exit_code = &suffix[code_start..code_end];
-                    if exit_code == "1" {
-                        &text[..exit_code_pos + code_start + code_end - exit_code_pos]
-                    } else {
-                        text
-                    }
-                } else {
-                    text
-                }
-            } else {
-                text
-            };
-            
-            let content = if processed_text.len() > 900 {
-                format!("...{}", &processed_text[processed_text.len() - 897..])
-            } else {
-                processed_text.trim_end().to_string()
-            };
-            // Create a simple text element with the content
-            div()
-                .text_color(cx.theme().colors().text)
-                .child(content)
-                .m_2()
-                .into_any_element()
-        } else {
-            self.render_markdown(markdown, default_markdown_style(false, false, window, cx))
-                .into_any_element()
-        };
 
         v_flex()
             .gap_2()
@@ -2987,7 +2914,7 @@ impl AcpThreadView {
             })
             .text_xs()
             .text_color(cx.theme().colors().text_muted)
-            .child(markdown_element)
+            .child(self.render_markdown(markdown, default_markdown_style(false, false, window, cx)))
             .when(!card_layout, |this| {
                 this.child(
                     IconButton::new(button_id, IconName::ChevronUp)
@@ -3422,12 +3349,11 @@ impl AcpThreadView {
             .and_then(|entry| entry.terminal(terminal));
         let show_output = is_expanded && terminal_view.is_some();
 
-        // Preview output (last 30 characters) - always show when there's output
+        // Preview output (last 1024 characters) - always show when there's output
         let preview_content = if let Some(output) = output {
             let content = &output.content;
-            if content.len() > 30 {
-                let truncated = format!("...{}", &content[content.len() - 27..]);
-                truncated
+            if content.len() > 100 {
+                format!("...{}", &content[content.len() - ..])
             } else {
                 content.clone()
             }
@@ -3483,7 +3409,7 @@ impl AcpThreadView {
                                 .pb_2()
                                 .gap_1()
                                 .child(
-                                    Label::new("Output Preview (last 30 characters):")
+                                    Label::new("Output Preview (last 1024 characters):")
                                         .size(LabelSize::XSmall)
                                         .color(Color::Muted)
                                         .buffer_font(cx),
