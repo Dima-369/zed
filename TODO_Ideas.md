@@ -10,22 +10,28 @@ run git show
 
 run a git command to restore all those files from the main branch
 
-1. `crates/audio/src/audio.rs`
-2. `crates/audio/src/audio_settings.rs`
-3. `crates/livekit_client/src/mock_client/participant.rs`
-6. `crates/agent_ui/Cargo.toml`
-7. `crates/audio/Cargo.toml`
-8. `crates/call/Cargo.toml`
-9. `crates/collab/Cargo.toml`
-10. `crates/collab_ui/Cargo.toml`
-11. `crates/livekit_client/Cargo.toml`
-12. `crates/livekit_client/src/lib.rs`
-13. `crates/livekit_client/src/mock_client.rs`
-14. `crates/livekit_client/src/mock_client/publication.rs`
-15. `crates/livekit_client/src/mock_client/track.rs`
-16. `crates/livekit_client/src/shared_types.rs`
+does mock_client exist on main branch or not?
+
+git checkout main -- crates/audio crates/call crates/collab crates/collab_ui crates/livekit_client
+
+`crates/audio/src/audio.rs`
+`crates/audio/src/audio_settings.rs`
+`crates/audio/Cargo.toml`
+
+`crates/call/Cargo.toml`
+`crates/collab/Cargo.toml`
+`crates/collab_ui/Cargo.toml`
+
+`crates/livekit_client/Cargo.toml`
+`crates/livekit_client/src/lib.rs`
+`crates/livekit_client/src/mock_client/participant.rs`
+`crates/livekit_client/src/mock_client.rs`
+`crates/livekit_client/src/mock_client/publication.rs`
+`crates/livekit_client/src/mock_client/track.rs`
+`crates/livekit_client/src/shared_types.rs`
 
 check those via intellij diff:
+6. `crates/agent_ui/Cargo.toml`
 5. `Cargo.toml`
 17. `crates/zed/Cargo.toml`
 
