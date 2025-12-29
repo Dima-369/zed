@@ -15,10 +15,9 @@ then bind to cmd-t in agentpanel
 
 ---
 
-- can this new from summary be used for ACP agents as well?
+- can this new from summary be used for ACP agents as well? it is currently only shown for the Zed agent when I have typed in at least one message with a response
 
 in crates/agent_ui/src/agent_panel.rs
-is my branch missing this?
 
                     let active_thread = active_thread.clone();
                     Some(ContextMenu::build(window, cx, |menu, _window, cx| {
