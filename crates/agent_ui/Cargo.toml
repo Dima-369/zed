@@ -13,10 +13,8 @@ path = "src/agent_ui.rs"
 doctest = false
 
 [features]
-default = []
 test-support = ["assistant_text_thread/test-support", "eval_utils", "gpui/test-support", "language/test-support", "reqwest_client", "workspace/test-support", "agent/test-support"]
 unit-eval = []
-webrtc = ["audio/webrtc"]
 
 [dependencies]
 acp_thread.workspace = true

@@ -1,6 +1,6 @@
 # My workflow for macOS
 
-To test modifications, I am only using `cargo run --no-default-features` (so it compiles without webrtc-sys, and apparently always fails `./script/clippy`) to compile and start Zed in debug mode which is faster than building the release binaries.
+To test modifications, I am only using `cargo run` (note that when `webrtc-sys` takes too long, use `Warp` for a faster download) to compile and start Zed in debug mode which is faster than building the release binaries.
 
 Once, I am satisfied with a batch of changes, I install Zed into `/Applications/Zed Dev.app` with this:
 

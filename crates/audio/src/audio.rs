@@ -3,11 +3,8 @@ use collections::HashMap;
 use gpui::{App, BackgroundExecutor, BorrowAppContext, Global};
 use log::info;
 
-#[cfg(all(
-    feature = "webrtc",
-    not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd"))
-))]
-mod webrtc_deps {
+#[cfg(not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd")))]
+mod non_windows_and_freebsd_deps {
     pub(super) use gpui::AsyncApp;
     pub(super) use libwebrtc::native::apm;
     pub(super) use parking_lot::Mutex;
@@ -16,16 +13,12 @@ mod webrtc_deps {
     pub(super) use std::sync::Arc;
 }
 
-#[cfg(all(
-    feature = "webrtc",
-    not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd"))
-))]
-use webrtc_deps::*;
+#[cfg(not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd")))]
+use non_windows_and_freebsd_deps::*;
 
 use rodio::{
     Decoder, OutputStream, OutputStreamBuilder, Source, mixer::Mixer, nz, source::Buffered,
 };
-#[allow(unused_imports)] // Only used when webrtc feature is enabled
 use settings::Settings;
 use std::{io::Cursor, num::NonZero, path::PathBuf, sync::atomic::Ordering, time::Duration};
 use util::ResultExt;
@@ -85,29 +78,24 @@ impl Sound {
     }
 }
 
-#[allow(clippy::derivable_impls)]
 pub struct Audio {
     output_handle: Option<OutputStream>,
     output_mixer: Option<Mixer>,
-    #[cfg(all(
-        feature = "webrtc",
-        not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd"))
-    ))]
+    #[cfg(not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd")))]
     pub echo_canceller: Arc<Mutex<apm::AudioProcessingModule>>,
     source_cache: HashMap<Sound, Buffered<Decoder<Cursor<Vec<u8>>>>>,
     replays: replays::Replays,
 }
 
-#[allow(clippy::derivable_impls)]
 impl Default for Audio {
     fn default() -> Self {
         Self {
             output_handle: Default::default(),
             output_mixer: Default::default(),
-            #[cfg(all(
-                feature = "webrtc",
-                not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd"))
-            ))]
+            #[cfg(not(any(
+                all(target_os = "windows", target_env = "gnu"),
+                target_os = "freebsd"
+            )))]
             echo_canceller: Arc::new(Mutex::new(apm::AudioProcessingModule::new(
                 true, false, false, false,
             ))),
@@ -138,21 +126,15 @@ impl Audio {
                 self.output_mixer = Some(mixer);
 
                 // The webrtc apm is not yet compiling for windows & freebsd
-                #[cfg(all(
-                    feature = "webrtc",
-                    not(any(
-                        all(target_os = "windows", target_env = "gnu"),
-                        target_os = "freebsd"
-                    ))
-                ))]
+                #[cfg(not(any(
+                    any(all(target_os = "windows", target_env = "gnu")),
+                    target_os = "freebsd"
+                )))]
                 let echo_canceller = Arc::clone(&self.echo_canceller);
-                #[cfg(all(
-                    feature = "webrtc",
-                    not(any(
-                        all(target_os = "windows", target_env = "gnu"),
-                        target_os = "freebsd"
-                    ))
-                ))]
+                #[cfg(not(any(
+                    any(all(target_os = "windows", target_env = "gnu")),
+                    target_os = "freebsd"
+                )))]
                 let source = source.inspect_buffer::<BUFFER_SIZE, _>(move |buffer| {
                     let mut buf: [i16; _] = buffer.map(|s| s.to_sample());
                     echo_canceller
@@ -181,10 +163,7 @@ impl Audio {
         self.replays.replays_to_tar(executor)
     }
 
-    #[cfg(all(
-        feature = "webrtc",
-        not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd"))
-    ))]
+    #[cfg(not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd")))]
     pub fn open_microphone(voip_parts: VoipParts) -> anyhow::Result<impl Source> {
         let stream = rodio::microphone::MicrophoneBuilder::new()
             .default_device()?
@@ -314,20 +293,14 @@ impl Audio {
     }
 }
 
-#[cfg(all(
-    feature = "webrtc",
-    not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd"))
-))]
+#[cfg(not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd")))]
 pub struct VoipParts {
     echo_canceller: Arc<Mutex<apm::AudioProcessingModule>>,
     replays: replays::Replays,
     legacy_audio_compatible: bool,
 }
 
-#[cfg(all(
-    feature = "webrtc",
-    not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd"))
-))]
+#[cfg(not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd")))]
 impl VoipParts {
     pub fn new(cx: &AsyncApp) -> anyhow::Result<Self> {
         let (apm, replays) = cx.try_read_default_global::<Audio, _>(|audio, _| {

@@ -1,38 +1,9 @@
 use std::sync::Arc;
 
-use crate::{ParticipantIdentity, TrackSid, mock_client::WeakRoom};
-
-#[derive(Clone, Debug)]
-pub struct TestServerAudioTrack {
-    sid: TrackSid,
-    publisher_id: ParticipantIdentity,
-}
-
-impl TestServerAudioTrack {
-    pub fn sid(&self) -> TrackSid {
-        self.sid.clone()
-    }
-
-    pub fn publisher_id(&self) -> ParticipantIdentity {
-        self.publisher_id.clone()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct TestServerVideoTrack {
-    sid: TrackSid,
-    publisher_id: ParticipantIdentity,
-}
-
-impl TestServerVideoTrack {
-    pub fn sid(&self) -> TrackSid {
-        self.sid.clone()
-    }
-
-    pub fn publisher_id(&self) -> ParticipantIdentity {
-        self.publisher_id.clone()
-    }
-}
+use crate::{
+    ParticipantIdentity, TrackSid,
+    test::{TestServerAudioTrack, TestServerVideoTrack, WeakRoom},
+};
 
 #[derive(Clone, Debug)]
 pub struct LocalVideoTrack {}
@@ -66,9 +37,8 @@ impl RemoteAudioTrack {
             !room
                 .0
                 .lock()
-                .unwrap()
                 .paused_audio_tracks
-                .contains(&self.server_track.sid())
+                .contains(&self.server_track.sid)
         } else {
             false
         }

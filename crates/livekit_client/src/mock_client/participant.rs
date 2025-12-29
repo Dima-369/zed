@@ -1,15 +1,13 @@
 use crate::{
-    AudioStream, LocalAudioTrack, LocalTrackPublication, LocalVideoTrack, Participant, RemoteTrack,
-    RemoteTrackPublication, TrackSid,
-    mock_client::{RemoteAudioTrack, RemoteVideoTrack, Room, WeakRoom},
-    shared_types::ParticipantIdentity,
+    AudioStream, LocalAudioTrack, LocalTrackPublication, LocalVideoTrack, Participant,
+    ParticipantIdentity, RemoteTrack, RemoteTrackPublication, TrackSid,
+    test::{Room, WeakRoom},
 };
 use anyhow::Result;
 use collections::HashMap;
 use gpui::{
     AsyncApp, DevicePixels, ScreenCaptureSource, ScreenCaptureStream, SourceMetadata, size,
 };
-use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct LocalParticipant {
@@ -33,13 +31,6 @@ impl Participant {
 }
 
 impl LocalParticipant {
-    pub fn new() -> Self {
-        Self {
-            identity: ParticipantIdentity("mock_local_participant".to_string()),
-            room: Room::new(),
-        }
-    }
-
     pub async fn unpublish_track(&self, track: TrackSid, _cx: &AsyncApp) -> Result<()> {
         self.room
             .test_server()
@@ -47,7 +38,6 @@ impl LocalParticipant {
             .await
     }
 
-    #[allow(dead_code)] // Only used when webrtc feature is enabled
     pub(crate) async fn publish_microphone_track(
         &self,
         _cx: &AsyncApp,
@@ -97,16 +87,12 @@ impl RemoteParticipant {
                 .into_iter()
                 .filter(|track| track.publisher_id() == self.identity)
                 .map(|track| {
-                    let remote_track = RemoteAudioTrack {
-                        server_track: Arc::new(track.clone()),
-                        room: self.room.clone(),
-                    };
                     (
                         track.sid(),
                         RemoteTrackPublication {
                             sid: track.sid(),
                             room: self.room.clone(),
-                            track: RemoteTrack::Audio(remote_track),
+                            track: RemoteTrack::Audio(track),
                         },
                     )
                 });
@@ -116,16 +102,12 @@ impl RemoteParticipant {
                 .into_iter()
                 .filter(|track| track.publisher_id() == self.identity)
                 .map(|track| {
-                    let remote_track = RemoteVideoTrack {
-                        server_track: Arc::new(track.clone()),
-                        _room: self.room.clone(),
-                    };
                     (
                         track.sid(),
                         RemoteTrackPublication {
                             sid: track.sid(),
                             room: self.room.clone(),
-                            track: RemoteTrack::Video(remote_track),
+                            track: RemoteTrack::Video(track),
                         },
                     )
                 });

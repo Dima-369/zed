@@ -17,9 +17,7 @@ doctest = false
 name = "test_app"
 
 [features]
-default = []
 test-support = ["collections/test-support", "gpui/test-support"]
-webrtc = ["dep:libwebrtc", "dep:livekit", "dep:livekit_api", "audio/webrtc"]
 
 [dependencies]
 anyhow.workspace = true
@@ -32,7 +30,7 @@ gpui = { workspace = true, features = ["screen-capture", "x11", "wayland", "wind
 gpui_tokio.workspace = true
 http_client_tls.workspace = true
 image.workspace = true
-livekit_api = { workspace = true, optional = true }
+livekit_api.workspace = true
 log.workspace = true
 nanoid.workspace = true
 parking_lot.workspace = true
@@ -46,12 +44,11 @@ tokio-tungstenite.workspace = true
 ui.workspace = true
 util.workspace = true
 
-# WebRTC dependencies are only included when the webrtc feature is enabled
-# and not on unsupported platforms
-libwebrtc = { rev = "5f04705ac3f356350ae31534ffbc476abc9ea83d", git = "https://github.com/zed-industries/livekit-rust-sdks", optional = true }
+[target.'cfg(not(any(all(target_os = "windows", target_env = "gnu"), target_os = "freebsd")))'.dependencies]
+libwebrtc = { rev = "5f04705ac3f356350ae31534ffbc476abc9ea83d", git = "https://github.com/zed-industries/livekit-rust-sdks" }
 livekit = { rev = "5f04705ac3f356350ae31534ffbc476abc9ea83d", git = "https://github.com/zed-industries/livekit-rust-sdks", features = [
     "__rustls-tls"
-], optional = true }
+] }
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "windows"))'.dependencies]
 scap.workspace = true

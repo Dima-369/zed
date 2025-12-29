@@ -1,6 +1,6 @@
 use gpui::App;
 
-use crate::{RemoteTrack, TrackSid, mock_client::WeakRoom};
+use crate::{RemoteTrack, TrackSid, test::WeakRoom};
 
 #[derive(Clone, Debug)]
 pub struct LocalTrackPublication {
@@ -30,9 +30,9 @@ impl LocalTrackPublication {
 
     fn set_mute(&self, mute: bool) {
         if let Some(room) = self.room.upgrade() {
-            // For mock implementation, we don't need to actually call the async method
-            let _ = room.test_server();
-            let _ = mute; // Suppress unused variable warning
+            room.test_server()
+                .set_track_muted(&room.token(), &self.sid, mute)
+                .ok();
         }
     }
 
@@ -72,12 +72,7 @@ impl RemoteTrackPublication {
 
     pub fn is_enabled(&self) -> bool {
         if let Some(room) = self.room.upgrade() {
-            !room
-                .0
-                .lock()
-                .unwrap()
-                .paused_audio_tracks
-                .contains(&self.sid)
+            !room.0.lock().paused_audio_tracks.contains(&self.sid)
         } else {
             false
         }
@@ -85,7 +80,7 @@ impl RemoteTrackPublication {
 
     pub fn set_enabled(&self, enabled: bool, _cx: &App) {
         if let Some(room) = self.room.upgrade() {
-            let paused_audio_tracks = &mut room.0.lock().unwrap().paused_audio_tracks;
+            let paused_audio_tracks = &mut room.0.lock().paused_audio_tracks;
             if enabled {
                 paused_audio_tracks.remove(&self.sid);
             } else {
