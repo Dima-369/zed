@@ -119,8 +119,6 @@ To implement this feature, you would need to:
 3. **Update the UI** to show when commands are auto-allowed/blocked based on these settings
 4. **Store the command patterns** in Zed's settings database
 
-Would you like me to investigate how to implement such a feature?
-
 
 
 
