@@ -2934,19 +2934,17 @@ impl AcpThreadView {
         // Handle truncation for Execute tool calls
         let markdown_element = if tool_call_kind == acp::ToolKind::Execute {
             let text = markdown.read(cx).source();
-            if text.len() > 90 {
-                let truncated = format!("...{}", &text[text.len() - 87..]);
-                // Create a simple text element with the truncated content
-                div()
-                    .text_color(cx.theme().colors().text)
-                    .child(truncated)
-                    .m_2()
-                    .into_any_element()
+            let content = if text.len() > 900 {
+                format!("...{}", &text[text.len() - 897..])
             } else {
-                self.render_markdown(markdown, default_markdown_style(false, false, window, cx))
-                    .m_2()
-                    .into_any_element()
-            }
+                text.to_string()
+            };
+            // Create a simple text element with the content
+            div()
+                .text_color(cx.theme().colors().text)
+                .child(content)
+                .m_2()
+                .into_any_element()
         } else {
             self.render_markdown(markdown, default_markdown_style(false, false, window, cx))
                 .into_any_element()
