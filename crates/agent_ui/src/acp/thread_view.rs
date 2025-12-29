@@ -2712,17 +2712,9 @@ impl AcpThreadView {
             .when(is_terminal_tool && tool_call.content.len() > 0, |this| {
                 this.child(
                     div()
-                        .m_2()
                         .bg(cx.theme().colors().editor_background)
                         .child(
                             v_flex()
-                                .gap_1()
-                                .child(
-                                    Label::new("Command Output")
-                                        .size(LabelSize::XSmall)
-                                        .color(Color::Muted)
-                                        .buffer_font(cx),
-                                )
                                 .children(tool_call.content.iter().enumerate().map(
                                     |(content_ix, content)| {
                                         div().id(("tool-call-preview", entry_ix)).child(
