@@ -13,6 +13,11 @@ I created `test_undo_restores_cursor_position_after_paste_at_line_end`, but firs
 
 https://github.com/zed-industries/zed/pull/45734
 
+I am able to merge this without conflicts using auto-resolve conflicts in JetBrains, and ACP threads are shown with history.
+BUT, I can not type in any messages in such restored threads, apparently?
+
+Try this out on the raw branch, to see if it also happens there.
+
 # agent: History and recent conversations persistence per workspace
 
 https://github.com/zed-industries/zed/pull/41874
