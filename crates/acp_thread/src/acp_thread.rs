@@ -227,7 +227,7 @@ impl ToolCall {
         let raw_input_markdown = tool_call
             .raw_input
             .as_ref()
-            .and_then(|input| markdown_for_raw_output(input, &language_registry, cx, None));
+            .and_then(|input| markdown_for_raw_output(input, &language_registry, cx));
 
         let result = Self {
             id: tool_call.tool_call_id,
@@ -315,13 +315,13 @@ impl ToolCall {
         }
 
         if let Some(raw_input) = raw_input {
-            self.raw_input_markdown = markdown_for_raw_output(&raw_input, &language_registry, cx, None);
+            self.raw_input_markdown = markdown_for_raw_output(&raw_input, &language_registry, cx);
             self.raw_input = Some(raw_input);
         }
 
         if let Some(raw_output) = raw_output {
             if self.content.is_empty()
-                && let Some(markdown) = markdown_for_raw_output(&raw_output, &language_registry, cx, Some(self.kind))
+                && let Some(markdown) = markdown_for_raw_output(&raw_output, &language_registry, cx)
             {
                 self.content
                     .push(ToolCallContent::ContentBlock(ContentBlock::Markdown {
@@ -2408,7 +2408,6 @@ fn markdown_for_raw_output(
     raw_output: &serde_json::Value,
     language_registry: &Arc<LanguageRegistry>,
     cx: &mut App,
-    tool_kind: Option<acp::ToolKind>,
 ) -> Option<Entity<Markdown>> {
     match raw_output {
         serde_json::Value::Null => None,
@@ -2428,23 +2427,14 @@ fn markdown_for_raw_output(
                 cx,
             )
         })),
-        serde_json::Value::String(value) => {
-            // Apply truncation logic only for execute commands
-            let content = if matches!(tool_kind, Some(acp::ToolKind::Execute)) && value.len() > 30 {
-                format!("...{}", &value[value.len() - 27..])
-            } else {
-                value.clone()
-            };
-            
-            Some(cx.new(|cx| {
-                Markdown::new(
-                    content.into(),
-                    Some(language_registry.clone()),
-                    None,
-                    cx,
-                )
-            }))
-        },
+        serde_json::Value::String(value) => Some(cx.new(|cx| {
+            Markdown::new(
+                value.clone().into(),
+                Some(language_registry.clone()),
+                None,
+                cx,
+            )
+        })),
         value => Some(cx.new(|cx| {
             let pretty_json = to_string_pretty(value).unwrap_or_else(|_| value.to_string());
 

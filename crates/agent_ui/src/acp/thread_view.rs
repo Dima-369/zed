@@ -2912,6 +2912,7 @@ impl AcpThreadView {
                         card_layout,
                         window,
                         cx,
+                        tool_call.kind,
                     )
                 } else {
                     Empty.into_any_element()
@@ -2932,8 +2933,28 @@ impl AcpThreadView {
         card_layout: bool,
         window: &Window,
         cx: &Context<Self>,
+        tool_call_kind: acp::ToolKind,
     ) -> AnyElement {
         let button_id = SharedString::from(format!("tool_output-{:?}", tool_call_id));
+
+        // Handle truncation for Execute tool calls
+        let markdown_element = if tool_call_kind == acp::ToolKind::Execute {
+            let text = markdown.read(cx).source();
+            if text.len() > 90 {
+                let truncated = format!("...{}", &text[text.len() - 87..]);
+                // Create a simple text element with the truncated content
+                div()
+                    .text_color(cx.theme().colors().text)
+                    .child(truncated)
+                    .into_any_element()
+            } else {
+                self.render_markdown(markdown, default_markdown_style(false, false, window, cx))
+                    .into_any_element()
+            }
+        } else {
+            self.render_markdown(markdown, default_markdown_style(false, false, window, cx))
+                .into_any_element()
+        };
 
         v_flex()
             .gap_2()
@@ -2953,7 +2974,7 @@ impl AcpThreadView {
             })
             .text_xs()
             .text_color(cx.theme().colors().text_muted)
-            .child(self.render_markdown(markdown, default_markdown_style(false, false, window, cx)))
+            .child(markdown_element)
             .when(!card_layout, |this| {
                 this.child(
                     IconButton::new(button_id, IconName::ChevronUp)
