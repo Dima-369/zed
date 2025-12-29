@@ -1,5 +1,7 @@
 - test copy diagnostic after latest main merge
 
+- when there are only pinned tabs, there is still the second tab row visible, it should be hidden because there are no unpinned tabs
+
 - add qwen inline assistant provider and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - remove webrtc patching again because Warp seems to work to download better from GitHub releases
