@@ -2713,10 +2713,6 @@ impl AcpThreadView {
                 this.child(
                     div()
                         .m_2()
-                        .p_2()
-                        .border_1()
-                        .border_color(cx.theme().colors().border)
-                        .rounded_md()
                         .bg(cx.theme().colors().editor_background)
                         .child(
                             v_flex()
