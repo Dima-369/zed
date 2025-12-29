@@ -326,6 +326,9 @@ struct LoadingView {
 }
 
 impl AcpThreadView {
+    const EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD: usize = 900;
+    const EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX: &str = "...";
+
     pub fn new(
         agent: Rc<dyn AgentServer>,
         resume_thread: Option<DbThreadMetadata>,
@@ -2916,8 +2919,8 @@ impl AcpThreadView {
             text.to_string()
         };
 
-        if processed_text.len() > 900 {
-            format!("...{}", &processed_text[processed_text.len() - 897..])
+        if processed_text.len() > Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD {
+            format!("{}{}", Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX, &processed_text[processed_text.len() - (Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD - Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX.len())..])
         } else {
             processed_text.trim_end().to_string()
         }
@@ -7886,8 +7889,8 @@ pub(crate) mod tests {
         let result = AcpThreadView::prepare_execute_tool_output_from_qwen(&input);
 
         // Should be truncated with "..." prefix and be 900 chars total
-        assert!(result.starts_with("..."));
-        assert_eq!(result.len(), 900);
+        assert!(result.starts_with(AcpThreadView::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX));
+        assert_eq!(result.len(), AcpThreadView::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD);
         assert!(result.ends_with("x"));
     }
 
