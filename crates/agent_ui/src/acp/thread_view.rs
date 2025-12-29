@@ -2873,6 +2873,7 @@ impl AcpThreadView {
                         card_layout,
                         window,
                         cx,
+                        tool_call.kind,
                     )
                 } else {
                     Empty.into_any_element()
@@ -2885,6 +2886,51 @@ impl AcpThreadView {
         }
     }
 
+    fn prepare_execute_tool_output_from_qwen(text: &str) -> String {
+        // Find first "Output: " and remove everything before it
+        let text = if let Some(output_pos) = text.find("Output: ") {
+            &text[output_pos + 8..] // +8 to skip "Output: "
+        } else {
+            text
+        };
+
+        let processed_text = if let Some(exit_code_pos) = text.rfind("Exit Code:") {
+            let suffix = &text[exit_code_pos..];
+            if let Some(code_start) = suffix.find(|c: char| c.is_ascii_digit()) {
+                let code_end = suffix.find('\n').unwrap_or(suffix.len());
+                let exit_code = &suffix[code_start..code_end];
+                if exit_code != "0" {
+                    // Include the Exit Code for non-zero values, but remove any preceding "Error: (none)"
+                    let before_exit = &text[..exit_code_pos];
+                    let clean_content = if let Some(error_pos) = before_exit.rfind("Error:") {
+                        before_exit[..error_pos].trim_end()
+                    } else {
+                        before_exit.trim_end()
+                    };
+                    format!("{}\nExit Code: {}", clean_content, exit_code)
+                } else {
+                    // Remove the entire suffix for Exit Code: 0, including any preceding "Error: (none)"
+                    let before_exit = &text[..exit_code_pos];
+                    if let Some(error_pos) = before_exit.rfind("Error:") {
+                        before_exit[..error_pos].trim_end().to_string()
+                    } else {
+                        before_exit.trim_end().to_string()
+                    }
+                }
+            } else {
+                text.to_string()
+            }
+        } else {
+            text.to_string()
+        };
+
+        if processed_text.len() > 900 {
+            format!("...{}", &processed_text[processed_text.len() - 897..])
+        } else {
+            processed_text.trim_end().to_string()
+        }
+    }
+
     fn render_markdown_output(
         &self,
         markdown: Entity<Markdown>,
@@ -2893,8 +2939,24 @@ impl AcpThreadView {
         card_layout: bool,
         window: &Window,
         cx: &Context<Self>,
+        tool_call_kind: acp::ToolKind,
     ) -> AnyElement {
         let button_id = SharedString::from(format!("tool_output-{:?}", tool_call_id));
+
+        // Handle truncation for Execute tool calls
+        let markdown_element = if tool_call_kind == acp::ToolKind::Execute {
+            let text = markdown.read(cx).source();
+            let content = Self::prepare_execute_tool_output_from_qwen(text);
+            // Create a simple text element with the content
+            div()
+                .text_color(cx.theme().colors().text)
+                .child(content)
+                .m_2()
+                .into_any_element()
+        } else {
+            self.render_markdown(markdown, default_markdown_style(false, false, window, cx))
+                .into_any_element()
+        };
 
         v_flex()
             .gap_2()
@@ -2914,7 +2976,7 @@ impl AcpThreadView {
             })
             .text_xs()
             .text_color(cx.theme().colors().text_muted)
-            .child(self.render_markdown(markdown, default_markdown_style(false, false, window, cx)))
+            .child(markdown_element)
             .when(!card_layout, |this| {
                 this.child(
                     IconButton::new(button_id, IconName::ChevronUp)
@@ -3353,7 +3415,7 @@ impl AcpThreadView {
         let preview_content = if let Some(output) = output {
             let content = &output.content;
             if content.len() > 100 {
-                format!("...{}", &content[content.len() - ..])
+                format!("...{}", &content[content.len() - 100..])
             } else {
                 content.clone()
             }
@@ -7806,5 +7868,86 @@ pub(crate) mod tests {
 
             assert_eq!(text, expected_txt);
         })
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_success() {
+        // Test successful command with full prefix/suffix
+        let input = "Command: ls\nDirectory: (root)\nOutput: file1.txt\nfile2.txt\nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)";
+        let result = AcpThreadView::prepare_execute_tool_output_from_qwen(input);
+        assert_eq!(result, "file1.txt\nfile2.txt");
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_error() {
+        // Test command with error exit code
+        let input = "Command: nonexistent\nDirectory: (root)\nOutput: command not found\nError: (none)\nExit Code: 127\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)";
+        let result = AcpThreadView::prepare_execute_tool_output_from_qwen(input);
+        assert_eq!(result, "command not found\nExit Code: 127");
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_truncation() {
+        // Test long output that gets truncated
+        let long_content = "x".repeat(1000);
+        let input = format!("Command: cat\nDirectory: (root)\nOutput: {}\nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)", long_content);
+        let result = AcpThreadView::prepare_execute_tool_output_from_qwen(&input);
+
+        // Should be truncated with "..." prefix and be 900 chars total
+        assert!(result.starts_with("..."));
+        assert_eq!(result.len(), 900);
+        assert!(result.ends_with("x"));
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_no_output_prefix() {
+        // Test input without "Output: " prefix
+        let input = "file1.txt\nfile2.txt\nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)";
+        let result = AcpThreadView::prepare_execute_tool_output_from_qwen(input);
+        assert_eq!(result, "file1.txt\nfile2.txt");
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_no_exit_code() {
+        // Test input without exit code
+        let input = "Command: ls\nDirectory: (root)\nOutput: file1.txt\nfile2.txt";
+        let result = AcpThreadView::prepare_execute_tool_output_from_qwen(input);
+        assert_eq!(result, "file1.txt\nfile2.txt");
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_different_error_codes() {
+        // Test different non-zero exit codes
+        let test_cases = vec![1, 2, 126, 127, 130, 255];
+
+        for code in test_cases {
+            let input = format!("Command: test\nDirectory: (root)\nOutput: error message\nError: (none)\nExit Code: {}\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)", code);
+            let result = AcpThreadView::prepare_execute_tool_output_from_qwen(&input);
+            assert_eq!(result, format!("error message\nExit Code: {}", code));
+        }
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_whitespace_trimming() {
+        // Test trailing whitespace removal
+        let input = "Command: ls\nDirectory: (root)\nOutput: file1.txt   \n   \nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)   ";
+        let result = AcpThreadView::prepare_execute_tool_output_from_qwen(input);
+        assert_eq!(result, "file1.txt");
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_empty_output() {
+        // Test empty output
+        let input = "Command: true\nDirectory: (root)\nOutput: \nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)";
+        let result = AcpThreadView::prepare_execute_tool_output_from_qwen(input);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_prepare_execute_tool_output_from_qwen_multiline_output() {
+        // Test multiline output with various content
+        let input = "Command: find\nDirectory: (root)\nOutput: ./dir1/file1.txt\n./dir2/file2.txt\n./dir3/\nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)";
+        let result = AcpThreadView::prepare_execute_tool_output_from_qwen(input);
+        assert_eq!(result, "./dir1/file1.txt\n./dir2/file2.txt\n./dir3/");
     }
 }

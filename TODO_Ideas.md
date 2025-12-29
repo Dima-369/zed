@@ -1,6 +1,9 @@
 - merge main
 
+- add qwen inline assistant provider and to try it out
+
 - remove webrtc patching again because Warp seems to work to download better from GitHub releases
+find commit which one modifies
 
 - investigate undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line, run editor::Paste (cursor is still on newline character)
