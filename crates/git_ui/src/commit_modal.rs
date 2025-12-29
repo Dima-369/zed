@@ -585,7 +585,7 @@ impl Render for CommitModal {
             .bg(cx.theme().colors().elevated_surface_background)
             .rounded(px(border_radius))
             .border_1()
-            .border_color(cx.theme().colors().border)
+            .border_color(cx.theme().colors().text_accent)
             .w(width)
             .p(container_padding)
             .child(
