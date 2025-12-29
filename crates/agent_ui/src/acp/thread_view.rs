@@ -2709,13 +2709,7 @@ impl AcpThreadView {
             })
             .children(tool_output_display)
             .when(is_terminal_tool && tool_call.content.len() > 0, |this| {
-                this.child({
-                    Label::new("Command Output")
-                        .size(LabelSize::XSmall)
-                        .color(Color::Muted)
-                        .buffer_font(cx)
-                })
-                .children(tool_call.content.iter().enumerate().map(
+                this.children(tool_call.content.iter().enumerate().map(
                     |(content_ix, content)| {
                         div().id(("tool-call-preview", entry_ix)).child(
                             self.render_tool_call_content_preview(
@@ -2946,9 +2940,11 @@ impl AcpThreadView {
                 div()
                     .text_color(cx.theme().colors().text)
                     .child(truncated)
+                    .m_2()
                     .into_any_element()
             } else {
                 self.render_markdown(markdown, default_markdown_style(false, false, window, cx))
+                    .m_2()
                     .into_any_element()
             }
         } else {
