@@ -364,7 +364,7 @@ pub async fn open_paths_with_positions(
                 active_editor
                     .update(cx, |editor, cx| -> Option<Point> {
                         if let Some(buffer) = editor.buffer().read(cx).as_singleton() {
-                            Some(buffer.read(cx).len().to_point(&buffer.read(cx)))
+                            Some(buffer.read(cx).max_point())
                         } else {
                             // If not a singleton buffer, use normal caret positioning
                             caret_positions.remove(path)
