@@ -8,6 +8,8 @@ I investigated the git commits and you have undo those commits:
 66fc29e7577f
 run git show
 
+run a git command to restore all those files from the main branch
+
 1. `crates/audio/src/audio.rs`
 2. `crates/audio/src/audio_settings.rs`
 3. `crates/livekit_client/src/mock_client/participant.rs`
