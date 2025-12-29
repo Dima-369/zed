@@ -1,12 +1,28 @@
-- remove webrtc patching again because Warp seems to work to download better from GitHub releases
+- merge main
 
-- `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
-am I invoking this CLI correctly?
+- remove webrtc patching again because Warp seems to work to download better from GitHub releases
 
 - investigate undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line, run editor::Paste (cursor is still on newline character)
   - undo
   - then notice how cursor is not on newline character anymore, but one to left which is incorrect
+
+# Support external agent history
+
+https://github.com/zed-industries/zed/pull/45734
+
+# agent: History and recent conversations persistence per workspace 
+
+https://github.com/zed-industries/zed/pull/41874
+
+
+# adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
+
+- `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
+am I invoking this CLI correctly?
+
+- test out terminal integration via `zed - --stdin-cursor-at-end` for terminal scrollback buffer once Zed Dev is compiled
+
 
 # ACP
 
@@ -60,18 +76,6 @@ Would you like me to investigate how to implement such a feature?
 
 
 
-# Support external agent history
-
-https://github.com/zed-industries/zed/pull/45734
-
-# agent: History and recent conversations persistence per workspace 
-
-https://github.com/zed-industries/zed/pull/41874
-
-
-# adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
-
-- test out terminal integration via `zed - --stdin-cursor-at-end` for terminal scrollback buffer once Zed Dev is compiled
 
 
 
