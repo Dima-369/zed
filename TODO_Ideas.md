@@ -3,7 +3,7 @@
 - remove webrtc patching again because Warp seems to work to download better from GitHub releases
 
 - `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
-am I invoking this correctly?
+am I invoking this CLI correctly?
 
 - can the Uncommited Changes multi buffer in the header to right of Collapse All, show the file count, like 1 file or 2 files
 
