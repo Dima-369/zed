@@ -1,5 +1,3 @@
-- test copy diagnostic after latest main merge
-
 - add qwen inline assistant provider and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - remove webrtc patching again because Warp seems to work to download better from GitHub releases
@@ -13,8 +11,6 @@ run git show
 1. `crates/audio/src/audio.rs`
 2. `crates/audio/src/audio_settings.rs`
 3. `crates/livekit_client/src/mock_client/participant.rs`
-4. `README.md`
-5. `Cargo.toml`
 6. `crates/agent_ui/Cargo.toml`
 7. `crates/audio/Cargo.toml`
 8. `crates/call/Cargo.toml`
@@ -26,6 +22,9 @@ run git show
 14. `crates/livekit_client/src/mock_client/publication.rs`
 15. `crates/livekit_client/src/mock_client/track.rs`
 16. `crates/livekit_client/src/shared_types.rs`
+
+check those via intellij diff:
+5. `Cargo.toml`
 17. `crates/zed/Cargo.toml`
 
 - investigate undo behavior, reproduce steps:
