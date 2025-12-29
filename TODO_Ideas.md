@@ -1,9 +1,13 @@
-- add qwen inline assistant provider and to try it out, see `~/Developer/Roo-Code/qwen_client`
+- fix `/script/clippy` and start fixing unit tests
+
+- add qwen inline assistant provider (this means as a LLM provider) and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
   - run `editor::Undo`
   - then notice how cursor is not on newline character anymore, but one to left which is incorrect
+
+I created `test_undo_restores_cursor_position_after_paste_at_line_end`, but first test code needs be fixed, so it compiles
 
 # Support external agent history
 
