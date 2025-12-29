@@ -1,3 +1,5 @@
+- try out my premium https://intelephense.com/ license in Zed, how is auto format?
+
 - fix `/script/clippy` and start fixing unit tests
 
 - add qwen inline assistant provider (this means as a LLM provider) and to try it out, see `~/Developer/Roo-Code/qwen_client`
