@@ -10,7 +10,25 @@ I investigated the git commits and you have undo those commits:
 53e5e75cfb0a
 39de669379f7
 66fc29e7577f
-run git show then undo the changes
+run git show
+
+1. `crates/audio/src/audio.rs`
+2. `crates/audio/src/audio_settings.rs`
+3. `crates/livekit_client/src/mock_client/participant.rs`
+4. `README.md`
+5. `Cargo.toml`
+6. `crates/agent_ui/Cargo.toml`
+7. `crates/audio/Cargo.toml`
+8. `crates/call/Cargo.toml`
+9. `crates/collab/Cargo.toml`
+10. `crates/collab_ui/Cargo.toml`
+11. `crates/livekit_client/Cargo.toml`
+12. `crates/livekit_client/src/lib.rs`
+13. `crates/livekit_client/src/mock_client.rs`
+14. `crates/livekit_client/src/mock_client/publication.rs`
+15. `crates/livekit_client/src/mock_client/track.rs`
+16. `crates/livekit_client/src/shared_types.rs`
+17. `crates/zed/Cargo.toml`
 
 - investigate undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line, run editor::Paste (cursor is still on newline character)
