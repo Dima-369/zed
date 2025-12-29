@@ -21,6 +21,7 @@ https://github.com/zed-industries/zed/pull/41874
 
 # adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
 
+TEST after latest AI fix:
 - `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
 am I invoking this CLI correctly?
 
