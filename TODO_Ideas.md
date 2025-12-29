@@ -1,6 +1,6 @@
 - merge main
 
-- add qwen inline assistant provider and to try it out
+- add qwen inline assistant provider and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - remove webrtc patching again because Warp seems to work to download better from GitHub releases
 find commit which one modifies
