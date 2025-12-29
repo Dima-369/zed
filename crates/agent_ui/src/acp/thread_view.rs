@@ -2712,8 +2712,7 @@ impl AcpThreadView {
             .when(is_terminal_tool && tool_call.content.len() > 0, |this| {
                 this.child(
                     div()
-                        .mt_1()
-                        .mx_5()
+                        .m_2()
                         .p_2()
                         .border_1()
                         .border_color(cx.theme().colors().border)
@@ -2723,7 +2722,7 @@ impl AcpThreadView {
                             v_flex()
                                 .gap_1()
                                 .child(
-                                    Label::new("Command Output:")
+                                    Label::new("Command Output")
                                         .size(LabelSize::XSmall)
                                         .color(Color::Muted)
                                         .buffer_font(cx),
