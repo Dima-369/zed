@@ -1,8 +1,8 @@
 - add qwen inline assistant provider and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - investigate undo behavior, reproduce steps:
-  - have a line with word on it, move cursor to newline character on same line, run editor::Paste (cursor is still on newline character)
-  - undo
+  - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
+  - run `editor::Undo`
   - then notice how cursor is not on newline character anymore, but one to left which is incorrect
 
 # Support external agent history
