@@ -2,6 +2,11 @@
 
 - implement a new action which launches a new ACP agent, you pass this action the name of the agent, it my instance "qwen" should open it because I have this in my settings:
 
+see `crates/agent_ui/src/agent_panel.rs`: `for agent_name in agent_names {`
+
+I have this in my settings:
+
+```json
   "agent_servers": {
     "qwen": {
       "type": "custom",
@@ -10,11 +15,13 @@
       "env": {}
     }
   },
+```
 
 then bind to cmd-t in agentpanel
 
 ---
 
+TRY out from AI
 - can this new from summary be used for ACP agents as well? it is currently only shown for the Zed agent when I have typed in at least one message with a response
 
 in crates/agent_ui/src/agent_panel.rs
