@@ -2554,8 +2554,9 @@ impl AcpThreadView {
                     | ToolCallStatus::InProgress
                     | ToolCallStatus::Completed
                     | ToolCallStatus::Failed
-                    | ToolCallStatus::Canceled => v_flex()
-                        .when(!is_edit && !is_terminal_tool, |this| {
+                    | ToolCallStatus::Canceled => {
+                    v_flex()
+                        .when(!is_edit, |this| {
                             this.mt_1p5().w_full().child(
                                 v_flex()
                                     .ml(rems(0.4))
@@ -2591,7 +2592,8 @@ impl AcpThreadView {
                                 )
                             },
                         ))
-                        .into_any(),
+                        .into_any()
+                }
                     ToolCallStatus::Rejected => Empty.into_any(),
                 }
                 .into()
@@ -2706,6 +2708,44 @@ impl AcpThreadView {
                 }
             })
             .children(tool_output_display)
+            // Show output preview for terminal tools even when collapsed
+            .when(is_terminal_tool && tool_call.content.len() > 0, |this| {
+                this.child(
+                    div()
+                        .mt_1()
+                        .mx_5()
+                        .p_2()
+                        .border_1()
+                        .border_color(cx.theme().colors().border)
+                        .rounded_md()
+                        .bg(cx.theme().colors().editor_background)
+                        .child(
+                            v_flex()
+                                .gap_1()
+                                .child(
+                                    Label::new("Command Output:")
+                                        .size(LabelSize::XSmall)
+                                        .color(Color::Muted)
+                                        .buffer_font(cx),
+                                )
+                                .children(tool_call.content.iter().enumerate().map(
+                                    |(content_ix, content)| {
+                                        div().id(("tool-call-preview", entry_ix)).child(
+                                            self.render_tool_call_content(
+                                                entry_ix,
+                                                content,
+                                                content_ix,
+                                                tool_call,
+                                                use_card_layout,
+                                                window,
+                                                cx,
+                                            ),
+                                        )
+                                    },
+                                )),
+                        ),
+                )
+            })
     }
 
     fn render_tool_call_label(
@@ -3314,6 +3354,15 @@ impl AcpThreadView {
             .and_then(|entry| entry.terminal(terminal));
         let show_output = is_expanded && terminal_view.is_some();
 
+        // Preview output (last 20 lines) - always show when there's output
+        let preview_lines = if let Some(output) = output {
+            let lines: Vec<&str> = output.content.lines().rev().take(20).collect();
+            lines.into_iter().rev().collect::<Vec<_>>().join("\n")
+        } else {
+            String::new()
+        };
+        let has_preview = !preview_lines.is_empty();
+
         v_flex()
             .my_1p5()
             .mx_5()
@@ -3346,6 +3395,43 @@ impl AcpThreadView {
                         ),
                     ),
             )
+            .when(has_preview, |this| {
+                this.child(
+                    div()
+                        .pt_2()
+                        .border_t_1()
+                        .border_color(border_color)
+                        .bg(cx.theme().colors().editor_background)
+                        .rounded_b_md()
+                        .text_ui_sm(cx)
+                        .child(
+                            v_flex()
+                                .px_3()
+                                .pb_2()
+                                .gap_1()
+                                .child(
+                                    Label::new("Output Preview (last 20 lines):")
+                                        .size(LabelSize::XSmall)
+                                        .color(Color::Muted)
+                                        .buffer_font(cx),
+                                )
+                                .child(
+                                    div()
+                                        .bg(cx.theme().colors().editor_background)
+                                        .rounded_md()
+                                        .px_2()
+                                        .py_1()
+                                        .text_ui_xs(cx)
+                                        .text_color(cx.theme().colors().text)
+                                        .child(
+                                            Label::new(preview_lines)
+                                                .buffer_font(cx)
+                                                .size(LabelSize::XSmall),
+                                        ),
+                                ),
+                        ),
+                )
+            })
             .when(show_output, |this| {
                 this.child(
                     div()

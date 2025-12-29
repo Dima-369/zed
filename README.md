@@ -61,7 +61,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - added `--stdin-cursor-at-end` flag to CLI to position cursor at end of buffer when reading from stdin instead of at start which is useful for reading terminal scrollback buffers
 
-## Agent UI changes
+## Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
 - add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
   - I removed the opacity animation for the tabs and instead rotate a circle like Windsurf
@@ -72,7 +72,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
 - added `agent::TogglePlan` which toggles the plan of the current thread
 - always allow all edits, otherwise it kepts asking for "Allow All Edits" every single time a new ACP thread is started which is just annoying. It still asks for tool permissions
-- show command output for ACP bash tools always
+- show command output for `acp::ToolKind::Execute` always below the `Run Command` view
 
 ### Command palette
 
