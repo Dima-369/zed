@@ -1,4 +1,4 @@
-- merge main
+- test copy diagnostic after latest main merge
 
 - add qwen inline assistant provider and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
@@ -14,7 +14,7 @@ find commit which one modifies
 
 https://github.com/zed-industries/zed/pull/45734
 
-# agent: History and recent conversations persistence per workspace 
+# agent: History and recent conversations persistence per workspace
 
 https://github.com/zed-industries/zed/pull/41874
 
