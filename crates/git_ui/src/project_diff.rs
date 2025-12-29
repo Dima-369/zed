@@ -786,7 +786,16 @@ impl Item for ProjectDiff {
 
     fn tab_content_text(&self, _detail: usize, cx: &App) -> SharedString {
         match self.branch_diff.read(cx).diff_base() {
-            DiffBase::Head => "Uncommitted Changes".into(),
+            DiffBase::Head => {
+                let file_count = self.multibuffer.read(cx).paths().count();
+                if file_count == 0 {
+                    "No Changes".into()
+                } else if file_count == 1 {
+                    "Uncommitted Changes (1 file)".into()
+                } else {
+                    format!("Uncommitted Changes ({} files)", file_count).into()
+                }
+            }
             DiffBase::Merge { base_ref } => format!("Changes since {}", base_ref).into(),
         }
     }

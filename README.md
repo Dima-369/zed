@@ -62,6 +62,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - and use `text_accent` for its border color to be easier to see
 - add `blame > git_blame_font_family` setting to specify the font family for the git blame view because I am using a proportional font and the blame view misaligns otherwise
 - add `git::DiffWithCommit` from https://github.com/zed-industries/zed/pull/44467 and based on that code, `git::DiffWithBranch` is implemented
+- make `Uncommitted Changes` tab title dynamic: if there are no files, it shows `No Changes`, otherwise it shows `Uncommitted Changes (1 file)` or `Uncommitted Changes (n files)`
 
 ## Zed CLI
 
