@@ -15,7 +15,7 @@ use futures::future::join_all;
 use futures::{FutureExt, SinkExt, StreamExt};
 use git_ui::file_diff_view::FileDiffView;
 use gpui::{App, AsyncApp, Global, WindowHandle};
-use language::{Point, ToPoint};
+use language::Point;
 use onboarding::FIRST_OPEN;
 use onboarding::show_onboarding_view;
 use recent_projects::{SshSettings, open_remote_project};
