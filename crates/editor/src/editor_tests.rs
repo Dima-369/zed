@@ -28301,6 +28301,45 @@ async fn test_paste_url_from_other_app_creates_markdown_link_selectively_in_mult
 }
 
 #[gpui::test]
+async fn test_undo_restores_cursor_position_after_paste_at_line_end(cx: &mut TestAppContext) {
+    init_test(cx, |_| {});
+
+    let mut cx = EditorTestContext::new(cx).await;
+
+    // Set up initial text: "word"
+    cx.set_state("woˇrd", ());
+
+    // Move cursor to the newline character at the end of the line
+    cx.update_editor(|editor, window, cx| {
+        let buffer_snapshot = editor.buffer.read(cx);
+        let line_end = buffer_snapshot.max_point();
+        editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+            s.select_ranges([line_end..line_end]);
+        });
+    });
+
+    // Verify cursor is at the end of the line
+    cx.assert_editor_state("wordˇ");
+
+    // Paste some text
+    cx.write_to_clipboard(ClipboardItem::new_string("pasted"));
+    cx.update_editor(|editor, window, cx| {
+        editor.paste(&Paste, window, cx);
+    });
+
+    // Verify text was pasted and cursor is at the end
+    cx.assert_editor_state("wordpastedˇ");
+
+    // Undo the paste
+    cx.update_editor(|editor, window, cx| {
+        editor.undo(&Undo, window, cx);
+    });
+
+    // Bug: Cursor should be at the end of the line (newline position), but it's one position to the left
+    cx.assert_editor_state("wordˇ"); // This should pass, but currently fails due to the bug
+}
+
+#[gpui::test]
 async fn test_race_in_multibuffer_save(cx: &mut TestAppContext) {
     init_test(cx, |_| {});
 
