@@ -1,5 +1,3 @@
-- bind c t keys in git file history to select candidates
-
 - remove webrtc patching again because Warp seems to work to download better from GitHub releases
 
 - `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
@@ -12,7 +10,7 @@ am I invoking this CLI correctly?
 
 # ACP
 
-- improve ACP terminal execute layout, see `"Command Output:"` in crates/agent_ui/src/acp/thread_view.rs 
+- improve ACP terminal execute layout, see `"Command Output"` in `crates/agent_ui/src/acp/thread_view.rs`
 
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? 
 first investigate without changing code how it currently works and where it stores the info when I click "Allow always"
