@@ -1,26 +1,4 @@
-- pull in latest https://github.com/zed-industries/zed/pull/45734 changes
-
 - fix `/script/clippy` and start fixing unit tests
-
-- implement a new action which launches a new ACP agent, you pass this action the name of the agent, it my instance "qwen" should open it because I have this in my settings:
-
-see `crates/agent_ui/src/agent_panel.rs`: `for agent_name in agent_names {`
-you add the action into `crates/agent_ui/src/agent_ui.rs` `actions!`
-
-I have this in my settings:
-
-```json
-  "agent_servers": {
-    "qwen": {
-      "type": "custom",
-      "command": "qwen",
-      "args": ["--experimental-acp"],
-      "env": {}
-    }
-  },
-```
-
-then bind to cmd-t in agentpanel
 
 ---
 
@@ -35,8 +13,7 @@ I created `test_undo_restores_cursor_position_after_paste_at_line_end`, but firs
 
 # Support external agent history
 
-I am able to merge this without conflicts using auto-resolve conflicts in JetBrains, and ACP threads are shown with history.
-But, I can not type into message editor. I tested on his plain branch, and it also does not work.
+- pull in latest https://github.com/zed-industries/zed/pull/45734 changes
 
 https://github.com/zed-industries/zed/pull/45734
 
@@ -47,7 +24,7 @@ https://github.com/zed-industries/zed/pull/41874
 
 # adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
 
-TEST after latest AI fix:
+THIS IS STILL BROKEN!
 - `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
 am I invoking this CLI correctly?
 
