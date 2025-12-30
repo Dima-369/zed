@@ -74,6 +74,12 @@ am I invoking this CLI correctly?
 - test out terminal integration via `zed - --stdin-cursor-at-end` for terminal scrollback buffer once Zed Dev is compiled
 
 
+# Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch 
+
+try this out some time
+
+https://github.com/zed-industries/zed/pull/45846
+
 # ACP
 
 - can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? 
