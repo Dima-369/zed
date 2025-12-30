@@ -1,4 +1,5 @@
 - investigate duplicated copy diagnostic button
+https://github.com/zed-industries/zed/pull/45625/changes
 
 - terminal does not rerender (same on release) on vi mode keys being hit?
 
