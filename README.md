@@ -73,7 +73,10 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ### Vi Mode
 
 - add little indicator at top of terminal view to display if Vi Mode is enabled
-- modified Vi Motion keys to my custom Dvorak Programmer keyboard layout
+- modify Vi Mode keys to my custom Dvorak Programmer keyboard layout inspired by https://github.com/xahlee/xah-fly-keys
+  - see diff in `crates/terminal/src/terminal.rs` compared to Zed's `main` branch for key changes
+  - `enter` sets the cursor position for a selection
+  - `escape` clears the selection if there is one, otherwise exits Vi Mode
 - fix bug that in Vi Mode on key press, the terminal does not rerender, so the cursor position is not updated
 
 ## AI
@@ -85,14 +88,14 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
 - add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
-  - I removed the opacity animation for the tabs and instead rotate a circle like Windsurf
-  - added `agent::CloseActiveThreadTabOrDock`
+  - remove the opacity animation for the tabs when waiting for a response and instead rotate a circle like Windsurf
+  - add `agent::CloseActiveThreadTabOrDock`
 - Zed Agent, External Agents and text thread title summaries are now generated on every AI message received (WIP)
 - estimate tokens for ACP agents, or displays ACP token info when provided (although both Gemini and Qwen do not provide it)
-- added `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
-- added `agent::DismissErrorNotification` and `agent::CopyErrorNotification`
-- changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
-- added `agent::TogglePlan` which toggles the plan of the current thread
+- add `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
+- add `agent::DismissErrorNotification` and `agent::CopyErrorNotification`
+- change `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
+- add `agent::TogglePlan` which toggles the plan of the current thread
 - always allow all edits, otherwise it kepts asking for "Allow All Edits" every single time a new ACP thread is started which is just annoying. Note that it still asks for tool permissions
 - show command output for `acp::ToolKind::Execute` always below the `Run Command` view in a plain text view to preserve newlines
   - I added `prepare_execute_tool_output_from_qwen()` to strip trailing and leading information for cleaner output
