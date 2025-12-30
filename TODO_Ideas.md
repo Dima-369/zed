@@ -1,3 +1,5 @@
+- can tab layout be changed to bottom aligt the right path like `main.rs   cli/src` here the cli/src is centered vertically which leads to 2 horizontal lines, can the `cli/src` be bottom aligned, so it is next to the `main.rs`?
+
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
