@@ -1,4 +1,28 @@
+- improve git panel keys c t using git_panel actions
+git_panel::FocusEditor
+git_panel::FocusChanges
+
 - fix `/script/clippy` and start fixing unit tests
+
+- tune this to my keybindings, then bind to some cmd-key to toggle vi mode
+
+        let motion: Option<ViMotion> = match key.as_ref() {
+            "h" | "left" => Some(ViMotion::Left),
+            "j" | "down" => Some(ViMotion::Down),
+            "k" | "up" => Some(ViMotion::Up),
+            "l" | "right" => Some(ViMotion::Right),
+            "w" => Some(ViMotion::WordRight),
+            "b" if !keystroke.modifiers.control => Some(ViMotion::WordLeft),
+            "e" => Some(ViMotion::WordRightEnd),
+            "%" => Some(ViMotion::Bracket),
+            "$" => Some(ViMotion::Last),
+            "0" => Some(ViMotion::First),
+            "^" => Some(ViMotion::FirstOccupied),
+            "H" => Some(ViMotion::High),
+            "M" => Some(ViMotion::Middle),
+            "L" => Some(ViMotion::Low),
+            _ => None,
+        };
 
 - currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
 
