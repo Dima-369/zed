@@ -357,16 +357,10 @@ pub async fn open_paths_with_positions(
         // Check if this is a stdin file (single path and stdin_cursor_at_end is true)
         let should_position_at_end = stdin_cursor_at_end && paths.len() == 1;
 
-        eprintln!("DEBUG: stdin_cursor_at_end={}, paths.len()={}, should_position_at_end={}",
-                 stdin_cursor_at_end, paths.len(), should_position_at_end);
-        eprintln!("DEBUG: paths = {:?}", paths);
-
         let point = if should_position_at_end {
-            eprintln!("DEBUG: Attempting to position cursor at end for stdin file");
-            // For stdin files, position cursor at the end of the file
+            // For stdin files, position cursor at the actual end of content
             if let Some(active_editor) = item.downcast::<Editor>() {
-                eprintln!("DEBUG: Found active editor, getting buffer max_point");
-                // Get the end position of the buffer
+                // Get end position of buffer
                 active_editor
                     .update(cx, |editor, cx| -> Option<Point> {
                         if let Some(buffer) = editor.buffer().read(cx).as_singleton() {
@@ -374,7 +368,6 @@ pub async fn open_paths_with_positions(
                             let max_point = buffer_read.max_point();
                             let len = buffer_read.len();
                             let text = buffer_read.text();
-                            eprintln!("DEBUG: Buffer max_point = {:?}, len = {}, text = {:?}", max_point, len, text);
 
                             // For stdin content, position at the actual end of content
                             // If content ends with newline, position before it (at end of last line with content)
@@ -392,46 +385,33 @@ pub async fn open_paths_with_positions(
                                 max_point
                             };
 
-                            // Clip the point to ensure it's valid
+                            // Clip point to ensure it's valid
                             let clipped_point = buffer_read.clip_point(end_point, Bias::Left);
-                            eprintln!("DEBUG: Calculated end_point = {:?}, clipped = {:?}", end_point, clipped_point);
                             Some(clipped_point)
                         } else {
-                            eprintln!("DEBUG: Buffer is not singleton, using normal caret positioning");
                             // If not a singleton buffer, use normal caret positioning
                             caret_positions.remove(path)
                         }
                     })
-                    .unwrap_or_else(|_| {
-                        eprintln!("DEBUG: Failed to update editor, using normal caret positioning");
-                        caret_positions.remove(path)
-                    })
+                    .unwrap_or_else(|_| caret_positions.remove(path))
             } else {
-                eprintln!("DEBUG: No active editor found, using normal caret positioning");
                 caret_positions.remove(path)
             }
         } else {
-            eprintln!("DEBUG: Using normal caret positioning (should_position_at_end=false)");
             // Use normal caret positioning
             caret_positions.remove(path)
         };
 
         if let Some(point) = point {
-            eprintln!("DEBUG: Applying cursor positioning to point {:?}", point);
             if let Some(active_editor) = item.downcast::<Editor>() {
                 workspace
                     .update(cx, |_, window, cx| {
                         active_editor.update(cx, |editor, cx| {
-                            eprintln!("DEBUG: Calling go_to_singleton_buffer_point");
                             editor.go_to_singleton_buffer_point(point, window, cx);
                         });
                     })
                     .log_err();
-            } else {
-                eprintln!("DEBUG: No active editor found for applying cursor position");
             }
-        } else {
-            eprintln!("DEBUG: No point to apply for cursor positioning");
         }
     }
 
