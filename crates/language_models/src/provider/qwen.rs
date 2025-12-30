@@ -62,7 +62,7 @@ impl QwenOAuthCredentials {
 #[derive(Debug, Clone)]
 pub struct QwenAuthClient {
     credentials_path: PathBuf,
-    credentials: Arc<tokio::sync::RwLock<Option<QwenOAuthCredentials>>>,
+    credentials: Arc<smol::lock::RwLock<Option<QwenOAuthCredentials>>>,
 }
 
 impl QwenAuthClient {
@@ -78,12 +78,12 @@ impl QwenAuthClient {
 
         Self {
             credentials_path,
-            credentials: Arc::new(tokio::sync::RwLock::new(None)),
+            credentials: Arc::new(smol::lock::RwLock::new(None)),
         }
     }
 
     pub async fn load_credentials(&self) -> Result<QwenOAuthCredentials, QwenError> {
-        let content = tokio::fs::read_to_string(&self.credentials_path).await
+        let content = smol::fs::read_to_string(&self.credentials_path).await
             .map_err(|_| QwenError::CredentialsNotFound(self.credentials_path.clone()))?;
 
         let credentials: QwenOAuthCredentials = serde_json::from_str(&content)
@@ -129,7 +129,7 @@ impl QwenAuthClient {
 
     async fn save_credentials(&self, credentials: &QwenOAuthCredentials) -> Result<(), QwenError> {
         let content = serde_json::to_string_pretty(credentials)?;
-        tokio::fs::write(&self.credentials_path, content).await?;
+        smol::fs::write(&self.credentials_path, content).await?;
         Ok(())
     }
 
