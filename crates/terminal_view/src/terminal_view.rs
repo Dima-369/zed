@@ -497,7 +497,7 @@ impl TerminalView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let content = self.terminal.read(cx).get_content();
+        let content = self.terminal.read(cx).get_content().trim().to_string();
         if let Some(workspace) = self.workspace.upgrade() {
             workspace.update(cx, |workspace, cx| {
                 Editor::new_in_workspace_with_content(workspace, content, window, cx)
