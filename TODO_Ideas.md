@@ -37,6 +37,7 @@ https://github.com/zed-industries/zed/pull/41874
 THIS IS STILL BROKEN! it does not position cursor at end, can you add debug statements to see what is happening?
 
 test via `echo hi | target/debug/cli --zed target/debug/zed -`
+maybe add a timeout of like 10 seconds so you can automatically test?
 
 the code is in `crates/zed/src/zed/open_listener.rs` at `pub async fn open_paths_with_positions(`
 
