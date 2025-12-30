@@ -1462,17 +1462,18 @@ impl Terminal {
             "e" => Some(ViMotion::WordRightEnd),
             "%" | "(" => Some(ViMotion::Bracket),
             "s" => Some(ViMotion::Last),
-            "0" | "D" => Some(ViMotion::First),
+            // "D" => Some(ViMotion::First),
             "d" => Some(ViMotion::FirstOccupied),
-            "H" => Some(ViMotion::High),
-            "M" => Some(ViMotion::Middle),
-            "L" => Some(ViMotion::Low),
-            "m" => Some(ViMotion::ParagraphDown),
-            "v" => Some(ViMotion::ParagraphUp),
+            // "H" => Some(ViMotion::High),
+            // "M" => Some(ViMotion::Middle),
+            // "L" => Some(ViMotion::Low),
+            // this is like a full page
+            // "m" => Some(ViMotion::ParagraphDown),
+            // "v" => Some(ViMotion::ParagraphUp),
             _ => None,
         };
 
-        if let Some(motion) = motion {
+        if let Some(motion) = motion && !keystroke.modifiers.control{
             let cursor = self.last_content.cursor.point;
             let cursor_pos = Point {
                 x: cursor.column.0 as f32 * self.last_content.terminal_bounds.cell_width,
@@ -1485,16 +1486,16 @@ impl Terminal {
         }
 
         let scroll_motion = match key.as_ref() {
-            "g" => Some(AlacScroll::Top),
-            "G" => Some(AlacScroll::Bottom),
-            "b" if keystroke.modifiers.control => Some(AlacScroll::PageUp),
-            "f" if keystroke.modifiers.control => Some(AlacScroll::PageDown),
-            "d" if keystroke.modifiers.control => {
-                let amount = self.last_content.terminal_bounds.line_height().to_f64() as i32 / 2;
+            "c" if keystroke.modifiers.control => Some(AlacScroll::Top),
+            "t" if keystroke.modifiers.control => Some(AlacScroll::Bottom),
+            // "v" if keystroke.modifiers.control => Some(AlacScroll::PageUp),
+            // "m" if keystroke.modifiers.control => Some(AlacScroll::PageDown),
+            "m" => {
+                let amount = self.last_content.terminal_bounds.line_height().to_f64() as i32 / 4;
                 Some(AlacScroll::Delta(-amount))
             }
-            "u" if keystroke.modifiers.control => {
-                let amount = self.last_content.terminal_bounds.line_height().to_f64() as i32 / 2;
+            "v" => {
+                let amount = self.last_content.terminal_bounds.line_height().to_f64() as i32 / 4;
                 Some(AlacScroll::Delta(amount))
             }
             _ => None,
@@ -1506,11 +1507,23 @@ impl Terminal {
         }
 
         match key.as_ref() {
-            "escape" => {
-                self.events.push_back(InternalEvent::SetSelection(None));
+            "y" | "enter" => {
+                let point = self.last_content.cursor.point;
+                let selection = Selection::new(SelectionType::Simple, point, AlacDirection::Left);
+                self.events
+                    .push_back(InternalEvent::SetSelection(Some((selection, point))));
             }
 
-            "y" => {
+            "escape" => {
+                if self.last_content.selection.is_some() {
+                    self.events.push_back(InternalEvent::SetSelection(None));
+                } else {
+                    self.scroll_to_bottom();
+                    self.toggle_vi_mode();
+                }
+            }
+
+            "j" => {
                 self.copy(Some(false));
             }
 
