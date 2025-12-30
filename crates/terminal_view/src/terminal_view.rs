@@ -1172,17 +1172,23 @@ impl Render for TerminalView {
                             gpui::div()
                                 .absolute()
                                 .top_2()
-                                .right_6()
-                                .bg(cx.theme().colors().editor_background.opacity(0.8))
-                                .border_1()
-                                .border_color(cx.theme().colors().border)
-                                .rounded_md()
-                                .px_2()
+                                .flex()
+                                .flex_row()
+                                .justify_center()
+                                .w_full()
                                 .child(
-                                    Label::new("Vi Mode")
-                                        .size(LabelSize::Small)
-                                        .color(Color::Default),
-                                ),
+                                    gpui::div()
+                                        .bg(cx.theme().colors().text_accent.opacity(0.2))
+                                        .border_1()
+                                        .border_color(cx.theme().colors().text_accent)
+                                        .rounded_md()
+                                        .px_2()
+                                        .child(
+                                            Label::new("Vi Mode")
+                                                .size(LabelSize::Small)
+                                                .color(Color::Accent),
+                                        )
+                                )
                         )
                     }),
             )
