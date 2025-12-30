@@ -7,24 +7,6 @@
 
 - the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done
 
-- check with python implementation, to implement this
-
-warning: method `save_credentials` is never used
-   --> crates/language_models/src/provider/qwen.rs:130:14
-    |
- 68 | impl QwenAuthClient {
-    | ------------------- method in this implementation
-...
-130 |     async fn save_credentials(&self, credentials: &QwenOAuthCredentials) -> Result<(), QwenError> {
-    |              ^^^^^^^^^^^^^^^^
-    |
-    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
-
-   Compiling file_finder v0.1.0 (/Users/di
-
-- investigate duplicated copy diagnostic button
-https://github.com/zed-industries/zed/pull/45625/changes
-
 - terminal does not rerender (same on release) on vi mode keys being hit?
 
 - fix `/script/clippy` and start fixing unit tests
@@ -33,10 +15,6 @@ https://github.com/zed-industries/zed/pull/45625/changes
 
 - fix `terminal::OpenScrollbackBuffer` to open a buffer with the terminal scrollback buffer, then place cursor at very end, trim away trailing whitespace
 my current keybinding action sequence is just too unreliable
-
----
-
-- add qwen inline assistant provider (this means as a LLM provider) and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
