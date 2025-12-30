@@ -1763,7 +1763,6 @@ impl AgentPanel {
                         } else {
                             Label::new(LOADING_SUMMARY_PLACEHOLDER)
                                 .truncate()
-                                .color(Color::Muted)
                                 .into_any_element()
                         }
                     }
