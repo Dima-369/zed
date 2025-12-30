@@ -1,6 +1,6 @@
 - fix `/script/clippy` and start fixing unit tests
 
-- add a new action `terminal::OpenScrollbackBuffer` to open a buffer with the terminal scrollback buffer
+- add a new action `terminal::OpenScrollbackBuffer` to open a buffer with the terminal scrollback buffer, then place cursor at very end, trim away trailing whitespace
 my current keybinding action sequence is just too unreliable
 
 ---
