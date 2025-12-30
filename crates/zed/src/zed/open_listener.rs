@@ -15,7 +15,7 @@ use futures::future::join_all;
 use futures::{FutureExt, SinkExt, StreamExt};
 use git_ui::file_diff_view::FileDiffView;
 use gpui::{App, AsyncApp, Global, WindowHandle};
-use language::Point;
+use language::{Point, Bias};
 use onboarding::FIRST_OPEN;
 use onboarding::show_onboarding_view;
 use recent_projects::{SshSettings, open_remote_project};
@@ -356,39 +356,73 @@ pub async fn open_paths_with_positions(
 
         // Check if this is a stdin file (single path and stdin_cursor_at_end is true)
         let should_position_at_end = stdin_cursor_at_end && paths.len() == 1;
+        
+        eprintln!("DEBUG: stdin_cursor_at_end={}, paths.len()={}, should_position_at_end={}", 
+                 stdin_cursor_at_end, paths.len(), should_position_at_end);
+        eprintln!("DEBUG: paths = {:?}", paths);
 
         let point = if should_position_at_end {
+            eprintln!("DEBUG: Attempting to position cursor at end for stdin file");
             // For stdin files, position cursor at the end of the file
             if let Some(active_editor) = item.downcast::<Editor>() {
-                // Get the last line and column of the buffer
+                eprintln!("DEBUG: Found active editor, getting buffer max_point");
+                // Get the end position of the buffer
                 active_editor
                     .update(cx, |editor, cx| -> Option<Point> {
                         if let Some(buffer) = editor.buffer().read(cx).as_singleton() {
-                            Some(buffer.read(cx).max_point())
+                            let buffer_read = buffer.read(cx);
+                            let max_point = buffer_read.max_point();
+                            let len = buffer_read.len();
+                            let text = buffer_read.text();
+                            eprintln!("DEBUG: Buffer max_point = {:?}, len = {}, text = {:?}", max_point, len, text);
+                            
+                            // For stdin content with trailing newline, position before the newline
+                            let end_point = if len > 0 && text.ends_with('\n') {
+                                // Position before the newline character
+                                buffer_read.clip_point(Point::new(0, (len - 1) as u32), Bias::Left)
+                            } else {
+                                // Position at the end of content
+                                max_point
+                            };
+                            
+                            eprintln!("DEBUG: Calculated end_point = {:?}", end_point);
+                            Some(end_point)
                         } else {
+                            eprintln!("DEBUG: Buffer is not singleton, using normal caret positioning");
                             // If not a singleton buffer, use normal caret positioning
                             caret_positions.remove(path)
                         }
                     })
-                    .unwrap_or_else(|_| caret_positions.remove(path))
+                    .unwrap_or_else(|_| {
+                        eprintln!("DEBUG: Failed to update editor, using normal caret positioning");
+                        caret_positions.remove(path)
+                    })
             } else {
+                eprintln!("DEBUG: No active editor found, using normal caret positioning");
                 caret_positions.remove(path)
             }
         } else {
+            eprintln!("DEBUG: Using normal caret positioning (should_position_at_end=false)");
             // Use normal caret positioning
             caret_positions.remove(path)
         };
 
         if let Some(point) = point {
+            eprintln!("DEBUG: Applying cursor positioning to point {:?}", point);
             if let Some(active_editor) = item.downcast::<Editor>() {
                 workspace
                     .update(cx, |_, window, cx| {
                         active_editor.update(cx, |editor, cx| {
+                            eprintln!("DEBUG: Calling go_to_singleton_buffer_point");
                             editor.go_to_singleton_buffer_point(point, window, cx);
                         });
                     })
                     .log_err();
+            } else {
+                eprintln!("DEBUG: No active editor found for applying cursor position");
             }
+        } else {
+            eprintln!("DEBUG: No point to apply for cursor positioning");
         }
     }
 
