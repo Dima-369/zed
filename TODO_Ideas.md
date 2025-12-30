@@ -36,13 +36,11 @@ https://github.com/zed-industries/zed/pull/41874
 
 # adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
 
-THIS IS STILL BROKEN!
-- `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
-am I invoking this CLI correctly?
-the code is in `crates/zed/src/zed/open_listener.rs` at `pub async fn open_paths_with_positions(`
-place panic!s there, how to invoke `/target/debug/zed`?
+THIS IS STILL BROKEN! it does not position cursor at end, can you add debug statements to see what is happening?
 
-- test out terminal integration via `zed - --stdin-cursor-at-end` for terminal scrollback buffer once Zed Dev is compiled
+test via `echo hi | target/debug/cli --zed target/debug/zed -`
+
+the code is in `crates/zed/src/zed/open_listener.rs` at `pub async fn open_paths_with_positions(`
 
 
 # Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch 
