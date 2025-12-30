@@ -23,29 +23,6 @@ then bind to cmd-t in agentpanel
 
 ---
 
-TRY out from AI
-- can this new from summary be used for ACP agents as well? it is currently only shown for the Zed agent when I have typed in at least one message with a response
-
-in crates/agent_ui/src/agent_panel.rs
-
-                    let active_thread = active_thread.clone();
-                    Some(ContextMenu::build(window, cx, |menu, _window, cx| {
-                        menu.context(focus_handle.clone())
-                            .when_some(active_thread, |this, active_thread| {
-                                let thread = active_thread.read(cx);
-
-                                if !thread.is_empty() {
-                                    let session_id = thread.id().clone();
-                                    this.item(
-                                        ContextMenuEntry::new("New From Summary")
-                                            .icon(IconName::ThreadFromSummary)
-                                            .icon_color(Color::Muted)
-                                            .handler(move |window, cx| {
-                                                window.dispatch_action(
-                                                    Box::new(NewNativeAgentThreadFromSummary {
-                                                        from_session_id: session_id.clone(),
-                                                    }),
-
 - add qwen inline assistant provider (this means as a LLM provider) and to try it out, see `~/Developer/Roo-Code/qwen_client`
 
 - fix bad undo behavior, reproduce steps:
