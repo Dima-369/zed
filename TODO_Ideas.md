@@ -1,5 +1,10 @@
 - escape should quit out of terminal vi mode
 
+- in terminal vi mode, can you implement key.enter which sets the cursor for the selection start?
+currently, one has to always click with the mouse to set the initial cursor position
+following that, escape when there is a selection, should stay in vi mode, just unset the selection
+and when escape is hit without a selection, vi mode should be quit
+
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
@@ -9,8 +14,6 @@ it seems to work for Raptor model?
 - the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done. It should also be done in text threads and in ACP threads (external agents)
 So, 3 parts, check all
 see `crates/agent_ui/src/agent_panel.rs` and related code
-
-- terminal does not rerender (same on release) on vi mode keys being hit?
 
 - fix `/script/clippy` and start fixing unit tests
 
