@@ -47,7 +47,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - modified `compute_style_internal()` in `crates/gpui/src/elements/div.rs` to not apply the mouse hover style, since it clashes when one only uses the keyboard
   - I also unset the mouse hover background change on enabled `sticky_scroll`
 - improved `outline::Toggle` to work in multi buffers, it shows the file headings only
-- remove abbreviated `cwd` display in terminal title
 - fix bug that when in vim visual line mode and cursor is on right newline character, that the line below is incorrectly copied on `editor::Copy`. This mostly happens in my own Zed config because I mixing `editor` and `vim` actions to ensure that I can move cursor on the right newline character, and usually not in proper Zed keybindings.
 - improve `editor::SelectLargerSyntaxNode` for inline code blocks in Markdown files (`foo bar`), so that it first extends the selection to the word inside the quotes, then the text inside the quotes and only then to the inner text plus the outer quotes
 - add structured outline for Markdown, modifies `crates/languages/src/markdown/outline.scm` (from https://github.com/zed-industries/zed/pull/45643)
@@ -66,6 +65,11 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ## Zed CLI
 
 - added `--stdin-cursor-at-end` flag to CLI to position cursor at end of buffer when reading from stdin instead of at start which is useful for reading terminal scrollback buffers
+
+## Terminal
+
+- remove abbreviated `cwd` display in terminal title
+- add `terminal::OpenScrollbackBuffer` action to open the scrollback buffer in a new buffer (WIP)
 
 ## Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
