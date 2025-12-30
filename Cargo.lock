@@ -13143,6 +13143,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "qwen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs 4.0.0",
+ "futures 0.3.31",
+ "schemars",
+ "serde",
+ "serde_json",
+ "strum 0.27.2",
+ "thiserror 2.0.17",
+ "tokio",
+ "uuid",
+ "zed-reqwest",
+]
+
+[[package]]
 name = "r-efi"
 version = "5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
