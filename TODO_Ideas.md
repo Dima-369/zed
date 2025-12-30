@@ -1,3 +1,6 @@
+- add hit count to buffer_search_modal::ToggleBufferSearch, it should list selected index / matched lines to left of button icon in line mode
+show index / total matches in non line mode
+
 - document this flag
 
 ```bash
