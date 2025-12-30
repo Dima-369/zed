@@ -1,5 +1,7 @@
 - fix `/script/clippy` and start fixing unit tests
 
+- currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
+
 - add a new action `terminal::OpenScrollbackBuffer` to open a buffer with the terminal scrollback buffer, then place cursor at very end, trim away trailing whitespace
 my current keybinding action sequence is just too unreliable
 
