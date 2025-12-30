@@ -1465,6 +1465,8 @@ impl Terminal {
             "H" => Some(ViMotion::High),
             "M" => Some(ViMotion::Middle),
             "L" => Some(ViMotion::Low),
+            "m" => Some(ViMotion::ParagraphDown),
+            "v" => Some(ViMotion::ParagraphUp),
             _ => None,
         };
 
@@ -1502,15 +1504,6 @@ impl Terminal {
         }
 
         match key.as_ref() {
-            "v" => {
-                let point = self.last_content.cursor.point;
-                let selection_type = SelectionType::Simple;
-                let side = AlacDirection::Right;
-                let selection = Selection::new(selection_type, point, side);
-                self.events
-                    .push_back(InternalEvent::SetSelection(Some((selection, point))));
-            }
-
             "escape" => {
                 self.events.push_back(InternalEvent::SetSelection(None));
             }
