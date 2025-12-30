@@ -5,6 +5,7 @@
 - implement a new action which launches a new ACP agent, you pass this action the name of the agent, it my instance "qwen" should open it because I have this in my settings:
 
 see `crates/agent_ui/src/agent_panel.rs`: `for agent_name in agent_names {`
+you add the action into `crates/agent_ui/src/agent_ui.rs` `actions!`
 
 I have this in my settings:
 
