@@ -68,9 +68,9 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ## Terminal
 
 - remove abbreviated `cwd` display in terminal title
-- add `terminal::OpenScrollbackBuffer` action to open the scrollback buffer in a new buffer (WIP)
+- add `terminal::OpenScrollbackBuffer` action to open the scrollback buffer in a new buffer (WIP: works, but cursor needs to be at end)
 - modified Vi Motion keys to my custom Dvorak Programmer keyboard layout
-- fix bug that in Vi Mode on key press, the terminal does not rerender
+- fix bug that in Vi Mode on key press, the terminal does not rerender, so the cursor position is not updated
 
 ## AI
 
