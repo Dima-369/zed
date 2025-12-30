@@ -5,7 +5,8 @@
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 
-- the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done
+- the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done. It should also be done in text threads and in ACP threads (external agents)
+So, 3 parts, check all
 
 - terminal does not rerender (same on release) on vi mode keys being hit?
 
