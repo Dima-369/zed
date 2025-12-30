@@ -1352,11 +1352,13 @@ impl Thread {
                         .tool_results
                         .insert(tool_result.tool_use_id.clone(), tool_result);
                 })?;
-            }
+}
 
+            println!("Flushing pending message");
             this.update(cx, |this, cx| {
                 this.flush_pending_message(cx);
-                if this.title.is_none() && this.pending_title_generation.is_none() {
+                // Generate/regenerate title whenever AI finishes and there are messages
+                if !this.messages.is_empty() && this.pending_title_generation.is_none() {
                     this.generate_title(cx);
                 }
             })?;
@@ -1801,6 +1803,10 @@ impl Thread {
             return;
         };
 
+        println!(
+            "Generating title with model: {:?}",
+            self.summarization_model.as_ref().map(|model| model.name())
+        );
         log::debug!(
             "Generating title with model: {:?}",
             self.summarization_model.as_ref().map(|model| model.name())
