@@ -1,3 +1,5 @@
+- escape should quit out of terminal vi mode
+
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
 - bind ctrl-m to change models in inline assistant and in Agent Panel
