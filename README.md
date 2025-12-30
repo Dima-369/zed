@@ -31,7 +31,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - try to fix panic in `anchor_at_offset` when buffer has Umlaute, seems to work, no idea if my fix has other consequences
 - changed `fn do_copy(&self, strip_leading_indents: bool, cx: &mut Context<Self>) {` to only strip trailing newlines instead of leading indents
 - lower `MIN_NAVIGATION_HISTORY_ROW_DELTA` to 3, from 10, as a test which seems fine
-- allow AI edit predictions in Zed's `settings.json` and `keymap.json` and in buffers without files like ones from `workspace: new file` or in the agent text thread pane (although here in the text thread it does not trigger as often?)
 - opening a workspace which has no tabs initially, will trigger `workspace::NewFile` for proper editor focus. Before, there seems to be a bug where the project panel does not have proper focus
 - improved the `go to next/previous diagnostic` action to always jump to errors first. Only if there are no errors, it jumps to warnings. Before, this was mixed
 - moving up/down in outline panel does not wrap around anymore
@@ -64,7 +63,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## Zed CLI
 
-- added `--stdin-cursor-at-end` flag to CLI to position cursor at end of buffer when reading from stdin instead of at start which is useful for reading terminal scrollback buffers
+- add `--stdin-cursor-at-end` flag to CLI to position cursor at end of buffer when reading from stdin instead of at start which is useful for reading terminal scrollback buffers
 
 ## Terminal
 
@@ -72,7 +71,13 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add `terminal::OpenScrollbackBuffer` action to open the scrollback buffer in a new buffer (WIP)
 - modified Vi Motion keys to my custom Dvorak Programmer keyboard layout
 
-## Agent UI changes (mainly ACP, since I am not using the Zed Agent)
+## AI
+
+- allow AI edit predictions in Zed's `settings.json` and `keymap.json` and in buffers without files like ones from `workspace: new file` or in the agent text thread pane (although here in the text thread it does not trigger as often?)
+- add the Qwen provider with models `qwen3-coder-plus` and `qwen3-coder-flash` which can be used for Inline Assist and in Zed Agent
+  - the implementation is based on how https://github.com/RooCodeInc/Roo-Code interacts with Qwen and requires the `~/.qwen/oauth_creds.json` file to set which can be done by using the `qwen` binary and authenticating with OAuth
+
+### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
 - add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
   - I removed the opacity animation for the tabs and instead rotate a circle like Windsurf
@@ -124,7 +129,15 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - modified key jump hints to my custom Dvorak Programmer keyboard layout
   - I am only using this is inside multi buffers, whereas `jump::Toggle` does not. And this also does not work to jump across editor panes
   - note that escape does not work to break out of this mode, apparently. I have no idea how to adjust the code for it
--  `zed::DeeplTranslate` which translates the current selection or the current line. It needs the `DEEPL_API_KEY` environment variable to be set. Bind like this:
+- `editor::MoveToStartOfLargerSyntaxNode` from https://github.com/zed-industries/zed/pull/45331
+- `buffer_search_modal::ToggleBufferSearch` which shows a modal to search the current buffer content (code is in `crates/search/src/buffer_search_modal.rs`) based on https://github.com/zed-industries/zed/pull/44530 (Add quick search modal). This is a basic implementation of Swiper from Emacs or `Snacks.picker.lines()` from Neovim. I tried matching every line with `nucleo`, but it was kinda slow, so it just split on spaces and then every line which has all words from the query is matched.
+  - `ctrl-c` and `ctrl-t` can be used to insert history items into the search field
+  - `ctrl-r` is to toggle between line (case-insensitive) and exact match (case-sensitive) mode
+  - it also works in multi buffers, although the preview editor mixes lines
+
+## DeepL integration
+
+There is this new actoin:  `zed::DeeplTranslate` which translates the current selection or the current line. It needs the `DEEPL_API_KEY` environment variable to be set. Bind like this:
 
 ```json
 "space c g": [
@@ -135,12 +148,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   }
 ],
 ```
-
-- `editor::MoveToStartOfLargerSyntaxNode` from https://github.com/zed-industries/zed/pull/45331
-- `buffer_search_modal::ToggleBufferSearch` which shows a modal to search the current buffer content (code is in `crates/search/src/buffer_search_modal.rs`) based on https://github.com/zed-industries/zed/pull/44530 (Add quick search modal). This is a basic implementation of Swiper from Emacs or `Snacks.picker.lines()` from Neovim. I tried matching every line with `nucleo`, but it was kinda slow, so it just split on spaces and then every line which has all words from the query is matched.
-  - `ctrl-c` and `ctrl-t` can be used to insert history items into the search field
-  - `ctrl-r` is to toggle between line (case-insensitive) and exact match (case-sensitive) mode
-  - it also works in multi buffers, although the preview editor mixes lines
 
 ## UI changes
 
