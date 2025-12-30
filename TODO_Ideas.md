@@ -46,7 +46,7 @@ am I invoking this CLI correctly?
 
 # Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch 
 
-try this out some time
+try this out some time, I already have tree view, how about only displaying file count in tree view to the right of directories only for amount of files below
 
 https://github.com/zed-industries/zed/pull/45846
 
