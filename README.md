@@ -82,6 +82,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
   - I removed the opacity animation for the tabs and instead rotate a circle like Windsurf
   - added `agent::CloseActiveThreadTabOrDock`
+- Zed Agent, External Agents and text thread title summaries are now generated on every AI message received (WIP)
 - estimate tokens for ACP agents, or displays ACP token info when provided (although both Gemini and Qwen do not provide it)
 - added `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
 - added `agent::DismissErrorNotification` and `agent::CopyErrorNotification`
