@@ -12,6 +12,7 @@ use language_model::{
 };
 use open_ai::ResponseStreamEvent;
 use qwen::Model;
+use strum::IntoEnumIterator;
 use settings::Settings;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -119,7 +120,7 @@ impl QwenAuthClient {
         Ok(credentials)
     }
 
-    async fn refresh_token(&self, credentials: &QwenOAuthCredentials) -> Result<QwenOAuthCredentials, QwenError> {
+    async fn refresh_token(&self, _credentials: &QwenOAuthCredentials) -> Result<QwenOAuthCredentials, QwenError> {
         // For now, implement a simple refresh that just returns the current credentials
         // In a real implementation, you would make an HTTP request here
         // This is a placeholder that should be implemented with proper HTTP client usage
@@ -135,7 +136,7 @@ impl QwenAuthClient {
     pub fn get_base_url(credentials: &QwenOAuthCredentials) -> String {
         let base_url = credentials.resource_url.as_deref()
             .unwrap_or("https://dashscope.aliyuncs.com/compatible-mode/v1");
-        
+
         let mut url = base_url.to_string();
         if !url.starts_with("http://") && !url.starts_with("https://") {
             url = format!("https://{}", url);
@@ -258,7 +259,7 @@ impl LanguageModelProvider for QwenLanguageModelProvider {
 
         for model in Model::iter() {
             if !matches!(model, Model::Custom { .. }) {
-                models.insert(model.id().to_string(), model.clone());
+                models.insert(model.id().to_string(), model);
             }
         }
 
@@ -349,7 +350,7 @@ impl QwenLanguageModel {
 
         let future = self.request_limiter.stream(async move {
             let (credentials, base_url) = task.await.map_err(|e| LanguageModelCompletionError::Other(anyhow!(e)))?;
-            
+
             let provider = PROVIDER_NAME;
             let request = open_ai::stream_completion(
                 http_client.as_ref(),
@@ -525,7 +526,7 @@ impl ConfigurationView {
 impl Render for ConfigurationView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = self.state.read(cx);
-        
+
         if self.load_credentials_task.is_some() {
             return div().child(Label::new("Loading credentials…")).into_any();
         }
@@ -544,7 +545,7 @@ impl Render for ConfigurationView {
                 .into_any_element()
         } else {
             let error_message = state.error.as_deref().unwrap_or("OAuth authentication required").to_string();
-            
+
             v_flex()
                 .child(Label::new("To use Zed's agent with Qwen, you need to authenticate with OAuth:"))
                 .child(

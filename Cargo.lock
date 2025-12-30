@@ -9045,6 +9045,7 @@ dependencies = [
  "open_router",
  "partial-json-fixer",
  "project",
+ "qwen",
  "release_channel",
  "schemars",
  "semver",
