@@ -356,8 +356,8 @@ pub async fn open_paths_with_positions(
 
         // Check if this is a stdin file (single path and stdin_cursor_at_end is true)
         let should_position_at_end = stdin_cursor_at_end && paths.len() == 1;
-        
-        eprintln!("DEBUG: stdin_cursor_at_end={}, paths.len()={}, should_position_at_end={}", 
+
+        eprintln!("DEBUG: stdin_cursor_at_end={}, paths.len()={}, should_position_at_end={}",
                  stdin_cursor_at_end, paths.len(), should_position_at_end);
         eprintln!("DEBUG: paths = {:?}", paths);
 
@@ -375,18 +375,27 @@ pub async fn open_paths_with_positions(
                             let len = buffer_read.len();
                             let text = buffer_read.text();
                             eprintln!("DEBUG: Buffer max_point = {:?}, len = {}, text = {:?}", max_point, len, text);
-                            
-                            // For stdin content with trailing newline, position before the newline
+
+                            // For stdin content, position at the actual end of content
+                            // If content ends with newline, position before it (at end of last line with content)
+                            // If content doesn't end with newline, position at the very end
                             let end_point = if len > 0 && text.ends_with('\n') {
-                                // Position before the newline character
-                                buffer_read.clip_point(Point::new(0, (len - 1) as u32), Bias::Left)
+                                // For content ending with newline, position at start of last line (which is empty)
+                                // or use the max_point adjusted back by one line if the last line is empty
+                                if max_point.row > 0 {
+                                    Point::new(max_point.row - 1, u32::MAX) // End of previous line
+                                } else {
+                                    max_point // Single line content, use max_point
+                                }
                             } else {
-                                // Position at the end of content
+                                // Content doesn't end with newline, position at the very end
                                 max_point
                             };
-                            
-                            eprintln!("DEBUG: Calculated end_point = {:?}", end_point);
-                            Some(end_point)
+
+                            // Clip the point to ensure it's valid
+                            let clipped_point = buffer_read.clip_point(end_point, Bias::Left);
+                            eprintln!("DEBUG: Calculated end_point = {:?}, clipped = {:?}", end_point, clipped_point);
+                            Some(clipped_point)
                         } else {
                             eprintln!("DEBUG: Buffer is not singleton, using normal caret positioning");
                             // If not a singleton buffer, use normal caret positioning
