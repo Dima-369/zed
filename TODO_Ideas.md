@@ -1,9 +1,9 @@
-- try those out in terminal vi mode
+- remove duplicated "New from Summary" menu item in Zed Agent 
 
-            "m" => Some(ViMotion::ParagraphDown),
-            "v" => Some(ViMotion::ParagraphUp),
+- bind ctrl-m to change models in inline assistant and in Agent Panel
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
+does it also happen in Release Zed on say a free OpenRouter model?
 
 - the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done. It should also be done in text threads and in ACP threads (external agents)
 So, 3 parts, check all
@@ -14,8 +14,7 @@ So, 3 parts, check all
 
 - currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
 
-- fix `terminal::OpenScrollbackBuffer` to open a buffer with the terminal scrollback buffer, then place cursor at very end, trim away trailing whitespace
-my current keybinding action sequence is just too unreliable
+- fix `terminal::OpenScrollbackBuffer` to position the cursor at the end of buffer 
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
