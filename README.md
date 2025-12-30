@@ -70,6 +70,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - remove abbreviated `cwd` display in terminal title
 - add `terminal::OpenScrollbackBuffer` action to open the scrollback buffer in a new buffer (WIP)
+- modified Vi Motion keys to my custom Dvorak Programmer keyboard layout
 
 ## Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
