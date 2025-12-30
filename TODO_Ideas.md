@@ -1,3 +1,5 @@
+- pull in latest https://github.com/zed-industries/zed/pull/45734 changes
+
 - fix `/script/clippy` and start fixing unit tests
 
 - implement a new action which launches a new ACP agent, you pass this action the name of the agent, it my instance "qwen" should open it because I have this in my settings:

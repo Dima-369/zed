@@ -36,7 +36,7 @@ use crate::{
     ExpandMessageEditor,
     acp::{AcpThreadHistory, ThreadHistoryEvent},
 };
-use crate::{ExternalAgent, NewExternalAgentThread, NewNativeAgentThreadFromSummary};
+use crate::{ExternalAgent, NewExternalAgentThread, NewNativeAgentThreadFromSummary, NewAcpThreadFromSummary};
 use agent_settings::AgentSettings;
 use ai_onboarding::AgentPanelOnboarding;
 use anyhow::{Result, anyhow};
@@ -109,6 +109,16 @@ pub fn init(cx: &mut App) {
                         if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
                             panel.update(cx, |panel, cx| {
                                 panel.new_native_agent_thread_from_summary(action, window, cx)
+                            });
+                            workspace.focus_panel::<AgentPanel>(window, cx);
+                        }
+                    },
+                )
+                .register_action(
+                    |workspace, action: &NewAcpThreadFromSummary, window, cx| {
+                        if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                            panel.update(cx, |panel, cx| {
+                                panel.new_acp_thread_from_summary(action, window, cx)
                             });
                             workspace.focus_panel::<AgentPanel>(window, cx);
                         }
@@ -832,6 +842,29 @@ impl AgentPanel {
 
         self.external_thread(
             Some(ExternalAgent::NativeAgent),
+            None,
+            Some(thread.clone()),
+            window,
+            cx,
+        );
+    }
+
+    fn new_acp_thread_from_summary(
+        &mut self,
+        action: &NewAcpThreadFromSummary,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(thread) = self
+            .history_store
+            .read(cx)
+            .thread_from_session_id(&action.from_session_id)
+        else {
+            return;
+        };
+
+        self.external_thread(
+            None, // Keep the current agent type instead of forcing NativeAgent
             None,
             Some(thread.clone()),
             window,
@@ -2078,6 +2111,13 @@ impl AgentPanel {
             ActiveView::TextThread { .. } | ActiveView::History | ActiveView::Configuration => None,
         };
 
+        let active_acp_thread = match self.active_view() {
+            ActiveView::ExternalAgentThread { thread_view } => {
+                thread_view.read(cx).thread().cloned()
+            }
+            ActiveView::TextThread { .. } | ActiveView::History | ActiveView::Configuration => None,
+        };
+
         let agent_server_store_for_menu = agent_server_store.clone();
         let new_thread_menu = PopoverMenu::new("new_thread_menu")
             .trigger_with_tooltip(
@@ -2111,8 +2151,10 @@ impl AgentPanel {
                     telemetry::event!("New Thread Clicked");
 
                     let active_thread = active_thread.clone();
+                    let active_acp_thread = active_acp_thread.clone();
                     Some(ContextMenu::build(window, cx, |menu, _window, cx| {
                         menu.context(focus_handle.clone())
+                            // Handle native threads
                             .when_some(active_thread, |this, active_thread| {
                                 let thread = active_thread.read(cx);
 
@@ -2125,6 +2167,29 @@ impl AgentPanel {
                                             .handler(move |window, cx| {
                                                 window.dispatch_action(
                                                     Box::new(NewNativeAgentThreadFromSummary {
+                                                        from_session_id: session_id.clone(),
+                                                    }),
+                                                    cx,
+                                                );
+                                            }),
+                                    )
+                                } else {
+                                    this
+                                }
+                            })
+                            // Handle ACP threads
+                            .when_some(active_acp_thread, |this, active_acp_thread| {
+                                let thread = active_acp_thread.read(cx);
+
+                                if !thread.entries().is_empty() {
+                                    let session_id = thread.session_id().clone();
+                                    this.item(
+                                        ContextMenuEntry::new("New From Summary")
+                                            .icon(IconName::ThreadFromSummary)
+                                            .icon_color(Color::Muted)
+                                            .handler(move |window, cx| {
+                                                window.dispatch_action(
+                                                    Box::new(NewAcpThreadFromSummary {
                                                         from_session_id: session_id.clone(),
                                                     }),
                                                     cx,

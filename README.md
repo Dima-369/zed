@@ -77,10 +77,11 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - added `agent::DismissErrorNotification` and `agent::CopyErrorNotification`
 - changed `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
 - added `agent::TogglePlan` which toggles the plan of the current thread
-- always allow all edits, otherwise it kepts asking for "Allow All Edits" every single time a new ACP thread is started which is just annoying. It still asks for tool permissions
+- always allow all edits, otherwise it kepts asking for "Allow All Edits" every single time a new ACP thread is started which is just annoying. Note that it still asks for tool permissions
 - show command output for `acp::ToolKind::Execute` always below the `Run Command` view in a plain text view to preserve newlines
   - I added `prepare_execute_tool_output_from_qwen()` to strip trailing and leading information for cleaner output
 - integrate external agent history from https://github.com/zed-industries/zed/pull/45734
+- allow `New From Summary` for ACP agents, instead of only for Zed Agent
 
 ### Command palette
 

@@ -165,6 +165,13 @@ pub struct NewNativeAgentThreadFromSummary {
     from_session_id: agent_client_protocol::SessionId,
 }
 
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Action)]
+#[action(namespace = agent)]
+#[serde(deny_unknown_fields)]
+pub struct NewAcpThreadFromSummary {
+    from_session_id: agent_client_protocol::SessionId,
+}
+
 // TODO unify this with AgentType
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
