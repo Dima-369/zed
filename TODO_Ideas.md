@@ -1,5 +1,8 @@
 - fix `/script/clippy` and start fixing unit tests
 
+- add a new action `terminal::OpenScrollbackBuffer` to open a buffer with the terminal scrollback buffer
+my current keybinding action sequence is just too unreliable
+
 ---
 
 - add qwen inline assistant provider (this means as a LLM provider) and to try it out, see `~/Developer/Roo-Code/qwen_client`
