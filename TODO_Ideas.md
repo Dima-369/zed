@@ -1,3 +1,22 @@
+- in Zed Agent with Qwen, why do I not see tool usages, for reading files?
+
+- the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done
+
+- check with python implementation, to implement this
+
+warning: method `save_credentials` is never used
+   --> crates/language_models/src/provider/qwen.rs:130:14
+    |
+ 68 | impl QwenAuthClient {
+    | ------------------- method in this implementation
+...
+130 |     async fn save_credentials(&self, credentials: &QwenOAuthCredentials) -> Result<(), QwenError> {
+    |              ^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling file_finder v0.1.0 (/Users/di
+
 - investigate duplicated copy diagnostic button
 https://github.com/zed-industries/zed/pull/45625/changes
 
