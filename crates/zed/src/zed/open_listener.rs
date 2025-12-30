@@ -15,7 +15,7 @@ use futures::future::join_all;
 use futures::{FutureExt, SinkExt, StreamExt};
 use git_ui::file_diff_view::FileDiffView;
 use gpui::{App, AsyncApp, Global, WindowHandle};
-use language::Point;
+use language::{Point, Bias};
 use onboarding::FIRST_OPEN;
 use onboarding::show_onboarding_view;
 use recent_projects::{SshSettings, open_remote_project};
@@ -358,13 +358,36 @@ pub async fn open_paths_with_positions(
         let should_position_at_end = stdin_cursor_at_end && paths.len() == 1;
 
         let point = if should_position_at_end {
-            // For stdin files, position cursor at the end of the file
+            // For stdin files, position cursor at the actual end of content
             if let Some(active_editor) = item.downcast::<Editor>() {
-                // Get the last line and column of the buffer
+                // Get end position of buffer
                 active_editor
                     .update(cx, |editor, cx| -> Option<Point> {
                         if let Some(buffer) = editor.buffer().read(cx).as_singleton() {
-                            Some(buffer.read(cx).max_point())
+                            let buffer_read = buffer.read(cx);
+                            let max_point = buffer_read.max_point();
+                            let len = buffer_read.len();
+                            let text = buffer_read.text();
+
+                            // For stdin content, position at the actual end of content
+                            // If content ends with newline, position before it (at end of last line with content)
+                            // If content doesn't end with newline, position at the very end
+                            let end_point = if len > 0 && text.ends_with('\n') {
+                                // For content ending with newline, position at start of last line (which is empty)
+                                // or use the max_point adjusted back by one line if the last line is empty
+                                if max_point.row > 0 {
+                                    Point::new(max_point.row - 1, u32::MAX) // End of previous line
+                                } else {
+                                    max_point // Single line content, use max_point
+                                }
+                            } else {
+                                // Content doesn't end with newline, position at the very end
+                                max_point
+                            };
+
+                            // Clip point to ensure it's valid
+                            let clipped_point = buffer_read.clip_point(end_point, Bias::Left);
+                            Some(clipped_point)
                         } else {
                             // If not a singleton buffer, use normal caret positioning
                             caret_positions.remove(path)
