@@ -8,7 +8,7 @@ use crate::{
 };
 use anyhow::Context as _;
 use gpui::{
-    AnyElement, AsyncWindowContext, ClipboardItem, Context, Entity, Focusable as _, FontWeight,
+    AnyElement, AsyncWindowContext, Context, Entity, Focusable as _, FontWeight,
     Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, ScrollHandle, Size,
     StatefulInteractiveElement, StyleRefinement, Styled, Subscription, Task, TextStyleRefinement,
     Window, div, px,
@@ -24,7 +24,7 @@ use std::{borrow::Cow, cell::RefCell};
 use std::{ops::Range, sync::Arc, time::Duration};
 use std::{path::PathBuf, rc::Rc};
 use theme::ThemeSettings;
-use ui::{CopyButton, Scrollbars, Tooltip, WithScrollbar, prelude::*, theme_is_transparent};
+use ui::{CopyButton, Scrollbars, WithScrollbar, prelude::*, theme_is_transparent};
 use url::Url;
 use util::TryFutureExt;
 use workspace::{OpenOptions, OpenVisible, Workspace};
