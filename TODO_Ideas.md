@@ -1,9 +1,4 @@
-- escape should quit out of terminal vi mode
-
-- in terminal vi mode, can you implement key.enter which sets the cursor for the selection start?
-currently, one has to always click with the mouse to set the initial cursor position
-following that, escape when there is a selection, should stay in vi mode, just unset the selection
-and when escape is hit without a selection, vi mode should be quit
+- try out all terminal vi mode keybindings
 
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
@@ -19,7 +14,7 @@ see `crates/agent_ui/src/agent_panel.rs` and related code
 
 - currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
 
-- fix `terminal::OpenScrollbackBuffer` to position the cursor at the end of buffer 
+- fix `terminal::OpenScrollbackBuffer` to position the cursor at the end of buffer
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
@@ -44,6 +39,8 @@ https://github.com/zed-industries/zed/pull/41874
 THIS IS STILL BROKEN!
 - `echo 'hi dude' | zed --stdin-cursor-at-end -` does not work to position cursor at end, it is still at start
 am I invoking this CLI correctly?
+the code is in `crates/zed/src/zed/open_listener.rs` at `pub async fn open_paths_with_positions(`
+place panic!s there, how to invoke `/target/debug/zed`?
 
 - test out terminal integration via `zed - --stdin-cursor-at-end` for terminal scrollback buffer once Zed Dev is compiled
 
