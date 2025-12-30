@@ -994,6 +994,7 @@ fn subscribe_for_terminal_events(
                     window.invalidate_character_coordinates();
                     cx.emit(SearchEvent::ActiveMatchChanged)
                 }
+                Event::ViModeChanged => cx.notify(),
             }
         },
     );
@@ -1164,6 +1165,24 @@ impl Render for TerminalView {
                                 .tracked_scroll_handle(&self.scroll_handle),
                             window,
                             cx,
+                        )
+                    })
+                    .when(self.terminal.read(cx).vi_mode_enabled(), |div| {
+                        div.child(
+                            gpui::div()
+                                .absolute()
+                                .top_2()
+                                .right_6()
+                                .bg(cx.theme().colors().editor_background.opacity(0.8))
+                                .border_1()
+                                .border_color(cx.theme().colors().border)
+                                .rounded_md()
+                                .px_2()
+                                .child(
+                                    Label::new("Vi Mode")
+                                        .size(LabelSize::Small)
+                                        .color(Color::Default),
+                                ),
                         )
                     }),
             )

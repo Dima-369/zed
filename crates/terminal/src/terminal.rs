@@ -127,6 +127,7 @@ pub enum Event {
     SelectionsChanged,
     NewNavigationTarget(Option<MaybeNavigationTarget>),
     Open(MaybeNavigationTarget),
+    ViModeChanged,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1150,6 +1151,7 @@ impl Terminal {
                 trace!("Toggling vi mode");
                 self.vi_mode_enabled = !self.vi_mode_enabled;
                 term.toggle_vi_mode();
+                cx.emit(Event::ViModeChanged);
             }
             InternalEvent::ViMotion(motion) => {
                 trace!("Performing vi motion: motion={motion:?}");
