@@ -243,7 +243,7 @@ impl LanguageModelProvider for QwenLanguageModelProvider {
     }
 
     fn icon(&self) -> IconOrSvg {
-        IconOrSvg::Icon(IconName::Ai)
+        IconOrSvg::Icon(IconName::AiQwen)
     }
 
     fn default_model(&self, _cx: &App) -> Option<Arc<dyn LanguageModel>> {
