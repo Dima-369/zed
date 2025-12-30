@@ -1,5 +1,3 @@
-- try out all terminal vi mode keybindings
-
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
