@@ -2,10 +2,9 @@
 
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
-- bind ctrl-m to change models in inline assistant and in Agent Panel
-
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
+it seems to work for Raptor model?
 
 - the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done. It should also be done in text threads and in ACP threads (external agents)
 So, 3 parts, check all
