@@ -236,6 +236,21 @@ pub fn init(cx: &mut App) {
                     if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
                         panel.update(cx, |panel, cx| panel.activate_previous_tab(window, cx));
                     }
+                })
+                .register_action(|workspace, action: &crate::LaunchAgent, window, cx| {
+                    if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                        workspace.focus_panel::<AgentPanel>(window, cx);
+                        panel.update(cx, |panel, cx| {
+                            let external_agent = crate::ExternalAgent::from_agent_name(&action.agent_name);
+                            panel.external_thread(
+                                Some(external_agent),
+                                None,
+                                None,
+                                window,
+                                cx,
+                            );
+                        });
+                    }
                 });
         },
     )

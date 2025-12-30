@@ -82,6 +82,8 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - I added `prepare_execute_tool_output_from_qwen()` to strip trailing and leading information for cleaner output
 - integrate external agent history from https://github.com/zed-industries/zed/pull/45734
 - allow `New From Summary` for ACP agents, instead of only for Zed Agent
+- add `agent::LaunchAgent` action which takes an external agent name and can be bound like this:
+  - `"cmd-t": ["agent::LaunchAgent", { "agent_name": "qwen" }]`
 
 ### Command palette
 

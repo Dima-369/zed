@@ -172,6 +172,15 @@ pub struct NewAcpThreadFromSummary {
     from_session_id: agent_client_protocol::SessionId,
 }
 
+/// Launches a new ACP agent thread with the specified agent name.
+#[derive(Clone, PartialEq, Deserialize, JsonSchema, Action)]
+#[action(namespace = agent)]
+#[serde(deny_unknown_fields)]
+pub struct LaunchAgent {
+    /// The name of the agent to launch.
+    agent_name: SharedString,
+}
+
 // TODO unify this with AgentType
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
