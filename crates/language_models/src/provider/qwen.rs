@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow};
 use collections::BTreeMap;
 use futures::{FutureExt, StreamExt, future, future::BoxFuture};
 use gpui::{AnyView, App, AsyncApp, Context, Entity, Task, Window};
-use http_client::HttpClient;
+use http_client::{AsyncBody, HttpClient, Method, Request as HttpRequest};
 use language_model::{
     AuthenticateError, IconOrSvg, LanguageModel, LanguageModelCompletionError,
     LanguageModelCompletionEvent, LanguageModelId, LanguageModelName, LanguageModelProvider,
@@ -14,6 +14,7 @@ use open_ai::ResponseStreamEvent;
 use qwen::Model;
 use strum::IntoEnumIterator;
 use settings::Settings;
+use smol::io::AsyncReadExt;
 use std::path::PathBuf;
 use std::sync::Arc;
 use ui::{ButtonLink, ConfiguredApiCard, List, ListBulletItem, prelude::*};
@@ -92,7 +93,10 @@ impl QwenAuthClient {
         Ok(credentials)
     }
 
-    pub async fn get_valid_credentials(&self) -> Result<QwenOAuthCredentials, QwenError> {
+    pub async fn get_valid_credentials(
+        &self,
+        http_client: &dyn HttpClient,
+    ) -> Result<QwenOAuthCredentials, QwenError> {
         // Check if we have cached credentials
         {
             let cached = self.credentials.read().await;
@@ -108,7 +112,7 @@ impl QwenAuthClient {
 
         // Refresh if expired
         if credentials.is_expired() {
-            credentials = self.refresh_token(&credentials).await?;
+            credentials = self.refresh_token(http_client, &credentials).await?;
         }
 
         // Cache the credentials
@@ -120,11 +124,77 @@ impl QwenAuthClient {
         Ok(credentials)
     }
 
-    async fn refresh_token(&self, _credentials: &QwenOAuthCredentials) -> Result<QwenOAuthCredentials, QwenError> {
-        // Token refresh should be handled at the provider level where HTTP client is available
-        // This is a placeholder that returns the current credentials to avoid breaking the flow
-        // The actual refresh will be implemented in the stream_completion method
-        Err(QwenError::TokenRefreshFailed("Token refresh not yet implemented in auth client".to_string()))
+    async fn refresh_token(
+        &self,
+        http_client: &dyn HttpClient,
+        credentials: &QwenOAuthCredentials,
+    ) -> Result<QwenOAuthCredentials, QwenError> {
+        let body = format!(
+            "grant_type=refresh_token&refresh_token={}&client_id={}",
+            credentials.refresh_token, QWEN_OAUTH_CLIENT_ID
+        );
+
+        let request = HttpRequest::builder()
+            .method(Method::POST)
+            .uri(QWEN_OAUTH_TOKEN_ENDPOINT)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Accept", "application/json")
+            .body(AsyncBody::from(body))
+            .map_err(|e| QwenError::HttpError(e))?;
+
+        let mut response = http_client
+            .send(request)
+            .await
+            .map_err(|e| QwenError::TokenRefreshFailed(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let mut body = String::new();
+            response
+                .body_mut()
+                .read_to_string(&mut body)
+                .await
+                .map_err(QwenError::IoError)?;
+            return Err(QwenError::TokenRefreshFailed(format!(
+                "{} {}",
+                response.status(),
+                body
+            )));
+        }
+
+        let mut body_bytes = Vec::new();
+        response
+            .body_mut()
+            .read_to_end(&mut body_bytes)
+            .await
+            .map_err(QwenError::IoError)?;
+
+        #[derive(serde::Deserialize)]
+        struct TokenResponse {
+            access_token: String,
+            refresh_token: Option<String>,
+            token_type: String,
+            expires_in: i64,
+        }
+
+        let token_data: TokenResponse =
+            serde_json::from_slice(&body_bytes).map_err(QwenError::JsonError)?;
+
+        let now = chrono::Utc::now().timestamp_millis();
+        let expiry_date = now + (token_data.expires_in * 1000);
+
+        let new_credentials = QwenOAuthCredentials {
+            access_token: token_data.access_token,
+            refresh_token: token_data
+                .refresh_token
+                .unwrap_or_else(|| credentials.refresh_token.clone()),
+            token_type: token_data.token_type,
+            expiry_date,
+            resource_url: credentials.resource_url.clone(),
+        };
+
+        self.save_credentials(&new_credentials).await?;
+
+        Ok(new_credentials)
     }
 
     async fn save_credentials(&self, credentials: &QwenOAuthCredentials) -> Result<(), QwenError> {
@@ -160,6 +230,7 @@ pub struct QwenLanguageModelProvider {
 
 pub struct State {
     auth_client: QwenAuthClient,
+    http_client: Arc<dyn HttpClient>,
     authenticated: bool,
     error: Option<String>,
 }
@@ -171,8 +242,9 @@ impl State {
 
     fn authenticate(&mut self, cx: &mut Context<Self>) -> Task<Result<(), AuthenticateError>> {
         let auth_client = self.auth_client.clone();
+        let http_client = self.http_client.clone();
         cx.spawn(async move |entity, cx| {
-            match auth_client.get_valid_credentials().await {
+            match auth_client.get_valid_credentials(http_client.as_ref()).await {
                 Ok(_) => {
                     entity.update(cx, |state, _| {
                         state.authenticated = true;
@@ -203,6 +275,7 @@ impl QwenLanguageModelProvider {
     pub fn new(http_client: Arc<dyn HttpClient>, cx: &mut App) -> Self {
         let state = cx.new(|_| State {
             auth_client: QwenAuthClient::new(),
+            http_client: http_client.clone(),
             authenticated: false,
             error: None,
         });
@@ -337,8 +410,11 @@ impl QwenLanguageModel {
 
         let Ok(task) = self.state.read_with(cx, |state, cx| {
             let auth_client = state.auth_client.clone();
+            let http_client = state.http_client.clone();
             cx.background_spawn(async move {
-                auth_client.get_valid_credentials().await
+                auth_client
+                    .get_valid_credentials(http_client.as_ref())
+                    .await
                     .map(|creds| {
                         let base_url = QwenAuthClient::get_base_url(&creds);
                         (creds, base_url)
