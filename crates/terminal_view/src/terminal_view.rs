@@ -1041,6 +1041,9 @@ impl TerminalView {
                 TerminalSettings::get_global(cx).option_as_meta,
             );
             if handled {
+                if term.vi_mode_enabled() {
+                    cx.notify();
+                }
                 cx.stop_propagation();
             }
         });
