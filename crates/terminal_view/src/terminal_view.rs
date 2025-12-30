@@ -6,7 +6,7 @@ pub mod terminal_scrollbar;
 mod terminal_slash_command;
 
 use assistant_slash_command::SlashCommandRegistry;
-use editor::{EditorSettings, actions::SelectAll, blink_manager::BlinkManager};
+use editor::{Editor, EditorSettings, actions::SelectAll, blink_manager::BlinkManager};
 use gpui::{
     Action, AnyElement, App, ClipboardEntry, DismissEvent, Entity, EventEmitter, FocusHandle,
     Focusable, KeyContext, KeyDownEvent, Keystroke, MouseButton, MouseDownEvent, Pixels, Render,
@@ -17,9 +17,9 @@ use project::{Project, search::SearchQuery};
 use schemars::JsonSchema;
 use task::TaskId;
 use terminal::{
-    Clear, Copy, Event, HoveredWord, MaybeNavigationTarget, Paste, ScrollLineDown, ScrollLineUp,
-    ScrollPageDown, ScrollPageUp, ScrollToBottom, ScrollToTop, ShowCharacterPalette, TaskState,
-    TaskStatus, Terminal, TerminalBounds, ToggleViMode,
+    Clear, Copy, Event, HoveredWord, MaybeNavigationTarget, OpenScrollbackBuffer, Paste,
+    ScrollLineDown, ScrollLineUp, ScrollPageDown, ScrollPageUp, ScrollToBottom, ScrollToTop,
+    ShowCharacterPalette, TaskState, TaskStatus, Terminal, TerminalBounds, ToggleViMode,
     alacritty_terminal::{
         index::Point,
         term::{TermMode, point_to_viewport, search::RegexSearch},
@@ -38,11 +38,12 @@ use ui::{
 };
 use util::ResultExt;
 use workspace::{
-    CloseActiveItem, NewCenterTerminal, NewTerminal, ToolbarItemLocation, Workspace, WorkspaceId,
-    delete_unloaded_items,
+    CloseActiveItem, NewCenterTerminal, NewTerminal, ToolbarItemLocation,
+    Workspace, WorkspaceId, delete_unloaded_items,
     item::{
         BreadcrumbText, Item, ItemEvent, SerializableItem, TabContentParams, TabTooltipContent,
     },
+    notifications::DetachAndPromptErr,
     register_serializable_item,
     searchable::{Direction, SearchEvent, SearchOptions, SearchableItem, SearchableItemHandle},
 };
@@ -488,6 +489,26 @@ impl TerminalView {
     fn select_all(&mut self, _: &SelectAll, _: &mut Window, cx: &mut Context<Self>) {
         self.terminal.update(cx, |term, _| term.select_all());
         cx.notify();
+    }
+
+    fn open_scrollback_buffer(
+        &mut self,
+        _: &OpenScrollbackBuffer,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let content = self.terminal.read(cx).get_content();
+        if let Some(workspace) = self.workspace.upgrade() {
+            workspace.update(cx, |workspace, cx| {
+                Editor::new_in_workspace_with_content(workspace, content, window, cx)
+                    .detach_and_prompt_err(
+                        "Failed to open scrollback buffer",
+                        window,
+                        cx,
+                        |_, _, _| None,
+                    );
+            });
+        }
     }
 
     fn rerun_task(&mut self, _: &RerunTask, window: &mut Window, cx: &mut Context<Self>) {
@@ -1097,6 +1118,7 @@ impl Render for TerminalView {
             .on_action(cx.listener(TerminalView::show_character_palette))
             .on_action(cx.listener(TerminalView::select_all))
             .on_action(cx.listener(TerminalView::rerun_task))
+            .on_action(cx.listener(TerminalView::open_scrollback_buffer))
             .on_key_down(cx.listener(Self::key_down))
             .on_mouse_down(
                 MouseButton::Right,

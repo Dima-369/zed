@@ -105,6 +105,8 @@ actions!(
         ToggleViMode,
         /// Selects all text in the terminal.
         SelectAll,
+        /// Opens the scrollback buffer in a new editor.
+        OpenScrollbackBuffer,
     ]
 );
 
