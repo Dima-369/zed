@@ -39,11 +39,17 @@ I created `test_undo_restores_cursor_position_after_paste_at_line_end`, but firs
 So, 3 parts, check all
 see `crates/agent_ui/src/agent_panel.rs` and related code
 
+# git_ui: Implement interactive Git commit graph view
+
+check this out
+
+https://github.com/zed-industries/zed/pull/45884
+
 # Support external agent history
 
 - pull in latest https://github.com/zed-industries/zed/pull/45734 changes
 
-https://github.com/zed-industries/zed/pull/45734
+https://github.com/zed-industries/zed/pull/45734 (PR closed because ACP does not support history yet)
 
 # agent: History and recent conversations persistence per workspace
 
