@@ -16,10 +16,16 @@ and also in the tab summary for text threads, first tokens are always duplicated
 - the project symbol search does not refresh properly, and does not show all symbols?
 is it because not everything is indexed in Zed project?
 
-- fix `terminal::OpenScrollbackBuffer` to position the cursor at the end of buffer
-  - study how `new_file_from_clipboard`works, I based my open scrollback buffer function on it, but when I invoke it, it does nothing? Error handling might be a bit hard, so ignore for now, just panic
+- fix `terminal::OpenScrollbackBuffer` to scroll to the cursor position at end of buffer
+maybe use this? the cursor position is correctly at end, it just needs to scroll to it
 
-if too hard, create a new `terminal::CopyAll`, then open `"command": "pbpaste | zed --stdin-cursor-at-end -"` this in `tasks.json?
+        let newest_selection = self.selections.newest_anchor();
+        let new_cursor_position = newest_selection.head();
+        let selection_start = newest_selection.start;
+
+
+- can you use this for the stdin cursor at end?
+                editor.set_soft_wrap_mode(language::language_settings::SoftWrap::None, cx);
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
