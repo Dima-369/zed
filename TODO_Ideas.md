@@ -95,8 +95,6 @@ and also in the tab summary for text threads, first tokens are always duplicated
 - the project symbol search does not refresh properly, and does not show all symbols?
 is it because not everything is indexed in Zed project?
 
-- `terminal::OpenScrollbackBuffer` works properly, can you just properly fix the code so `panic!("no");` is not there anymore
-
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
   - run `editor::Undo`
