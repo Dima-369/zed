@@ -43,6 +43,7 @@ use workspace::{
     item::{
         BreadcrumbText, Item, ItemEvent, SerializableItem, TabContentParams, TabTooltipContent,
     },
+    notifications::DetachAndPromptErr,
     register_serializable_item,
     searchable::{Direction, SearchEvent, SearchOptions, SearchableItem, SearchableItemHandle},
 };
@@ -500,12 +501,12 @@ impl TerminalView {
         if let Some(workspace) = self.workspace.upgrade() {
             workspace.update(cx, |workspace, cx| {
                 Editor::new_in_workspace_with_content_and_cursor_at_end(workspace, content, window, cx)
-                    // .detach_and_prompt_err(
-                    //     "Failed to open scrollback buffer",
-                    //     window,
-                    //     cx,
-                    //     |_, _, _| None,
-                    // );
+                    .detach_and_prompt_err(
+                        "Failed to open scrollback buffer",
+                        window,
+                        cx,
+                        |_, _, _| None,
+                    );
             });
         }
     }

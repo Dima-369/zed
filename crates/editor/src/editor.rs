@@ -2943,7 +2943,7 @@ impl Editor {
         content: String,
         window: &mut Window,
         cx: &mut Context<Workspace>,
-    ) {
+    ) -> Task<Result<Entity<Editor>>> {
         let project = workspace.project().clone();
 
         cx.spawn_in(window, async move |workspace, cx| {
@@ -2974,10 +2974,9 @@ impl Editor {
                     editor
                 })
             } else {
-                panic!("no");
+                Err(anyhow::anyhow!("Failed to create buffer"))
             }
         })
-        .detach();
     }
 
     pub fn new_in_workspace_with_content_and_language(
