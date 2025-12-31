@@ -49,7 +49,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - fix bug that when in vim visual line mode and cursor is on right newline character, that the line below is incorrectly copied on `editor::Copy`. This mostly happens in my own Zed config because I mixing `editor` and `vim` actions to ensure that I can move cursor on the right newline character, and usually not in proper Zed keybindings.
 - improve `editor::SelectLargerSyntaxNode` for inline code blocks in Markdown files (`foo bar`), so that it first extends the selection to the word inside the quotes, then the text inside the quotes and only then to the inner text plus the outer quotes
 - add structured outline for Markdown, modifies `crates/languages/src/markdown/outline.scm` (from https://github.com/zed-industries/zed/pull/45643)
-- improve `file_finder::Toggle` matching to use substring through `nucleo` crate. I dislike fuzzy matching which is annoying. Based on https://github.com/zed-industries/zed/pull/37123, but that had fuzzy matching
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
 
@@ -164,13 +163,19 @@ There is this new actoin:  `zed::DeeplTranslate` which translates the current se
 ],
 ```
 
+## File Finder modal, the `file_finder::Toggle` action
+
+- `file_finder > modal_max_width=full` does not take full width anymore because it looks weird, but subtracts 128 pixels
+- show scrollbar
+- try to improve matching to use substring through `nucleo` crate. I dislike fuzzy matching which is annoying. Based on https://github.com/zed-industries/zed/pull/37123, but that had fuzzy matching
+  - `nucleo` has its issues when you search in this repo for just `README`, it does not prioritize the root `README.md`, but other READMEs from other crates, but at least there is no weird fuzzy matching anymore
+
 ## UI changes
 
 - on macOS, the unsaved changes model uses the native macOS dialog instead of Zed's custom one which has bad keyboard support, so `unsaved_changes_model.rs` was created which allows keyboard navigation (and just looks nicer)
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
 - lower status bar height, see `impl Render for StatusBar`
 - add scrollbar to `outline::Toggle`, `file_finder::Toggle` and `command_palette::Toggle` (why is it not shown in the first place?)
-- `file_finder > modal_max_width=full` does not take full width anymore because it looks weird, but subtracts 128 pixels
 - lower `toolbar.rs` height to save space, same in `breadcrumbs.rs` (here no padding is set). This applies for terminals, as well
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
 - lower horizontal scroll bar height to half of vertical one (the default one is huge)
