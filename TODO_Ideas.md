@@ -1,7 +1,9 @@
+- clicking with mouse at the very right of line (where no char is anymore) should position cursor on the newline character at the very right. currently, it is always one left of the newline character, on the last real character in a line
+
 - fix that edit predictions rarely work for new text thread buffers
 
 TEST FROM AI
-- remove duplicated "New from Summary" menu item in Zed Agent 
+- remove duplicated "New from Summary" menu item in Zed Agent
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
@@ -9,15 +11,15 @@ it seems to work for Raptor model?
 MAYBE it is because the code is a bit incorrect, I see the modal duplicating parts of its response, see text thread
 and also in the tab summary for text threads, first tokens are always duplicated
 
-- fix `/script/clippy` and start fixing unit tests
+- fix `/script/clippy` and start fixing unit tests, it works in debug mode already!
 
 - the project symbol search does not refresh properly, and does not show all symbols?
 is it because not everything is indexed in Zed project?
 
 - fix `terminal::OpenScrollbackBuffer` to position the cursor at the end of buffer
-  - study how `new_file_from_clipboard`works, problem is that one needs the  
+  - study how `new_file_from_clipboard`works, I based my open scrollback buffer function on it, but when I invoke it, it does nothing? Error handling might be a bit hard, so ignore for now, just panic
 
-if too hard, create a new `terminal::CopyAll`, then open `"command": "pbpaste | zed -"` this in `tasks.json`?
+if too hard, create a new `terminal::CopyAll`, then open `"command": "pbpaste | zed --stdin-cursor-at-end -"` this in `tasks.json?
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
@@ -42,7 +44,7 @@ check this out
 
 https://github.com/zed-industries/zed/pull/45884
 
-# Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch 
+# Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch
 
 try this out some time, I already have tree view, how about only displaying file count in tree view to the right of directories only for amount of files below
 
@@ -50,7 +52,7 @@ https://github.com/zed-industries/zed/pull/45846
 
 # ACP
 
-- can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run? 
+- can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
 first investigate without changing code how it currently works and where it stores the info when I click "Allow always"
 I think an array of regexes in settings would be great
 
