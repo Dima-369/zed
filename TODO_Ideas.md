@@ -40,16 +40,6 @@ check this out
 
 https://github.com/zed-industries/zed/pull/45884
 
-# adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
-
-THIS IS STILL BROKEN! it does not position cursor at end, can you add debug statements to see what is happening?
-
-test via `echo hi | target/debug/cli --zed target/debug/zed --stdin-cursor-at-end -`
-maybe add a timeout of like 10 seconds so you can automatically test?
-
-the code is in `crates/zed/src/zed/open_listener.rs` at `pub async fn open_paths_with_positions(`
-
-
 # Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch 
 
 try this out some time, I already have tree view, how about only displaying file count in tree view to the right of directories only for amount of files below
