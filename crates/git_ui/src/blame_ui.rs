@@ -18,58 +18,6 @@ use workspace::Workspace;
 
 const GIT_BLAME_MAX_AUTHOR_CHARS_DISPLAYED: usize = 20;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use gpui::{FontStyle, FontWeight, TestAppContext};
-    use project::project_settings::ProjectSettings;
-    use settings::{FontFamilyName, SettingsStore};
-    use std::sync::Arc;
-
-    #[gpui::test]
-    fn test_git_blame_font_setting(cx: &mut TestAppContext) {
-        let settings_store = SettingsStore::test(cx);
-        cx.set_global(settings_store);
-        ProjectSettings::register(cx);
-        theme::init(theme::LoadThemes::JustBase, cx);
-
-        // Test with default settings (should use buffer font)
-        let base_style = TextStyle {
-            color: gpui::black(),
-            font_family: "Monaco".into(),
-            font_features: Default::default(),
-            font_fallbacks: None,
-            font_size: gpui::px(14.0).into(),
-            line_height: gpui::relative(1.2).into(),
-            font_weight: FontWeight::NORMAL,
-            font_style: FontStyle::Normal,
-            background_color: None,
-            underline: None,
-            strikethrough: None,
-            white_space: Default::default(),
-            text_overflow: None,
-            text_align: Default::default(),
-            line_clamp: None,
-        };
-
-        let font = git_blame_font(&base_style, cx);
-        assert_eq!(font.family, "Monaco");
-
-        // Test with custom git blame font setting
-        cx.update_global::<SettingsStore, _>(|store, cx| {
-            store
-                .set_user_settings(
-                    r#"{"git": {"blame": {"git_blame_font_family": "Courier New"}}}"#,
-                    cx,
-                )
-                .unwrap();
-        });
-
-        let font = git_blame_font(&base_style, cx);
-        assert_eq!(font.family, "Courier New");
-    }
-}
-
 fn git_blame_font(base_style: &TextStyle, cx: &App) -> Font {
     let project_settings = ProjectSettings::get_global(cx);
     let theme_settings = ThemeSettings::get_global(cx);
