@@ -5,12 +5,6 @@ show index / total matches in non line mode
 
 - document this flag
 
-```bash
-imeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --stdin-cursor-at-end --foreground -' 2>&1 || echo "Timeout reached"
-```
-
-
-- can tab layout be changed to bottom align the right path like `main.rs   cli/src` here the cli/src is centered vertically which leads to 2 horizontal lines, can the `cli/src` be bottom aligned, so it is next to the `main.rs`?
 
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
@@ -23,6 +17,8 @@ and also in the tab summary for text threads, first tokens are always duplicated
 - fix `/script/clippy` and start fixing unit tests
 
 - fix `terminal::OpenScrollbackBuffer` to position the cursor at the end of buffer
+
+if too hard, create a new `terminal::CopyAll`, then open `"command": "pbpaste | zed -"` this in `tasks.json`?
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
