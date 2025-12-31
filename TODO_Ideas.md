@@ -28,11 +28,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let proxy = Proxy::all(proxy_url)?;
 
     // 2. Build the client
-    // .danger_accept_invalid_certs(true) is what ignores the SSL errors 
+    // .danger_accept_invalid_certs(true) is what ignores the SSL errors
     // caused by mitmproxy's self-signed certificates.
     let client = reqwest::blocking::Client::builder()
         .proxy(proxy)
-        .danger_accept_invalid_certs(true) 
+        .danger_accept_invalid_certs(true)
         .build()?;
 
     // 3. Make the request
@@ -78,6 +78,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - clicking with mouse at the very right of line (where no char is anymore) should position cursor on the newline character at the very right. currently, it is always one left of the newline character, on the last real character in a line
 
 - fix that edit predictions rarely work for new text thread buffers
+
+- can the buffer search modal be nicer. on initial launch, it preselects the candidate index to the current line which is great. I want the same behavior, that when user types in any character that the initial candidate index is closest to the current line (from previous editor instance). it currently always jumps to first candidate index where I lose context too much
 
 TEST FROM AI
 - remove duplicated "New from Summary" menu item in Zed Agent
