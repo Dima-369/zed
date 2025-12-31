@@ -2964,9 +2964,9 @@ impl Editor {
                     );
                     editor.update(cx, |editor, cx| {
                         editor.set_text(content, window, cx);
-                        editor.set_scroll_position(gpui::Point::new(0., 0.), window, cx);
-                        
-                        // editor.move_to_beginnig(&Default::default(), window, cx);
+                        editor.move_to_end(&Default::default(), window, cx);
+                        editor.scroll_cursor_bottom(&ScrollCursorBottom, window, cx);
+                        editor.set_soft_wrap_mode(language::language_settings::SoftWrap::None, cx);
                     });
                     buffer.update(cx, |buffer, cx| {
                         buffer.did_save(buffer.version(), None, cx);
@@ -2976,13 +2976,8 @@ impl Editor {
             } else {
                 panic!("no");
             }
-            // workspace.update_in(cx, |workspace, window, cx| {
-            //     let editor =
-            //         cx.new(|cx| Editor::for_buffer(buffer, Some(project.clone()), window, cx));
-            //     workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
-            //     editor
-            // })
-        }).detach();
+        })
+        .detach();
     }
 
     pub fn new_in_workspace_with_content_and_language(
