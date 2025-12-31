@@ -31,6 +31,8 @@ and also in the tab summary for text threads, first tokens are always duplicated
 
 I created `test_undo_restores_cursor_position_after_paste_at_line_end`, but first test code needs be fixed, so it compiles
 
+- pull in latest https://github.com/zed-industries/zed/pull/45734 changes (agent history)
+
 # Better Agent/text thread title summaries
 
 - currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
@@ -44,17 +46,6 @@ see `crates/agent_ui/src/agent_panel.rs` and related code
 check this out
 
 https://github.com/zed-industries/zed/pull/45884
-
-# Support external agent history
-
-- pull in latest https://github.com/zed-industries/zed/pull/45734 changes
-
-https://github.com/zed-industries/zed/pull/45734 (PR closed because ACP does not support history yet)
-
-# agent: History and recent conversations persistence per workspace
-
-https://github.com/zed-industries/zed/pull/41874
-
 
 # adjust zed cli, add a new flag for when opened via `zed -`, that it should position cursor at end
 
@@ -237,6 +228,18 @@ PR was apparently closed, only has 3k changes.
 Does it have merge conflicts?
 
 https://github.com/zed-industries/zed/pull/40014
+
+## Support external agent history
+
+PR closed because ACP does not support history yet.
+
+https://github.com/zed-industries/zed/pull/45734
+
+# agent: History and recent conversations persistence per workspace
+
+I did not check this out.
+
+https://github.com/zed-industries/zed/pull/41874 (PR closed)
 
 ## Jump hint implementations
 
