@@ -162,11 +162,24 @@ There is this new actoin:  `zed::DeeplTranslate` which translates the current se
 
 - on macOS, the unsaved changes model uses the native macOS dialog instead of Zed's custom one which has bad keyboard support, so `unsaved_changes_model.rs` was created which allows keyboard navigation (and just looks nicer)
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
-- lower excessive tab height
 - lower status bar height, see `impl Render for StatusBar`
 - add scrollbar to `outline::Toggle`, `file_finder::Toggle` and `command_palette::Toggle` (why is it not shown in the first place?)
 - `file_finder > modal_max_width=full` does not take full width anymore because it looks weird, but subtracts 128 pixels
-- implement vertical tabs which go to next rows without scrollbars. Enable in `settings.json` with:
+- lower `toolbar.rs` height to save space, same in `breadcrumbs.rs` (here no padding is set). This applies for terminals, as well
+- lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
+- lower horizontal scroll bar height to half of vertical one (the default one is huge)
+- hide horizontal scroll bar when soft wrap is enabled
+
+## Tabs
+
+- align the right slot of tabs (the directory) to the file name baseline, meaning in such cases: `README.md   db` (see diff in `crates/editor/src/items.rs`)
+  - as recommended in `Refactoring UI > Baseline, not center`
+- lower excessive tab height
+- switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
+
+### Vertical stacking tabs
+
+The vertical tabs stack to next rows without scrollbars. Enable in `settings.json` with:
 
 ```json
 "tab_bar": {
@@ -175,13 +188,8 @@ There is this new actoin:  `zed::DeeplTranslate` which translates the current se
 ```
 
 It places pinned tabs in an own row, separated to non-pinned tabs.
-Since it was too difficult to only render tab borders where exactly required, every tab now has a full border, so it looks a bit bold between dividers, but I don't mind. It looks better that way, instead of missing top borders in second row, for instance, when first row has pinned tabs.
 
-- lower `toolbar.rs` height to save space, same in `breadcrumbs.rs` (here no padding is set). This applies for terminals, as well
-- switch system tab background color from `title_bar_background` to `tab_bar_background`, so I can style active tabs far nicer because the default just uses a slightly different foreground color which is hard to spot
-- lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
-- lower horizontal scroll bar height to half of vertical one (the default one is huge)
-- hide horizontal scroll bar when soft wrap is enabled
+**Note:** Since it was too difficult to only render tab borders where exactly required, every tab now has a full border, so it looks a bit bold between tabs, but I don't mind. It looks better that way, instead of missing top borders in second row, for instance, when first row has pinned tabs.
 
 # Original README
 

@@ -725,6 +725,8 @@ impl Item for Editor {
             .is_some_and(|file| file.disk_state().is_deleted());
 
         h_flex()
+            .items_end()
+            .pb_px()
             .gap_2()
             .child(
                 Label::new(self.title(cx).to_string())
@@ -734,9 +736,13 @@ impl Item for Editor {
             )
             .when_some(description, |this, description| {
                 this.child(
-                    Label::new(description)
-                        .size(LabelSize::XSmall)
-                        .color(Color::Muted),
+                    div()
+                        .mb(px(2.)) // a guessed value to align to the file name on the baseline
+                        .child(
+                            Label::new(description)
+                                .size(LabelSize::XSmall)
+                                .color(Color::Muted),
+                        ),
                 )
             })
             .into_any_element()
