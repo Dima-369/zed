@@ -1,4 +1,5 @@
-- is it possible to have a setting which routes every network request through a proxy?
+- is it possible to have a setting (does not have to live reloaded, on Zed startup is fine) which routes every network request through a localhost:{port} proxy? you need to add a new setting for it for the port, make it Option<int>, when None, do not set this proxy
+I am mainly interested in `crates/language_models/src/provider/qwen.rs` network requests, but seeing others is a plus.
 
 - clicking with mouse at the very right of line (where no char is anymore) should position cursor on the newline character at the very right. currently, it is always one left of the newline character, on the last real character in a line
 
