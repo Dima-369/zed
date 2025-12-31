@@ -2966,7 +2966,7 @@ impl Editor {
                         editor.set_text(content, window, cx);
                         editor.move_to_end(&Default::default(), window, cx);
                         editor.scroll_cursor_bottom(&ScrollCursorBottom, window, cx);
-                        editor.set_soft_wrap_mode(language::language_settings::SoftWrap::None, cx);
+                        editor.set_soft_wrap_mode(language::language_settings::SoftWrap::EditorWidth, cx);
                     });
                     buffer.update(cx, |buffer, cx| {
                         buffer.did_save(buffer.version(), None, cx);
