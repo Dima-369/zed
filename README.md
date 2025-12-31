@@ -63,7 +63,13 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## Zed CLI
 
-- add `--stdin-cursor-at-end` flag to CLI to position cursor at end of buffer when reading from stdin instead of at start which is useful for reading terminal scrollback buffers
+Add `--stdin-cursor-at-end` flag to CLI to position cursor at end of buffer when reading from stdin instead of at start which I find more useful.
+
+I developed and tested it like this:
+
+```bash
+timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --stdin-cursor-at-end --foreground -' 2>&1 || echo "Timeout reached"
+```
 
 ## Terminal
 
