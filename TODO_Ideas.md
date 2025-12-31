@@ -23,7 +23,23 @@ is it because not everything is indexed in Zed project?
 
 
 - can you use this for the stdin cursor at end?
-                editor.set_soft_wrap_mode(language::language_settings::SoftWrap::None, cx);
+
+
+in this code:
+
+add editor.set_soft_wrap_mode(language::language_settings::SoftWrap::None, cx);
+
+pub async fn open_paths_with_positions(
+    path_positions: &[PathWithPosition],
+    diff_paths: &[[String; 2]],
+    app_state: Arc<AppState>,
+    open_options: workspace::OpenOptions,
+    stdin_cursor_at_end: bool,
+    cx: &mut AsyncApp,
+) -> Result<(
+    WindowHandle<Workspace>,
+    Vec<Option<Result<Box<dyn ItemHandle>>>>,
+)> {
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
