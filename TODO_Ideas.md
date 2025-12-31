@@ -10,21 +10,17 @@ imeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --st
 ```
 
 
-- can tab layout be changed to bottom aligt the right path like `main.rs   cli/src` here the cli/src is centered vertically which leads to 2 horizontal lines, can the `cli/src` be bottom aligned, so it is next to the `main.rs`?
+- can tab layout be changed to bottom align the right path like `main.rs   cli/src` here the cli/src is centered vertically which leads to 2 horizontal lines, can the `cli/src` be bottom aligned, so it is next to the `main.rs`?
 
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
 it seems to work for Raptor model?
-
-- the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done. It should also be done in text threads and in ACP threads (external agents)
-So, 3 parts, check all
-see `crates/agent_ui/src/agent_panel.rs` and related code
+MAYBE it is because the code is a bit incorrect, I see the modal duplicating parts of its response, see text thread
+and also in the tab summary for text threads, first tokens are always duplicated
 
 - fix `/script/clippy` and start fixing unit tests
-
-- currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
 
 - fix `terminal::OpenScrollbackBuffer` to position the cursor at the end of buffer
 
@@ -34,6 +30,14 @@ see `crates/agent_ui/src/agent_panel.rs` and related code
   - then notice how cursor is not on newline character anymore, but one to left which is incorrect
 
 I created `test_undo_restores_cursor_position_after_paste_at_line_end`, but first test code needs be fixed, so it compiles
+
+# Better Agent/text thread title summaries
+
+- currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
+
+- the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done. It should also be done in text threads and in ACP threads (external agents)
+So, 3 parts, check all
+see `crates/agent_ui/src/agent_panel.rs` and related code
 
 # Support external agent history
 
