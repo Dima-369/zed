@@ -1000,20 +1000,31 @@ impl PickerDelegate for BufferSearchDelegate {
                             .bg(cx.theme().colors().elevated_surface_background)
                             .child(editor.clone())
                             .child(
-                                h_flex().gap_1().child(
-                                    IconButton::new("line-mode", IconName::ToolSearch)
-                                        .style(ButtonStyle::Subtle)
-                                        .shape(IconButtonShape::Square)
-                                        .toggle_state(self.line_mode)
-                                        .on_click(cx.listener(move |picker, _, window, cx| {
-                                            picker.delegate.line_mode = !picker.delegate.line_mode;
-                                            let query = picker.delegate.current_query.clone();
-                                            picker.set_query(query, window, cx);
-                                        }))
-                                        .tooltip(|window, cx| {
-                                            Tooltip::text("Toggle Line Mode")(window, cx)
-                                        }),
-                                ),
+                                h_flex()
+                                    .gap_1()
+                                    .when(self.match_count > 0, |this| {
+                                        this.child(
+                                            Label::new(format!(
+                                                "{} / {}",
+                                                self.selected_index + 1,
+                                                self.match_count
+                                            ))
+                                            .size(LabelSize::Small)
+                                            .color(Color::Muted),
+                                        )
+                                    })
+                                    .child(
+                                        IconButton::new("line-mode", IconName::ToolSearch)
+                                            .style(ButtonStyle::Subtle)
+                                            .shape(IconButtonShape::Square)
+                                            .toggle_state(self.line_mode)
+                                            .on_click(cx.listener(move |picker, _, window, cx| {
+                                                picker.delegate.line_mode = !picker.delegate.line_mode;
+                                                let query = picker.delegate.current_query.clone();
+                                                picker.set_query(query, window, cx);
+                                            }))
+                                            .tooltip(|window, cx| Tooltip::text("Toggle Line Mode")(window, cx)),
+                                    ),
                             ),
                     ),
             )
