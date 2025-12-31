@@ -2938,6 +2938,53 @@ impl Editor {
         Self::new_in_workspace_with_content_and_language(workspace, content, None, window, cx)
     }
 
+    pub fn new_in_workspace_with_content_and_cursor_at_end(
+        workspace: &mut Workspace,
+        content: String,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let project = workspace.project().clone();
+
+        cx.spawn_in(window, async move |workspace, cx| {
+            let buffer = project.update(cx, |project, cx| {
+                project.create_local_buffer(&content, None, true, cx)
+            });
+            if let Ok(buffer) = buffer {
+                workspace.update_in(cx, |workspace, window, cx| {
+                    let editor = cx.new(|cx| {
+                        Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
+                    });
+                    workspace.add_item_to_active_pane(
+                        Box::new(editor.clone()),
+                        None,
+                        true,
+                        window,
+                        cx,
+                    );
+                    editor.update(cx, |editor, cx| {
+                        editor.set_text(content, window, cx);
+                        editor.set_scroll_position(gpui::Point::new(0., 0.), window, cx);
+                        
+                        // editor.move_to_beginnig(&Default::default(), window, cx);
+                    });
+                    buffer.update(cx, |buffer, cx| {
+                        buffer.did_save(buffer.version(), None, cx);
+                    });
+                    editor
+                })
+            } else {
+                panic!("no");
+            }
+            // workspace.update_in(cx, |workspace, window, cx| {
+            //     let editor =
+            //         cx.new(|cx| Editor::for_buffer(buffer, Some(project.clone()), window, cx));
+            //     workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
+            //     editor
+            // })
+        }).detach();
+    }
+
     pub fn new_in_workspace_with_content_and_language(
         workspace: &mut Workspace,
         content: String,

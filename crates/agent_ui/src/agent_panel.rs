@@ -1776,7 +1776,7 @@ impl AgentPanel {
                     h_flex()
                         .flex_grow()
                         .items_center()
-                        .child(title_editor.clone())
+                        .child(title_editor)
                         .into_any_element()
                 } else {
                     h_flex()
@@ -2120,10 +2120,8 @@ impl AgentPanel {
         let focus_handle = self.focus_handle(cx);
 
         let active_thread = match self.active_view() {
-            ActiveView::ExternalAgentThread { thread_view } => {
-                thread_view.read(cx).as_native_thread(cx)
-            }
-            ActiveView::TextThread { .. } | ActiveView::History | ActiveView::Configuration => None,
+            ActiveView::TextThread { text_thread_editor, .. } => Some(text_thread_editor.clone()),
+            ActiveView::ExternalAgentThread { .. } | ActiveView::History | ActiveView::Configuration => None,
         };
 
         let active_acp_thread = match self.active_view() {
@@ -2171,10 +2169,12 @@ impl AgentPanel {
                         menu.context(focus_handle.clone())
                             // Handle native threads
                             .when_some(active_thread, |this, active_thread| {
-                                let thread = active_thread.read(cx);
+                                let text_thread = active_thread.read(cx);
+                                let thread = text_thread.text_thread();
+                                let thread = thread.read(cx);
 
-                                if !thread.is_empty() {
-                                    let session_id = thread.id().clone();
+                                if thread.messages(cx).next().is_some() {
+                                    let session_id = agent_client_protocol::SessionId::new(thread.id().to_proto());
                                     this.item(
                                         ContextMenuEntry::new("New From Summary")
                                             .icon(IconName::ThreadFromSummary)
@@ -3118,7 +3118,7 @@ impl AgentPanel {
         self.tab_bar_scroll_handle.scroll_to_item(new_id);
 
         if self.selected_agent != tab_agent {
-            self.selected_agent = tab_agent.clone();
+            self.selected_agent = tab_agent;
             self.serialize(cx);
         }
 
@@ -3284,7 +3284,7 @@ impl AgentPanel {
                     .as_ref()
                     .map(|editor| editor.read(cx).text(cx))
                     .filter(|text| !text.is_empty())
-                    .unwrap_or_else(|| thread_view.read(cx).title(cx).to_string().into());
+                    .unwrap_or_else(|| thread_view.read(cx).title(cx).to_string());
 
                 let (label_text, tooltip) = Self::display_tab_label(text, is_active);
 
@@ -3352,7 +3352,7 @@ impl AgentPanel {
                         if summary.done {
                             let mut text = title_editor.read(cx).text(cx);
                             if text.is_empty() {
-                                text = summary.text.clone().into();
+                                text = summary.text.clone();
                             }
                             let (label_text, tooltip) = Self::display_tab_label(text, is_active);
 
