@@ -971,6 +971,7 @@ mod tests {
                     &response_tx,
                     None,
                     &app_state,
+                    false,
                     &mut cx,
                 )
                 .await;
@@ -1062,6 +1063,7 @@ mod tests {
                     &response_tx,
                     None,
                     &app_state,
+                    false,
                     &mut cx,
                 )
                 .await
@@ -1135,6 +1137,7 @@ mod tests {
                         &response_tx,
                         None,
                         &app_state,
+                        false,
                         &mut cx,
                     )
                     .await
@@ -1159,6 +1162,7 @@ mod tests {
                         &response_tx,
                         None,
                         &app_state,
+                        false,
                         &mut cx,
                     )
                     .await
