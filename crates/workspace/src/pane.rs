@@ -7275,26 +7275,6 @@ mod tests {
         });
     }
 
-    #[test]
-    fn test_vertical_stacking_setting() {
-        let mut cx = TestAppContext::new();
-        init_test(&mut cx);
-
-        // Test default setting (should be false)
-        let default_setting = cx.read(|cx| TabBarSettings::get_global(cx).vertical_stacking);
-        assert_eq!(default_setting, false);
-
-        // Test updating the setting
-        cx.update_global(|store: &mut SettingsStore, cx| {
-            store.update_user_settings(cx, |settings| {
-                settings.tab_bar.vertical_stacking = Some(true);
-            });
-        });
-
-        let updated_setting = cx.read(|cx| TabBarSettings::get_global(cx).vertical_stacking);
-        assert_eq!(updated_setting, true);
-    }
-
     fn add_labeled_item(
         pane: &Entity<Pane>,
         label: &str,

@@ -74,7 +74,7 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 ## Terminal
 
 - remove abbreviated `cwd` display in terminal title
-- add `terminal::OpenScrollbackBuffer` action to open the scrollback buffer in a new buffer (WIP: works, but cursor needs to be at end)
+- add `terminal::OpenScrollbackBuffer` action to open the scrollback buffer in a new buffer (WIP: works and cursor is at end, but it needs to scroll to the cursor since scroll state is still at top)
 
 ### Vi Mode
 

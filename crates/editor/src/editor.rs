@@ -2938,6 +2938,47 @@ impl Editor {
         Self::new_in_workspace_with_content_and_language(workspace, content, None, window, cx)
     }
 
+    pub fn new_in_workspace_with_content_and_cursor_at_end(
+        workspace: &mut Workspace,
+        content: String,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) -> Task<Result<Entity<Editor>>> {
+        let project = workspace.project().clone();
+
+        cx.spawn_in(window, async move |workspace, cx| {
+            let buffer = project.update(cx, |project, cx| {
+                project.create_local_buffer(&content, None, true, cx)
+            });
+            if let Ok(buffer) = buffer {
+                workspace.update_in(cx, |workspace, window, cx| {
+                    let editor = cx.new(|cx| {
+                        Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
+                    });
+                    workspace.add_item_to_active_pane(
+                        Box::new(editor.clone()),
+                        None,
+                        true,
+                        window,
+                        cx,
+                    );
+                    editor.update(cx, |editor, cx| {
+                        editor.set_text(content, window, cx);
+                        editor.move_to_end(&Default::default(), window, cx);
+                        editor.scroll_cursor_bottom(&ScrollCursorBottom, window, cx);
+                        editor.set_soft_wrap_mode(language::language_settings::SoftWrap::EditorWidth, cx);
+                    });
+                    buffer.update(cx, |buffer, cx| {
+                        buffer.did_save(buffer.version(), None, cx);
+                    });
+                    editor
+                })
+            } else {
+                Err(anyhow::anyhow!("Failed to create buffer"))
+            }
+        })
+    }
+
     pub fn new_in_workspace_with_content_and_language(
         workspace: &mut Workspace,
         content: String,

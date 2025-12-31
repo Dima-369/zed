@@ -363,6 +363,7 @@ pub async fn open_paths_with_positions(
                 // Get end position of buffer
                 active_editor
                     .update(cx, |editor, cx| -> Option<Point> {
+                        editor.set_soft_wrap_mode(language::language_settings::SoftWrap::EditorWidth, cx);
                         if let Some(buffer) = editor.buffer().read(cx).as_singleton() {
                             let buffer_read = buffer.read(cx);
                             let max_point = buffer_read.max_point();
@@ -407,6 +408,7 @@ pub async fn open_paths_with_positions(
                 workspace
                     .update(cx, |_, window, cx| {
                         active_editor.update(cx, |editor, cx| {
+                            editor.set_soft_wrap_mode(language::language_settings::SoftWrap::EditorWidth, cx);
                             editor.go_to_singleton_buffer_point(point, window, cx);
                         });
                     })
