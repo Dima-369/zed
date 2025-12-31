@@ -1,5 +1,79 @@
-- is it possible to have a setting (does not have to live reloaded, on Zed startup is fine) which routes every network request through a localhost:{port} proxy? you need to add a new setting for it for the port, make it Option<int>, when None, do not set this proxy
+# is it possible to have a setting (does not have to live reloaded, on Zed startup is fine) which routes every network request through a localhost:{port} proxy? you need to add a new setting for it for the port, make it Option<int>, when None, do not set this proxy
 I am mainly interested in `crates/language_models/src/provider/qwen.rs` network requests, but seeing others is a plus.
+
+To do this in Rust, the most common and robust stack is using the **`reqwest`** crate with the **`tokio`** runtime.
+
+### 1. Update your `Cargo.toml`
+You need to enable the `native-tls` or `rustls` feature. For simplicity with system proxies, `native-tls` is usually easiest.
+
+```toml
+[dependencies]
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+# If you want to use async (recommended for Rust), use this:
+# tokio = { version = "1", features = ["full"] }
+```
+
+---
+
+### 2. The Code (`src/main.rs`)
+
+This example uses the **blocking** client for simplicity in a CLI script. If you are building a larger app, you would typically use the async client.
+
+```rust
+use reqwest::Proxy;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Define the proxy address (mitmproxy default is 8080, but you specified 9090)
+    let proxy_url = "http://localhost:9090";
+    let proxy = Proxy::all(proxy_url)?;
+
+    // 2. Build the client
+    // .danger_accept_invalid_certs(true) is what ignores the SSL errors 
+    // caused by mitmproxy's self-signed certificates.
+    let client = reqwest::blocking::Client::builder()
+        .proxy(proxy)
+        .danger_accept_invalid_certs(true) 
+        .build()?;
+
+    // 3. Make the request
+    println!("Sending request through {}...", proxy_url);
+    let res = client.get("https://httpbin.org/get").send()?;
+
+    // 4. Print results
+    println!("Status: {}", res.status());
+    let body = res.text()?;
+    println!("Body:\n{}", body);
+
+    Ok(())
+}
+```
+
+---
+
+### 3. Async Version (Standard for modern Rust)
+If you prefer the async/await pattern, change your dependencies to include `tokio` and use this code:
+
+```rust
+use reqwest::Proxy;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let proxy = Proxy::all("http://localhost:9090")?;
+
+    let client = reqwest::Client::builder()
+        .proxy(proxy)
+        .danger_accept_invalid_certs(true)
+        .build()?;
+
+    let res = client.get("https://httpbin.org/get").send().await?;
+    let body = res.text().await?;
+
+    println!("Response: {}", body);
+    Ok(())
+}
+```
+
+# others
 
 - clicking with mouse at the very right of line (where no char is anymore) should position cursor on the newline character at the very right. currently, it is always one left of the newline character, on the last real character in a line
 
