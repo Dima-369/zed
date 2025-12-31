@@ -1,8 +1,6 @@
 - fix that edit predictions rarely work for new text thread buffers
 
-- add hit count to buffer_search_modal::ToggleBufferSearch, it should list selected index / matched lines to left of button icon in line mode
-show index / total matches in non line mode
-
+TEST FROM AI
 - remove duplicated "New from Summary" menu item in Zed Agent 
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
@@ -13,7 +11,11 @@ and also in the tab summary for text threads, first tokens are always duplicated
 
 - fix `/script/clippy` and start fixing unit tests
 
+- the project symbol search does not refresh properly, and does not show all symbols?
+is it because not everything is indexed in Zed project?
+
 - fix `terminal::OpenScrollbackBuffer` to position the cursor at the end of buffer
+  - study how `new_file_from_clipboard`works, problem is that one needs the  
 
 if too hard, create a new `terminal::CopyAll`, then open `"command": "pbpaste | zed -"` this in `tasks.json`?
 
