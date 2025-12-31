@@ -1,3 +1,5 @@
+- is it possible to have a setting which routes every network request through a proxy?
+
 - clicking with mouse at the very right of line (where no char is anymore) should position cursor on the newline character at the very right. currently, it is always one left of the newline character, on the last real character in a line
 
 - fix that edit predictions rarely work for new text thread buffers
@@ -16,12 +18,7 @@ and also in the tab summary for text threads, first tokens are always duplicated
 - the project symbol search does not refresh properly, and does not show all symbols?
 is it because not everything is indexed in Zed project?
 
-- fix `terminal::OpenScrollbackBuffer` to scroll to the cursor position at end of buffer
-maybe use this? the cursor position is correctly at end, it just needs to scroll to it
-
-        let newest_selection = self.selections.newest_anchor();
-        let new_cursor_position = newest_selection.head();
-        let selection_start = newest_selection.start;
+- `terminal::OpenScrollbackBuffer` works properly, can you just properly fix the code so `panic!("no");` is not there anymore
 
 
 - can you use this for the stdin cursor at end?
