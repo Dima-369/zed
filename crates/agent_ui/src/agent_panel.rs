@@ -85,6 +85,8 @@ use zed_actions::{
     assistant::{OpenRulesLibrary, ToggleFocus},
 };
 
+use search::buffer_search_modal::ToggleBufferSearch;
+
 const AGENT_PANEL_KEY: &str = "agent_panel";
 const LOADING_SUMMARY_PLACEHOLDER: &str = "Loading Summary…";
 
@@ -1300,6 +1302,29 @@ impl AgentPanel {
                 cx.focus_self(window);
             }
             cx.emit(PanelEvent::ZoomIn);
+        }
+    }
+
+    fn toggle_buffer_search(
+        &mut self,
+        _: &ToggleBufferSearch,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(text_thread_editor) = self.active_text_thread_editor() {
+            let editor = text_thread_editor.read(cx).editor().clone();
+            if let Some(workspace) = self.workspace.upgrade() {
+                workspace.update(cx, |workspace, cx| {
+                    search::buffer_search_modal::BufferSearchModal::toggle_for_editor(
+                        workspace,
+                        editor,
+                        window,
+                        cx,
+                    );
+                });
+            }
+        } else {
+            cx.propagate();
         }
     }
 
@@ -2965,6 +2990,7 @@ impl Render for AgentPanel {
             .on_action(cx.listener(Self::decrease_font_size))
             .on_action(cx.listener(Self::reset_font_size))
             .on_action(cx.listener(Self::toggle_zoom))
+            .on_action(cx.listener(Self::toggle_buffer_search))
             .on_action(cx.listener(|this, _: &ReauthenticateAgent, window, cx| {
                 if let Some(thread_view) = this.active_thread_view() {
                     thread_view.update(cx, |thread_view, cx| thread_view.reauthenticate(window, cx))

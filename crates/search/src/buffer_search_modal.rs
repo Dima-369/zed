@@ -284,6 +284,60 @@ impl Render for BufferSearchModal {
 enum BufferSearchHighlights {}
 
 impl BufferSearchModal {
+    pub fn toggle_for_editor(
+        workspace: &mut Workspace,
+        editor: Entity<Editor>,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let (selected_text, buffer, cursor_offset) = editor.update(cx, |editor, cx| {
+            let snapshot = editor.buffer().read(cx).snapshot(cx);
+            let selection = editor.selections.newest_anchor();
+            let range = selection.range();
+            let head = selection.head();
+
+            let selected_text = if range.start.cmp(&range.end, &snapshot).is_ne() {
+                editor.buffer().read(cx).as_singleton().map(|buffer| {
+                    let buffer = buffer.read(cx);
+                    let start = range.start.text_anchor.to_offset(&buffer);
+                    let end = range.end.text_anchor.to_offset(&buffer);
+                    let mut text = buffer.text_for_range(start..end).collect::<String>();
+                    if text.ends_with('\n') {
+                        text.pop();
+                    }
+                    text
+                })
+            } else if !VimModeSetting::get_global(cx).0 {
+                let query = editor.query_suggestion(window, cx);
+                if query.is_empty() {
+                    None
+                } else {
+                    Some(query)
+                }
+            } else {
+                None
+            };
+
+            let buffer = editor.buffer().clone();
+            let cursor_offset = head.to_offset(&snapshot).0;
+
+            (selected_text, buffer, cursor_offset)
+        });
+
+        let weak_workspace = cx.entity().downgrade();
+        workspace.toggle_modal(window, cx, |window, cx| {
+            BufferSearchModal::new(
+                weak_workspace,
+                editor,
+                buffer,
+                cursor_offset,
+                selected_text,
+                window,
+                cx,
+            )
+        });
+    }
+
     fn next_history_query(
         &mut self,
         _: &NextHistoryQuery,
@@ -360,51 +414,7 @@ impl BufferSearchModal {
                 return;
             };
 
-            let (selected_text, buffer, cursor_offset) = editor.update(cx, |editor, cx| {
-                let snapshot = editor.buffer().read(cx).snapshot(cx);
-                let selection = editor.selections.newest_anchor();
-                let range = selection.range();
-                let head = selection.head();
-
-                let selected_text = if range.start.cmp(&range.end, &snapshot).is_ne() {
-                    editor.buffer().read(cx).as_singleton().map(|buffer| {
-                        let buffer = buffer.read(cx);
-                        let start = range.start.text_anchor.to_offset(&buffer);
-                        let end = range.end.text_anchor.to_offset(&buffer);
-                        let mut text = buffer.text_for_range(start..end).collect::<String>();
-                        if text.ends_with('\n') {
-                            text.pop();
-                        }
-                        text
-                    })
-                } else if !VimModeSetting::get_global(cx).0 {
-                    let query = editor.query_suggestion(window, cx);
-                    if query.is_empty() { None } else { Some(query) }
-                } else {
-                    None
-                };
-
-                let buffer = editor.buffer().clone();
-                let cursor_offset = head.to_offset(&snapshot).0;
-
-                (selected_text, buffer, cursor_offset)
-            });
-
-            let buffer = buffer;
-            // cursor_offset is already a value, not an Option
-
-            let weak_workspace = cx.entity().downgrade();
-            workspace.toggle_modal(window, cx, |window, cx| {
-                BufferSearchModal::new(
-                    weak_workspace,
-                    editor,
-                    buffer,
-                    cursor_offset,
-                    selected_text,
-                    window,
-                    cx,
-                )
-            });
+            Self::toggle_for_editor(workspace, editor, window, cx);
         });
 
         workspace.register_action(Self::toggle_line_mode);
