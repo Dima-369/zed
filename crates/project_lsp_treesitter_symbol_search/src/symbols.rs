@@ -68,6 +68,8 @@ impl SymbolProvider {
                 return;
             }
             *is_indexing = true;
+            // Clear existing symbols to ensure a fresh rebuild
+            self.cache.cached_symbols.lock().clear();
         }
 
         let project = self.project.clone();
@@ -247,10 +249,6 @@ impl SymbolProvider {
         } else {
             (processed * 100) / total
         }
-    }
-
-    pub fn has_cached_symbols(&self) -> bool {
-        !self.cache.cached_symbols.lock().is_empty()
     }
 
     pub fn search(

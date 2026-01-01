@@ -77,10 +77,8 @@ impl ProjectSymbolSearch {
             cx,
         );
 
-        // Only start indexing if we don't have cached symbols already
-        if !delegate.symbol_provider.has_cached_symbols() {
-            delegate.symbol_provider.start_indexing(cx);
-        }
+        // Start indexing symbols every time the modal is opened to ensure results are up to date.
+        delegate.symbol_provider.start_indexing(cx);
 
         let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
 
