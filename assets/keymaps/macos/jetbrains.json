@@ -187,11 +187,4 @@
       "shift-escape": "workspace::CloseActiveDock",
     },
   },
-  {
-    "context": "SearchEverywhere",
-    "bindings": {
-      "tab": "search_everywhere::NextTab",
-      "shift-tab": "search_everywhere::PreviousTab",
-    },
-  },
 ]
