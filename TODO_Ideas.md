@@ -1,6 +1,7 @@
 use gemini
 this only happens with `"vim_mode": true,`, with `false`, this properly works
 - clicking with mouse at the very right of line (where no char is anymore) should position cursor on the newline character at the very right. currently, it is always one left of the newline character, on the last real character in a line, this should be regardless if vim mode is enabled or not
+see `async fn test_undo_restores_cursor_position_after_paste_at_line_end(cx: &mut gpui::TestAppContext) {` in `crates/vim/src/normal/paste.rs`
 
 - fix that edit predictions rarely work for new text thread buffers
 
