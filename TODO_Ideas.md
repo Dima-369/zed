@@ -1,7 +1,3 @@
-- in Zed Agent with Qwen, why do I not see tool usages, for reading files?
-does it also happen in Release Zed on say a free OpenRouter model?
-it seems to work for Raptor model?
-
 # start fixing all unit tests
 
 
