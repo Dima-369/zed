@@ -8,6 +8,10 @@ it seems to work for Raptor model?
 
 # Better Agent/text thread title summaries
 
+- AI text threads should update its tab summary title every time the AI responds (there are no tool calls there)
+
+---
+
 `crates/agent_settings/src/prompts/summarize_thread_prompt.txt` is used for summary
 
 maybe use the polling mechanism from here to detect when agent is idle to generate the tab summary for agent threads (external or not)
