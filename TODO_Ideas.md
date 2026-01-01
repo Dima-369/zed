@@ -23,6 +23,8 @@ is it because not everything is indexed in Zed project? FIRST, find an example!
 
 # Better Agent/text thread title summaries
 
+`crates/agent_settings/src/prompts/summarize_thread_prompt.txt` is used for summary
+
 - currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
 
 - the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done. It should also be done in text threads and in ACP threads (external agents)
