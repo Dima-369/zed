@@ -1,3 +1,6 @@
+- in crates/git_ui/src/project_diff.rs change the foreground color, so it reflects the same fg color from for the "Recent Branches" button fg text crates/title_bar/src/title_bar.rs
+only change that fg color when the tab is NOT active
+
 - try out AMP tab once again
 https://github.com/zed-industries/zed/pull/45724
 
