@@ -1924,6 +1924,10 @@ impl GitPanel {
         self.tracked_staged_count + self.new_staged_count + self.conflicted_staged_count
     }
 
+    pub fn total_tracked_count(&self) -> usize {
+        self.tracked_count
+    }
+
     pub fn stash_pop(&mut self, _: &StashPop, _window: &mut Window, cx: &mut Context<Self>) {
         let Some(active_repository) = self.active_repository.clone() else {
             return;
@@ -2397,33 +2401,71 @@ impl GitPanel {
             return Some(merge_message.to_string());
         }
 
-        let git_status_entry = if let Some(staged_entry) = &self.single_staged_entry {
-            Some(staged_entry)
-        } else if self.total_staged_count() == 0
-            && let Some(single_tracked_entry) = &self.single_tracked_entry
-        {
-            Some(single_tracked_entry)
+        // Check for single staged file case
+        if let Some(staged_entry) = &self.single_staged_entry {
+            let action_text = if staged_entry.status.is_deleted() {
+                Some("Delete")
+            } else if staged_entry.status.is_created() {
+                Some("Create")
+            } else if staged_entry.status.is_modified() {
+                Some("Update")
+            } else {
+                None
+            }?;
+
+            let file_name = staged_entry
+                .repo_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string();
+
+            Some(format!("{} {}", action_text, file_name))
+        } else if self.total_staged_count() == 0 {
+            // No staged files, check for single tracked file
+            if let Some(tracked_entry) = &self.single_tracked_entry {
+                let action_text = if tracked_entry.status.is_deleted() {
+                    Some("Delete")
+                } else if tracked_entry.status.is_created() {
+                    Some("Create")
+                } else if tracked_entry.status.is_modified() {
+                    Some("Update")
+                } else {
+                    None
+                }?;
+
+                let file_name = tracked_entry
+                    .repo_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string();
+
+                Some(format!("{} {}", action_text, file_name))
+            } else {
+                // No single file, check for multiple files
+                let staged_count = self.total_staged_count();
+                let tracked_count = self.total_tracked_count();
+
+                if staged_count > 1 {
+                    // Multiple staged files
+                    Some(format!("Update {} files", staged_count))
+                } else if tracked_count > 1 {
+                    // Multiple tracked files (and no staged files)
+                    Some(format!("Update {} files", tracked_count))
+                } else {
+                    // No files to commit
+                    None
+                }
+            }
         } else {
-            None
-        }?;
-
-        let action_text = if git_status_entry.status.is_deleted() {
-            Some("Delete")
-        } else if git_status_entry.status.is_created() {
-            Some("Create")
-        } else if git_status_entry.status.is_modified() {
-            Some("Update")
-        } else {
-            None
-        }?;
-
-        let file_name = git_status_entry
-            .repo_path
-            .file_name()
-            .unwrap_or_default()
-            .to_string();
-
-        Some(format!("{} {}", action_text, file_name))
+            // Multiple staged files (since single case was handled above and staged count > 0)
+            let staged_count = self.total_staged_count();
+            if staged_count > 1 {
+                Some(format!("Update {} files", staged_count))
+            } else {
+                // This case shouldn't happen since single staged file was handled above
+                None
+            }
+        }
     }
 
     fn generate_commit_message_action(
