@@ -2,9 +2,6 @@
 
 - fix that edit predictions rarely work for new text thread buffers
 
-use gemini
-- can the buffer search modal be nicer. on initial launch, it preselects the candidate index to the current line which is great. I want the same behavior, that when user types in any character that the initial candidate index is closest to the current line (from previous editor instance). it currently always jumps to first candidate index where I lose context too much
-
 TEST FROM AI
 - remove duplicated "New from Summary" menu item in Zed Agent
 
