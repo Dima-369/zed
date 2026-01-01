@@ -99,10 +99,14 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 
 ## AI
 
-- allow AI edit predictions in Zed's `settings.json` and `keymap.json` and in buffers without files like ones from `workspace: new file` or in the agent text thread pane (although here in the text thread it does not trigger as often?)
-- allow AI edit predictions in AI text threads, as well
+- allow AI edit predictions in the following places:
+  - Zed's `settings.json` 
+  - Zed's `keymap.json`
+  - buffers without files like ones from `workspace: new file`
+  - AI agent text threads
 - add the Qwen provider with models `qwen3-coder-plus` and `qwen3-coder-flash` which can be used for Inline Assist and in Zed Agent
   - the implementation is based on how https://github.com/RooCodeInc/Roo-Code interacts with Qwen and requires the `~/.qwen/oauth_creds.json` file to set which can be done by using the `qwen` binary and authenticating with OAuth
+  - inside the Zed Agent, it performs weirdly, you often do not see the `Color::Muted` tool call rows, although the model does call them. And `agent::OpenActiveThreadAsMarkdown` then sometimes shows incorrect context. I did not investigate that further
 
 ### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
