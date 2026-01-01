@@ -4,8 +4,6 @@ https://github.com/zed-industries/zed/pull/45724
 - fix that edit predictions rarely work for new text thread buffers
 maybe check with proxy if it is even triggered
 
-- fix qwen bug on duplicated streamed response
-
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
 it seems to work for Raptor model?

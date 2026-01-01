@@ -436,6 +436,30 @@ impl QwenLanguageModel {
                 request,
             );
             let response = request.await?;
+
+            // Qwen portal sometimes sends the first chunk twice.
+            // We deduplicate identical consecutive chunks to avoid duplicated content.
+            let mut last_content: Option<String> = None;
+            let response = response
+                .filter(move |event| {
+                    if let Ok(ResponseStreamEvent { choices, .. }) = event {
+                        if let Some(choice) = choices.first() {
+                            if let Some(ref delta) = choice.delta {
+                                if let Some(ref content) = delta.content {
+                                    if last_content.as_ref() == Some(content) {
+                                        return future::ready(false);
+                                    }
+                                    last_content = Some(content.clone());
+                                } else {
+                                    last_content = None;
+                                }
+                            }
+                        }
+                    }
+                    future::ready(true)
+                })
+                .boxed();
+
             Ok(response)
         });
 
