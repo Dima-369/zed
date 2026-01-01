@@ -2162,7 +2162,7 @@ impl TextThread {
                     this.update(cx, |this, cx| {
                         this.pending_completions
                             .retain(|completion| completion.id != pending_completion_id);
-                        this.summarize(false, cx);
+                        this.summarize(true, cx);
                         this.update_cache_status_for_completion(cx);
                     })?;
 
