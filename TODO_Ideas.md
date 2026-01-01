@@ -6,6 +6,8 @@ so weird, in text threads, it still only very rarely provides a tab completion (
 
 you can compare with a regular `workspace: new file` buffer
 
+debug `pub fn refresh_edit_prediction`?
+
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
 it seems to work for Raptor model?
@@ -19,6 +21,9 @@ and also in the tab summary for text threads, first tokens are always duplicated
 # Better Agent/text thread title summaries
 
 `crates/agent_settings/src/prompts/summarize_thread_prompt.txt` is used for summary
+
+maybe use the polling mechanism from here to detect when agent is idle to generate the tab summary for agent threads (external or not)
+https://github.com/zed-industries/zed/pull/45930 (feat: Add Ctrl+Shift+Enter to queue messages until agent finishes)
 
 - currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
 
