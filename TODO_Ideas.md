@@ -1,9 +1,7 @@
 - try out AMP tab once again
 
 - fix that edit predictions rarely work for new text thread buffers
-
-TEST FROM AI
-- remove duplicated "New from Summary" menu item in Zed Agent
+maybe check with proxy if it is even triggered
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
