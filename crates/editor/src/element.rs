@@ -806,7 +806,11 @@ impl EditorElement {
             }
         }
 
-        let position = point_for_position.previous_valid;
+        let position = if point_for_position.column_overshoot_after_line_end > 0 {
+            point_for_position.next_valid
+        } else {
+            point_for_position.previous_valid
+        };
         if let Some(mode) = Editor::columnar_selection_mode(&modifiers, cx) {
             editor.select(
                 SelectPhase::BeginColumnar {
@@ -874,10 +878,15 @@ impl EditorElement {
         }
 
         let point_for_position = position_map.point_for_position(event.position);
+        let position = if point_for_position.column_overshoot_after_line_end > 0 {
+            point_for_position.next_valid
+        } else {
+            point_for_position.previous_valid
+        };
         mouse_context_menu::deploy_context_menu(
             editor,
             Some(event.position),
-            point_for_position.previous_valid,
+            position,
             window,
             cx,
         );
@@ -896,7 +905,11 @@ impl EditorElement {
         }
 
         let point_for_position = position_map.point_for_position(event.position);
-        let position = point_for_position.previous_valid;
+        let position = if point_for_position.column_overshoot_after_line_end > 0 {
+            point_for_position.next_valid
+        } else {
+            point_for_position.previous_valid
+        };
 
         editor.select(
             SelectPhase::BeginColumnar {
@@ -929,9 +942,14 @@ impl EditorElement {
                 mouse_down_time: _,
             } => {
                 if event.position == *click_position {
+                    let position = if point_for_position.column_overshoot_after_line_end > 0 {
+                        point_for_position.next_valid
+                    } else {
+                        point_for_position.previous_valid
+                    };
                     editor.select(
                         SelectPhase::Begin {
-                            position: point_for_position.previous_valid,
+                            position,
                             add: false,
                             click_count: 1, // ready to drag state only occurs on click count 1
                         },
@@ -953,9 +971,14 @@ impl EditorElement {
                 {
                     let is_cut = !(cfg!(target_os = "macos") && event.modifiers.alt
                         || cfg!(not(target_os = "macos")) && event.modifiers.control);
+                    let position = if point_for_position.column_overshoot_after_line_end > 0 {
+                        point_for_position.next_valid
+                    } else {
+                        point_for_position.previous_valid
+                    };
                     editor.move_selection_on_drop(
                         &selection.clone(),
-                        point_for_position.previous_valid,
+                        position,
                         is_cut,
                         window,
                         cx,
@@ -991,7 +1014,11 @@ impl EditorElement {
             if EditorSettings::get_global(cx).middle_click_paste {
                 if let Some(text) = cx.read_from_primary().and_then(|item| item.text()) {
                     let point_for_position = position_map.point_for_position(event.position);
-                    let position = point_for_position.previous_valid;
+                    let position = if point_for_position.column_overshoot_after_line_end > 0 {
+                        point_for_position.next_valid
+                    } else {
+                        point_for_position.previous_valid
+                    };
 
                     editor.select(
                         SelectPhase::Begin {
@@ -1157,19 +1184,29 @@ impl EditorElement {
                         cx.notify();
                     } else {
                         let click_point = position_map.point_for_position(*click_position);
+                        let begin_position = if click_point.column_overshoot_after_line_end > 0 {
+                            click_point.next_valid
+                        } else {
+                            click_point.previous_valid
+                        };
                         editor.selection_drag_state = SelectionDragState::None;
                         editor.select(
                             SelectPhase::Begin {
-                                position: click_point.previous_valid,
+                                position: begin_position,
                                 add: false,
                                 click_count: 1,
                             },
                             window,
                             cx,
                         );
+                        let update_position = if point_for_position.column_overshoot_after_line_end > 0 {
+                            point_for_position.next_valid
+                        } else {
+                            point_for_position.previous_valid
+                        };
                         editor.select(
                             SelectPhase::Update {
-                                position: point_for_position.previous_valid,
+                                position: update_position,
                                 goal_column: point_for_position.exact_unclipped.column(),
                                 scroll_delta,
                             },
@@ -1181,9 +1218,14 @@ impl EditorElement {
                 _ => {}
             }
         } else {
+            let position = if point_for_position.column_overshoot_after_line_end > 0 {
+                point_for_position.next_valid
+            } else {
+                point_for_position.previous_valid
+            };
             editor.select(
                 SelectPhase::Update {
-                    position: point_for_position.previous_valid,
+                    position,
                     goal_column: point_for_position.exact_unclipped.column(),
                     scroll_delta,
                 },
