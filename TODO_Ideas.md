@@ -1,7 +1,8 @@
 - try out AMP tab once again
 https://github.com/zed-industries/zed/pull/45724
 
-- fix that edit predictions rarely work for new text thread buffers
+- fix that edit predictions do not work for new AI text threads, maybe because they are multi buffers?
+
 maybe check with proxy if it is even triggered
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
