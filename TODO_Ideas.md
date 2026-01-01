@@ -5,26 +5,6 @@ https://github.com/zed-industries/zed/pull/45724
 does it also happen in Release Zed on say a free OpenRouter model?
 it seems to work for Raptor model?
 
-
-# Better Agent/text thread title summaries
-
-- AI text threads should update its tab summary title every time the AI responds (there are no tool calls there)
-
----
-
-`crates/agent_settings/src/prompts/summarize_thread_prompt.txt` is used for summary
-
-maybe use the polling mechanism from here to detect when agent is idle to generate the tab summary for agent threads (external or not)
-https://github.com/zed-industries/zed/pull/45930 (feat: Add Ctrl+Shift+Enter to queue messages until agent finishes)
-
-- currently, ACP thread summaries are generated after the first message is received from AI which very often is not good enough? or is it really? can you investigate code path and check when it is generated, it is shown in the tab title
-
-- the AI tab title summary is updated far too often in Zed Agent, on every AI message received, but it should only be updated when the AI is fully done responding, when its loop is done. It should also be done in text threads and in ACP threads (external agents)
-So, 3 parts, check all
-see `crates/agent_ui/src/agent_panel.rs` and related code
-
-ONCE this works, delete all `println!("SUMMARIZE_THREAD_PROMPT 3");`
-
 # Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch
 
 try this out some time, I already have tree view, how about only displaying file count in tree view to the right of directories only for amount of files below
@@ -201,6 +181,7 @@ https://github.com/zed-industries/zed/pull/40014
 
 ## Support external agent history
 
+I merged this in.
 PR closed because ACP does not support history yet.
 
 https://github.com/zed-industries/zed/pull/45734
