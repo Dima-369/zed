@@ -441,11 +441,13 @@ fn main() {
             std::env::consts::OS,
             std::env::consts::ARCH
         );
-        let proxy_url = ProxySettings::get_global(cx).proxy_url();
+        let proxy_settings = ProxySettings::get_global(cx);
+        let proxy_url = proxy_settings.proxy_url();
+        let proxy_no_verify = proxy_settings.proxy_no_verify.unwrap_or(false);
         let http = {
             let _guard = Tokio::handle(cx).enter();
 
-            ReqwestClient::proxy_and_user_agent(proxy_url, &user_agent)
+            ReqwestClient::proxy_user_agent_and_no_verify(proxy_url, &user_agent, proxy_no_verify)
                 .expect("could not start HTTP client")
         };
         cx.set_http_client(Arc::new(http));

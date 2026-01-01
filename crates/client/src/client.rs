@@ -116,6 +116,7 @@ impl Settings for ClientSettings {
 #[derive(Deserialize, Default, RegisterSetting)]
 pub struct ProxySettings {
     pub proxy: Option<String>,
+    pub proxy_no_verify: Option<bool>,
 }
 
 impl ProxySettings {
@@ -136,6 +137,7 @@ impl Settings for ProxySettings {
     fn from_settings(content: &settings::SettingsContent) -> Self {
         Self {
             proxy: content.proxy.clone(),
+            proxy_no_verify: content.proxy_no_verify,
         }
     }
 }
