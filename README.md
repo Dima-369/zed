@@ -10,6 +10,19 @@ rm -f "$HOME/.cargo/bin/zed" && \
 ln -s "/Applications/Zed Dev.app/Contents/MacOS/cli" "$HOME/.cargo/bin/zed"
 ```
 
+## Development note
+
+To have easier Zed's `main` branch merges, I am not really adding or modifying existing unit tests to my own functionality, so some are failing. I try to satisfy `./script/clippy`, though.
+
+---
+
+AI is heavily used for pretty much every feature implemented. I use a mix of those models, all free:
+- Google's Gemini 3 Pro (https://aistudio.google.com/prompts/new_chat)
+- Qwen Code (https://github.com/QwenLM/qwen-code)
+- Windsurf's SWE 1.5 (until it is not free anymore)
+
+For anything more complicated, I use the Architect + Editor pattern (see https://aider.chat/2024/09/26/architect.html) with Gemini 3 Pro being the Architect and the other models being the Editor.
+
 ## Sync this fork's main branch with Zed's main branch and merge into my custom dima branch
 
 ```bash
