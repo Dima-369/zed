@@ -39,8 +39,8 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - modified `editor::GoToDefinition` to not enter Vim visual mode when jumping to a definition
 - fixed that a large `vertical_scroll_margin` in `settings.json` to have a centered cursor jumps buffer scrolls around (https://github.com/zed-industries/zed/issues/42155)
 - fixed that on entering the project search, there can be instances where visual mode is entered (https://github.com/zed-industries/zed/issues/43878)
-- integrated file explorer from https://github.com/zed-industries/zed/pull/43961
-- integrated Helix jump list from https://github.com/zed-industries/zed/pull/44661 and implemented `vim::HelixOpenJumpListInMultibuffer` action
+- integrate file explorer modal from https://github.com/zed-industries/zed/pull/43961(Add file explorer modal, PR closed)
+- integrate Helix jump list from https://github.com/zed-industries/zed/pull/44661 and implemented `vim::HelixOpenJumpListInMultibuffer` action
 - integrated live refreshing project search from https://github.com/zed-industries/zed/pull/42889, enable in `settings.json` via `search > search_on_input`
 - integrated smooth scroll from https://github.com/zed-industries/zed/pull/31671
 - modified `compute_style_internal()` in `crates/gpui/src/elements/div.rs` to not apply the mouse hover style, since it clashes when one only uses the keyboard
@@ -138,24 +138,35 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 - `editor::CountTokens` which counts the tokens in the current buffer using `o200k_base` via the `tiktoken` crate
 - `editor::StopAllLanguageServers` which stops all language servers. It works like the bottom button in `Language Servers > Stop All Servers`
 - `project_lsp_treesitter_symbol_search::Toggle` based on `search_everywhere::Toggle` from https://github.com/zed-industries/zed/pull/45720. I ripped out everything else except the symbol search. The reason this is better than the built-in `project_symbols::Toggle` is that it uses both Tree-sitter and LSP with indexing which is faster and more reliable.
-- `jump::Toggle` from https://github.com/tebben/zed/tree/feature/jump with the following changes:
-  - modified key jump hints to my custom Dvorak Programmer keyboard layout
-  - implemented multiple character jump hints
-  - fixed bug that hints did not appear correctly
-  - set the opacity of the dialog to 50% to see hints below
-  - implemented `jump::JumpToUrl` based on this code to jump to `http...` URLs
-  - note that it does not work in multi buffers, but it works to jump across panes of regular text editors
-- `vim::HelixJumpToWord` from https://github.com/zed-industries/zed/pull/43733
-  - improved UI to look like the `jump::Toggle` action
-  - removed the `helix > "jump_label_accent"` setting since the UI is now the same as `jump::Toggle`
-  - modified key jump hints to my custom Dvorak Programmer keyboard layout
-  - I am only using this is inside multi buffers, whereas `jump::Toggle` does not. And this also does not work to jump across editor panes
-  - note that escape does not work to break out of this mode, apparently. I have no idea how to adjust the code for it
 - `editor::MoveToStartOfLargerSyntaxNode` from https://github.com/zed-industries/zed/pull/45331
 - `buffer_search_modal::ToggleBufferSearch` which shows a modal to search the current buffer content (code is in `crates/search/src/buffer_search_modal.rs`) based on https://github.com/zed-industries/zed/pull/44530 (Add quick search modal). This is a basic implementation of Swiper from Emacs or `Snacks.picker.lines()` from Neovim. I tried matching every line with `nucleo`, but it was kinda slow, so it just split on spaces and then every line which has all words from the query is matched.
   - `ctrl-c` and `ctrl-t` can be used to insert history items into the search field
   - `ctrl-r` is to toggle between line (case-insensitive) and exact match (case-sensitive) mode
   - it also works in multi buffers, although the preview editor mixes lines
+
+## Hint jumping functionality
+
+### `jump::Toggle` as a new action (this is for everything except multi buffers)
+
+From https://github.com/tebben/zed/tree/feature/jump
+
+With the following changes:
+
+- modify key jump hints to my custom Dvorak Programmer keyboard layout
+- implement multiple character jump hints
+- set the opacity of the dialog to 50% to see hints below
+- implement `jump::JumpToUrl` based on this code to jump to `http...` URLs
+- note that it does not work in multi buffers, but it works to jump across panes of regular text editors
+
+### `vim::HelixJumpToWord` as a new action (this is for multi buffers)
+
+From https://github.com/zed-industries/zed/pull/43733
+
+- improved UI to look like the `jump::Toggle` action
+- removed the `helix > "jump_label_accent"` setting since the UI is now the same as `jump::Toggle`
+- modified key jump hints to my custom Dvorak Programmer keyboard layout
+- I am only using this is inside multi buffers, whereas `jump::Toggle` does not. And this also does not work to jump across editor panes
+- note that escape does not work to break out of this mode, apparently. I have no idea how to adjust the code for it
 
 ## DeepL integration
 
