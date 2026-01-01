@@ -1,10 +1,5 @@
 - try out AMP tab once again
 
-use gemini
-this only happens with `"vim_mode": true,`, with `false`, this properly works
-- clicking with mouse at the very right of line (where no char is anymore) should position cursor on the newline character at the very right. currently, it is always one left of the newline character, on the last real character in a line, this should be regardless if vim mode is enabled or not
-see `async fn test_undo_restores_cursor_position_after_paste_at_line_end(cx: &mut gpui::TestAppContext) {` in `crates/vim/src/normal/paste.rs`
-
 - fix that edit predictions rarely work for new text thread buffers
 
 use gemini
@@ -23,14 +18,6 @@ and also in the tab summary for text threads, first tokens are always duplicated
 
 - the project symbol search does not refresh properly, and does not show all symbols?
 is it because not everything is indexed in Zed project? FIRST, find an example!
-
-- fix bad undo behavior, reproduce steps:
-  - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
-  - run `editor::Undo`
-  - then notice how cursor is not on newline character anymore, but one to left which is incorrect
-this only happens with `"vim_mode": true,`, with `false`, this properly works
-
-I created `test_undo_restores_cursor_position_after_paste_at_line_end`, it currently passes, because it assumes vim mode = false
 
 - pull in latest https://github.com/zed-industries/zed/pull/45734 changes (agent history)
 
