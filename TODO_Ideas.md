@@ -16,7 +16,7 @@ and also in the tab summary for text threads, first tokens are always duplicated
 - fix `/script/clippy` and start fixing unit tests, it works in debug mode already!
 
 - the project symbol search does not refresh properly, and does not show all symbols?
-is it because not everything is indexed in Zed project?
+is it because not everything is indexed in Zed project? FIRST, find an example!
 
 - fix bad undo behavior, reproduce steps:
   - have a line with word on it, move cursor to newline character on same line at the very right, run `editor::Paste` (cursor is still on newline character)
