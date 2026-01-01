@@ -27,7 +27,7 @@ is it because not everything is indexed in Zed project? FIRST, find an example!
   - then notice how cursor is not on newline character anymore, but one to left which is incorrect
 this only happens with `"vim_mode": true,`, with `false`, this properly works
 
-  I created `test_undo_restores_cursor_position_after_paste_at_line_end`, but first test code needs be fixed, so it compiles
+I created `test_undo_restores_cursor_position_after_paste_at_line_end`, it currently passes, because it assumes vim mode = false
 
 - pull in latest https://github.com/zed-industries/zed/pull/45734 changes (agent history)
 
