@@ -1,8 +1,3 @@
-# start fixing all unit tests
-
-
-
-
 # >>> Investigations
 
 ## edit predictions: Amp Tab support
