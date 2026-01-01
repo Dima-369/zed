@@ -2,8 +2,9 @@
 https://github.com/zed-industries/zed/pull/45724
 
 - fix that edit predictions do not work for new AI text threads, maybe because they are multi buffers?
+so weird, in text threads, it still only very rarely provides a tab completion (edit prediction). I noticed that when I call `editor::Newline` it actually triggers the tab completion properly, but I want it triggered on every cursor movement
 
-maybe check with proxy if it is even triggered
+you can compare with a regular `workspace: new file` buffer
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
