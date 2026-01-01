@@ -759,19 +759,14 @@ impl BufferSearchBar {
                 .set_language_registry(languages.clone());
 
             cx.spawn(async move |buffer_search_bar, cx| {
-                use anyhow::Context as _;
-
-                let regex_language = languages
-                    .language_for_name("regex")
-                    .await
-                    .context("loading regex language")?;
-
-                buffer_search_bar
-                    .update(cx, |buffer_search_bar, cx| {
-                        buffer_search_bar.regex_language = Some(regex_language);
-                        buffer_search_bar.adjust_query_regex_language(cx);
-                    })
-                    .ok();
+                if let Ok(regex_language) = languages.language_for_name("regex").await {
+                    buffer_search_bar
+                        .update(cx, |buffer_search_bar, cx| {
+                            buffer_search_bar.regex_language = Some(regex_language);
+                            buffer_search_bar.adjust_query_regex_language(cx);
+                        })
+                        .ok();
+                }
                 anyhow::Ok(())
             })
             .detach_and_log_err(cx);
