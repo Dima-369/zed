@@ -757,7 +757,7 @@ mod tests {
 
         let identity = entry.agent_identity().unwrap();
         assert!(!identity.is_zed());
-        assert_eq!(entry.agent_display_name(), Some("claude-code".into()));
+        assert_eq!(entry.agent_display_name(), Some("Claude Code".into()));
 
         // Test TextThread entry (no agent)
         let text_thread = SavedTextThreadMetadata {
