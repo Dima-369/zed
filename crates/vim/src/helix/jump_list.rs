@@ -315,7 +315,7 @@ mod tests {
 
         list.push(entry.clone());
         list.push(entry.clone());
-        list.push(entry.clone());
+        list.push(entry);
 
         // Should only have 1 entry despite 3 pushes
         assert_eq!(list.position(), (1, 1));

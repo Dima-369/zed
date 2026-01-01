@@ -2479,7 +2479,7 @@ impl GitPanel {
                 let is_staged = GitPanel::stage_status_for_entry(entry, &repo).has_staged();
                 if is_staged == staged {
                     message.push_str("- ");
-                    message.push_str(&entry.repo_path.display(PathStyle::Posix).to_string());
+                    message.push_str(&entry.repo_path.display(PathStyle::Posix));
                     message.push('\n');
                 }
             }
