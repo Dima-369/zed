@@ -52,6 +52,10 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
 
+## Network
+
+- add `"proxy_no_verify": true` support in `settings.json`
+
 ## Git
 
 - move git commit modal to the right side instead of being centered, so it does not overlap the left git dock, which makes it impossible to see what files are staged on a small screen. One could lower the size of the git dock to make it fit, but then it is quite small

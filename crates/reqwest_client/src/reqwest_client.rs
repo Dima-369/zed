@@ -45,6 +45,14 @@ impl ReqwestClient {
     }
 
     pub fn proxy_and_user_agent(proxy: Option<Url>, user_agent: &str) -> anyhow::Result<Self> {
+        Self::proxy_user_agent_and_no_verify(proxy, user_agent, false)
+    }
+
+    pub fn proxy_user_agent_and_no_verify(
+        proxy: Option<Url>,
+        user_agent: &str,
+        no_verify: bool,
+    ) -> anyhow::Result<Self> {
         let user_agent = HeaderValue::from_str(user_agent)?;
 
         let mut map = HeaderMap::new();
@@ -70,9 +78,13 @@ impl ReqwestClient {
             client_has_proxy = false;
         };
 
-        let client = client
-            .use_preconfigured_tls(http_client_tls::tls_config())
-            .build()?;
+        client = if no_verify {
+            client.danger_accept_invalid_certs(true)
+        } else {
+            client.use_preconfigured_tls(http_client_tls::tls_config())
+        };
+
+        let client = client.build()?;
         let mut client: ReqwestClient = client.into();
         client.proxy = client_has_proxy.then_some(proxy).flatten();
         client.user_agent = Some(user_agent);

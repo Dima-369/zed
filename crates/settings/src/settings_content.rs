@@ -131,6 +131,7 @@ pub struct SettingsContent {
     pub notification_panel: Option<NotificationPanelSettingsContent>,
 
     pub proxy: Option<String>,
+    pub proxy_no_verify: Option<bool>,
 
     /// The URL of the Zed server to connect to.
     pub server_url: Option<String>,
