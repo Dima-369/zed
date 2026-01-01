@@ -645,6 +645,7 @@ impl BufferSearchDelegate {
     fn spawn_line_search(
         &self,
         query: String,
+        initial_cursor: usize,
         buffer_snapshot: MultiBufferSnapshot,
         cancelled: Arc<AtomicBool>,
         window: &mut Window,
@@ -804,8 +805,21 @@ impl BufferSearchDelegate {
                     picker.delegate.items = new_items;
                     picker.delegate.is_searching = false;
                     picker.delegate.all_matches = all_match_ranges.clone();
-                    picker.delegate.selected_index = 0;
-                    let preview_data = picker.delegate.items.get(0).map(|item| {
+
+                    // Find closest match to initial cursor
+                    let mut best_index = 0;
+                    let mut min_distance = usize::MAX;
+
+                    for (idx, item) in picker.delegate.items.iter().enumerate() {
+                        let dist = item.primary_match_offset.abs_diff(initial_cursor);
+                        if dist < min_distance {
+                            min_distance = dist;
+                            best_index = idx;
+                        }
+                    }
+
+                    picker.delegate.selected_index = best_index;
+                    let preview_data = picker.delegate.items.get(best_index).map(|item| {
                         (
                             item.primary_match_offset,
                             item.match_indices.clone(),
@@ -994,8 +1008,6 @@ impl PickerDelegate for BufferSearchDelegate {
                             .flex_1()
                             .min_w_32()
                             .h_6()
-                            .pl_1()
-                            .pr_1()
                             .rounded_md()
                             .bg(cx.theme().colors().elevated_surface_background)
                             .child(editor.clone())
@@ -1014,7 +1026,7 @@ impl PickerDelegate for BufferSearchDelegate {
                                         )
                                     })
                                     .child(
-                                        IconButton::new("line-mode", IconName::ToolSearch)
+                                        IconButton::new("line-mode", IconName::ListFilter)
                                             .style(ButtonStyle::Subtle)
                                             .shape(IconButtonShape::Square)
                                             .toggle_state(self.line_mode)
@@ -1052,7 +1064,14 @@ impl PickerDelegate for BufferSearchDelegate {
         self.is_searching = true;
 
         if self.line_mode && !query.is_empty() {
-            return self.spawn_line_search(query, buffer_snapshot, cancelled, window, cx);
+            return self.spawn_line_search(
+                query,
+                initial_cursor,
+                buffer_snapshot,
+                cancelled,
+                window,
+                cx,
+            );
         }
 
         if query.is_empty() {
