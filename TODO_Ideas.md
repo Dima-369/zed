@@ -17,7 +17,7 @@ it seems to work for Raptor model?
 MAYBE it is because the code is a bit incorrect, I see the modal duplicating parts of its response, see text thread
 and also in the tab summary for text threads, first tokens are always duplicated
 
-- fix `/script/clippy` and start fixing unit tests, it works in debug mode already!
+- start fixing all unit tests
 
 - the project symbol search does not refresh properly, and does not show all symbols?
 is it because not everything is indexed in Zed project? FIRST, find an example!
