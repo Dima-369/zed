@@ -6,10 +6,7 @@ https://github.com/zed-industries/zed/pull/45724
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
 it seems to work for Raptor model?
-MAYBE it is because the code is a bit incorrect, I see the modal duplicating parts of its response, see text thread
-and also in the tab summary for text threads, first tokens are always duplicated
 
-- start fixing all unit tests
 
 - pull in latest https://github.com/zed-industries/zed/pull/45734 changes (agent history)
 
@@ -31,6 +28,8 @@ see `crates/agent_ui/src/agent_panel.rs` and related code
 try this out some time, I already have tree view, how about only displaying file count in tree view to the right of directories only for amount of files below
 
 https://github.com/zed-industries/zed/pull/45846
+
+# start fixing all unit tests
 
 # ACP
 
