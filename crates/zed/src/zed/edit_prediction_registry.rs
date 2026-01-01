@@ -187,9 +187,18 @@ fn assign_edit_prediction_provider(
         value @ (EditPredictionProvider::Experimental(_) | EditPredictionProvider::Zed) => {
             let ep_store = edit_prediction::EditPredictionStore::global(client, &user_store, cx);
 
-            if let Some(project) = editor.project()
-                && let Some(buffer) = &singleton_buffer
-            {
+            if let Some(project) = editor.project() {
+                let buffers_to_register = if let Some(buffer) = &singleton_buffer {
+                    vec![buffer.clone()]
+                } else {
+                    editor
+                        .buffer()
+                        .read(cx)
+                        .all_buffers()
+                        .into_iter()
+                        .collect()
+                };
+
                 let has_model = ep_store.update(cx, |ep_store, cx| {
                     let model = if let EditPredictionProvider::Experimental(name) = value {
                         if name == EXPERIMENTAL_SWEEP_EDIT_PREDICTION_PROVIDER_NAME
@@ -214,7 +223,9 @@ fn assign_edit_prediction_provider(
                     };
 
                     ep_store.set_edit_prediction_model(model);
-                    ep_store.register_buffer(buffer, project, cx);
+                    for buffer in buffers_to_register {
+                        ep_store.register_buffer(&buffer, project, cx);
+                    }
                     true
                 });
 

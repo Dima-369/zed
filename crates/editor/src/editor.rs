@@ -3571,7 +3571,7 @@ impl Editor {
 
             self.refresh_selected_text_highlights(false, window, cx);
             self.refresh_matching_bracket_highlights(window, cx);
-            self.update_visible_edit_prediction(window, cx);
+            self.refresh_edit_prediction(true, false, window, cx);
             self.edit_prediction_requires_modifier_in_indent_conflict = true;
             self.inline_blame_popover.take();
             if self.git_blame_inline_enabled {
