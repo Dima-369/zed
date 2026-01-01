@@ -6,49 +6,6 @@ it seems to work for Raptor model?
 
 # ACP
 
-- can ACP have a whitelist/blacklist in settings of CLI commands to be able to be run?
-first investigate without changing code how it currently works and where it stores the info when I click "Allow always"
-I think an array of regexes in settings would be great
-
-
-## Current ACP Permission System
-
-### How "Allow always" currently works:
-
-1. **Permission Request Flow**: When an ACP agent wants to run a CLI command, it sends a permission request to Zed via the `agent-client-protocol`
-
-2. **UI Response**: Zed shows permission options (Allow once, Allow always, Reject once, Reject always) in the UI
-
-3. **Storage Location**: The "Allow always" information is **NOT stored in Zed's settings**. Instead, it's stored and managed by the **external agent server** (like Claude Code, Gemini CLI, etc.)
-
-4. **Protocol Communication**: The permission decision is sent back to the external agent via the `RequestPermissionResponse` in the agent-client-protocol
-
-5. **Agent-side Enforcement**: The external agent maintains its own whitelist/blacklist and decides whether to ask for permissions again based on previous "Allow always" responses
-
-### Key Code Locations:
-
-- **Permission UI**: [/Users/dima/Developer/zed/crates/agent_ui/src/acp/thread_view.rs](cci:7://file:///Users/dima/Developer/zed/crates/agent_ui/src/acp/thread_view.rs:0:0-0:0) - handles the UI for permission buttons
-- **Permission Handling**: [/Users/dima/Developer/zed/crates/acp_thread/src/acp_thread.rs](cci:7://file:///Users/dima/Developer/zed/crates/acp_thread/src/acp_thread.rs:0:0-0:0) - manages permission requests in Zed
-- **Agent Communication**: [/Users/dima/Developer/zed/crates/agent_servers/src/acp.rs](cci:7://file:///Users/dima/Developer/zed/crates/agent_servers/src/acp.rs:0:0-0:0) - handles communication with external agents
-- **Settings**: [/Users/dima/Developer/zed/crates/agent_settings/src/agent_settings.rs](cci:7://file:///Users/dima/Developer/zed/crates/agent_settings/src/agent_settings.rs:0:0-0:0) - contains `always_allow_tool_actions` setting
-
-### Current Settings:
-
-There's already a global setting `always_allow_tool_actions` in [AgentSettings](cci:2://file:///Users/dima/Developer/zed/crates/agent_settings/src/agent_settings.rs:23:0-51:1) that can automatically allow tool actions without prompting, but this is an all-or-nothing setting and doesn't provide per-command whitelist/blacklist functionality.
-
-## Answer to Your Question
-
-**Can ACP have a whitelist/blacklist in settings of CLI commands?**
-
-Currently, **no**. ACP does not have a built-in whitelist/blacklist system in Zed's settings for specific CLI commands. The "Allow always" functionality is handled entirely by the external agent servers, not by Zed itself.
-
-To implement this feature, you would need to:
-
-1. **Add new settings** to `crates/agent_settings/src/agent_settings.rs` for command whitelists/blacklists
-2. **Modify the permission logic** in `crates/acp_thread/src/acp_thread.rs` to check these settings before prompting
-3. **Update the UI** to show when commands are auto-allowed/blocked based on these settings
-4. **Store the command patterns** in Zed's settings database
-
 
 
 
@@ -234,3 +191,48 @@ This is not implemented anywhere else in Zed, so probably too difficult to imple
 Fix that in no line mode the candidate item list lines have incorrect bottom padding, They look weird, the ones for the line mode are fine weirdly, when no character is typed in, then in no line mode, the candidate rows have correct paddinge only as soon as anything is typed in.
 
 I have no idea why this is happening, and it would be amazing to fix, but I can not figure it out.
+
+
+
+# Not so important
+
+## Implement ACP whitelist/blacklist in settings of shell commands to be able to be run automatically?
+
+### Current ACP Permission System
+
+#### How "Allow always" currently works:
+
+1. **Permission Request Flow**: When an ACP agent wants to run a CLI command, it sends a permission request to Zed via the `agent-client-protocol`
+
+2. **UI Response**: Zed shows permission options (Allow once, Allow always, Reject once, Reject always) in the UI
+
+3. **Storage Location**: The "Allow always" information is **NOT stored in Zed's settings**. Instead, it's stored and managed by the **external agent server** (like Claude Code, Gemini CLI, etc.)
+
+4. **Protocol Communication**: The permission decision is sent back to the external agent via the `RequestPermissionResponse` in the agent-client-protocol
+
+5. **Agent-side Enforcement**: The external agent maintains its own whitelist/blacklist and decides whether to ask for permissions again based on previous "Allow always" responses
+
+#### Key Code Locations:
+
+- **Permission UI**: [/Users/dima/Developer/zed/crates/agent_ui/src/acp/thread_view.rs](cci:7://file:///Users/dima/Developer/zed/crates/agent_ui/src/acp/thread_view.rs:0:0-0:0) - handles the UI for permission buttons
+- **Permission Handling**: [/Users/dima/Developer/zed/crates/acp_thread/src/acp_thread.rs](cci:7://file:///Users/dima/Developer/zed/crates/acp_thread/src/acp_thread.rs:0:0-0:0) - manages permission requests in Zed
+- **Agent Communication**: [/Users/dima/Developer/zed/crates/agent_servers/src/acp.rs](cci:7://file:///Users/dima/Developer/zed/crates/agent_servers/src/acp.rs:0:0-0:0) - handles communication with external agents
+- **Settings**: [/Users/dima/Developer/zed/crates/agent_settings/src/agent_settings.rs](cci:7://file:///Users/dima/Developer/zed/crates/agent_settings/src/agent_settings.rs:0:0-0:0) - contains `always_allow_tool_actions` setting
+
+#### Current Settings:
+
+There's already a global setting `always_allow_tool_actions` in [AgentSettings](cci:2://file:///Users/dima/Developer/zed/crates/agent_settings/src/agent_settings.rs:23:0-51:1) that can automatically allow tool actions without prompting, but this is an all-or-nothing setting and doesn't provide per-command whitelist/blacklist functionality.
+
+#### Answer to Your Question
+
+**Can ACP have a whitelist/blacklist in settings of CLI commands?**
+
+Currently, **no**. ACP does not have a built-in whitelist/blacklist system in Zed's settings for specific CLI commands. The "Allow always" functionality is handled entirely by the external agent servers, not by Zed itself.
+
+To implement this feature, you would need to:
+
+1. **Add new settings** to `crates/agent_settings/src/agent_settings.rs` for command whitelists/blacklists
+2. **Modify the permission logic** in `crates/acp_thread/src/acp_thread.rs` to check these settings before prompting
+3. **Update the UI** to show when commands are auto-allowed/blocked based on these settings
+4. **Store the command patterns** in Zed's settings database
+
