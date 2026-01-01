@@ -1,7 +1,10 @@
 - try out AMP tab once again
+https://github.com/zed-industries/zed/pull/45724
 
 - fix that edit predictions rarely work for new text thread buffers
 maybe check with proxy if it is even triggered
+
+- fix qwen bug on duplicated streamed response
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
@@ -12,6 +15,10 @@ and also in the tab summary for text threads, first tokens are always duplicated
 - start fixing all unit tests
 
 - the project symbol search does not refresh properly, and does not show all symbols?
+see `crates/project_lsp_treesitter_symbol_search/src/project_lsp_treesitter_symbol_search.rs` and related code
+just investigate, does it ever re-index files?
+from https://github.com/zed-industries/zed/pull/45720, the cache is never re-indexed once built
+
 is it because not everything is indexed in Zed project? FIRST, find an example!
 
 - pull in latest https://github.com/zed-industries/zed/pull/45734 changes (agent history)
