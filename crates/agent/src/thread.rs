@@ -1821,6 +1821,7 @@ impl Thread {
             request.messages.extend(message.to_request());
         }
 
+        println!("SUMMARIZE_THREAD_PROMPT 1");
         request.messages.push(LanguageModelRequestMessage {
             role: Role::User,
             content: vec![SUMMARIZE_THREAD_PROMPT.into()],

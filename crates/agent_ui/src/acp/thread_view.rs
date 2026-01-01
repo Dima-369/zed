@@ -1794,6 +1794,7 @@ impl AcpThreadView {
             ..Default::default()
         };
 
+        println!("SUMMARIZE_THREAD_PROMPT 2");
         request.messages.push(LanguageModelRequestMessage {
             role: language_model::Role::User,
             content: vec![MessageContent::Text(

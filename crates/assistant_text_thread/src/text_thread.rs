@@ -2675,6 +2675,7 @@ impl TextThread {
                 return;
             }
 
+            println!("SUMMARIZE_THREAD_PROMPT 3");
             let mut request = self.to_completion_request(Some(&model.model), cx);
             request.messages.push(LanguageModelRequestMessage {
                 role: Role::User,
