@@ -19,6 +19,8 @@ https://github.com/zed-industries/zed/pull/45930 (feat: Add Ctrl+Shift+Enter to 
 So, 3 parts, check all
 see `crates/agent_ui/src/agent_panel.rs` and related code
 
+ONCE this works, delete all `println!("SUMMARIZE_THREAD_PROMPT 3");`
+
 # Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch
 
 try this out some time, I already have tree view, how about only displaying file count in tree view to the right of directories only for amount of files below
