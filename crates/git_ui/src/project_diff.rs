@@ -741,8 +741,9 @@ impl Focusable for ProjectDiff {
 impl Item for ProjectDiff {
     type Event = EditorEvent;
 
-    fn tab_icon(&self, _window: &Window, _cx: &App) -> Option<Icon> {
-        Some(Icon::new(IconName::GitBranch).color(Color::Muted))
+    fn tab_icon(&self, _window: &Window, cx: &App) -> Option<Icon> {
+        let color = self.git_status_color(cx);
+        Some(Icon::new(IconName::GitBranch).color(color))
     }
 
     fn to_item_events(event: &EditorEvent, f: impl FnMut(ItemEvent)) {
@@ -775,12 +776,14 @@ impl Item for ProjectDiff {
     }
 
     fn tab_content(&self, params: TabContentParams, _window: &Window, cx: &App) -> AnyElement {
+        let color = if params.selected {
+            Color::Default
+        } else {
+            self.git_status_color(cx)
+        };
+
         Label::new(self.tab_content_text(0, cx))
-            .color(if params.selected {
-                Color::Default
-            } else {
-                Color::Muted
-            })
+            .color(color)
             .into_any_element()
     }
 
@@ -928,6 +931,32 @@ impl Item for ProjectDiff {
         self.editor.update(cx, |editor, cx| {
             editor.added_to_workspace(workspace, window, cx)
         });
+    }
+}
+
+impl ProjectDiff {
+    fn git_status_color(&self, cx: &App) -> Color {
+        // Use the same logic as the "Recent Branches" button in title_bar.rs
+        // to determine the color based on git status
+        if let Some(repo) = self.branch_diff.read(cx).repo() {
+            let repo = repo.read(cx);
+            let status = repo.status_summary();
+            let tracked = status.index + status.worktree;
+
+            if status.conflict > 0 {
+                Color::VersionControlConflict
+            } else if tracked.modified > 0 {
+                Color::VersionControlModified
+            } else if tracked.added > 0 || status.untracked > 0 {
+                Color::VersionControlAdded
+            } else if tracked.deleted > 0 {
+                Color::VersionControlDeleted
+            } else {
+                Color::Muted
+            }
+        } else {
+            Color::Muted
+        }
     }
 }
 
