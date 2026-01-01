@@ -3,7 +3,7 @@ use std::sync::Arc;
 use collections::HashMap;
 use fuzzy::{StringMatch, StringMatchCandidate};
 use gpui::{App, Entity, EntityId, SharedString, Task as GpuiTask};
-use language::{Anchor, Buffer, OutlineItem};
+use language::{Anchor, Buffer};
 use parking_lot::Mutex;
 use project::{Project, Symbol};
 use util::ResultExt;
@@ -15,7 +15,9 @@ use crate::providers::{DocumentSymbolResult, SearchResult};
 static SYMBOL_CACHES: Mutex<Option<HashMap<EntityId, Arc<SymbolCache>>>> = Mutex::new(None);
 
 struct SymbolCache {
-    cached_symbols: Mutex<Vec<SymbolEntry>>,
+    workspace_symbols: Mutex<Vec<Symbol>>,
+    /// Maps file paths to their last known mtime and the symbols found in them.
+    outline_cache: Mutex<HashMap<project::ProjectPath, (fs::MTime, Vec<SymbolEntry>)>>,
     is_indexing: Mutex<bool>,
     indexing_progress: Mutex<(usize, usize)>,
 }
@@ -48,7 +50,8 @@ impl SymbolProvider {
                 .entry(project_id)
                 .or_insert_with(|| {
                     Arc::new(SymbolCache {
-                        cached_symbols: Mutex::new(Vec::new()),
+                        workspace_symbols: Mutex::new(Vec::new()),
+                        outline_cache: Mutex::new(HashMap::default()),
                         is_indexing: Mutex::new(false),
                         indexing_progress: Mutex::new((0, 0)),
                     })
@@ -68,78 +71,84 @@ impl SymbolProvider {
                 return;
             }
             *is_indexing = true;
-            // Clear existing symbols to ensure a fresh rebuild
-            self.cache.cached_symbols.lock().clear();
         }
 
         let project = self.project.clone();
         let cache = self.cache.clone();
 
-        // Get all file paths from all worktrees (respects .gitignore)
+        // Get all file paths from all worktrees
         let worktrees: Vec<_> = project.read(cx).visible_worktrees(cx).collect();
 
-        let mut paths_to_index: Vec<project::ProjectPath> = Vec::new();
-        for worktree in &worktrees {
-            let snapshot = worktree.read(cx).snapshot();
-            for entry in snapshot.files(false, 0) {
-                // Skip ignored files
-                if entry.is_ignored {
-                    continue;
+        let mut paths_to_reindex: Vec<(project::ProjectPath, fs::MTime)> = Vec::new();
+        let mut total_files = 0;
+
+        {
+            let outline_cache = cache.outline_cache.lock();
+            for worktree in &worktrees {
+                let snapshot = worktree.read(cx).snapshot();
+                for entry in snapshot.files(false, 0) {
+                    if entry.is_ignored {
+                        continue;
+                    }
+                    total_files += 1;
+                    let project_path = project::ProjectPath {
+                        worktree_id: snapshot.id(),
+                        path: entry.path.clone(),
+                    };
+
+                    // Only re-index if the file has changed or isn't in cache
+                    let needs_reindex = entry
+                        .mtime
+                        .map(|mtime| {
+                            outline_cache
+                                .get(&project_path)
+                                .map_or(true, |(cached_mtime, _)| *cached_mtime != mtime)
+                        })
+                        .unwrap_or(true);
+
+                    if needs_reindex {
+                        if let Some(mtime) = entry.mtime {
+                            paths_to_reindex.push((project_path, mtime));
+                        }
+                    }
                 }
-                paths_to_index.push(project::ProjectPath {
-                    worktree_id: snapshot.id(),
-                    path: entry.path.clone(),
-                });
             }
         }
 
         log::info!(
-            "Search everywhere: starting to index {} files for symbols",
-            paths_to_index.len()
+            "Search everywhere: {} total files, re-indexing {} changed files",
+            total_files,
+            paths_to_reindex.len()
         );
 
-        // Also try workspace symbols with empty query to get all symbols (if LSP supports it)
+        // Workspace symbols (LSP) are fetched every time as they are typically fast
         let workspace_symbols_task = project.update(cx, |project, cx| project.symbols("", cx));
 
-        // Initialize progress
         {
             let mut progress = cache.indexing_progress.lock();
-            *progress = (0, paths_to_index.len());
+            *progress = (0, paths_to_reindex.len());
         }
 
         cx.spawn({
             let project = project.clone();
             async move |cx| {
-                let mut all_symbols: Vec<SymbolEntry> = Vec::new();
-
-                // Collect workspace symbols first (fast, if LSP supports it)
+                // Update workspace symbols
                 if let Some(symbols) = workspace_symbols_task.await.log_err() {
-                    log::info!(
-                        "Search everywhere: indexed {} workspace symbols",
-                        symbols.len()
-                    );
-                    for symbol in symbols {
-                        all_symbols.push(SymbolEntry::Workspace(symbol));
-                    }
+                    let mut ws_cache = cache.workspace_symbols.lock();
+                    *ws_cache = symbols;
                 }
 
-                // Now open each file and get outline items (Tree-sitter based, no LSP needed)
-                // Process in batches to avoid overwhelming the system
                 let batch_size = 50;
-                let total_files = paths_to_index.len();
+                let total_to_reindex = paths_to_reindex.len();
 
-                for (batch_idx, paths_batch) in paths_to_index.chunks(batch_size).enumerate() {
-                    let mut batch_tasks: Vec<(
-                        String,
-                        GpuiTask<anyhow::Result<(Entity<Buffer>, Vec<OutlineItem<Anchor>>)>>,
-                    )> = Vec::new();
+                for (batch_idx, batch) in paths_to_reindex.chunks(batch_size).enumerate() {
+                    let mut batch_tasks = Vec::new();
 
-                    for path in paths_batch {
-                        let path_string = path.path.as_unix_str().to_string();
+                    for (path, mtime) in batch {
                         let path = path.clone();
+                        let mtime = *mtime;
                         let project = project.clone();
 
-                        // Open buffer and get outline items
                         let task = cx.update(|cx| {
                             project.update(cx, |project, cx| {
                                 let open_task = project.open_buffer(path.clone(), cx);
@@ -147,82 +156,49 @@ impl SymbolProvider {
                                     let buffer = open_task.await?;
                                     let outline_items = cx.update(|cx| {
                                         let buffer_snapshot = buffer.read(cx).snapshot();
-                                        let outline = buffer_snapshot.outline(None);
-                                        outline.items
+                                        buffer_snapshot.outline(None).items
                                     })?;
-                                    anyhow::Ok((buffer, outline_items))
+                                    anyhow::Ok((path, mtime, buffer, outline_items))
                                 })
                             })
                         });
 
                         if let Ok(task) = task {
-                            batch_tasks.push((path_string, task));
+                            batch_tasks.push(task);
                         }
                     }
 
-                    // Wait for batch to complete
-                    for (file_path, task) in batch_tasks {
+                    for task in batch_tasks {
                         match task.await {
-                            Ok((buffer, outline_items)) => {
-                                if !outline_items.is_empty() {
-                                    log::debug!(
-                                        "Search everywhere: got {} outline items from {}",
-                                        outline_items.len(),
-                                        file_path
-                                    );
-                                }
-                                for item in outline_items {
-                                    all_symbols.push(SymbolEntry::Outline {
-                                        name: item.text.clone(),
-                                        path: file_path.clone(),
+                            Ok((path, mtime, buffer, items)) => {
+                                let path_str = path.path.as_unix_str().to_string();
+                                let symbols = items
+                                    .into_iter()
+                                    .map(|item| SymbolEntry::Outline {
+                                        name: item.text,
+                                        path: path_str.clone(),
                                         buffer: buffer.clone(),
-                                        range: item.range.clone(),
-                                    });
-                                }
+                                        range: item.range,
+                                    })
+                                    .collect();
+
+                                cache.outline_cache.lock().insert(path, (mtime, symbols));
                             }
-                            Err(e) => {
-                                log::debug!(
-                                    "Search everywhere: failed to get outline for {}: {}",
-                                    file_path,
-                                    e
-                                );
+                            Err(err) => {
+                                if err.to_string().contains("Binary files are not supported") {
+                                    continue;
+                                }
+                                log::error!("Search everywhere indexing error: {err:?}");
                             }
                         }
                     }
 
-                    // Update progress
-                    let processed = ((batch_idx + 1) * batch_size).min(total_files);
+                    let processed = ((batch_idx + 1) * batch_size).min(total_to_reindex);
                     {
                         let mut progress = cache.indexing_progress.lock();
-                        *progress = (processed, total_files);
+                        *progress = (processed, total_to_reindex);
                     }
-
-                    if processed % 100 == 0 || processed >= total_files {
-                        log::info!(
-                            "Search everywhere: indexed {}/{} files ({}%), {} symbols so far",
-                            processed,
-                            total_files,
-                            (processed * 100) / total_files.max(1),
-                            all_symbols.len()
-                        );
-                    }
-
-                    // Update cache incrementally so results appear as we index
-                    {
-                        let mut symbols = cache.cached_symbols.lock();
-                        *symbols = all_symbols.clone();
-                    }
-                }
-
-                log::info!(
-                    "Search everywhere: indexing complete, {} total symbols",
-                    all_symbols.len()
-                );
-
-                // Final cache update
-                {
-                    let mut symbols = cache.cached_symbols.lock();
-                    *symbols = all_symbols;
+                    cx.update(|_| ()).ok();
                 }
 
                 // Mark indexing as complete
@@ -260,15 +236,26 @@ impl SymbolProvider {
             return GpuiTask::ready(Vec::new());
         }
 
-        let cached_symbols = self.cache.cached_symbols.lock().clone();
+        let workspace_symbols = self.cache.workspace_symbols.lock().clone();
+        let outline_cache = self.cache.outline_cache.lock();
+        let mut all_entries = Vec::new();
+
+        for s in workspace_symbols {
+            all_entries.push(SymbolEntry::Workspace(s));
+        }
+        for (_, symbols) in outline_cache.values() {
+            all_entries.extend(symbols.iter().cloned());
+        }
+        drop(outline_cache);
+
         let query = query.to_string();
 
         cx.spawn(async move |_, cx| {
-            if cached_symbols.is_empty() {
+            if all_entries.is_empty() {
                 return Vec::new();
             }
 
-            let candidates: Vec<StringMatchCandidate> = cached_symbols
+            let candidates: Vec<StringMatchCandidate> = all_entries
                 .iter()
                 .enumerate()
                 .map(|(id, entry)| {
@@ -294,7 +281,7 @@ impl SymbolProvider {
             matches
                 .into_iter()
                 .filter_map(|m| {
-                    let entry = cached_symbols.get(m.candidate_id)?;
+                    let entry = all_entries.get(m.candidate_id)?;
 
                     let result = match entry {
                         SymbolEntry::Workspace(symbol) => {

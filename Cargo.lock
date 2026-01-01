@@ -12680,6 +12680,7 @@ dependencies = [
  "collections",
  "ctor",
  "editor",
+ "fs",
  "futures 0.3.31",
  "fuzzy",
  "gpui",
