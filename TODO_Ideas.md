@@ -26,12 +26,6 @@ https://github.com/zed-industries/zed/pull/45930 (feat: Add Ctrl+Shift+Enter to 
 So, 3 parts, check all
 see `crates/agent_ui/src/agent_panel.rs` and related code
 
-# git_ui: Implement interactive Git commit graph view
-
-check this out
-
-https://github.com/zed-industries/zed/pull/45884
-
 # Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch
 
 try this out some time, I already have tree view, how about only displaying file count in tree view to the right of directories only for amount of files below
@@ -233,6 +227,13 @@ https://github.com/zed-industries/zed/pull/45387
 This shows 2 character hints at the start of each word.
 
 https://github.com/zed-industries/zed/pull/43733
+
+## Git Commit Graph View
+
+I merged into my own fork without any issues, I just don't really need it. For now, I'll wait on Zed's team to merge it, and use `lazygit` in the meantime.
+
+git_ui: Implement interactive Git commit graph view
+https://github.com/zed-industries/zed/pull/45884 (PR open)
 
 
 
