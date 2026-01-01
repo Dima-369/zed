@@ -418,6 +418,7 @@ impl TreeViewState {
                     name,
                     depth,
                     expanded,
+                    file_count: child_statuses.len(),
                 }),
                 true,
             ));
@@ -481,6 +482,7 @@ struct GitTreeDirEntry {
     depth: usize,
     // staged_state: ToggleState,
     expanded: bool,
+    file_count: usize,
 }
 
 #[derive(Default)]
@@ -5163,7 +5165,12 @@ impl GitPanel {
                     .size(IconSize::Small)
                     .color(Color::Muted),
             )
-            .child(self.entry_label(entry.name.clone(), label_color).truncate());
+            .child(self.entry_label(entry.name.clone(), label_color).truncate())
+            .child(
+                Label::new(format!("({})", entry.file_count))
+                    .color(Color::Muted)
+                    .ml_1()
+            );
 
         h_flex()
             .id(id)
