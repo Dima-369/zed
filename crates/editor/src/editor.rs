@@ -8176,11 +8176,7 @@ impl Editor {
 
         let mouse_position = window.mouse_position();
         let point_for_position = position_map.point_for_position(mouse_position);
-        let position = if point_for_position.column_overshoot_after_line_end > 0 {
-            point_for_position.next_valid
-        } else {
-            point_for_position.previous_valid
-        };
+        let position = point_for_position.previous_valid;
 
         self.select(
             SelectPhase::BeginColumnar {
