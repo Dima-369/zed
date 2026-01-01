@@ -2446,11 +2446,11 @@ impl GitPanel {
                 let tracked_count = self.total_tracked_count();
 
                 if staged_count > 1 {
-                    // Multiple staged files
-                    Some(format!("Update {} files", staged_count))
+                    // Multiple staged files - create a message with file list
+                    Some(self.build_multiple_files_message("Update", staged_count, true, cx))
                 } else if tracked_count > 1 {
-                    // Multiple tracked files (and no staged files)
-                    Some(format!("Update {} files", tracked_count))
+                    // Multiple tracked files (and no staged files) - create a message with file list
+                    Some(self.build_multiple_files_message("Update", tracked_count, false, cx))
                 } else {
                     // No files to commit
                     None
@@ -2460,12 +2460,32 @@ impl GitPanel {
             // Multiple staged files (since single case was handled above and staged count > 0)
             let staged_count = self.total_staged_count();
             if staged_count > 1 {
-                Some(format!("Update {} files", staged_count))
+                // Multiple staged files - create a message with file list
+                Some(self.build_multiple_files_message("Update", staged_count, true, cx))
             } else {
                 // This case shouldn't happen since single staged file was handled above
                 None
             }
         }
+    }
+
+    fn build_multiple_files_message(&self, action: &str, count: usize, staged: bool, cx: &App) -> String {
+        let mut message = format!("{} {} files", action, count);
+        message.push_str("\n\n");
+
+        if let Some(repo) = self.active_repository.as_ref() {
+            let repo = repo.read(cx);
+            for entry in self.entries.iter().filter_map(|e| e.status_entry()) {
+                let is_staged = GitPanel::stage_status_for_entry(entry, &repo).has_staged();
+                if is_staged == staged {
+                    message.push_str("- ");
+                    message.push_str(&entry.repo_path.display(PathStyle::Posix).to_string());
+                    message.push('\n');
+                }
+            }
+        }
+
+        message
     }
 
     fn generate_commit_message_action(

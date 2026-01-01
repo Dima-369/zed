@@ -58,11 +58,15 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## Git
 
-- move git commit modal to the right side instead of being centered, so it does not overlap the left git dock, which makes it impossible to see what files are staged on a small screen. One could lower the size of the git dock to make it fit, but then it is quite small
-  - and use `text_accent` for its border color to be easier to see
 - add `blame > git_blame_font_family` setting to specify the font family for the git blame view because I am using a proportional font and the blame view misaligns otherwise
 - add `git::DiffWithCommit` from https://github.com/zed-industries/zed/pull/44467 and based on that code, `git::DiffWithBranch` is implemented
 - make `Uncommitted Changes` tab title dynamic: if there are no files, it shows `No Changes`, otherwise it shows `Uncommitted Changes (1 file)` or `Uncommitted Changes (n files)`
+
+### Git Commit Modal
+
+- move git commit modal to the right side instead of being centered, so it does not overlap the left git dock, which makes it impossible to see what files are staged on a small screen. One could lower the size of the git dock to make it fit, but then it is quite small
+  - and use `text_accent` for its border color to be easier to see
+- preset git commit message with "Update {file count} files" on multiple files and add every file name to the commit description as a list with a `-` prefix
 
 ## Zed CLI
 
