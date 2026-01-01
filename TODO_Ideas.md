@@ -1,7 +1,8 @@
 - try out AMP tab once again
 https://github.com/zed-industries/zed/pull/45724
 
-- can buffer search modal be used properly in AI text threads? it currently does not work
+- can buffer search modal be used properly in AI text threads (the AI agent pane/dock)? it currently does not work
+when I invoke this action while in an AI text thread, it populates the buffer search modal with the content of the editor buffer (at the left, currently active) instead, not the AI thread buffer
 
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
