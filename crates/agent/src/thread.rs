@@ -1357,10 +1357,6 @@ impl Thread {
             println!("Flushing pending message");
             this.update(cx, |this, cx| {
                 this.flush_pending_message(cx);
-                // Generate/regenerate title whenever AI finishes and there are messages
-                if !this.messages.is_empty() && this.pending_title_generation.is_none() {
-                    this.generate_title(cx);
-                }
             })?;
 
             if let Some(error) = error {
@@ -1383,6 +1379,12 @@ impl Thread {
             } else if this.read_with(cx, |this, _| this.tool_use_limit_reached)? {
                 return Err(language_model::ToolUseLimitReachedError.into());
             } else if end_turn {
+                this.update(cx, |this, cx| {
+                    // Generate/regenerate title whenever AI finishes and there are messages
+                    if !this.messages.is_empty() && this.pending_title_generation.is_none() {
+                        this.generate_title(cx);
+                    }
+                })?;
                 return Ok(());
             } else {
                 intent = CompletionIntent::ToolResults;

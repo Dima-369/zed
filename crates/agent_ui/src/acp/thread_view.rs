@@ -1946,7 +1946,7 @@ impl AcpThreadView {
                     cx,
                 );
 
-                if thread.read(cx).title() == DEFAULT_THREAD_TITLE {
+                if thread.read(cx).title() == DEFAULT_THREAD_TITLE && self.as_native_thread(cx).is_none() {
                     self.generate_title(thread.clone(), cx);
                 }
 
