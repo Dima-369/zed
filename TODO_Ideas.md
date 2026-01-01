@@ -5,12 +5,6 @@ https://github.com/zed-industries/zed/pull/45724
 does it also happen in Release Zed on say a free OpenRouter model?
 it seems to work for Raptor model?
 
-# Improve Git Panel with TreeView, VSCode-style grouping, commit history, and auto-fetch
-
-try this out some time, I already have tree view, how about only displaying file count in tree view to the right of directories only for amount of files below
-
-https://github.com/zed-industries/zed/pull/45846
-
 # start fixing all unit tests
 
 # ACP
@@ -53,8 +47,8 @@ Currently, **no**. ACP does not have a built-in whitelist/blacklist system in Ze
 
 To implement this feature, you would need to:
 
-1. **Add new settings** to [AgentSettings](cci:2://file:///Users/dima/Developer/zed/crates/agent_settings/src/agent_settings.rs:23:0-51:1) for command whitelists/blacklists
-2. **Modify the permission logic** in [acp_thread.rs](cci:7://file:///Users/dima/Developer/zed/crates/acp_thread/src/acp_thread.rs:0:0-0:0) to check these settings before prompting
+1. **Add new settings** to `crates/agent_settings/src/agent_settings.rs` for command whitelists/blacklists
+2. **Modify the permission logic** in `crates/acp_thread/src/acp_thread.rs` to check these settings before prompting
 3. **Update the UI** to show when commands are auto-allowed/blocked based on these settings
 4. **Store the command patterns** in Zed's settings database
 
