@@ -1,3 +1,7 @@
+- when opening the git commit modal and I have modified exactly one file, it presets this commit message: "Update {file}"
+can you improve it, so when multiple files are modified, it presets this commit message: "Update {file count} files"
+take care to not preset any, when no files are modified
+
 use gemini
 - clicking with mouse at the very right of line (where no char is anymore) should position cursor on the newline character at the very right. currently, it is always one left of the newline character, on the last real character in a line, this should be regardless if vim mode is enabled or not
 
