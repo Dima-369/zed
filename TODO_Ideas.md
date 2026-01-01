@@ -1,6 +1,3 @@
-- try out AMP tab once again
-https://github.com/zed-industries/zed/pull/45724
-
 - in Zed Agent with Qwen, why do I not see tool usages, for reading files?
 does it also happen in Release Zed on say a free OpenRouter model?
 it seems to work for Raptor model?
@@ -62,16 +59,18 @@ To implement this feature, you would need to:
 
 ## edit predictions: Amp Tab support
 
-BUT I tested while the PR was not done!
-The completions suck hard! Often wants to jump to something off-screen in file and does weird edits.
-https://github.com/zed-industries/zed/pull/45724
+I tested where the author has mentioned that it is pretty much done.
+The completions are just not good! Often wants to jump to something off-screen in file and does long weird edits.
+I find `supermaven` much better.
+
+https://github.com/zed-industries/zed/pull/45724 (PR open)
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
 
 I fixed this in my own fork already, but let's see what Zed team says:
 
 I created this bug report issue:
-https://github.com/zed-industries/zed/issues/45631
+https://github.com/zed-industries/zed/issues/45631 (issue open)
 
 ## Smooth caret/cursor
 
