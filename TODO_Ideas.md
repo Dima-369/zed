@@ -10,7 +10,14 @@ does it also happen in Release Zed on say a free OpenRouter model?
 it seems to work for Raptor model?
 
 
-- pull in latest https://github.com/zed-industries/zed/pull/45734 changes (agent history)
+# Agent History
+
+add in the latest commit from below
+
+https://github.com/zed-industries/zed/pull/45734 changes (agent history)
+
+Display distinct icons for ACP and text threads, enhance agent display names with human-readable conversions and title-case fallback, and refactor history store message conversion logic
+apply this diff: https://github.com/zed-industries/zed/pull/45734/changes/9c7fa7895fdb50d0a379cd2ec993b18d95ca286b
 
 # Better Agent/text thread title summaries
 
