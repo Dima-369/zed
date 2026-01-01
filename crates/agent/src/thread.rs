@@ -1352,7 +1352,7 @@ impl Thread {
                         .tool_results
                         .insert(tool_result.tool_use_id.clone(), tool_result);
                 })?;
-}
+            }
 
             println!("Flushing pending message");
             this.update(cx, |this, cx| {
@@ -1823,7 +1823,6 @@ impl Thread {
             request.messages.extend(message.to_request());
         }
 
-        println!("SUMMARIZE_THREAD_PROMPT 1");
         request.messages.push(LanguageModelRequestMessage {
             role: Role::User,
             content: vec![SUMMARIZE_THREAD_PROMPT.into()],

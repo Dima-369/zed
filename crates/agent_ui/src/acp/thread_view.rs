@@ -1794,7 +1794,6 @@ impl AcpThreadView {
             ..Default::default()
         };
 
-        println!("SUMMARIZE_THREAD_PROMPT 2");
         request.messages.push(LanguageModelRequestMessage {
             role: language_model::Role::User,
             content: vec![MessageContent::Text(
@@ -1873,11 +1872,7 @@ impl AcpThreadView {
                     // so the breathing animation stops exactly when the title appears
                     this.pending_title_generation = None;
                     thread.update(cx, |thread, cx| {
-                        if thread.title() == DEFAULT_THREAD_TITLE {
-                            Some(thread.set_title(title, cx))
-                        } else {
-                            None
-                        }
+                        Some(thread.set_title(title, cx))
                     })
                 });
 
@@ -1946,7 +1941,7 @@ impl AcpThreadView {
                     cx,
                 );
 
-                if thread.read(cx).title() == DEFAULT_THREAD_TITLE && self.as_native_thread(cx).is_none() {
+                if self.as_native_thread(cx).is_none() {
                     self.generate_title(thread.clone(), cx);
                 }
 
