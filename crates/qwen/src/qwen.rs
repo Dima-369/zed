@@ -115,8 +115,14 @@ mod tests {
 
     #[test]
     fn test_model_from_id() {
-        assert_eq!(Model::from_id("qwen3-coder-plus").unwrap(), Model::Qwen3CoderPlus);
-        assert_eq!(Model::from_id("qwen3-coder-flash").unwrap(), Model::Qwen3CoderFlash);
+        assert_eq!(
+            Model::from_id("qwen3-coder-plus").unwrap(),
+            Model::Qwen3CoderPlus
+        );
+        assert_eq!(
+            Model::from_id("qwen3-coder-flash").unwrap(),
+            Model::Qwen3CoderFlash
+        );
         assert!(Model::from_id("invalid").is_err());
     }
 

@@ -8,8 +8,8 @@ use crate::{
 };
 use anyhow::Context as _;
 use gpui::{
-    AnyElement, AsyncWindowContext, Context, Entity, Focusable as _, FontWeight,
-    Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, ScrollHandle, Size,
+    AnyElement, AsyncWindowContext, Context, Entity, Focusable as _, FontWeight, Hsla,
+    InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, ScrollHandle, Size,
     StatefulInteractiveElement, StyleRefinement, Styled, Subscription, Task, TextStyleRefinement,
     Window, div, px,
 };

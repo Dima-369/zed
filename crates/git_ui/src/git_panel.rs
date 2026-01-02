@@ -2471,7 +2471,13 @@ impl GitPanel {
         }
     }
 
-    fn build_multiple_files_message(&self, action: &str, count: usize, staged: bool, cx: &App) -> String {
+    fn build_multiple_files_message(
+        &self,
+        action: &str,
+        count: usize,
+        staged: bool,
+        cx: &App,
+    ) -> String {
         let mut message = format!("{} {} files", action, count);
         message.push_str("\n\n");
 
@@ -5169,7 +5175,7 @@ impl GitPanel {
             .child(
                 Label::new(format!("({})", entry.file_count))
                     .color(Color::Muted)
-                    .ml_1()
+                    .ml_1(),
             );
 
         h_flex()

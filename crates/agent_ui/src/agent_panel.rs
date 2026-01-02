@@ -36,7 +36,9 @@ use crate::{
     ExpandMessageEditor,
     acp::{AcpThreadHistory, ThreadHistoryEvent},
 };
-use crate::{ExternalAgent, NewExternalAgentThread, NewNativeAgentThreadFromSummary, NewAcpThreadFromSummary};
+use crate::{
+    ExternalAgent, NewAcpThreadFromSummary, NewExternalAgentThread, NewNativeAgentThreadFromSummary,
+};
 use agent_settings::AgentSettings;
 use ai_onboarding::AgentPanelOnboarding;
 use anyhow::{Result, anyhow};
@@ -116,16 +118,14 @@ pub fn init(cx: &mut App) {
                         }
                     },
                 )
-                .register_action(
-                    |workspace, action: &NewAcpThreadFromSummary, window, cx| {
-                        if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
-                            panel.update(cx, |panel, cx| {
-                                panel.new_acp_thread_from_summary(action, window, cx)
-                            });
-                            workspace.focus_panel::<AgentPanel>(window, cx);
-                        }
-                    },
-                )
+                .register_action(|workspace, action: &NewAcpThreadFromSummary, window, cx| {
+                    if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                        panel.update(cx, |panel, cx| {
+                            panel.new_acp_thread_from_summary(action, window, cx)
+                        });
+                        workspace.focus_panel::<AgentPanel>(window, cx);
+                    }
+                })
                 .register_action(|workspace, _: &ExpandMessageEditor, window, cx| {
                     if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
                         workspace.focus_panel::<AgentPanel>(window, cx);
@@ -243,14 +243,9 @@ pub fn init(cx: &mut App) {
                     if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
                         workspace.focus_panel::<AgentPanel>(window, cx);
                         panel.update(cx, |panel, cx| {
-                            let external_agent = crate::ExternalAgent::from_agent_name(&action.agent_name);
-                            panel.external_thread(
-                                Some(external_agent),
-                                None,
-                                None,
-                                window,
-                                cx,
-                            );
+                            let external_agent =
+                                crate::ExternalAgent::from_agent_name(&action.agent_name);
+                            panel.external_thread(Some(external_agent), None, None, window, cx);
                         });
                     }
                 });
@@ -1316,10 +1311,7 @@ impl AgentPanel {
             if let Some(workspace) = self.workspace.upgrade() {
                 workspace.update(cx, |workspace, cx| {
                     search::buffer_search_modal::BufferSearchModal::toggle_for_editor(
-                        workspace,
-                        editor,
-                        window,
-                        cx,
+                        workspace, editor, window, cx,
                     );
                 });
             }
@@ -2145,8 +2137,12 @@ impl AgentPanel {
         let focus_handle = self.focus_handle(cx);
 
         let active_thread = match self.active_view() {
-            ActiveView::TextThread { text_thread_editor, .. } => Some(text_thread_editor.clone()),
-            ActiveView::ExternalAgentThread { .. } | ActiveView::History | ActiveView::Configuration => None,
+            ActiveView::TextThread {
+                text_thread_editor, ..
+            } => Some(text_thread_editor.clone()),
+            ActiveView::ExternalAgentThread { .. }
+            | ActiveView::History
+            | ActiveView::Configuration => None,
         };
 
         let active_acp_thread = match self.active_view() {

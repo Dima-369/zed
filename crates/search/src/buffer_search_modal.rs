@@ -309,11 +309,7 @@ impl BufferSearchModal {
                 })
             } else if !VimModeSetting::get_global(cx).0 {
                 let query = editor.query_suggestion(window, cx);
-                if query.is_empty() {
-                    None
-                } else {
-                    Some(query)
-                }
+                if query.is_empty() { None } else { Some(query) }
             } else {
                 None
             };
@@ -1041,11 +1037,14 @@ impl PickerDelegate for BufferSearchDelegate {
                                             .shape(IconButtonShape::Square)
                                             .toggle_state(self.line_mode)
                                             .on_click(cx.listener(move |picker, _, window, cx| {
-                                                picker.delegate.line_mode = !picker.delegate.line_mode;
+                                                picker.delegate.line_mode =
+                                                    !picker.delegate.line_mode;
                                                 let query = picker.delegate.current_query.clone();
                                                 picker.set_query(query, window, cx);
                                             }))
-                                            .tooltip(|window, cx| Tooltip::text("Toggle Line Mode")(window, cx)),
+                                            .tooltip(|window, cx| {
+                                                Tooltip::text("Toggle Line Mode")(window, cx)
+                                            }),
                                     ),
                             ),
                     ),

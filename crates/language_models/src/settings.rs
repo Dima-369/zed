@@ -4,11 +4,20 @@ use collections::HashMap;
 use settings::RegisterSetting;
 
 use crate::provider::{
-    anthropic::AnthropicSettings, bedrock::AmazonBedrockSettings, cloud::ZedDotDevSettings,
-    deepseek::DeepSeekSettings, google::GoogleSettings, lmstudio::LmStudioSettings,
-    mistral::MistralSettings, ollama::OllamaSettings, open_ai::OpenAiSettings,
-    open_ai_compatible::OpenAiCompatibleSettings, open_router::OpenRouterSettings,
-    qwen::{QwenSettings, AvailableModel}, vercel::VercelSettings, x_ai::XAiSettings,
+    anthropic::AnthropicSettings,
+    bedrock::AmazonBedrockSettings,
+    cloud::ZedDotDevSettings,
+    deepseek::DeepSeekSettings,
+    google::GoogleSettings,
+    lmstudio::LmStudioSettings,
+    mistral::MistralSettings,
+    ollama::OllamaSettings,
+    open_ai::OpenAiSettings,
+    open_ai_compatible::OpenAiCompatibleSettings,
+    open_router::OpenRouterSettings,
+    qwen::{AvailableModel, QwenSettings},
+    vercel::VercelSettings,
+    x_ai::XAiSettings,
 };
 
 #[derive(Debug, RegisterSetting)]
@@ -108,16 +117,21 @@ impl settings::Settings for AllLanguageModelSettings {
                 available_models: vercel.available_models.unwrap_or_default(),
             },
             qwen: QwenSettings {
-                available_models: qwen.available_models.unwrap_or_default().into_iter().map(|m| AvailableModel {
-                    name: m.name,
-                    display_name: m.display_name,
-                    max_tokens: m.max_tokens,
-                    max_output_tokens: m.max_output_tokens,
-                    max_completion_tokens: m.max_completion_tokens,
-                    supports_images: m.supports_images,
-                    supports_tools: m.supports_tools,
-                    parallel_tool_calls: m.parallel_tool_calls,
-                }).collect(),
+                available_models: qwen
+                    .available_models
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|m| AvailableModel {
+                        name: m.name,
+                        display_name: m.display_name,
+                        max_tokens: m.max_tokens,
+                        max_output_tokens: m.max_output_tokens,
+                        max_completion_tokens: m.max_completion_tokens,
+                        supports_images: m.supports_images,
+                        supports_tools: m.supports_tools,
+                        parallel_tool_calls: m.parallel_tool_calls,
+                    })
+                    .collect(),
             },
             x_ai: XAiSettings {
                 api_url: x_ai.api_url.unwrap(),

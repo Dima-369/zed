@@ -15,7 +15,7 @@ use futures::future::join_all;
 use futures::{FutureExt, SinkExt, StreamExt};
 use git_ui::file_diff_view::FileDiffView;
 use gpui::{App, AsyncApp, Global, WindowHandle};
-use language::{Point, Bias};
+use language::{Bias, Point};
 use onboarding::FIRST_OPEN;
 use onboarding::show_onboarding_view;
 use recent_projects::{SshSettings, open_remote_project};
@@ -363,7 +363,10 @@ pub async fn open_paths_with_positions(
                 // Get end position of buffer
                 active_editor
                     .update(cx, |editor, cx| -> Option<Point> {
-                        editor.set_soft_wrap_mode(language::language_settings::SoftWrap::EditorWidth, cx);
+                        editor.set_soft_wrap_mode(
+                            language::language_settings::SoftWrap::EditorWidth,
+                            cx,
+                        );
                         if let Some(buffer) = editor.buffer().read(cx).as_singleton() {
                             let buffer_read = buffer.read(cx);
                             let max_point = buffer_read.max_point();
@@ -408,7 +411,10 @@ pub async fn open_paths_with_positions(
                 workspace
                     .update(cx, |_, window, cx| {
                         active_editor.update(cx, |editor, cx| {
-                            editor.set_soft_wrap_mode(language::language_settings::SoftWrap::EditorWidth, cx);
+                            editor.set_soft_wrap_mode(
+                                language::language_settings::SoftWrap::EditorWidth,
+                                cx,
+                            );
                             editor.go_to_singleton_buffer_point(point, window, cx);
                         });
                     })

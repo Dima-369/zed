@@ -28,11 +28,11 @@ use fs::Fs;
 use futures::FutureExt as _;
 use futures::StreamExt as _;
 use gpui::{
-    Action, Animation, AnimationExt, AnyView, App, BorderStyle, ClickEvent, ClipboardItem, CursorStyle,
-    EdgesRefinement, ElementId, Empty, Entity, FocusHandle, Focusable, Hsla, Length, ListOffset,
-    ListState, PlatformDisplay, SharedString, StyleRefinement, Subscription, Task, TextStyle,
-    TextStyleRefinement, UnderlineStyle, WeakEntity, Window, WindowHandle, div, ease_in_out,
-    linear_color_stop, linear_gradient, list, point, pulsating_between,
+    Action, Animation, AnimationExt, AnyView, App, BorderStyle, ClickEvent, ClipboardItem,
+    CursorStyle, EdgesRefinement, ElementId, Empty, Entity, FocusHandle, Focusable, Hsla, Length,
+    ListOffset, ListState, PlatformDisplay, SharedString, StyleRefinement, Subscription, Task,
+    TextStyle, TextStyleRefinement, UnderlineStyle, WeakEntity, Window, WindowHandle, div,
+    ease_in_out, linear_color_stop, linear_gradient, list, point, pulsating_between,
 };
 use language::Buffer;
 use watch;
@@ -1871,9 +1871,7 @@ impl AcpThreadView {
                     // Clear pending_title_generation at the same time as setting title,
                     // so the breathing animation stops exactly when the title appears
                     this.pending_title_generation = None;
-                    thread.update(cx, |thread, cx| {
-                        Some(thread.set_title(title, cx))
-                    })
+                    thread.update(cx, |thread, cx| Some(thread.set_title(title, cx)))
                 });
 
                 if let Ok(Some(task)) = update_task {
@@ -3045,8 +3043,7 @@ impl AcpThreadView {
                     | ToolCallStatus::InProgress
                     | ToolCallStatus::Completed
                     | ToolCallStatus::Failed
-                    | ToolCallStatus::Canceled => {
-                    v_flex()
+                    | ToolCallStatus::Canceled => v_flex()
                         .when(!is_edit, |this| {
                             this.mt_1p5().w_full().child(
                                 v_flex()
@@ -3083,8 +3080,7 @@ impl AcpThreadView {
                                 )
                             },
                         ))
-                        .into_any()
-                }
+                        .into_any(),
                     ToolCallStatus::Rejected => Empty.into_any(),
                 }
                 .into()
@@ -3408,7 +3404,13 @@ impl AcpThreadView {
         };
 
         if processed_text.len() > Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD {
-            format!("{}{}", Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX, &processed_text[processed_text.len() - (Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD - Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX.len())..])
+            format!(
+                "{}{}",
+                Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX,
+                &processed_text[processed_text.len()
+                    - (Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD
+                        - Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX.len())..]
+            )
         } else {
             processed_text.trim_end().to_string()
         }
@@ -8396,12 +8398,18 @@ pub(crate) mod tests {
     fn test_prepare_execute_tool_output_from_qwen_truncation() {
         // Test long output that gets truncated
         let long_content = "x".repeat(1000);
-        let input = format!("Command: cat\nDirectory: (root)\nOutput: {}\nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)", long_content);
+        let input = format!(
+            "Command: cat\nDirectory: (root)\nOutput: {}\nError: (none)\nExit Code: 0\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)",
+            long_content
+        );
         let result = AcpThreadView::prepare_execute_tool_output_from_qwen(&input);
 
         // Should be truncated with "..." prefix and be 900 chars total
         assert!(result.starts_with(AcpThreadView::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX));
-        assert_eq!(result.len(), AcpThreadView::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD);
+        assert_eq!(
+            result.len(),
+            AcpThreadView::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD
+        );
         assert!(result.ends_with("x"));
     }
 
@@ -8427,7 +8435,10 @@ pub(crate) mod tests {
         let test_cases = vec![1, 2, 126, 127, 130, 255];
 
         for code in test_cases {
-            let input = format!("Command: test\nDirectory: (root)\nOutput: error message\nError: (none)\nExit Code: {}\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)", code);
+            let input = format!(
+                "Command: test\nDirectory: (root)\nOutput: error message\nError: (none)\nExit Code: {}\nSignal: (none)\nBackground PIDs: (none)\nProcess Group PGID: (none)",
+                code
+            );
             let result = AcpThreadView::prepare_execute_tool_output_from_qwen(&input);
             assert_eq!(result, format!("error message\nExit Code: {}", code));
         }

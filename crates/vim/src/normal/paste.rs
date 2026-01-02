@@ -1054,7 +1054,9 @@ mod test {
     }
 
     #[gpui::test]
-    async fn test_undo_restores_cursor_position_after_paste_at_line_end(cx: &mut gpui::TestAppContext) {
+    async fn test_undo_restores_cursor_position_after_paste_at_line_end(
+        cx: &mut gpui::TestAppContext,
+    ) {
         let mut cx = VimTestContext::new(cx, true).await;
 
         // Set up initial text: "word"

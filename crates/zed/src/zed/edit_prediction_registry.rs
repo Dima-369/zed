@@ -191,12 +191,7 @@ fn assign_edit_prediction_provider(
                 let buffers_to_register = if let Some(buffer) = &singleton_buffer {
                     vec![buffer.clone()]
                 } else {
-                    editor
-                        .buffer()
-                        .read(cx)
-                        .all_buffers()
-                        .into_iter()
-                        .collect()
+                    editor.buffer().read(cx).all_buffers().into_iter().collect()
                 };
 
                 let has_model = ep_store.update(cx, |ep_store, cx| {

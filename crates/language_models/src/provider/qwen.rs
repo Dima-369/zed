@@ -12,11 +12,11 @@ use language_model::{
 };
 use open_ai::ResponseStreamEvent;
 use qwen::Model;
-use strum::IntoEnumIterator;
 use settings::Settings;
 use smol::io::AsyncReadExt;
 use std::path::PathBuf;
 use std::sync::Arc;
+use strum::IntoEnumIterator;
 use ui::{ButtonLink, ConfiguredApiCard, List, ListBulletItem, prelude::*};
 use util::ResultExt;
 
@@ -84,7 +84,8 @@ impl QwenAuthClient {
     }
 
     pub async fn load_credentials(&self) -> Result<QwenOAuthCredentials, QwenError> {
-        let content = smol::fs::read_to_string(&self.credentials_path).await
+        let content = smol::fs::read_to_string(&self.credentials_path)
+            .await
             .map_err(|_| QwenError::CredentialsNotFound(self.credentials_path.clone()))?;
 
         let credentials: QwenOAuthCredentials = serde_json::from_str(&content)
@@ -204,7 +205,9 @@ impl QwenAuthClient {
     }
 
     pub fn get_base_url(credentials: &QwenOAuthCredentials) -> String {
-        let base_url = credentials.resource_url.as_deref()
+        let base_url = credentials
+            .resource_url
+            .as_deref()
             .unwrap_or("https://dashscope.aliyuncs.com/compatible-mode/v1");
 
         let mut url = base_url.to_string();
@@ -244,7 +247,10 @@ impl State {
         let auth_client = self.auth_client.clone();
         let http_client = self.http_client.clone();
         cx.spawn(async move |entity, cx| {
-            match auth_client.get_valid_credentials(http_client.as_ref()).await {
+            match auth_client
+                .get_valid_credentials(http_client.as_ref())
+                .await
+            {
                 Ok(_) => {
                     entity.update(cx, |state, _| {
                         state.authenticated = true;
@@ -255,7 +261,10 @@ impl State {
                 Err(QwenError::CredentialsNotFound(path)) => {
                     entity.update(cx, |state, _| {
                         state.authenticated = false;
-                        state.error = Some(format!("OAuth credentials file not found at {}", path.display()));
+                        state.error = Some(format!(
+                            "OAuth credentials file not found at {}",
+                            path.display()
+                        ));
                     })?;
                     Err(AuthenticateError::Other(anyhow!("Credentials not found")))
                 }
@@ -264,7 +273,10 @@ impl State {
                         state.authenticated = false;
                         state.error = Some(err.to_string());
                     })?;
-                    Err(AuthenticateError::Other(anyhow!("Authentication failed: {}", err)))
+                    Err(AuthenticateError::Other(anyhow!(
+                        "Authentication failed: {}",
+                        err
+                    )))
                 }
             }
         })
@@ -425,7 +437,9 @@ impl QwenLanguageModel {
         };
 
         let future = self.request_limiter.stream(async move {
-            let (credentials, base_url) = task.await.map_err(|e| LanguageModelCompletionError::Other(anyhow!(e)))?;
+            let (credentials, base_url) = task
+                .await
+                .map_err(|e| LanguageModelCompletionError::Other(anyhow!(e)))?;
 
             let provider = PROVIDER_NAME;
             let request = open_ai::stream_completion(
@@ -636,33 +650,42 @@ impl Render for ConfigurationView {
                 .on_click(cx.listener(|this, _, window, cx| {
                     let state = this.state.clone();
                     cx.spawn_in(window, async move |_, cx| {
-                        state.update(cx, |state, _| {
-                            state.authenticated = false;
-                            state.error = None;
-                        }).log_err();
-                    }).detach();
+                        state
+                            .update(cx, |state, _| {
+                                state.authenticated = false;
+                                state.error = None;
+                            })
+                            .log_err();
+                    })
+                    .detach();
                 }))
                 .into_any_element()
         } else {
-            let error_message = state.error.as_deref().unwrap_or("OAuth authentication required").to_string();
+            let error_message = state
+                .error
+                .as_deref()
+                .unwrap_or("OAuth authentication required")
+                .to_string();
 
             v_flex()
-                .child(Label::new("To use Zed's agent with Qwen, you need to authenticate with OAuth:"))
+                .child(Label::new(
+                    "To use Zed's agent with Qwen, you need to authenticate with OAuth:",
+                ))
                 .child(
                     List::new()
                         .child(
                             ListBulletItem::new("")
                                 .child(Label::new("Install and authenticate the Qwen client"))
-                                .child(ButtonLink::new("Qwen Client", "https://github.com/qwen-app/qwen-client"))
+                                .child(ButtonLink::new(
+                                    "Qwen Client",
+                                    "https://github.com/qwen-app/qwen-client",
+                                )),
                         )
-                        .child(
-                            ListBulletItem::new("Ensure credentials exist at ~/.qwen/oauth_creds.json")
-                        ),
+                        .child(ListBulletItem::new(
+                            "Ensure credentials exist at ~/.qwen/oauth_creds.json",
+                        )),
                 )
-                .child(
-                    Label::new(error_message)
-                        .color(Color::Error)
-                )
+                .child(Label::new(error_message).color(Color::Error))
                 .child(
                     Label::new("Note: Qwen uses OAuth authentication instead of API keys.")
                         .size(LabelSize::Small)

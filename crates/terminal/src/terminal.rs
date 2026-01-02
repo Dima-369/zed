@@ -1473,7 +1473,9 @@ impl Terminal {
             _ => None,
         };
 
-        if let Some(motion) = motion && !keystroke.modifiers.control{
+        if let Some(motion) = motion
+            && !keystroke.modifiers.control
+        {
             let cursor = self.last_content.cursor.point;
             let cursor_pos = Point {
                 x: cursor.column.0 as f32 * self.last_content.terminal_bounds.cell_width,

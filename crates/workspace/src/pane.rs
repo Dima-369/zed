@@ -3345,12 +3345,12 @@ impl Pane {
                         .drag_over::<DraggedSelection>(|bar, _, _, cx| {
                             bar.bg(cx.theme().colors().drop_target_background)
                         })
-                        .on_drop(cx.listener(
-                            move |this, dragged_tab: &DraggedTab, window, cx| {
+                        .on_drop(
+                            cx.listener(move |this, dragged_tab: &DraggedTab, window, cx| {
                                 this.drag_split_direction = None;
                                 this.handle_tab_drop(dragged_tab, this.items.len(), window, cx)
-                            },
-                        ))
+                            }),
+                        )
                         .on_drop(cx.listener(
                             move |this, selection: &DraggedSelection, window, cx| {
                                 this.drag_split_direction = None;
@@ -3412,7 +3412,12 @@ impl Pane {
                                 .on_drop(cx.listener(
                                     move |this, dragged_tab: &DraggedTab, window, cx| {
                                         this.drag_split_direction = None;
-                                        this.handle_tab_drop(dragged_tab, this.items.len(), window, cx)
+                                        this.handle_tab_drop(
+                                            dragged_tab,
+                                            this.items.len(),
+                                            window,
+                                            cx,
+                                        )
                                     },
                                 ))
                                 .on_drop(cx.listener(
@@ -3430,15 +3435,17 @@ impl Pane {
                                     this.drag_split_direction = None;
                                     this.handle_external_paths_drop(paths, window, cx)
                                 }))
-                                .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
-                                    if event.click_count() == 2 {
-                                        window.dispatch_action(
-                                            this.double_click_dispatch_action.boxed_clone(),
-                                            cx,
-                                        );
-                                    }
-                                })),
-                        )
+                                .on_click(cx.listener(
+                                    move |this, event: &ClickEvent, window, cx| {
+                                        if event.click_count() == 2 {
+                                            window.dispatch_action(
+                                                this.double_click_dispatch_action.boxed_clone(),
+                                                cx,
+                                            );
+                                        }
+                                    },
+                                )),
+                        ),
                 )
             })
             .map(|tab_bar| {
