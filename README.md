@@ -224,8 +224,11 @@ There is this new actoin:  `zed::DeeplTranslate` which translates the current se
 - add scrollbar to `outline::Toggle`, `file_finder::Toggle` and `command_palette::Toggle` (why is it not shown in the first place?)
 - lower `toolbar.rs` height to save space, same in `breadcrumbs.rs` (here no padding is set). This applies for terminals, as well
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
-- lower horizontal scroll bar height to half of vertical one (the default one is huge)
-- hide horizontal scroll bar when soft wrap is enabled
+
+### Scrollbar
+
+- hide horizontal scrollbar when soft wrap is enabled
+- adjust scrollbar UI to look rounded and more native to macOS (idea is from this fork: https://github.com/notnotjake/zed)
 
 ## Tabs
 

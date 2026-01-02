@@ -196,7 +196,7 @@ pub struct EditorElement {
 }
 
 impl EditorElement {
-    pub(crate) const SCROLLBAR_WIDTH: Pixels = px(15.);
+    pub(crate) const SCROLLBAR_WIDTH: Pixels = px(12.);
 
     pub fn new(editor: &Entity<Editor>, style: EditorStyle) -> Self {
         Self {
@@ -6875,30 +6875,7 @@ impl EditorElement {
         for (scrollbar_layout, axis) in scrollbars_layout.iter_scrollbars() {
             let hitbox = &scrollbar_layout.hitbox;
             if scrollbars_layout.visible {
-                let scrollbar_edges = match axis {
-                    ScrollbarAxis::Horizontal => Edges {
-                        top: Pixels::ZERO,
-                        right: Pixels::ZERO,
-                        bottom: Pixels::ZERO,
-                        left: Pixels::ZERO,
-                    },
-                    ScrollbarAxis::Vertical => Edges {
-                        top: Pixels::ZERO,
-                        right: Pixels::ZERO,
-                        bottom: Pixels::ZERO,
-                        left: ScrollbarLayout::BORDER_WIDTH,
-                    },
-                };
-
                 window.paint_layer(hitbox.bounds, |window| {
-                    window.paint_quad(quad(
-                        hitbox.bounds,
-                        Corners::default(),
-                        cx.theme().colors().scrollbar_track_background,
-                        scrollbar_edges,
-                        cx.theme().colors().scrollbar_track_border,
-                        BorderStyle::Solid,
-                    ));
 
                     if axis == ScrollbarAxis::Vertical {
                         let fast_markers =
@@ -6927,13 +6904,39 @@ impl EditorElement {
                                 cx.theme().colors().scrollbar_thumb_background
                             }
                         };
+                        let thumb_inset = px(2.);
+                        let inset_thumb_bounds = match axis {
+                            ScrollbarAxis::Vertical => Bounds::new(
+                                point(
+                                    thumb_bounds.origin.x + thumb_inset,
+                                    thumb_bounds.origin.y + thumb_inset,
+                                ),
+                                size(
+                                    thumb_bounds.size.width - thumb_inset * 2.,
+                                    thumb_bounds.size.height - thumb_inset * 2.,
+                                ),
+                            ),
+                            ScrollbarAxis::Horizontal => Bounds::new(
+                                point(
+                                    thumb_bounds.origin.x + thumb_inset,
+                                    thumb_bounds.origin.y + thumb_inset,
+                                ),
+                                size(
+                                    thumb_bounds.size.width - thumb_inset * 2.,
+                                    thumb_bounds.size.height - thumb_inset * 2.,
+                                ),
+                            ),
+                        };
+
+                        let corner_radius = inset_thumb_bounds.size.width.min(inset_thumb_bounds.size.height) / 2.;
+
                         window.paint_quad(quad(
-                            thumb_bounds,
-                            Corners::default(),
+                            inset_thumb_bounds,
+                            Corners::all(corner_radius),
                             scrollbar_thumb_color,
-                            scrollbar_edges,
-                            cx.theme().colors().scrollbar_thumb_border,
-                            BorderStyle::Solid,
+                            Edges::default(),
+                            Hsla::transparent_black(),
+                            BorderStyle::default(),
                         ));
 
                         if any_scrollbar_dragged {
@@ -11082,7 +11085,7 @@ impl EditorScrollbars {
                     // The horizontal viewport size differs from the space available for the
                     // horizontal scrollbar, so we have to manually stitch it together here.
                     editor_bounds.size.width - right_margin,
-                    scrollbar_width / 2.0,
+                    scrollbar_width,
                 ),
             ),
             ScrollbarAxis::Vertical => Bounds::from_corner_and_size(
