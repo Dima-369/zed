@@ -3513,6 +3513,7 @@ Positive integer values
 2. `selection`
 3. `none`
 4. `boundary`
+5. `trailing`
 
 ## Whitespace Map
 
