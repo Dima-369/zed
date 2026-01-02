@@ -47,23 +47,27 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - opening a workspace which has no tabs initially, will trigger `workspace::NewFile` for proper editor focus. Before, there seems to be a bug where the project panel does not have proper focus
 - improved the `go to next/previous diagnostic` action to always jump to errors first. Only if there are no errors, it jumps to warnings. Before, this was mixed
 - moving up/down in outline panel does not wrap around anymore
-- add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
-- modified `vim/.../delete_motion.rs` so `vim::DeleteRight` at end of line stays on the newline character
-- modified `editor::GoToDefinition` to not enter Vim visual mode when jumping to a definition
 - fixed that a large `vertical_scroll_margin` in `settings.json` to have a centered cursor jumps buffer scrolls around (https://github.com/zed-industries/zed/issues/42155)
 - fixed that on entering the project search, there can be instances where visual mode is entered (https://github.com/zed-industries/zed/issues/43878)
 - integrate file explorer modal from https://github.com/zed-industries/zed/pull/43961(Add file explorer modal, PR closed)
-- integrate Helix jump list from https://github.com/zed-industries/zed/pull/44661 and implemented `vim::HelixOpenJumpListInMultibuffer` action
 - integrated live refreshing project search from https://github.com/zed-industries/zed/pull/42889, enable in `settings.json` via `search > search_on_input`
 - integrated smooth scroll from https://github.com/zed-industries/zed/pull/31671
 - modified `compute_style_internal()` in `crates/gpui/src/elements/div.rs` to not apply the mouse hover style, since it clashes when one only uses the keyboard
   - I also unset the mouse hover background change on enabled `sticky_scroll`
 - improved `outline::Toggle` to work in multi buffers, it shows the file headings only
-- fix bug that when in vim visual line mode and cursor is on right newline character, that the line below is incorrectly copied on `editor::Copy`. This mostly happens in my own Zed config because I mixing `editor` and `vim` actions to ensure that I can move cursor on the right newline character, and usually not in proper Zed keybindings.
 - improve `editor::SelectLargerSyntaxNode` for inline code blocks in Markdown files (`foo bar`), so that it first extends the selection to the word inside the quotes, then the text inside the quotes and only then to the inner text plus the outer quotes
 - add structured outline for Markdown, modifies `crates/languages/src/markdown/outline.scm` (from https://github.com/zed-industries/zed/pull/45643)
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
+
+## Vim/Helix
+
+- add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
+- modified `vim/.../delete_motion.rs` so `vim::DeleteRight` at end of line stays on the newline character
+- made `clip_at_line_end()` in `crates/editor/src/display_map.rs` a no-op, to have an always enabled `virtualedit=onemore` mode
+- fix bug that when in vim visual line mode and cursor is on right newline character, that the line below is incorrectly copied on `editor::Copy`. This mostly happens in my own Zed config because I mixing `editor` and `vim` actions to ensure that I can move cursor on the right newline character, and usually not in proper Zed keybindings.
+- integrate Helix jump list from https://github.com/zed-industries/zed/pull/44661 and implemented `vim::HelixOpenJumpListInMultibuffer` action
+
 
 ## Network
 
@@ -113,7 +117,7 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 ## AI
 
 - allow AI edit predictions in the following places:
-  - Zed's `settings.json` 
+  - Zed's `settings.json`
   - Zed's `keymap.json`
   - buffers without files like ones from `workspace: new file`
   - AI agent text threads
