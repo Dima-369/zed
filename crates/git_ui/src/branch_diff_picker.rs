@@ -1,5 +1,5 @@
 use anyhow::Result;
-use buffer_diff::{BufferDiff, BufferDiffSnapshot};
+use buffer_diff::BufferDiff;
 use editor::{Editor, EditorEvent, MultiBuffer};
 use fuzzy::StringMatchCandidate;
 use git::repository::{Branch, RepoPath};
@@ -134,21 +134,26 @@ impl BranchDiffPickerDelegate {
 
             let old_buffer_snapshot = old_buffer.read_with(cx, |buffer, _| buffer.snapshot())?;
 
-            let diff_snapshot = cx
-                .update(|_window, cx| {
-                    BufferDiffSnapshot::new_with_base_buffer(
+            let buffer_diff = cx.new(|cx| {
+                let diff = BufferDiff::new(&new_buffer_snapshot, cx);
+                diff
+            })?;
+
+            let update_task = cx.update(|_, cx| {
+                buffer_diff.update(cx, |buffer_diff, cx| {
+                    buffer_diff.update_diff(
                         new_buffer_snapshot.text.clone(),
                         Some(old_buffer_snapshot.text().into()),
-                        old_buffer_snapshot.clone(),
+                        true,
+                        new_buffer_snapshot.language().cloned(),
                         cx,
                     )
-                })?
-                .await;
+                })
+            })?;
 
-            let buffer_diff = cx.new(|cx| {
-                let mut diff = BufferDiff::new(&new_buffer_snapshot.text, cx);
-                diff.set_snapshot(diff_snapshot, &new_buffer_snapshot.text, cx);
-                diff
+            let update = update_task.await;
+            buffer_diff.update(cx, |buffer_diff, cx| {
+                buffer_diff.set_snapshot(update, &new_buffer_snapshot, cx);
             })?;
 
             workspace.update_in(cx, |workspace, window, cx| {
