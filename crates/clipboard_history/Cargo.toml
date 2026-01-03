@@ -1,0 +1,21 @@
+[package]
+name = "clipboard_history"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-or-later"
+
+[lints]
+workspace = true
+
+[lib]
+path = "src/clipboard_history.rs"
+doctest = false
+
+[dependencies]
+collections.workspace = true
+gpui.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+

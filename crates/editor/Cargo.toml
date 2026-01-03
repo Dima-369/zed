@@ -34,6 +34,7 @@ aho-corasick.workspace = true
 anyhow.workspace = true
 assets.workspace = true
 client.workspace = true
+clipboard_history.workspace = true
 clock.workspace = true
 collections.workspace = true
 convert_case.workspace = true
