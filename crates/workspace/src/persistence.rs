@@ -1931,6 +1931,16 @@ impl WorkspaceDb {
         .await
     }
 
+    pub async fn delete_recent_file(&self, path: &Path) -> Result<()> {
+        let path_str = path.to_string_lossy().to_string();
+        self.write(move |conn| {
+            conn.exec_bound(sql!(
+                DELETE FROM recent_files WHERE path = ?1
+            ))?(path_str)
+        })
+        .await
+    }
+
     pub async fn save_clipboard_entry(&self, text: &str, timestamp: &str) -> Result<()> {
         let text = text.to_string();
         let timestamp = timestamp.to_string();

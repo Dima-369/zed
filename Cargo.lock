@@ -13410,6 +13410,7 @@ dependencies = [
  "picker",
  "project",
  "settings",
+ "shellexpand 2.1.2",
  "smol",
  "ui",
  "util",

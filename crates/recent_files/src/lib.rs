@@ -167,15 +167,15 @@ fn add_recent_file(path: PathBuf) {
 /// Expand tilde (~) in path to the user's home directory
 fn expand_tilde(path: &Path) -> PathBuf {
     if let Some(path_str) = path.to_str() {
-        if let Some(stripped) = path_str.strip_prefix("~/") {
-            if let Some(home) = std::env::var_os("HOME") {
-                let mut home_path = PathBuf::from(home);
-                home_path.push(stripped);
-                return home_path;
-            }
-        }
+        PathBuf::from(shellexpand::tilde(path_str).as_ref())
+    } else {
+        path.to_path_buf()
     }
-    path.to_path_buf()
+}
+
+/// Check if a path exists, expanding tilde if present
+fn path_exists(path: &Path) -> bool {
+    expand_tilde(path).exists()
 }
 
 /// Find the most recent workspace that contains the given file path.
@@ -251,7 +251,19 @@ pub fn init(cx: &mut App) {
             Ok(files) => {
                 let mut recent_files = RECENT_FILES.lock();
                 recent_files.clear();
-                recent_files.extend(files);
+
+                // Separate existing and non-existing files
+                let (existing, non_existing): (Vec<_>, Vec<_>) =
+                    files.into_iter().partition(|path| path_exists(path));
+
+                recent_files.extend(existing);
+
+                // Remove non-existing files from database
+                for path in non_existing {
+                    if let Err(e) = WORKSPACE_DB.delete_recent_file(&path).await {
+                        log::error!("Failed to delete non-existing file from database: {:?}, path: {:?}", e, path);
+                    }
+                }
             }
             Err(e) => {
                 log::error!("Failed to load recent files from database: {:?}", e);
@@ -414,9 +426,17 @@ struct RecentFilesDelegate {
 
 impl RecentFilesDelegate {
     fn new(workspace: WeakEntity<Workspace>, create_new_window: bool) -> Self {
+        // Filter out non-existing files when creating the delegate
+        let files: Vec<PathBuf> = RECENT_FILES
+            .lock()
+            .iter()
+            .filter(|path| path_exists(path))
+            .cloned()
+            .collect();
+
         Self {
             workspace,
-            files: RECENT_FILES.lock().clone(),
+            files,
             matches: Vec::new(),
             selected_match_index: 0,
             create_new_window,
@@ -478,6 +498,9 @@ impl PickerDelegate for RecentFilesDelegate {
         self.matches.sort_unstable_by_key(|m| m.candidate_id);
 
         if self.matches.is_empty() {
+            self.selected_match_index = 0;
+        } else if query.is_empty() {
+            // When query is empty, select the first item (most recent)
             self.selected_match_index = 0;
         } else {
             self.selected_match_index = self
