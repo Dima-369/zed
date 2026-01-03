@@ -24,6 +24,7 @@ doctest = false
 anyhow.workspace = true
 any_vec.workspace = true
 bitflags.workspace = true
+clipboard_history.workspace = true
 collections.workspace = true
 editor.workspace = true
 futures.workspace = true

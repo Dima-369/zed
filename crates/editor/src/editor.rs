@@ -13256,6 +13256,12 @@ impl Editor {
     pub fn cut(&mut self, _: &Cut, window: &mut Window, cx: &mut Context<Self>) {
         self.hide_mouse_cursor(HideMouseCursorOrigin::TypingAction, cx);
         let item = self.cut_common(true, window, cx);
+
+        // Track in clipboard history
+        if let Some(text) = item.text() {
+            clipboard_history::track_clipboard(&text, cx);
+        }
+
         cx.write_to_clipboard(item);
     }
 
@@ -13303,18 +13309,24 @@ impl Editor {
     }
 
     pub fn copy_all(&mut self, _: &CopyAll, _: &mut Window, cx: &mut Context<Self>) {
-        let buffer = self.buffer.read(cx).read(cx);
-        let content = buffer.text();
+        let content = {
+            let buffer = self.buffer.read(cx).read(cx);
+            buffer.text()
+        };
+
+        // Track in clipboard history
+        clipboard_history::track_clipboard(&content, cx);
+
         cx.write_to_clipboard(ClipboardItem::new_string(content));
     }
 
     fn do_copy(&self, strip_trailing_newlines: bool, cx: &mut Context<Self>) {
         let selections = self.selections.all::<Point>(&self.display_snapshot(cx));
-        let buffer = self.buffer.read(cx).read(cx);
         let mut text = String::new();
 
         let mut clipboard_selections = Vec::with_capacity(selections.len());
         {
+            let buffer = self.buffer.read(cx).read(cx);
             let max_point = buffer.max_point();
             let mut is_first = true;
             let mut prev_selection_was_entire_line = false;
@@ -13386,9 +13398,12 @@ impl Editor {
         }
 
         cx.write_to_clipboard(ClipboardItem::new_string_with_json_metadata(
-            text,
+            text.clone(),
             clipboard_selections,
         ));
+
+        // Track in clipboard history
+        clipboard_history::track_clipboard(&text, cx);
     }
 
     pub fn do_paste(

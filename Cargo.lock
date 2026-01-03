@@ -3113,6 +3113,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "clipboard_history"
+version = "0.1.0"
+dependencies = [
+ "collections",
+ "gpui",
+]
+
+[[package]]
 name = "clock"
 version = "0.1.0"
 dependencies = [
@@ -5406,6 +5414,7 @@ dependencies = [
  "assets",
  "buffer_diff",
  "client",
+ "clipboard_history",
  "clock",
  "collections",
  "convert_case 0.8.0",
@@ -14695,6 +14704,7 @@ dependencies = [
  "anyhow",
  "bitflags 2.9.4",
  "client",
+ "clipboard_history",
  "collections",
  "editor",
  "futures 0.3.31",
