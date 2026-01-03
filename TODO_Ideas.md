@@ -1,5 +1,6 @@
-- track every clipboard, I mean registry of all copied content, when in vim mode (or not) and implement a new modal to pick from recently copied entity
-it should be filterable like the buffer search modal
+- track every clipboard, I mean registry of all copied content, when in vim mode (or not) and implement a new modal to pick from
+ recently copied entity
+ it should be filterable like the buffer search modal. see crates/search/src/buffer_search_modal.rs
 
 # >>> Investigations
 
