@@ -273,12 +273,20 @@ impl Render for KeyContextView {
                                     Some(false) => ("(low precedence)", ui::Color::Hint),
                                     None => ("(no match)", ui::Color::Error),
                                 };
-                                h_flex()
-                                    .gap_2()
+                                div()
                                     .ml_8()
-                                    .child(div().min_w(px(200.)).child(Label::new(name.clone()).color(color)))
-                                    .child(Label::new(predicate.clone()))
-                                    .child(Label::new(text).color(color))
+                                    .mt_1()
+                                    .w_full()
+                                    .child(
+                                        h_flex()
+                                            .gap_2()
+                                            .w_full()
+                                            .flex_wrap()
+                                            .items_start()
+                                            .child(div().min_w(px(200.)).child(Label::new(name.clone()).color(color)))
+                                            .child(div().flex_1().min_w_0().child(Label::new(predicate.clone())))
+                                            .child(Label::new(text).color(color))
+                                    )
                             }),
                     )
             })

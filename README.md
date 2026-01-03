@@ -64,6 +64,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - color the Last Keystroke action name to the same color as the `(match)`, `(low precedence)` and `(no match)` labels
   - on my smaller screen, I often do not see the end of a text row, and placing the color at front, helps immensely
+- wrap the context labels, so it is always fully readable. I need this for my smaller screen
 
 ## Vim/Helix
 
