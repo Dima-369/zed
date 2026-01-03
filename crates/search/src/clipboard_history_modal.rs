@@ -1,12 +1,11 @@
 use clipboard_history::{ClipboardEntry, ClipboardHistory};
 use gpui::{
-    actions, App, ClipboardItem, Context, DismissEvent, Entity, EventEmitter, FocusHandle,
-    Focusable, KeyBinding, KeyContext, Render, Subscription,
-    WeakEntity, Window,
+    App, ClipboardItem, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
+    KeyBinding, KeyContext, Render, Subscription, WeakEntity, Window, actions,
 };
 use picker::{Picker, PickerDelegate};
 use std::sync::Arc;
-use ui::{prelude::*, Color, Label, ListItem};
+use ui::{Color, Label, ListItem, prelude::*};
 use workspace::{ModalView, Workspace};
 
 actions!(clipboard_history_modal, [ToggleClipboardHistory]);
@@ -81,7 +80,10 @@ impl ClipboardHistoryModal {
             .cloned()
             .collect();
 
-        println!("[ClipboardHistory] Modal opened with {} entries", entries.len());
+        println!(
+            "[ClipboardHistory] Modal opened with {} entries",
+            entries.len()
+        );
         for (i, entry) in entries.iter().enumerate() {
             println!("[ClipboardHistory]   Entry {}: {:?}", i, entry.preview());
         }
@@ -166,20 +168,25 @@ impl PickerDelegate for ClipboardHistoryDelegate {
         gpui::Task::ready(())
     }
 
-    fn confirm(&mut self, _secondary: bool, window: &mut Window, cx: &mut Context<Picker<Self>>) {
+    fn confirm(&mut self, _secondary: bool, _window: &mut Window, cx: &mut Context<Picker<Self>>) {
         if let Some(&entry_index) = self.matches.get(self.selected_index) {
             if let Some(entry) = self.entries.get(entry_index) {
                 let text = entry.text.clone();
+
+                // Write to clipboard first
                 cx.write_to_clipboard(ClipboardItem::new_string(text));
 
+                // Dismiss the modal
                 if let Some(modal) = self.clipboard_history_modal.upgrade() {
                     modal.update(cx, |_, cx| {
                         cx.emit(DismissEvent);
                     });
                 }
 
-                // Paste the selected text
-                window.dispatch_action(Box::new(editor::actions::Paste), cx);
+                // Defer the paste action to ensure the modal is fully dismissed and focus is back on the editor
+                cx.defer(move |cx| {
+                    cx.dispatch_action(&editor::actions::Paste);
+                });
             }
         }
     }
@@ -205,9 +212,7 @@ impl PickerDelegate for ClipboardHistoryDelegate {
         for (i, part) in preview_parts.iter().enumerate() {
             if i > 0 {
                 // Add the newline symbol in muted color
-                preview_container = preview_container.child(
-                    Label::new("⏎").color(Color::Muted)
-                );
+                preview_container = preview_container.child(Label::new("⏎").color(Color::Muted));
             }
             if !part.is_empty() {
                 preview_container = preview_container.child(Label::new(part.clone()));
@@ -215,19 +220,15 @@ impl PickerDelegate for ClipboardHistoryDelegate {
         }
 
         Some(
-            ListItem::new(ix)
-                .inset(true)
-                .toggle_state(selected)
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .overflow_hidden()
-                        .whitespace_nowrap()
-                        .text_ellipsis()
-                        .child(preview_container),
-                ),
+            ListItem::new(ix).inset(true).toggle_state(selected).child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .whitespace_nowrap()
+                    .text_ellipsis()
+                    .child(preview_container),
+            ),
         )
     }
 }
-
