@@ -138,7 +138,7 @@ https://github.com/tebben/zed/tree/feature/jump
 
 ### Beam Jump - Lightning Fast Vim style navigation (PR open)
 
-Has no screenshots.
+Has no screenshots, according to https://github.com/zed-industries/zed/pull/43733#issuecomment-3706155542, this PR is using the nice looking collab labels.
 
 https://github.com/zed-industries/zed/pull/45387
 
