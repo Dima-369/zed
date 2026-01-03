@@ -162,11 +162,23 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 - changed `command palette: toggle` to sort by recency instead of hit count
 - removed `GlobalCommandPaletteInterceptor` usage which contains Vim things like `:delete, :edit, :help, :join, :quit, :sort, :write, :xit, :yank` because I do not use them. Apparently, this also removed the ability to jump to a line via `:144`. I still removed this behavior because it is hard to sort those dynamic actions by recency in combination with the other real editor action commands.
 
+## Recent file and zoxide functionality
+
+### `workspace::OpenRecentFile`
+
+A new modal for recent file functionality which tracks every opened buffer in a new `persistence.rs` SQL table to quickly jump to a recent file (which can in turn open a new workspace).
+
+## `projects::OpenRecentZoxide` for Zoxide (https://github.com/ajeetdsouza/zoxide)
+
+A new modal which displays recent directories from the `zoxide` CLI binary.
+
+It displays no footer and abbreviates paths to tildes.
+
+`highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window.
+
 ## New actions
 
-`workspace::OpenRecentFile` for recent file functionality which tracks every opened buffer to quickly jump to a recent file or open a recent workspace
 - `Markdown::ScrollPageLittleDown` and `Markdown::ScrollPageLittleUp` which scroll a quarter of a page
-- `projects::OpenRecentZoxide` which displays recent directories from `zoxide` CLI binary. It displays no footer and abbreviates paths to `~`. `highlighted_label.rs` was adjusted for its filtering. Here `cmd+enter` is flipped, so by default, it always opens in a new window
 - `workspace::NewFileFromClipboard` which pastes in the clipboard contents
   - the action supports setting an initial language like `"space n j": [ "workspace::NewFileFromClipboard", { "language": "json" } ],` in `keymap.json`
 - `workspace::CopyFilePaths` which opens a picker to copy the file path to clipboard
