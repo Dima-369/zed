@@ -197,13 +197,12 @@ impl PickerDelegate for ClipboardHistoryDelegate {
         let entry = self.entries.get(entry_index)?;
 
         let preview = entry.preview();
-        let age = entry.age_description();
 
         // Split preview by newline symbol and render with muted color
         let preview_parts: Vec<String> = preview.split("⏎").map(|s| s.to_string()).collect();
         let mut preview_container = h_flex().gap_0();
 
-        for (i, p⏎art) in preview_parts.iter().enumerate() {
+        for (i, part) in preview_parts.iter().enumerate() {
             if i > 0 {
                 // Add the newline symbol in muted color
                 preview_container = preview_container.child(
@@ -220,19 +219,13 @@ impl PickerDelegate for ClipboardHistoryDelegate {
                 .inset(true)
                 .toggle_state(selected)
                 .child(
-                    h_flex()
-                        .w_full()
-                        .justify_between()
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .overflow_hidden()
-                                .whitespace_nowrap()
-                                .text_ellipsis()
-                                .child(preview_container),
-                        )
-                        .child(Label::new(age).size(ui::LabelSize::Small).color(Color::Muted)),
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .overflow_hidden()
+                        .whitespace_nowrap()
+                        .text_ellipsis()
+                        .child(preview_container),
                 ),
         )
     }

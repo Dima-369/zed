@@ -32,23 +32,6 @@ impl ClipboardEntry {
             preview.into()
         }
     }
-
-    pub fn age_description(&self) -> String {
-        if let Ok(duration) = self.timestamp.elapsed() {
-            let secs = duration.as_secs();
-            if secs < 60 {
-                format!("{}s ago", secs)
-            } else if secs < 3600 {
-                format!("{}m ago", secs / 60)
-            } else if secs < 86400 {
-                format!("{}h ago", secs / 3600)
-            } else {
-                format!("{}d ago", secs / 86400)
-            }
-        } else {
-            "just now".to_string()
-        }
-    }
 }
 
 pub struct ClipboardHistory {
