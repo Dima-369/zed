@@ -893,6 +893,17 @@ impl Domain for WorkspaceDb {
             DROP TABLE user_toolchains;
             ALTER TABLE user_toolchains2 RENAME TO user_toolchains;
         ),
+        // Add table for clipboard history
+        sql!(
+            CREATE TABLE clipboard_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT NOT NULL,
+                timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+            ) STRICT;
+        ),
+        sql!(
+            CREATE INDEX idx_clipboard_history_timestamp ON clipboard_history(timestamp DESC);
+        ),
     ];
 
     // Allow recovering from bad migration that was initially shipped to nightly
@@ -1915,6 +1926,35 @@ impl WorkspaceDb {
         self.write(move |conn| {
             conn.exec_bound(sql!(
                 DELETE FROM recent_files
+            ))?(())
+        })
+        .await
+    }
+
+    pub async fn save_clipboard_entry(&self, text: &str, timestamp: &str) -> Result<()> {
+        let text = text.to_string();
+        let timestamp = timestamp.to_string();
+        self.write(move |conn| {
+            conn.exec_bound(sql!(
+                INSERT INTO clipboard_history (text, timestamp)
+                VALUES (?1, ?2)
+            ))?((text, timestamp))
+        })
+        .await
+    }
+
+    pub async fn get_clipboard_entries(&self, limit: usize) -> Result<Vec<(String, String)>> {
+        self.select_bound::<usize, (String, String)>(sql!(
+            SELECT text, timestamp FROM clipboard_history
+            ORDER BY timestamp DESC
+            LIMIT ?1
+        ))?(limit)
+    }
+
+    pub async fn clear_clipboard_history(&self) -> Result<()> {
+        self.write(move |conn| {
+            conn.exec_bound(sql!(
+                DELETE FROM clipboard_history
             ))?(())
         })
         .await

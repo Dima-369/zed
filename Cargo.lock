@@ -3116,8 +3116,13 @@ dependencies = [
 name = "clipboard_history"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "collections",
  "gpui",
+ "log",
+ "parking_lot",
+ "smol",
+ "workspace",
 ]
 
 [[package]]

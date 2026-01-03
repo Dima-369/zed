@@ -15,6 +15,11 @@ doctest = false
 [dependencies]
 collections.workspace = true
 gpui.workspace = true
+workspace.workspace = true
+smol.workspace = true
+log.workspace = true
+chrono.workspace = true
+parking_lot.workspace = true
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }

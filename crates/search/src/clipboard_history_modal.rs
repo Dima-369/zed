@@ -73,12 +73,7 @@ impl ClipboardHistoryModal {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let weak_self = cx.entity().downgrade();
 
-        let entries: Vec<ClipboardEntry> = cx
-            .global::<ClipboardHistory>()
-            .entries()
-            .iter()
-            .cloned()
-            .collect();
+        let entries = ClipboardHistory::entries();
 
         let delegate = ClipboardHistoryDelegate {
             entries: entries.clone(),

@@ -1,7 +1,11 @@
 use collections::VecDeque;
-use gpui::{Global, SharedString, UpdateGlobal};
+use gpui::{Global, SharedString};
+use parking_lot::Mutex;
+use workspace::WORKSPACE_DB;
 
 const MAX_CLIPBOARD_HISTORY: usize = 300;
+
+static CLIPBOARD_ENTRIES: Mutex<VecDeque<ClipboardEntry>> = Mutex::new(VecDeque::new());
 
 #[derive(Clone, Debug)]
 pub struct ClipboardEntry {
@@ -34,9 +38,7 @@ impl ClipboardEntry {
     }
 }
 
-pub struct ClipboardHistory {
-    entries: VecDeque<ClipboardEntry>,
-}
+pub struct ClipboardHistory {}
 
 impl Default for ClipboardHistory {
     fn default() -> Self {
@@ -48,41 +50,98 @@ impl Global for ClipboardHistory {}
 
 impl ClipboardHistory {
     pub fn new() -> Self {
-        Self {
-            entries: VecDeque::with_capacity(MAX_CLIPBOARD_HISTORY),
-        }
+        Self {}
     }
 
-    pub fn add_entry(&mut self, text: String) {
-        // Don't add empty entries, very short entries (<=3 chars), or duplicates of the most recent entry
+    pub fn add_entry(text: String) {
+        // Don't add empty entries or very short entries (<=3 chars)
         if text.is_empty() || text.len() <= 3 {
             return;
         }
-        if let Some(last) = self.entries.front() {
-            if last.text == text {
-                return;
-            }
+
+        let mut entries = CLIPBOARD_ENTRIES.lock();
+
+        // Remove any existing occurrence of this text to avoid duplicates
+        entries.retain(|entry| entry.text != text);
+
+        // Add the new entry at the front
+        let entry = ClipboardEntry::new(text.clone());
+        let timestamp = format_timestamp(&entry.timestamp);
+        entries.push_front(entry);
+
+        // Trim to max size if needed
+        if entries.len() > MAX_CLIPBOARD_HISTORY {
+            entries.pop_back();
         }
 
-        self.entries.push_front(ClipboardEntry::new(text));
-        if self.entries.len() > MAX_CLIPBOARD_HISTORY {
-            self.entries.pop_back();
-        }
+        drop(entries);
+
+        // Save to database asynchronously
+        smol::spawn(async move {
+            if let Err(e) = WORKSPACE_DB.save_clipboard_entry(&text, &timestamp).await {
+                log::error!("Failed to save clipboard entry to database: {:?}", e);
+            }
+        })
+        .detach();
     }
 
-    pub fn entries(&self) -> &VecDeque<ClipboardEntry> {
-        &self.entries
+    pub fn entries() -> Vec<ClipboardEntry> {
+        CLIPBOARD_ENTRIES.lock().iter().cloned().collect()
     }
 }
 
 /// Helper function to track clipboard text in history
-pub fn track_clipboard(text: &str, cx: &mut impl gpui::BorrowAppContext) {
-    ClipboardHistory::update_global(cx, |history, _| {
-        history.add_entry(text.to_string());
-    });
+pub fn track_clipboard(text: &str, _cx: &mut impl gpui::BorrowAppContext) {
+    ClipboardHistory::add_entry(text.to_string());
+}
+
+/// Format a SystemTime as an SQLite-compatible timestamp string
+fn format_timestamp(time: &std::time::SystemTime) -> String {
+    use std::time::UNIX_EPOCH;
+
+    let duration = time.duration_since(UNIX_EPOCH).unwrap_or_default();
+    let secs = duration.as_secs();
+
+    // Convert to SQLite datetime format: YYYY-MM-DD HH:MM:SS
+    let datetime = chrono::DateTime::from_timestamp(secs as i64, 0)
+        .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+    datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+/// Parse an SQLite timestamp string back to SystemTime
+fn parse_timestamp(timestamp: &str) -> std::time::SystemTime {
+    use std::time::UNIX_EPOCH;
+
+    if let Ok(datetime) = chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S") {
+        let secs = datetime.and_utc().timestamp();
+        UNIX_EPOCH + std::time::Duration::from_secs(secs as u64)
+    } else {
+        std::time::SystemTime::now()
+    }
 }
 
 pub fn init(cx: &mut gpui::App) {
     cx.set_global(ClipboardHistory::new());
+
+    // Load clipboard history from database on startup
+    cx.spawn(|_cx: &mut gpui::AsyncApp| async move {
+        match WORKSPACE_DB.get_clipboard_entries(MAX_CLIPBOARD_HISTORY).await {
+            Ok(db_entries) => {
+                let mut entries = CLIPBOARD_ENTRIES.lock();
+                entries.clear();
+                for (text, timestamp) in db_entries {
+                    let entry = ClipboardEntry {
+                        text,
+                        timestamp: parse_timestamp(&timestamp),
+                    };
+                    entries.push_back(entry);
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to load clipboard history from database: {:?}", e);
+            }
+        }
+    })
+    .detach();
 }
 
