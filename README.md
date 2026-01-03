@@ -60,6 +60,11 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
 
+## Clipboard History Modal
+
+- implement a filterable clipboard history model which keeps tracks of copy text actions like `editor::Copy`. On confirming it pastes in the selected entry
+  - inspired from `Choose Content to Paste` from JetBrains IDEs
+
 ## Keyboard Context
 
 - color the Last Keystroke action name to the same color as the `(match)`, `(low precedence)` and `(no match)` labels
