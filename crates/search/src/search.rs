@@ -15,6 +15,7 @@ use crate::project_search::ProjectSearchBar;
 
 pub mod buffer_search;
 pub mod buffer_search_modal;
+pub mod clipboard_history_modal;
 pub mod project_search;
 pub(crate) mod search_bar;
 pub mod search_status_button;
@@ -23,6 +24,7 @@ pub fn init(cx: &mut App) {
     menu::init();
     buffer_search::init(cx);
     buffer_search_modal::init(cx);
+    clipboard_history_modal::init(cx);
     project_search::init(cx);
 }
 
