@@ -51,7 +51,6 @@ impl KeyContextView {
             let mut pending = this.pending_keystrokes.take().unwrap_or_default();
             pending.push(e.keystroke.clone());
             let mut possibilities = cx.all_bindings_for_input(&pending);
-            possibilities.reverse();
             this.last_keystrokes = Some(
                 json!(pending.iter().map(|p| p.unparse()).join(" "))
                     .to_string()
@@ -276,7 +275,7 @@ impl Render for KeyContextView {
                                 h_flex()
                                     .gap_2()
                                     .ml_8()
-                                    .child(div().min_w(px(200.)).child(Label::new(name.clone())))
+                                    .child(div().min_w(px(200.)).child(Label::new(name.clone()).color(color)))
                                     .child(Label::new(predicate.clone()))
                                     .child(Label::new(text).color(color))
                             }),

@@ -60,6 +60,11 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - integrated 'Multibuffer breadcrumbs toolbar redesign' from https://github.com/zed-industries/zed/pull/45547
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
 
+## Keyboard Context
+
+- color the Last Keystroke action name to the same color as the `(match)`, `(low precedence)` and `(no match)` labels
+  - on my smaller screen, I often do not see the end of a text row, and placing the color at front, helps immensely
+
 ## Vim/Helix
 
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
