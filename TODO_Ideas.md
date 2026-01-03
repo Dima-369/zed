@@ -1,6 +1,6 @@
-- track every clipboard, I mean registry of all copied content, when in vim mode (or not) and implement a new modal to pick from
- recently copied entity
- it should be filterable like the buffer search modal. see crates/search/src/buffer_search_modal.rs
+- upon opening the recent files modal, filter out non-existing files
+also ensure that on remembering files, that there are no duplicates, on remembering new, add that to top of list
+ALSO on invoking `workspace::OpenRecentFile` it sets the initial index of the candidate list to the very bottom (meaning last), it should be 0 instead so top of list
 
 # >>> Investigations
 
