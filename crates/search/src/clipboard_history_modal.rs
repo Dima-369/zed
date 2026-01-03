@@ -177,12 +177,13 @@ impl Focusable for ClipboardHistoryModal {
 }
 
 impl Render for ClipboardHistoryModal {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut key_context = KeyContext::new_with_defaults();
         key_context.add("ClipboardHistoryModal");
 
         v_flex()
             .key_context(key_context)
+            .elevation_3(cx)
             .w(rems(40.))
             .child(self.picker.clone())
     }
