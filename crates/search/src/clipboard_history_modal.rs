@@ -80,14 +80,6 @@ impl ClipboardHistoryModal {
             .cloned()
             .collect();
 
-        println!(
-            "[ClipboardHistory] Modal opened with {} entries",
-            entries.len()
-        );
-        for (i, entry) in entries.iter().enumerate() {
-            println!("[ClipboardHistory]   Entry {}: {:?}", i, entry.preview());
-        }
-
         let delegate = ClipboardHistoryDelegate {
             entries: entries.clone(),
             selected_index: 0,
