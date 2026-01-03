@@ -20,10 +20,14 @@ impl ClipboardEntry {
     pub fn preview(&self) -> SharedString {
         let text = self.text.trim();
         let max_len = 500;
-        if text.len() <= max_len {
-            text.to_string().into()
+
+        // Replace newlines with ⏎ symbol
+        let text_with_newline_symbols = text.replace('\n', "⏎");
+
+        if text_with_newline_symbols.len() <= max_len {
+            text_with_newline_symbols.into()
         } else {
-            let mut preview = text[..max_len].to_string();
+            let mut preview = text_with_newline_symbols[..max_len].to_string();
             preview.push_str("…");
             preview.into()
         }
