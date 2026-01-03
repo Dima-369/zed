@@ -165,6 +165,11 @@ https://github.com/zed-industries/zed/pull/45884 (PR open)
 
 I tried to fix with my yek file merger through Gemini and via auggie, but both failed.
 
+There is this in the console:
+
+2026-01-03T19:28:18+01:00 ERROR [editor::git::blame] failed to get git blame data: [failed to find a git repository for buffer, failed to find a git repository for buffer]
+
+
 I created an issue for this:
 https://github.com/zed-industries/zed/issues/45532
 
