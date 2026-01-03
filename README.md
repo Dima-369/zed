@@ -62,7 +62,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## Clipboard History Modal
 
-- implement a filterable clipboard history model which keeps tracks of copy text actions like `editor::Copy`. On confirming it pastes in the selected entry
+- implement a filterable clipboard history model (opened via `clipboard_history_modal::ToggleClipboardHistory`) which keeps tracks of copy text actions like `editor::Copy`. On confirming it pastes in the selected entry
   - inspired from `Choose Content to Paste` from JetBrains IDEs
 
 ## Keyboard Context
