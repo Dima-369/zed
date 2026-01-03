@@ -51,6 +51,7 @@ impl KeyContextView {
             let mut pending = this.pending_keystrokes.take().unwrap_or_default();
             pending.push(e.keystroke.clone());
             let mut possibilities = cx.all_bindings_for_input(&pending);
+            possibilities.reverse();
             this.last_keystrokes = Some(
                 json!(pending.iter().map(|p| p.unparse()).join(" "))
                     .to_string()
