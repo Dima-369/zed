@@ -714,7 +714,7 @@ impl ProjectPanel {
                 });
             }
 
-            let filename_editor = cx.new(|cx| Editor::single_line(window, cx));
+            let filename_editor = cx.new(|cx| Editor::multi_line(window, cx));
 
             cx.subscribe_in(
                 &filename_editor,
@@ -1618,6 +1618,14 @@ impl ProjectPanel {
                 return;
             }
 
+            // Check for newlines which are not allowed in filenames
+            if filename.contains('\n') {
+                edit_state.validation_state =
+                    ValidationState::Error("File or directory name cannot contain newlines.".to_string());
+                cx.notify();
+                return;
+            }
+
             let trimmed_filename = filename.trim();
             if trimmed_filename != filename {
                 edit_state.validation_state = ValidationState::Warning(
@@ -1694,6 +1702,11 @@ impl ProjectPanel {
             }
         }
         if filename.trim().is_empty() {
+            return None;
+        }
+
+        // Prevent confirmation if filename contains newlines
+        if filename.contains('\n') {
             return None;
         }
 
