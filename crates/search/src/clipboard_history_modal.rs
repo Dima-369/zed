@@ -195,20 +195,6 @@ impl PickerDelegate for ClipboardHistoryDelegate {
 
         let preview = entry.preview();
 
-        // Split preview by newline symbol and render with muted color
-        let preview_parts: Vec<String> = preview.split("⏎").map(|s| s.to_string()).collect();
-        let mut preview_container = h_flex().gap_0();
-
-        for (i, part) in preview_parts.iter().enumerate() {
-            if i > 0 {
-                // Add the newline symbol in muted color
-                preview_container = preview_container.child(Label::new("⏎").color(Color::Muted));
-            }
-            if !part.is_empty() {
-                preview_container = preview_container.child(Label::new(part.clone()));
-            }
-        }
-
         Some(
             ListItem::new(ix).inset(true).toggle_state(selected).child(
                 div()
@@ -217,7 +203,7 @@ impl PickerDelegate for ClipboardHistoryDelegate {
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_ellipsis()
-                    .child(preview_container),
+                    .child(Label::new(preview)),
             ),
         )
     }
