@@ -73,6 +73,11 @@ pub struct KeymapSection {
     /// on macOS. See the documentation for more details.
     #[serde(default)]
     use_key_equivalents: bool,
+    /// When true, the keybindings defined in this section should have the highest precedence,
+    /// overriding all other keybindings including those from other keymap files and sections.
+    /// This is useful for keybindings that have a tricky Context and must take precedence over everything else.
+    #[serde(default)]
+    pub highest_precedence: bool,
     /// This keymap section's bindings, as a JSON object mapping keystrokes to actions. The
     /// keystrokes key is a string representing a sequence of keystrokes to type, where the
     /// keystrokes are separated by whitespace. Each keystroke is a sequence of modifiers (`ctrl`,
@@ -227,10 +232,12 @@ impl KeymapFile {
         // errors in context and binding parsing.
         let mut errors = Vec::new();
         let mut key_bindings = Vec::new();
+        let mut highest_precedence_bindings = Vec::new();
 
         for KeymapSection {
             context,
             use_key_equivalents,
+            highest_precedence,
             bindings,
             unrecognized_fields,
         } in keymap_file.0.iter()
@@ -274,7 +281,11 @@ impl KeymapFile {
                     );
                     match result {
                         Ok(key_binding) => {
-                            key_bindings.push(key_binding);
+                            if *highest_precedence {
+                                highest_precedence_bindings.push(key_binding);
+                            } else {
+                                key_bindings.push(key_binding);
+                            }
                         }
                         Err(err) => {
                             let mut lines = err.lines();
@@ -299,6 +310,9 @@ impl KeymapFile {
                 errors.push((context, section_errors))
             }
         }
+
+        // Append highest precedence bindings to ensure they override all other bindings
+        key_bindings.extend(highest_precedence_bindings);
 
         if errors.is_empty() {
             KeymapFileLoadResult::Success { key_bindings }
@@ -1969,5 +1983,53 @@ mod tests {
             ]
             "#,
         );
+    }
+
+    #[test]
+    fn test_highest_precedence_parsing() {
+        let keymap_json = r#"
+        [
+            {
+                "context": "Editor",
+                "bindings": {
+                    "cmd-a": "test_action"
+                }
+            },
+            {
+                "context": "Editor", 
+                "highest_precedence": true,
+                "bindings": {
+                    "cmd-a": "test_action"
+                }
+            }
+        ]
+        "#;
+
+        let keymap_file = KeymapFile::parse(keymap_json).unwrap();
+        let sections: Vec<_> = keymap_file.sections().collect();
+        
+        assert_eq!(sections.len(), 2);
+        assert_eq!(sections[0].highest_precedence, false);
+        assert_eq!(sections[1].highest_precedence, true);
+    }
+
+    #[test] 
+    fn test_highest_precedence_false_by_default() {
+        let keymap_json = r#"
+        [
+            {
+                "context": "Editor",
+                "bindings": {
+                    "cmd-a": "test_action"
+                }
+            }
+        ]
+        "#;
+
+        let keymap_file = KeymapFile::parse(keymap_json).unwrap();
+        let sections: Vec<_> = keymap_file.sections().collect();
+        
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].highest_precedence, false);
     }
 }
