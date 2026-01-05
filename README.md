@@ -68,6 +68,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## Keyboard Context
 
+- allow mouse left click on the action name or context to copy into clipboard
 - color the Last Keystroke action name to the same color as the `(match)`, `(low precedence)` and `(no match)` labels
   - on my smaller screen, I often do not see the end of a text row, and placing the color at front, helps immensely
 - wrap the context labels, so they are always fully readable. I need this for my smaller screen

@@ -1,3 +1,8 @@
+- in the buffer search modal, display the keybinding for the toggle line mode, you can check how `file_finder::Toggle` does it
+
+- fix space n h clipboard crash
+
+TEST
 - in the Keyboard Context, one should be able to right click on the action name or the context string to open a right click menu with the 
 option to copy to clipboard
 
