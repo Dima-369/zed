@@ -1,7 +1,7 @@
 use clipboard_history::{ClipboardEntry, ClipboardHistory};
 use gpui::{
     App, ClipboardItem, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    KeyBinding, KeyContext, Render, Subscription, WeakEntity, Window, actions,
+    KeyBinding, KeyContext, Render, Subscription, UniformListScrollHandle, WeakEntity, Window, actions,
 };
 use picker::{Picker, PickerDelegate};
 use std::sync::Arc;
@@ -72,6 +72,7 @@ impl ClipboardHistoryModal {
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let weak_self = cx.entity().downgrade();
+        let scroll_handle = UniformListScrollHandle::new();
 
         let entries = ClipboardHistory::entries();
 
@@ -86,6 +87,8 @@ impl ClipboardHistoryModal {
             Picker::uniform_list(delegate, window, cx)
                 .modal(false)
                 .max_height(Some(rems(20.).into()))
+                .track_scroll(scroll_handle.clone())
+                .show_scrollbar(true)
         });
 
         let picker_subscription = cx.subscribe_in(&picker, window, Self::on_picker_event);
