@@ -23,7 +23,8 @@ use std::{
 };
 use text::Bias;
 use ui::{
-    Button, ButtonStyle, Color, Divider, KeyBinding as UiKeyBinding, Label, ListItem, Tooltip, prelude::*,
+    Button, ButtonStyle, Color, Divider, KeyBinding as UiKeyBinding, Label, ListItem, Tooltip,
+    prelude::*,
 };
 use util::{ResultExt, paths::PathMatcher};
 use vim_mode_setting::VimModeSetting;
@@ -1038,8 +1039,12 @@ impl PickerDelegate for BufferSearchDelegate {
                                             .style(ButtonStyle::Subtle)
                                             .toggle_state(self.line_mode)
                                             .key_binding(
-                                                UiKeyBinding::for_action_in(&ToggleLineMode, self.focus_handle.as_ref().unwrap(), cx)
-                                                    .map(|kb| kb.size(rems_from_px(12.))),
+                                                UiKeyBinding::for_action_in(
+                                                    &ToggleLineMode,
+                                                    self.focus_handle.as_ref().unwrap(),
+                                                    cx,
+                                                )
+                                                .map(|kb| kb.size(rems_from_px(12.))),
                                             )
                                             .on_click(cx.listener(move |picker, _, window, cx| {
                                                 picker.delegate.line_mode =
