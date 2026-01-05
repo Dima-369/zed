@@ -1,6 +1,3 @@
-the commit modal is not on right side anymore :(
-some recent main change broke my code for it
-see commit fcc02568ca29, there I had to revert it, is there a way to patch it in again?
 
 
 # >>> Investigations
