@@ -1,3 +1,7 @@
+- in the Keyboard Context, one should be able to right click on the action name or the context string to open a right click menu with the 
+option to copy to clipboard
+
+
 # >>> Investigations
 
 ## edit predictions: Amp Tab support

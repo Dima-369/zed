@@ -6,12 +6,10 @@ use client::{ErrorCode, ErrorExt};
 use collections::{BTreeSet, HashMap, hash_map};
 use command_palette_hooks::CommandPaletteFilter;
 use db::kvp::KEY_VALUE_STORE;
-use editor::{
-    Editor, EditorEvent, MultiBufferOffset,
-    items::{
-        entry_diagnostic_aware_icon_decoration_and_color,
-        entry_diagnostic_aware_icon_name_and_color, entry_git_aware_label_color,
-    },
+use editor::{Editor, EditorEvent};
+use editor::items::{
+    entry_diagnostic_aware_icon_decoration_and_color,
+    entry_diagnostic_aware_icon_name_and_color, entry_git_aware_label_color,
 };
 use file_icons::FileIcons;
 use git;
@@ -714,7 +712,16 @@ impl ProjectPanel {
                 });
             }
 
-            let filename_editor = cx.new(|cx| Editor::single_line(window, cx));
+            let filename_editor = cx.new(|cx| Editor::multi_line(window, cx));
+
+            // Configure filename editor for project panel use
+            filename_editor.update(cx, |editor, cx| {
+                editor.set_show_line_numbers(false, cx);
+                editor.set_show_gutter(false, cx);
+                editor.set_offset_content(false, cx);
+                editor.set_smooth_scroll(false, cx);
+                editor.set_show_scrollbars(false, cx);
+            });
 
             cx.subscribe_in(
                 &filename_editor,
@@ -1618,6 +1625,14 @@ impl ProjectPanel {
                 return;
             }
 
+            // Check for newlines which are not allowed in filenames
+            if filename.contains('\n') {
+                edit_state.validation_state =
+                    ValidationState::Error("File or directory name cannot contain newlines.".to_string());
+                cx.notify();
+                return;
+            }
+
             let trimmed_filename = filename.trim();
             if trimmed_filename != filename {
                 edit_state.validation_state = ValidationState::Warning(
@@ -1694,6 +1709,11 @@ impl ProjectPanel {
             }
         }
         if filename.trim().is_empty() {
+            return None;
+        }
+
+        // Prevent confirmation if filename contains newlines
+        if filename.contains('\n') {
             return None;
         }
 
@@ -1992,7 +2012,7 @@ impl ProjectPanel {
 
     fn rename_impl(
         &mut self,
-        selection: Option<Range<usize>>,
+        _selection: Option<Range<usize>>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -2029,19 +2049,16 @@ impl ProjectPanel {
                     validation_state: ValidationState::None,
                 });
                 let file_name = entry.path.file_name().unwrap_or_default().to_string();
-                let selection = selection.unwrap_or_else(|| {
-                    let file_stem = entry.path.file_stem().map(|s| s.to_string());
-                    let selection_end =
-                        file_stem.map_or(file_name.len(), |file_stem| file_stem.len());
-                    0..selection_end
-                });
                 self.filename_editor.update(cx, |editor, cx| {
                     editor.set_text(file_name, window, cx);
-                    editor.change_selections(Default::default(), window, cx, |s| {
-                        s.select_ranges([
-                            MultiBufferOffset(selection.start)..MultiBufferOffset(selection.end)
-                        ])
-                    });
+                    editor.move_to_beginning_of_line(
+                        &editor::actions::MoveToBeginningOfLine {
+                            stop_at_soft_wraps: false,
+                            stop_at_indent: false,
+                        },
+                        window,
+                        cx,
+                    );
                 });
                 self.update_visible_entries(None, true, true, window, cx);
                 cx.notify();
