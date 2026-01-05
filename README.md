@@ -159,8 +159,13 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 ### Command palette
 
 - the command palette sorting now sorts the same for `close work` and `work close`, and it does not search individual character matches anymore, like when you enter `bsp`, it would show `editor: backspace` before. I do not like that behavior, so I removed that
-- changed `command palette: toggle` to sort by recency instead of hit count
-- removed `GlobalCommandPaletteInterceptor` usage which contains Vim things like `:delete, :edit, :help, :join, :quit, :sort, :write, :xit, :yank` because I do not use them. Apparently, this also removed the ability to jump to a line via `:144`. I still removed this behavior because it is hard to sort those dynamic actions by recency in combination with the other real editor action commands.
+- change `command palette: toggle` to sort by recency instead of hit count
+- remove `GlobalCommandPaletteInterceptor` usage which contains Vim things like `:delete, :edit, :help, :join, :quit, :sort, :write, :xit, :yank` because I do not use them. Apparently, this removes the ability to jump to a line via `:144`. I still removed this behavior because it is hard to sort those dynamic actions by recency in combination with the other real editor action commands.
+
+## `keymap.json` changes
+
+- add a JSON boolean key `highest_precedence` to the keymap dictionaries for tricky keybindings which otherwise require rewriting many other keybinding blocks
+  - I originally implemented it for the vim mode support in project panel rename file editor to handle `Enter` in vim's insert mode
 
 ## Recent file and zoxide functionality
 
