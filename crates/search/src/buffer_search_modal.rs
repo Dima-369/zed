@@ -23,7 +23,7 @@ use std::{
 };
 use text::Bias;
 use ui::{
-    ButtonStyle, Color, Divider, IconButton, IconButtonShape, Label, ListItem, Tooltip, prelude::*,
+    Button, ButtonStyle, Color, Divider, KeyBinding as UiKeyBinding, Label, ListItem, Tooltip, prelude::*,
 };
 use util::{ResultExt, paths::PathMatcher};
 use vim_mode_setting::VimModeSetting;
@@ -1032,10 +1032,15 @@ impl PickerDelegate for BufferSearchDelegate {
                                         )
                                     })
                                     .child(
-                                        IconButton::new("line-mode", IconName::ListFilter)
+                                        Button::new("line-mode", "")
+                                            .icon(IconName::ListFilter)
+                                            .icon_size(IconSize::Small)
                                             .style(ButtonStyle::Subtle)
-                                            .shape(IconButtonShape::Square)
                                             .toggle_state(self.line_mode)
+                                            .key_binding(
+                                                UiKeyBinding::for_action_in(&ToggleLineMode, self.focus_handle.as_ref().unwrap(), cx)
+                                                    .map(|kb| kb.size(rems_from_px(12.))),
+                                            )
                                             .on_click(cx.listener(move |picker, _, window, cx| {
                                                 picker.delegate.line_mode =
                                                     !picker.delegate.line_mode;
