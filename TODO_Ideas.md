@@ -1,3 +1,5 @@
+display scrollbars in the clipboard history modal, see how the recent file model displays its scrollbar
+
 # >>> Investigations
 
 ## edit predictions: Amp Tab support
