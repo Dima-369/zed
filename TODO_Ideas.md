@@ -1,5 +1,7 @@
 - in the buffer search modal, display the keybinding for the toggle line mode, you can check how `file_finder::Toggle` does it
 
+- on Zed startup, check clipboard history and remove all duplicates, and delete from db
+
 - fix space n h clipboard crash
 
 TEST
