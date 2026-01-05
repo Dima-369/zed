@@ -253,6 +253,7 @@ impl Render for KeyContextView {
                     let context_text_clone = context_text.clone();
                     div()
                         .ml(px(12. * (i + 1) as f32))
+                        .cursor_pointer()
                         .on_mouse_down(MouseButton::Left, cx.listener(move |_this, _event: &MouseDownEvent, _window, cx| {
                             cx.write_to_clipboard(ClipboardItem::new_string(context_text_clone.to_string()));
                         }))
@@ -292,13 +293,13 @@ impl Render for KeyContextView {
                                             .w_full()
                                             .flex_wrap()
                                             .items_start()
-                                            .child(div().min_w(px(200.)).on_mouse_down(MouseButton::Left, cx.listener({
+                                            .child(div().min_w(px(200.)).cursor_pointer().on_mouse_down(MouseButton::Left, cx.listener({
                                                 let name_for_clipboard = name_clone.clone();
                                                 move |_this, _event: &MouseDownEvent, _window, cx| {
                                                     cx.write_to_clipboard(ClipboardItem::new_string(name_for_clipboard.clone().to_string()));
                                                 }
                                             })).child(Label::new(name_clone).color(color)))
-                                            .child(div().flex_1().min_w_0().on_mouse_down(MouseButton::Left, cx.listener({
+                                            .child(div().flex_1().min_w_0().cursor_pointer().on_mouse_down(MouseButton::Left, cx.listener({
                                                 let predicate_for_clipboard = predicate_clone.clone();
                                                 move |_this, _event: &MouseDownEvent, _window, cx| {
                                                     cx.write_to_clipboard(ClipboardItem::new_string(predicate_for_clipboard.clone().to_string()));
