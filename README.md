@@ -66,6 +66,20 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - inspired from `Choose Content to Paste` from JetBrains IDEs
   - in `crates/workspace/src/persistence.rs` there is own SQL table `clipboard_history`, so the recent entries is remembered across restarts
 
+## Emoji Picker
+
+Implement `emoji_picker_modal::ToggleEmojiPicker` which opens a modal and on picking an emoji, it is copied into the clipboard.
+
+You modify the emojis in your `settings.json` like this in the root setting object:
+
+```json
+"emoji_picker": [
+  "😄 smile",
+  "😮 surprise",
+  "😢 sad"
+]
+```
+
 ## Keyboard Context
 
 - allow mouse left click on the action name or context to copy into clipboard

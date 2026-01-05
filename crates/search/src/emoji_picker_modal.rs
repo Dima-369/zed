@@ -1,51 +1,58 @@
-use clipboard_history::{ClipboardEntry, ClipboardHistory};
 use gpui::{
-    App, ClipboardItem, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    KeyBinding, KeyContext, Render, Subscription, UniformListScrollHandle, WeakEntity, Window, actions,
+    actions, App, ClipboardItem, Context, DismissEvent, Entity, EventEmitter, FocusHandle,
+    Focusable, KeyBinding, KeyContext, Render, Subscription, UniformListScrollHandle, WeakEntity, Window,
 };
 use picker::{Picker, PickerDelegate};
+use settings::Settings;
 use std::sync::Arc;
 use ui::{Label, ListItem, prelude::*};
 use workspace::{ModalView, Workspace};
 
-actions!(clipboard_history_modal, [ToggleClipboardHistory]);
+use crate::emoji_picker_settings::EmojiPickerSettings;
+
+actions!(emoji_picker_modal, [ToggleEmojiPicker]);
 
 pub fn init(cx: &mut App) {
-    clipboard_history::init(cx);
     cx.bind_keys([KeyBinding::new(
-        "cmd-shift-v",
-        ToggleClipboardHistory,
+        "cmd-ctrl-e",
+        ToggleEmojiPicker,
         Some("Workspace"),
     )]);
-    cx.observe_new(ClipboardHistoryModal::register).detach();
+    cx.observe_new(EmojiPickerModal::register).detach();
 }
 
-pub struct ClipboardHistoryDelegate {
-    entries: Vec<ClipboardEntry>,
+pub struct EmojiPickerDelegate {
+    emojis: Vec<EmojiEntry>,
     selected_index: usize,
     matches: Vec<usize>,
-    clipboard_history_modal: WeakEntity<ClipboardHistoryModal>,
+    emoji_picker_modal: WeakEntity<EmojiPickerModal>,
 }
 
-pub struct ClipboardHistoryModal {
-    picker: Entity<Picker<ClipboardHistoryDelegate>>,
+#[derive(Clone)]
+pub struct EmojiEntry {
+    emoji: String,
+    description: String,
+}
+
+pub struct EmojiPickerModal {
+    picker: Entity<Picker<EmojiPickerDelegate>>,
     _picker_subscription: Subscription,
 }
 
-impl ModalView for ClipboardHistoryModal {}
+impl ModalView for EmojiPickerModal {}
 
-impl EventEmitter<DismissEvent> for ClipboardHistoryModal {}
+impl EventEmitter<DismissEvent> for EmojiPickerModal {}
 
-impl Focusable for ClipboardHistoryModal {
+impl Focusable for EmojiPickerModal {
     fn focus_handle(&self, cx: &App) -> FocusHandle {
         self.picker.focus_handle(cx)
     }
 }
 
-impl Render for ClipboardHistoryModal {
+impl Render for EmojiPickerModal {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut key_context = KeyContext::new_with_defaults();
-        key_context.add("ClipboardHistoryModal");
+        key_context.add("EmojiPickerModal");
 
         v_flex()
             .key_context(key_context)
@@ -55,13 +62,13 @@ impl Render for ClipboardHistoryModal {
     }
 }
 
-impl ClipboardHistoryModal {
+impl EmojiPickerModal {
     fn register(
         workspace: &mut Workspace,
         _window: Option<&mut Window>,
         _cx: &mut Context<Workspace>,
     ) {
-        workspace.register_action(|workspace, _: &ToggleClipboardHistory, window, cx| {
+        workspace.register_action(|workspace, _: &ToggleEmojiPicker, window, cx| {
             Self::toggle(workspace, window, cx);
         });
     }
@@ -74,13 +81,31 @@ impl ClipboardHistoryModal {
         let weak_self = cx.entity().downgrade();
         let scroll_handle = UniformListScrollHandle::new();
 
-        let entries = ClipboardHistory::entries();
+        // Get emoji settings from global settings
+        let emoji_strings = EmojiPickerSettings::get_global(cx)
+            .emoji_picker
+            .clone();
 
-        let delegate = ClipboardHistoryDelegate {
-            entries: entries.clone(),
+        let emojis: Vec<EmojiEntry> = emoji_strings
+            .iter()
+            .filter_map(|s| {
+                let mut parts = s.splitn(2, ' ');
+                if let (Some(emoji), Some(description)) = (parts.next(), parts.next()) {
+                    Some(EmojiEntry {
+                        emoji: emoji.to_string(),
+                        description: description.to_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let delegate = EmojiPickerDelegate {
+            emojis: emojis.clone(),
             selected_index: 0,
-            matches: (0..entries.len()).collect(),
-            clipboard_history_modal: weak_self,
+            matches: (0..emojis.len()).collect(),
+            emoji_picker_modal: weak_self,
         };
 
         let picker = cx.new(|cx| {
@@ -101,7 +126,7 @@ impl ClipboardHistoryModal {
 
     fn on_picker_event(
         &mut self,
-        _picker: &Entity<Picker<ClipboardHistoryDelegate>>,
+        _picker: &Entity<Picker<EmojiPickerDelegate>>,
         _event: &DismissEvent,
         _window: &mut Window,
         cx: &mut Context<Self>,
@@ -110,7 +135,7 @@ impl ClipboardHistoryModal {
     }
 }
 
-impl PickerDelegate for ClipboardHistoryDelegate {
+impl PickerDelegate for EmojiPickerDelegate {
     type ListItem = ListItem;
 
     fn match_count(&self) -> usize {
@@ -131,7 +156,7 @@ impl PickerDelegate for ClipboardHistoryDelegate {
     }
 
     fn placeholder_text(&self, _window: &mut Window, _cx: &mut App) -> Arc<str> {
-        "Choose from clipboard history to paste...".into()
+        "Choose an emoji to copy to clipboard...".into()
     }
 
     fn update_matches(
@@ -143,13 +168,16 @@ impl PickerDelegate for ClipboardHistoryDelegate {
         let query = query.to_lowercase();
 
         if query.is_empty() {
-            self.matches = (0..self.entries.len()).collect();
+            self.matches = (0..self.emojis.len()).collect();
         } else {
             self.matches = self
-                .entries
+                .emojis
                 .iter()
                 .enumerate()
-                .filter(|(_, entry)| entry.text.to_lowercase().contains(&query))
+                .filter(|(_, entry)| {
+                    entry.emoji.to_lowercase().contains(&query) 
+                        || entry.description.to_lowercase().contains(&query)
+                })
                 .map(|(i, _)| i)
                 .collect();
         }
@@ -160,23 +188,19 @@ impl PickerDelegate for ClipboardHistoryDelegate {
 
     fn confirm(&mut self, _secondary: bool, _window: &mut Window, cx: &mut Context<Picker<Self>>) {
         if let Some(&entry_index) = self.matches.get(self.selected_index) {
-            if let Some(entry) = self.entries.get(entry_index) {
-                let text = entry.text.clone();
+            if let Some(entry) = self.emojis.get(entry_index) {
+                // Extract emoji (up to first whitespace) from the entry
+                let emoji = entry.emoji.split_whitespace().next().unwrap_or(&entry.emoji);
 
-                // Write to clipboard first
-                cx.write_to_clipboard(ClipboardItem::new_string(text));
+                // Copy to clipboard only
+                cx.write_to_clipboard(ClipboardItem::new_string(emoji.to_string()));
 
                 // Dismiss the modal
-                if let Some(modal) = self.clipboard_history_modal.upgrade() {
+                if let Some(modal) = self.emoji_picker_modal.upgrade() {
                     modal.update(cx, |_, cx| {
                         cx.emit(DismissEvent);
                     });
                 }
-
-                // Defer the paste action to ensure the modal is fully dismissed and focus is back on the editor
-                cx.defer(move |cx| {
-                    cx.dispatch_action(&editor::actions::Paste);
-                });
             }
         }
     }
@@ -191,9 +215,7 @@ impl PickerDelegate for ClipboardHistoryDelegate {
         _cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let entry_index = *self.matches.get(ix)?;
-        let entry = self.entries.get(entry_index)?;
-
-        let preview = entry.preview();
+        let entry = self.emojis.get(entry_index)?;
 
         Some(
             ListItem::new(ix).inset(true).toggle_state(selected).child(
@@ -203,7 +225,13 @@ impl PickerDelegate for ClipboardHistoryDelegate {
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_ellipsis()
-                    .child(Label::new(preview)),
+                    .child(
+                        div()
+                            .flex()
+                            .gap_2()
+                            .child(Label::new(entry.emoji.clone()))
+                            .child(Label::new(entry.description.clone()))
+                    ),
             ),
         )
     }

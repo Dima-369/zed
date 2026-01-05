@@ -164,6 +164,11 @@ pub struct SettingsContent {
 
     /// Settings related to Vim mode in Zed.
     pub vim: Option<VimSettingsContent>,
+
+    /// Custom emoji definitions for the emoji picker. Each entry should be in the format "emoji description".
+    ///
+    /// Default: ["😄 smile", "😭 sad", "🤔 thinking"]
+    pub emoji_picker: Option<Vec<String>>,
 }
 
 impl SettingsContent {

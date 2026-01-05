@@ -1,7 +1,3 @@
-implement emoji picker, like the clipboard history modal
-you need to add a new hot-reloaded setting, like the `colorize_brackets` setting
-in it, you have an array of strings like "😄 smile", "😭 sad", "🤔 thinking", etc. (you can assume this format)
-when the setting is not set, only hardcode like just 3 basic emotions
 
 
 
