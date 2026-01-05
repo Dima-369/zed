@@ -128,6 +128,17 @@ pub fn init(cx: &mut gpui::App) {
 
     // Load clipboard history from database on startup
     cx.spawn(|_cx: &mut gpui::AsyncApp| async move {
+        // Clean up duplicates in database first
+        match WORKSPACE_DB.delete_duplicate_clipboard_entries().await {
+            Ok(()) => {
+                log::info!("Removed duplicate clipboard entries from database");
+            }
+            Err(e) => {
+                log::error!("Failed to delete duplicate clipboard entries: {:?}", e);
+            }
+        }
+
+        // Load clipboard history from database
         match WORKSPACE_DB
             .get_clipboard_entries(MAX_CLIPBOARD_HISTORY)
             .await

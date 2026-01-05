@@ -1970,6 +1970,19 @@ impl WorkspaceDb {
         .await
     }
 
+    pub async fn delete_duplicate_clipboard_entries(&self) -> Result<()> {
+        self.write(move |conn| {
+            conn.exec_bound(sql!(
+                DELETE FROM clipboard_history 
+                WHERE rowid NOT IN (
+                    SELECT MIN(rowid) 
+                    FROM clipboard_history 
+                    GROUP BY text
+                )
+            ))?(())
+        }).await
+    }
+
     pub async fn toolchain(
         &self,
         workspace_id: WorkspaceId,
