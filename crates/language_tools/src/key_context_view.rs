@@ -254,7 +254,7 @@ impl Render for KeyContextView {
                     div()
                         .ml(px(12. * (i + 1) as f32))
                         .on_mouse_down(MouseButton::Left, cx.listener(move |_this, _event: &MouseDownEvent, _window, cx| {
-                            cx.write_to_clipboard(ClipboardItem::new_string(context_text_clone.clone().to_string()));
+                            cx.write_to_clipboard(ClipboardItem::new_string(context_text_clone.to_string()));
                         }))
                         .child(Label::new(context_text))
                 })
