@@ -624,6 +624,7 @@ impl EditorElement {
         register_action(editor, window, Editor::edit_log_breakpoint);
         register_action(editor, window, Editor::enable_breakpoint);
         register_action(editor, window, Editor::disable_breakpoint);
+        register_action(editor, window, Editor::toggle_read_only);
         if editor.read(cx).enable_wrap_selections_in_tag(cx) {
             register_action(editor, window, Editor::wrap_selections_in_tag);
         }
@@ -4108,6 +4109,9 @@ impl EditorElement {
                                                 }
                                             })),
                                     )
+                                    .when(!for_excerpt.buffer.capability.editable(), |el| {
+                                        el.child(Icon::new(IconName::FileLock).color(Color::Muted))
+                                    })
                                     .when_some(parent_path, |then, path| {
                                         then.child(
                                             Label::new(path)

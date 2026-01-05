@@ -140,6 +140,12 @@ actions!(
         DismissErrorNotification,
         /// Copies the error notification content to the clipboard in the agent panel.
         CopyErrorNotification,
+        /// Queues a message to be sent when generation completes.
+        QueueMessage,
+        /// Sends the next queued message immediately.
+        SendNextQueuedMessage,
+        /// Clears all messages from the queue.
+        ClearMessageQueue,
     ]
 );
 
