@@ -1,7 +1,7 @@
 use gpui::{
     Action, App, AppContext as _, Entity, EventEmitter, FocusHandle, Focusable,
-    KeyBindingContextPredicate, KeyContext, Keystroke, MouseButton, Render, Subscription, Task,
-    actions,
+    KeyBindingContextPredicate, KeyContext, Keystroke, MouseDownEvent, MouseButton, Render, Subscription, Task,
+    actions, ClipboardItem,
 };
 use itertools::Itertools;
 use serde_json::json;
@@ -17,7 +17,7 @@ actions!(
     dev,
     [
         /// Opens the key context view for debugging keybindings.
-        OpenKeyContextView
+        OpenKeyContextView,
     ]
 );
 
@@ -249,7 +249,14 @@ impl Render for KeyContextView {
                             }
                         })
                         .join(" ");
-                    Label::new(format!("{} {}", primary, secondary)).ml(px(12. * (i + 1) as f32))
+                    let context_text = format!("{} {}", primary, secondary);
+                    let context_text_clone = context_text.clone();
+                    div()
+                        .ml(px(12. * (i + 1) as f32))
+                        .on_mouse_down(MouseButton::Left, cx.listener(move |_this, _event: &MouseDownEvent, _window, cx| {
+                            cx.write_to_clipboard(ClipboardItem::new_string(context_text_clone.clone().to_string()));
+                        }))
+                        .child(Label::new(context_text))
                 })
             })
             .child(Label::new("Last Keystroke").mt_4().size(LabelSize::Large))
@@ -273,6 +280,8 @@ impl Render for KeyContextView {
                                     Some(false) => ("(low precedence)", ui::Color::Hint),
                                     None => ("(no match)", ui::Color::Error),
                                 };
+                                let name_clone = name.clone();
+                                let predicate_clone = predicate.clone();
                                 div()
                                     .ml_8()
                                     .mt_1()
@@ -283,8 +292,18 @@ impl Render for KeyContextView {
                                             .w_full()
                                             .flex_wrap()
                                             .items_start()
-                                            .child(div().min_w(px(200.)).child(Label::new(name.clone()).color(color)))
-                                            .child(div().flex_1().min_w_0().child(Label::new(predicate.clone())))
+                                            .child(div().min_w(px(200.)).on_mouse_down(MouseButton::Left, cx.listener({
+                                                let name_for_clipboard = name_clone.clone();
+                                                move |_this, _event: &MouseDownEvent, _window, cx| {
+                                                    cx.write_to_clipboard(ClipboardItem::new_string(name_for_clipboard.clone().to_string()));
+                                                }
+                                            })).child(Label::new(name_clone).color(color)))
+                                            .child(div().flex_1().min_w_0().on_mouse_down(MouseButton::Left, cx.listener({
+                                                let predicate_for_clipboard = predicate_clone.clone();
+                                                move |_this, _event: &MouseDownEvent, _window, cx| {
+                                                    cx.write_to_clipboard(ClipboardItem::new_string(predicate_for_clipboard.clone().to_string()));
+                                                }
+                                            })).child(Label::new(predicate_clone)))
                                             .child(Label::new(text).color(color))
                                     )
                             }),
