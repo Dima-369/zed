@@ -6,11 +6,11 @@ use client::{ErrorCode, ErrorExt};
 use collections::{BTreeSet, HashMap, hash_map};
 use command_palette_hooks::CommandPaletteFilter;
 use db::kvp::KEY_VALUE_STORE;
-use editor::{Editor, EditorEvent};
 use editor::items::{
-    entry_diagnostic_aware_icon_decoration_and_color,
-    entry_diagnostic_aware_icon_name_and_color, entry_git_aware_label_color,
+    entry_diagnostic_aware_icon_decoration_and_color, entry_diagnostic_aware_icon_name_and_color,
+    entry_git_aware_label_color,
 };
+use editor::{Editor, EditorEvent};
 use file_icons::FileIcons;
 use git;
 use git::status::GitSummary;
@@ -1627,8 +1627,9 @@ impl ProjectPanel {
 
             // Check for newlines which are not allowed in filenames
             if filename.contains('\n') {
-                edit_state.validation_state =
-                    ValidationState::Error("File or directory name cannot contain newlines.".to_string());
+                edit_state.validation_state = ValidationState::Error(
+                    "File or directory name cannot contain newlines.".to_string(),
+                );
                 cx.notify();
                 return;
             }

@@ -2007,13 +2007,13 @@ mod tests {
 
         let keymap_file = KeymapFile::parse(keymap_json).unwrap();
         let sections: Vec<_> = keymap_file.sections().collect();
-        
+
         assert_eq!(sections.len(), 2);
         assert_eq!(sections[0].highest_precedence, false);
         assert_eq!(sections[1].highest_precedence, true);
     }
 
-    #[test] 
+    #[test]
     fn test_highest_precedence_false_by_default() {
         let keymap_json = r#"
         [
@@ -2028,7 +2028,7 @@ mod tests {
 
         let keymap_file = KeymapFile::parse(keymap_json).unwrap();
         let sections: Vec<_> = keymap_file.sections().collect();
-        
+
         assert_eq!(sections.len(), 1);
         assert_eq!(sections[0].highest_precedence, false);
     }

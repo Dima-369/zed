@@ -261,7 +261,11 @@ pub fn init(cx: &mut App) {
                 // Remove non-existing files from database
                 for path in non_existing {
                     if let Err(e) = WORKSPACE_DB.delete_recent_file(&path).await {
-                        log::error!("Failed to delete non-existing file from database: {:?}, path: {:?}", e, path);
+                        log::error!(
+                            "Failed to delete non-existing file from database: {:?}, path: {:?}",
+                            e,
+                            path
+                        );
                     }
                 }
             }

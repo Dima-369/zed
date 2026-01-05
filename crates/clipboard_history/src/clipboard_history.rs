@@ -128,7 +128,10 @@ pub fn init(cx: &mut gpui::App) {
 
     // Load clipboard history from database on startup
     cx.spawn(|_cx: &mut gpui::AsyncApp| async move {
-        match WORKSPACE_DB.get_clipboard_entries(MAX_CLIPBOARD_HISTORY).await {
+        match WORKSPACE_DB
+            .get_clipboard_entries(MAX_CLIPBOARD_HISTORY)
+            .await
+        {
             Ok(db_entries) => {
                 let mut entries = CLIPBOARD_ENTRIES.lock();
                 entries.clear();
@@ -147,4 +150,3 @@ pub fn init(cx: &mut gpui::App) {
     })
     .detach();
 }
-

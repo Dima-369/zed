@@ -6880,7 +6880,6 @@ impl EditorElement {
             let hitbox = &scrollbar_layout.hitbox;
             if scrollbars_layout.visible {
                 window.paint_layer(hitbox.bounds, |window| {
-
                     if axis == ScrollbarAxis::Vertical {
                         let fast_markers =
                             self.collect_fast_scrollbar_markers(layout, scrollbar_layout, cx);
@@ -6932,7 +6931,11 @@ impl EditorElement {
                             ),
                         };
 
-                        let corner_radius = inset_thumb_bounds.size.width.min(inset_thumb_bounds.size.height) / 2.;
+                        let corner_radius = inset_thumb_bounds
+                            .size
+                            .width
+                            .min(inset_thumb_bounds.size.height)
+                            / 2.;
 
                         window.paint_quad(quad(
                             inset_thumb_bounds,

@@ -1,7 +1,7 @@
 use gpui::{
-    Action, App, AppContext as _, Entity, EventEmitter, FocusHandle, Focusable,
-    KeyBindingContextPredicate, KeyContext, Keystroke, MouseDownEvent, MouseButton, Render, Subscription, Task,
-    actions, ClipboardItem,
+    Action, App, AppContext as _, ClipboardItem, Entity, EventEmitter, FocusHandle, Focusable,
+    KeyBindingContextPredicate, KeyContext, Keystroke, MouseButton, MouseDownEvent, Render,
+    Subscription, Task, actions,
 };
 use itertools::Itertools;
 use serde_json::json;
