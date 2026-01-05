@@ -1,7 +1,3 @@
-display scrollbars in the clipboard history modal, see how the recent file model displays its scrollbar
-
-can the clipboard history modal abbreviate with ... at the right when the text is cut off on long lines?
-
 implement emoji picker, like the clipboard history modal
 you need to add a new hot-reloaded setting, like the `colorize_brackets` setting
 in it, you have an array of strings like "😄 smile", "😭 sad", "🤔 thinking", etc. (you can assume this format)
