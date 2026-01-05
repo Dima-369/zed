@@ -31,9 +31,12 @@ impl ClipboardEntry {
         if text_with_newline_symbols.len() <= max_len {
             text_with_newline_symbols.into()
         } else {
-            let mut preview = text_with_newline_symbols[..max_len].to_string();
-            preview.push_str("…");
-            preview.into()
+            // Use character-based indexing to avoid breaking multi-byte UTF-8 characters
+            let preview = text_with_newline_symbols
+                .chars()
+                .take(max_len)
+                .collect::<String>();
+            format!("{}…", preview).into()
         }
     }
 }
