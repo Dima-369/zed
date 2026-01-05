@@ -249,16 +249,22 @@ pub fn init(cx: &mut App) {
     cx.spawn(|_cx: &mut AsyncApp| async move {
         match WORKSPACE_DB.get_recent_files(3000).await {
             Ok(files) => {
-                let mut recent_files = RECENT_FILES.lock();
-                recent_files.clear();
+                // Separate existing and non-existing files while holding the lock
+                let non_existing = {
+                    let mut recent_files = RECENT_FILES.lock();
+                    recent_files.clear();
 
-                // Separate existing and non-existing files
-                let (existing, non_existing): (Vec<_>, Vec<_>) =
-                    files.into_iter().partition(|path| path_exists(path));
+                    // Separate existing and non-existing files
+                    let (existing, non_existing): (Vec<_>, Vec<_>) =
+                        files.into_iter().partition(|path| path_exists(path));
 
-                recent_files.extend(existing);
+                    recent_files.extend(existing);
 
-                // Remove non-existing files from database
+                    // Return only the non_existing files to be processed outside the lock
+                    non_existing
+                };
+
+                // Remove non-existing files from database (outside the lock)
                 for path in non_existing {
                     if let Err(e) = WORKSPACE_DB.delete_recent_file(&path).await {
                         log::error!(
