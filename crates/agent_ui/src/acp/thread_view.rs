@@ -77,13 +77,10 @@ use crate::profile_selector::{ProfileProvider, ProfileSelector};
 use crate::ui::{AgentNotification, AgentNotificationEvent, BurnModeTooltip};
 use crate::{
     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, ClearMessageQueue, ContinueThread,
-    ContinueWithBurnMode, CycleFavoriteModels, CycleModeSelector, ExpandMessageEditor, Follow,
-    KeepAll, NewThread, OpenAgentDiff, OpenHistory, QueueMessage, RejectAll, RejectOnce,
-    SendNextQueuedMessage, ToggleBurnMode, ToggleProfileSelector,
-    AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, ContinueThread, ContinueWithBurnMode,
-    CopyErrorNotification, CycleFavoriteModels, CycleModeSelector, DismissErrorNotification,
-    ExpandMessageEditor, Follow, KeepAll, NewThread, OpenAgentDiff, OpenHistory, RejectAll,
-    RejectOnce, ToggleBurnMode, TogglePlan, ToggleProfileSelector,
+    ContinueWithBurnMode, CopyErrorNotification, CycleFavoriteModels, CycleModeSelector, 
+    DismissErrorNotification, ExpandMessageEditor, Follow, KeepAll, NewThread, OpenAgentDiff, 
+    OpenHistory, QueueMessage, RejectAll, RejectOnce, SendNextQueuedMessage, ToggleBurnMode, 
+    TogglePlan, ToggleProfileSelector,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

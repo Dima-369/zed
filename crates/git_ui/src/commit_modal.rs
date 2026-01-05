@@ -165,21 +165,6 @@ impl CommitModal {
 
         workspace.open_panel::<GitPanel>(window, cx);
 
-        // Calculate modal properties first to get the width
-        let properties = ModalContainerProperties::new(window, 50);
-
-        // Calculate right-side position to avoid overlapping with left git panel
-        let window_bounds = window.bounds();
-        let modal_x = window_bounds.origin.x + window_bounds.size.width
-            - px(properties.modal_width)
-            - px(20.0);
-        let modal_y = window_bounds.origin.y + px(100.0); // Position down from top
-
-        // Set the modal placement to anchored on the right side
-        workspace.set_next_modal_placement(workspace::ModalPlacement::Anchored {
-            position: gpui::point(modal_x, modal_y),
-        });
-
         workspace.toggle_modal(window, cx, move |window, cx| {
             CommitModal::new(git_panel, restore_dock_position, window, cx)
         })

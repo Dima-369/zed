@@ -153,7 +153,7 @@ impl BranchDiffPickerDelegate {
 
             let update = update_task.await;
             buffer_diff.update(cx, |buffer_diff, cx| {
-                buffer_diff.set_snapshot(update, &new_buffer_snapshot, cx);
+                let _ = buffer_diff.set_snapshot(update, &new_buffer_snapshot, cx);
             })?;
 
             workspace.update_in(cx, |workspace, window, cx| {
