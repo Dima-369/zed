@@ -2,8 +2,6 @@
 
 - on Zed startup, check clipboard history and remove all duplicates, and delete from db
 
-- fix space n h clipboard crash
-
 TEST
 - in the Keyboard Context, one should be able to right click on the action name or the context string to open a right click menu with the 
 option to copy to clipboard
