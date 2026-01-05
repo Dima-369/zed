@@ -2,9 +2,7 @@
 
 - on Zed startup, check clipboard history and remove all duplicates, and delete from db
 
-TEST
-- in the Keyboard Context, one should be able to right click on the action name or the context string to open a right click menu with the 
-option to copy to clipboard
+- in the Keyboard Context, one can mouse left click to copy to clipboard, can you change mouse cursor to pointer there?
 
 
 # >>> Investigations
