@@ -1,7 +1,3 @@
-- how to fix enter in project panel vim insert mode? precendence is tricky
-
-- add a new JSON boolean key to `keymap.json` support named `highest_precedence` next to the existing JSON keys: `use_key_equivalents`, `bindings`, `context`. it is optional and if missing, assume `false`. When true the keybindings defined there should have the highest precedence 
-
 - in the Keyboard Context, one should be able to right click on the action name or the context string to open a right click menu with the 
 option to copy to clipboard
 
