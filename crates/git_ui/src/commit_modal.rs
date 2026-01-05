@@ -540,15 +540,15 @@ impl Render for CommitModal {
 
         // Calculate right-side position to avoid overlapping with left git panel
         let window_bounds = window.bounds();
-        let modal_x = (window_bounds.size.width - width - px(20.0)).max(px(0.0));
+        let right_position = (window_bounds.size.width - width - px(20.0)).max(px(0.0));
         // Move 1/3 to the left from the right position
-        let modal_x = modal_x - (window_bounds.size.width / 3.0).max(px(0.0));
+        let modal_x = (right_position - window_bounds.size.width / 3.0).max(px(0.0));
         let modal_y = px(100.0); // Position down from top
 
         // Ensure modal doesn't go outside viewport bounds
         let max_x = (window_bounds.size.width - width).max(px(0.0));
         let modal_x = modal_x.min(max_x);
-        
+
         let modal_height = px(400.0); // Approximate modal height
         let max_y = (window_bounds.size.height - modal_height).max(px(0.0));
         let modal_y = modal_y.min(max_y);
