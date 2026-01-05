@@ -1,6 +1,7 @@
 use gpui::{
-    actions, App, ClipboardItem, Context, DismissEvent, Entity, EventEmitter, FocusHandle,
-    Focusable, KeyBinding, KeyContext, Render, Subscription, UniformListScrollHandle, WeakEntity, Window,
+    App, ClipboardItem, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
+    KeyBinding, KeyContext, Render, Subscription, UniformListScrollHandle, WeakEntity, Window,
+    actions,
 };
 use picker::{Picker, PickerDelegate};
 use settings::Settings;
@@ -82,9 +83,7 @@ impl EmojiPickerModal {
         let scroll_handle = UniformListScrollHandle::new();
 
         // Get emoji settings from global settings
-        let emoji_strings = EmojiPickerSettings::get_global(cx)
-            .emoji_picker
-            .clone();
+        let emoji_strings = EmojiPickerSettings::get_global(cx).emoji_picker.clone();
 
         let emojis: Vec<EmojiEntry> = emoji_strings
             .iter()
@@ -175,7 +174,7 @@ impl PickerDelegate for EmojiPickerDelegate {
                 .iter()
                 .enumerate()
                 .filter(|(_, entry)| {
-                    entry.emoji.to_lowercase().contains(&query) 
+                    entry.emoji.to_lowercase().contains(&query)
                         || entry.description.to_lowercase().contains(&query)
                 })
                 .map(|(i, _)| i)
@@ -190,7 +189,11 @@ impl PickerDelegate for EmojiPickerDelegate {
         if let Some(&entry_index) = self.matches.get(self.selected_index) {
             if let Some(entry) = self.emojis.get(entry_index) {
                 // Extract emoji (up to first whitespace) from the entry
-                let emoji = entry.emoji.split_whitespace().next().unwrap_or(&entry.emoji);
+                let emoji = entry
+                    .emoji
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or(&entry.emoji);
 
                 // Copy to clipboard only
                 cx.write_to_clipboard(ClipboardItem::new_string(emoji.to_string()));
@@ -230,7 +233,7 @@ impl PickerDelegate for EmojiPickerDelegate {
                             .flex()
                             .gap_2()
                             .child(Label::new(entry.emoji.clone()))
-                            .child(Label::new(entry.description.clone()))
+                            .child(Label::new(entry.description.clone())),
                     ),
             ),
         )

@@ -1,7 +1,8 @@
 use clipboard_history::{ClipboardEntry, ClipboardHistory};
 use gpui::{
     App, ClipboardItem, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable,
-    KeyBinding, KeyContext, Render, Subscription, UniformListScrollHandle, WeakEntity, Window, actions,
+    KeyBinding, KeyContext, Render, Subscription, UniformListScrollHandle, WeakEntity, Window,
+    actions,
 };
 use picker::{Picker, PickerDelegate};
 use std::sync::Arc;

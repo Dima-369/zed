@@ -11,8 +11,8 @@ impl Settings for EmojiPickerSettings {
             emoji_picker: content.emoji_picker.clone().unwrap_or_else(|| {
                 vec![
                     "😄 smile".to_string(),
-                    "😭 sad".to_string(), 
-                    "🤔 thinking".to_string()
+                    "😭 sad".to_string(),
+                    "🤔 thinking".to_string(),
                 ]
             }),
         }
