@@ -714,6 +714,14 @@ impl ProjectPanel {
 
             let filename_editor = cx.new(|cx| Editor::multi_line(window, cx));
 
+            // Configure filename editor for project panel use
+            filename_editor.update(cx, |editor, cx| {
+                editor.set_show_line_numbers(false, cx);
+                editor.set_show_gutter(false, cx);
+                editor.set_smooth_scroll(false, cx);
+                editor.set_show_scrollbars(false, cx);
+            });
+
             cx.subscribe_in(
                 &filename_editor,
                 window,
