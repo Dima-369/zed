@@ -1,7 +1,3 @@
-- on Zed startup, check clipboard history and remove all duplicates, and delete from db
-
-
-
 # >>> Investigations
 
 ## edit predictions: Amp Tab support
