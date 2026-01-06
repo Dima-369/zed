@@ -255,9 +255,11 @@ actions!(
         /// Opens the component preview.
         OpenComponentPreview,
         /// Opens a file explorer for the current editor's directory.
-        EditorFileExplorerOpen,
+        FileExplorerOpen,
         /// Opens the file under cursor in the file explorer.
         FileExplorerOpenFile,
+        /// Goes back to the parent directory in the file explorer.
+        FileExplorerGoBack,
         /// Reloads the active item.
         ReloadActiveItem,
         /// Resets the active dock to its default size.

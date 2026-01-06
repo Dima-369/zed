@@ -348,6 +348,7 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::new_file_horizontal);
             workspace.register_action(Editor::file_explorer_open);
             workspace.register_action(Editor::file_explorer_open_file);
+            workspace.register_action(Editor::file_explorer_go_back);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
             workspace.register_action(|workspace, action, window, cx| {
@@ -2980,7 +2981,7 @@ impl Editor {
 
     pub fn file_explorer_open(
         workspace: &mut Workspace,
-        _action: &workspace::EditorFileExplorerOpen,
+        _action: &workspace::FileExplorerOpen,
         window: &mut Window,
         cx: &mut Context<Workspace>,
     ) {
@@ -3182,6 +3183,86 @@ impl Editor {
                     }
                 }
                 Ok(())
+            })
+            .detach();
+        }
+    }
+
+    pub fn file_explorer_go_back(
+        workspace: &mut Workspace,
+        _action: &workspace::FileExplorerGoBack,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+            let project = workspace.project().clone();
+
+            // Get current directory from the file explorer content
+            let current_dir = editor.update(cx, |editor, cx| {
+                let display_snapshot = editor.display_snapshot(cx);
+                let buffer_snapshot = display_snapshot.buffer_snapshot();
+                let full_content = buffer_snapshot.text();
+
+                // Parse the directory header to get the current path
+                let first_line = full_content
+                    .lines()
+                    .find(|line| !line.trim().is_empty())
+                    .unwrap_or("")
+                    .trim();
+
+                first_line.to_string()
+            });
+
+            if current_dir.is_empty() {
+                return;
+            }
+
+            // Don't go back if we're already at the root ("/")
+            if current_dir == "/" {
+                return;
+            }
+
+            let editor = editor.clone();
+
+            // Navigate to parent directory
+            cx.spawn_in(window, async move |workspace, cx| {
+                let current_path = PathBuf::from(&current_dir);
+                
+                // Get parent directory
+                let parent_path = current_path.parent().unwrap_or(&current_path);
+                
+                // Convert to string, ensure we don't go beyond root
+                let parent_dir = if parent_path.as_os_str().is_empty() {
+                    "/".to_string()
+                } else {
+                    parent_path.to_string_lossy().to_string()
+                };
+
+                // Find the project path for the parent directory
+                let project_path = project
+                    .read_with(cx, |project, cx| {
+                        project.find_project_path(&PathBuf::from(&parent_dir), cx)
+                    })
+                    .ok()
+                    .flatten();
+
+                if let Some(project_path) = project_path {
+                    let directory_content = project
+                        .update(cx, |project, cx| {
+                            Self::file_explorer_get_directory_content(project, &project_path, cx)
+                        })
+                        .ok()
+                        .and_then(|result| result.ok());
+
+                    if let Some(content) = directory_content {
+                        let _ = workspace.update_in(cx, |_workspace, window, cx| {
+                            editor.update(cx, |editor, cx| {
+                                editor.set_text(content, window, cx);
+                                editor.move_to_beginning(&Default::default(), window, cx);
+                            })
+                        });
+                    }
+                }
             })
             .detach();
         }
