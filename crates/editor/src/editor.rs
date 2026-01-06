@@ -3025,6 +3025,16 @@ impl Editor {
                 }
             };
 
+            // Set Rust language for the buffer
+            let language_registry = project.update(cx, |project, _cx| project.languages().clone());
+            if let Ok(language_registry) = language_registry {
+                if let Ok(rust_language) = language_registry.language_for_name("Rust").await {
+                    let _ = buffer.update(cx, |buffer, cx| {
+                        buffer.set_language(Some(rust_language), cx);
+                    });
+                }
+            }
+
             let _ = workspace.update_in(cx, |workspace, window, cx| {
                 let editor = cx.new(|cx| {
                     Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
