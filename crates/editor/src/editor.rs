@@ -2951,11 +2951,11 @@ impl Editor {
             let worktree_id = current_dir.worktree_id;
             let dir_path = current_dir.path.clone();
             
-            let entries = project.update(cx, |project, cx| async move {
+            let entries = project.update(cx, |project, cx| {
                 let worktree = project.worktree_for_id(worktree_id, cx)
                     .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
                 let worktree = worktree.read(cx);
-                
+
                 // List entries in directory
                 let mut entries = Vec::new();
                 for child_entry in worktree.child_entries(&dir_path) {
@@ -2963,54 +2963,51 @@ impl Editor {
                     let is_dir = child_entry.is_dir();
                     entries.push((path, is_dir));
                 }
-                
+
                 // Sort: directories first, then files, both alphabetically
                 entries.sort_by(|a, b| {
                     match (a.1, b.1) {
-                        (true, false) => std::cmp::Ordering::Less,  // directories first
+                        (true, false) => std::cmp::Ordering::Less,    // directories first
                         (false, true) => std::cmp::Ordering::Greater, // files after directories
-                        _ => a.0.cmp(&b.0), // alphabetical within each group
+                        _ => a.0.cmp(&b.0),                           // alphabetical within each group
                     }
                 });
-                
+
                 // Create file listing content with current directory header
                 let worktree_root = worktree.abs_path();
                 let current_dir_display = if dir_path.as_std_path() == &*worktree_root {
                     "~".to_string() // Show ~ for project root
                 } else {
                     // Show relative path from worktree root
-                    dir_path.strip_prefix(RelPath::unix(worktree_root.to_string_lossy().as_ref()).unwrap_or(RelPath::empty()))
+                    dir_path
+                        .strip_prefix(
+                            RelPath::unix(worktree_root.to_string_lossy().as_ref())
+                                .unwrap_or(RelPath::empty()),
+                        )
                         .unwrap_or(&dir_path)
                         .display(util::paths::PathStyle::Posix)
                         .to_string()
                 };
-                
-                let mut file_list_content = format!("{}\n", current_dir_display);
-                
+
+                let mut file_list_content = format!("\n\n{}\n", current_dir_display);
+
                 // Add file names (without paths)
                 file_list_content.push_str(
                     &entries
                         .iter()
                         .map(|(path, is_dir)| {
                             let suffix = if *is_dir { "/" } else { "" };
-                            let file_name = path.file_name()
-                                .map(|name| name.to_string_lossy())
+                            let file_name = path
+                                .file_name()
+                                .map(|name| name.to_string())
                                 .unwrap_or("".to_string());
                             format!("{}{}\n", file_name, suffix)
                         })
-                        .collect::<String>()
+                        .collect::<String>(),
                 );
 
                 anyhow::Ok((entries, file_list_content))
-            });
-            
-            let entries = match entries {
-                Ok(entries) => entries,
-                Err(e) => {
-                    log::error!("Failed to get directory entries: {}", e);
-                    return;
-                }
-            };
+            }).and_then(|e| e);
 
             let Ok((_entries, file_list_content)) = entries else {
                 log::error!("Failed to get directory entries");
@@ -3107,8 +3104,8 @@ impl Editor {
                 cursor.head().row().0
             });
             
-            if cursor_row == 0 {
-                // First line is directory header, don't try to open it
+            if cursor_row <= 2 {
+                // First lines are directory header, don't try to open it
                 return;
             }
 
@@ -3117,11 +3114,14 @@ impl Editor {
                 let worktree = project.read(cx).worktree_for_id(project_path.worktree_id, &cx)?;
                 let worktree = worktree.read(cx);
                 let worktree_root = worktree.abs_path();
-                let current_dir = if file_list_content.starts_with('~') {
+                let current_dir = if file_list_content.trim_start().starts_with('~') {
                     worktree_root // If showing ~, we're at project root
                 } else {
                     // Parse the directory header to get the actual path
-                    let first_line = file_list_content.lines().next().unwrap_or("");
+                    let first_line = file_list_content
+                        .lines()
+                        .find(|line| !line.trim().is_empty())
+                        .unwrap_or("");
                     if first_line == "~" {
                         worktree_root
                     } else {
