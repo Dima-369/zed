@@ -9,7 +9,9 @@ adjust my neovim config, so key.n does not open, but only on key.enter
 
 See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 
-- A new SQL table, see `crates/workspace/src/persistence.rs`. This is used to track the last opened file for a directory, it is always a `dir:file` thing, 1 dir has one 1 last opened file. When `file_explorer_open_file` is triggered, remember the current row as the last opened file for a directory. Make sure to avoid any duplicate directories. 
+- how to display real file icons from actual tabs/project panel?
+
+- How to implement a save mode? Can one place some hidden markers in the buffer for the initial file name, and then a new action is added which checks the editor buffer state to the hidden markers, and detects which files were modified?
 
 - finish readme with all proper action names
 
