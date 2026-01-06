@@ -3,6 +3,8 @@ so I now need to clean up my code for it
 
 # editor file explorer
 
+adjust my neovim config, so key.n does not open, but only on key.enter
+
 ## initial
 
 - navigation keys, go a directory back, or forward when on a directory, replace buffer content 

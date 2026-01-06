@@ -71,8 +71,9 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
 
 New actions:
-- ``
-- ``
+ARE THOSE correct?
+- `editor::FileExplorerOpenFile`
+- `editor::FileExplorerOpen`
 - ``
 - ``
 
