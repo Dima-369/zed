@@ -2992,7 +2992,7 @@ impl Editor {
                             .to_string()
                     };
 
-                    let mut file_list_content = format!("\n\n{}\n", current_dir_display);
+                    let mut file_list_content = format!("{}\n\n", current_dir_display);
 
                     // Add file names (without paths)
                     file_list_content.push_str(
