@@ -66,6 +66,18 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - inspired from `Choose Content to Paste` from JetBrains IDEs
   - in `crates/workspace/src/persistence.rs` there is own SQL table `clipboard_history`, so the recent entries is remembered across restarts
 
+## Open directory as a Editor
+
+This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
+
+New actions:
+- ``
+- ``
+- ``
+- ``
+
+WIP: Make it editable and save to rename files.
+
 ## Emoji Picker
 
 Implement `emoji_picker_modal::ToggleEmojiPicker` which opens a modal and on picking an emoji, it is copied into the clipboard.
