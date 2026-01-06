@@ -212,7 +212,7 @@ use ui::{
     ButtonSize, ButtonStyle, ContextMenu, Disclosure, IconButton, IconButtonShape, IconName,
     IconSize, Indicator, Key, Tooltip, h_flex, prelude::*, scrollbars::ScrollbarAutoHide,
 };
-use util::{rel_path::RelPath, ResultExt, TryFutureExt, maybe, post_inc, RangeExt};
+use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc, rel_path::RelPath};
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
@@ -2933,11 +2933,12 @@ impl Editor {
         cx: &mut Context<Workspace>,
     ) {
         let project = workspace.project().clone();
-        
+
         // Get current directory from active editor
         let current_dir = workspace.active_project_path(cx).and_then(|project_path| {
-            project_path.path.parent().map(|parent| {
-                ProjectPath { worktree_id: project_path.worktree_id, path: parent.to_rel_path_buf().into() }
+            project_path.path.parent().map(|parent| ProjectPath {
+                worktree_id: project_path.worktree_id,
+                path: parent.to_rel_path_buf().into(),
             })
         });
 
@@ -2950,64 +2951,67 @@ impl Editor {
             // Get worktree and list files
             let worktree_id = current_dir.worktree_id;
             let dir_path = current_dir.path.clone();
-            
-            let entries = project.update(cx, |project, cx| {
-                let worktree = project.worktree_for_id(worktree_id, cx)
-                    .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
-                let worktree = worktree.read(cx);
 
-                // List entries in directory
-                let mut entries = Vec::new();
-                for child_entry in worktree.child_entries(&dir_path) {
-                    let path = child_entry.path.clone();
-                    let is_dir = child_entry.is_dir();
-                    entries.push((path, is_dir));
-                }
+            let entries = project
+                .update(cx, |project, cx| {
+                    let worktree = project
+                        .worktree_for_id(worktree_id, cx)
+                        .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
+                    let worktree = worktree.read(cx);
 
-                // Sort: directories first, then files, both alphabetically
-                entries.sort_by(|a, b| {
-                    match (a.1, b.1) {
-                        (true, false) => std::cmp::Ordering::Less,    // directories first
-                        (false, true) => std::cmp::Ordering::Greater, // files after directories
-                        _ => a.0.cmp(&b.0),                           // alphabetical within each group
+                    // List entries in directory
+                    let mut entries = Vec::new();
+                    for child_entry in worktree.child_entries(&dir_path) {
+                        let path = child_entry.path.clone();
+                        let is_dir = child_entry.is_dir();
+                        entries.push((path, is_dir));
                     }
-                });
 
-                // Create file listing content with current directory header
-                let worktree_root = worktree.abs_path();
-                let current_dir_display = if dir_path.as_std_path() == &*worktree_root {
-                    "~".to_string() // Show ~ for project root
-                } else {
-                    // Show relative path from worktree root
-                    dir_path
-                        .strip_prefix(
-                            RelPath::unix(worktree_root.to_string_lossy().as_ref())
-                                .unwrap_or(RelPath::empty()),
-                        )
-                        .unwrap_or(&dir_path)
-                        .display(util::paths::PathStyle::Posix)
-                        .to_string()
-                };
+                    // Sort: directories first, then files, both alphabetically
+                    entries.sort_by(|a, b| {
+                        match (a.1, b.1) {
+                            (true, false) => std::cmp::Ordering::Less, // directories first
+                            (false, true) => std::cmp::Ordering::Greater, // files after directories
+                            _ => a.0.cmp(&b.0), // alphabetical within each group
+                        }
+                    });
 
-                let mut file_list_content = format!("\n\n{}\n", current_dir_display);
+                    // Create file listing content with current directory header
+                    let worktree_root = worktree.abs_path();
+                    let current_dir_display = if dir_path.as_std_path() == &*worktree_root {
+                        "~".to_string() // Show ~ for project root
+                    } else {
+                        // Show relative path from worktree root
+                        dir_path
+                            .strip_prefix(
+                                RelPath::unix(worktree_root.to_string_lossy().as_ref())
+                                    .unwrap_or(RelPath::empty()),
+                            )
+                            .unwrap_or(&dir_path)
+                            .display(util::paths::PathStyle::Posix)
+                            .to_string()
+                    };
 
-                // Add file names (without paths)
-                file_list_content.push_str(
-                    &entries
-                        .iter()
-                        .map(|(path, is_dir)| {
-                            let suffix = if *is_dir { "/" } else { "" };
-                            let file_name = path
-                                .file_name()
-                                .map(|name| name.to_string())
-                                .unwrap_or("".to_string());
-                            format!("{}{}\n", file_name, suffix)
-                        })
-                        .collect::<String>(),
-                );
+                    let mut file_list_content = format!("\n\n{}\n", current_dir_display);
 
-                anyhow::Ok((entries, file_list_content))
-            }).and_then(|e| e);
+                    // Add file names (without paths)
+                    file_list_content.push_str(
+                        &entries
+                            .iter()
+                            .map(|(path, is_dir)| {
+                                let suffix = if *is_dir { "/" } else { "" };
+                                let file_name = path
+                                    .file_name()
+                                    .map(|name| name.to_string())
+                                    .unwrap_or("".to_string());
+                                format!("{}{}\n", file_name, suffix)
+                            })
+                            .collect::<String>(),
+                    );
+
+                    anyhow::Ok((entries, file_list_content))
+                })
+                .and_then(|e| e);
 
             let Ok((_entries, file_list_content)) = entries else {
                 log::error!("Failed to get directory entries");
@@ -3018,7 +3022,7 @@ impl Editor {
             let buffer = project.update(cx, |project, cx| {
                 project.create_local_buffer(&file_list_content, None, true, cx)
             });
-            
+
             let buffer = match buffer {
                 Ok(buffer) => buffer,
                 Err(e) => {
@@ -3031,17 +3035,11 @@ impl Editor {
                 let editor = cx.new(|cx| {
                     Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
                 });
-                workspace.add_item_to_active_pane(
-                    Box::new(editor.clone()),
-                    None,
-                    true,
-                    window,
-                    cx,
-                );
+                workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
                 editor.update(cx, |editor, cx| {
                     editor.move_to_beginning(&Default::default(), window, cx);
                 });
-                
+
                 // Mark as saved to avoid unsaved changes prompt
                 buffer.update(cx, |buffer, cx| {
                     buffer.did_save(buffer.version(), None, cx);
@@ -3059,27 +3057,32 @@ impl Editor {
     ) {
         if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
             let project = workspace.project().clone();
-            
+
             // Get current line content and full editor content
             let (line_content, file_list_content) = editor.update(cx, |editor, cx| {
                 let display_snapshot = editor.display_snapshot(cx);
                 let cursor = editor.selections.newest_display(&display_snapshot);
                 let cursor_display_point = cursor.head();
-                
+
                 // Convert display point to buffer point
-                let buffer_point = display_snapshot.to_buffer_point(display_map::InlayPoint::new(cursor_display_point.row().0, cursor_display_point.column()));
+                let buffer_point = display_snapshot.to_buffer_point(display_map::InlayPoint::new(
+                    cursor_display_point.row().0,
+                    cursor_display_point.column(),
+                ));
                 let buffer_row = buffer_point.row;
-                
+
                 // Get the line text from the buffer snapshot
                 let buffer_snapshot = display_snapshot.buffer_snapshot();
                 let line_content = buffer_snapshot
-                    .text_for_range(text::Point::new(buffer_row, 0)..text::Point::new(buffer_row + 1, 0))
+                    .text_for_range(
+                        text::Point::new(buffer_row, 0)..text::Point::new(buffer_row + 1, 0),
+                    )
                     .next()
                     .map(|s| s.to_string());
-                
+
                 // Get full editor content
                 let full_content = buffer_snapshot.text();
-                
+
                 (line_content, full_content.to_string())
             });
 
@@ -3087,7 +3090,7 @@ impl Editor {
             let Some(line_content) = line_content else {
                 return;
             };
-            
+
             let file_path = line_content
                 .trim()
                 .trim_end_matches('/') // Remove trailing slash from directories
@@ -3103,7 +3106,7 @@ impl Editor {
                 let cursor = editor.selections.newest_display(&display_snapshot);
                 cursor.head().row().0
             });
-            
+
             if cursor_row <= 2 {
                 // First lines are directory header, don't try to open it
                 return;
@@ -3111,7 +3114,9 @@ impl Editor {
 
             // Get current directory from the file explorer state
             let current_dir = workspace.active_project_path(&cx).and_then(|project_path| {
-                let worktree = project.read(cx).worktree_for_id(project_path.worktree_id, &cx)?;
+                let worktree = project
+                    .read(cx)
+                    .worktree_for_id(project_path.worktree_id, &cx)?;
                 let worktree = worktree.read(cx);
                 let worktree_root = worktree.abs_path();
                 let current_dir = if file_list_content.trim_start().starts_with('~') {
@@ -3128,12 +3133,12 @@ impl Editor {
                         worktree_root.join(first_line).into()
                     }
                 };
-                
-                RelPath::unix(&file_path).ok().map(|_| {
-                    ProjectPath { 
-                        worktree_id: project_path.worktree_id, 
-                        path: RelPath::unix(&format!("{}/{}", current_dir.display(), file_path)).unwrap_or(RelPath::empty()).into() 
-                    }
+
+                RelPath::unix(&file_path).ok().map(|_| ProjectPath {
+                    worktree_id: project_path.worktree_id,
+                    path: RelPath::unix(&format!("{}/{}", current_dir.display(), file_path))
+                        .unwrap_or(RelPath::empty())
+                        .into(),
                 })
             });
 
@@ -3150,7 +3155,6 @@ impl Editor {
                 .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?
                 .await
                 .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?;
-                
                 anyhow::Ok(())
             })
             .detach_and_prompt_err(
