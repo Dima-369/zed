@@ -9,6 +9,8 @@ adjust my neovim config, so key.n does not open, but only on key.enter
 
 See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 
+- on opening the buffer INITIALLY, you set the cursor position at the start of the 
+
 - rename `editor_file_explorer_open` to `file_explorer_open`
 
 - add a new action to go a directory back, replace buffer content like using open_file fn
@@ -16,11 +18,9 @@ make sure to stay on / and not go backwards
 
 - A new SQL table, see `crates/workspace/src/persistence.rs`. This is used to track the last opened file for a directory, it is always a `dir:file` thing, 1 dir has one 1 last opened file. When `file_explorer_open_file` is triggered, remember the current row as the last opened file for a directory. Make sure to avoid any duplicate directories. 
 
-- on triggering the `open` action on a valid row with a file path, the tab should close and the new file opened. when on dir, go forward when on a directory, replace buffer content
+- on triggering the `open_file` action on a valid row with a file path, the FileExplorer tab should close (opening the file should stay as in)
 
-- on triggering the `open` action on a valid row with a file path, the tab should close
-
-- finish readme with all actions
+- finish readme with all proper action names
 
 
 
