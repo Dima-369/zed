@@ -2978,7 +2978,8 @@ impl Editor {
                     .iter()
                     .map(|(path, is_dir)| {
                         let prefix = if *is_dir { "📁 " } else { "📄 " };
-                        format!("{}{}\n", prefix, path.as_ref().display(util::paths::PathStyle::Posix))
+                        let suffix = if *is_dir { "/" } else { "" };
+                        format!("{}{}{}\n", prefix, path.as_ref().display(util::paths::PathStyle::Posix), suffix)
                     })
                     .collect::<String>();
 
@@ -3062,13 +3063,15 @@ impl Editor {
                     .map(|s| s.to_string())
             });
 
+            // Extract file path from line content
             let Some(line_content) = line_content else {
                 return;
             };
-
-            // Extract file path from line (remove emoji and whitespace)
-            let file_path = line_content.trim()
+            
+            let file_path = line_content
+                .trim()
                 .strip_prefix("📁 ")
+                .map(|s| s.trim_end_matches('/')) // Remove trailing slash from directories
                 .or_else(|| line_content.trim().strip_prefix("📄 "))
                 .unwrap_or(line_content.trim())
                 .to_string();
