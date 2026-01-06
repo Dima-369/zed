@@ -1162,6 +1162,7 @@ pub struct Editor {
     workspace: Option<(WeakEntity<Workspace>, Option<WorkspaceId>)>,
     input_enabled: bool,
     use_modal_editing: bool,
+    is_file_explorer: bool,
     read_only: bool,
     leader_id: Option<CollaboratorId>,
     remote_id: Option<ViewId>,
@@ -2335,6 +2336,7 @@ impl Editor {
             workspace: None,
             input_enabled: !is_minimap,
             use_modal_editing: full_mode,
+            is_file_explorer: false,
             read_only: is_minimap,
             use_autoclose: true,
             use_auto_surround: true,
@@ -2769,6 +2771,10 @@ impl Editor {
             key_context.add("diffs_expanded");
         }
 
+        if self.is_file_explorer {
+            key_context.add("FileExplorer");
+        }
+
         key_context
     }
 
@@ -3027,6 +3033,7 @@ impl Editor {
                 workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
                 editor.update(cx, |editor, cx| {
                     editor.move_to_beginning(&Default::default(), window, cx);
+                    editor.set_file_explorer(true);
                 });
 
                 // Mark as saved to avoid unsaved changes prompt
@@ -3667,6 +3674,10 @@ impl Editor {
 
     pub fn set_use_modal_editing(&mut self, to: bool) {
         self.use_modal_editing = to;
+    }
+
+    pub fn set_file_explorer(&mut self, is_file_explorer: bool) {
+        self.is_file_explorer = is_file_explorer;
     }
 
     pub fn use_modal_editing(&self) -> bool {
