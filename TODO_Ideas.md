@@ -9,6 +9,9 @@ so I now need to clean up my code for it
 
 - A new SQL table, see `crates/workspace/src/persistence.rs`. This is used to track the last opened file for a directory, it is always a `dir:file` thing, 1 dir has one 1 last opened file. When `file_explorer_open_file` is triggered, remember the current row as the last opened file for a directory. Make sure to avoid any duplicate directories. 
 
+- how to get proper syntax coloring? own language like `TOML` just for those files? I only need directory lines to be highlighted in a different fg color.
+  - maybe try out other languages first maybe an existing one is already are fine?
+
 - on triggering the `open` action on a valid row with a file path, the tab should close
 
 - finish readme with all actions
