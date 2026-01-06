@@ -7,11 +7,13 @@ adjust my neovim config, so key.n does not open, but only on key.enter
 
 ## here
 
-- is it possible to set a new keyboard context for this tab? So I can bind the actions better here?
+- the `file_explorer_open_file` when on a directory, should replace buffer content with the new directory 
 
 - navigation keys, go a directory back, or forward when on a directory, replace buffer content 
 
 - A new SQL table, see `crates/workspace/src/persistence.rs`. This is used to track the last opened file for a directory, it is always a `dir:file` thing, 1 dir has one 1 last opened file. When `file_explorer_open_file` is triggered, remember the current row as the last opened file for a directory. Make sure to avoid any duplicate directories. 
+
+- on triggering the `open` action on a valid row with a file path, the tab should close and the new file opened. when on dir, go forward when on a directory, replace buffer content
 
 - how to get proper syntax coloring? own language like `TOML` just for those files? I only need directory lines to be highlighted in a different fg color.
   - maybe try out other languages first maybe an existing one is already are fine?
