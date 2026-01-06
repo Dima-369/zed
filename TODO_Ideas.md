@@ -1,3 +1,10 @@
+create a new action which is named like `editor file explorer open`, it spawns a new tab, it considers the editor where it was opened from and takes its directory
+
+In this new tab you list all files, sorted with directories at top, from the editor tab directory in an Editor::Multi thing, so it is editable
+
+you might inspect how `workspace::NewFileFromClipboard` is implemented
+
+NEXT, you implement a new action for this (assume it will be bound to enter)  to open the file path row under cursor as a new Zed tab (or reuse an existing one)
 
 
 # >>> Investigations
