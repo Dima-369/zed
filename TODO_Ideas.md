@@ -11,7 +11,8 @@ adjust my neovim config, so key.n does not open, but only on key.enter
 
 See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 
-- how to display real file icons from actual tabs/project panel?
+- how to display real file icons from actual tabs/project panel? currently, I am faking it by setting a `Rust` language which kinda sucks. Is there an easy way to highlight just directories in blue fg text color and then file extensions in same blue?
+or does one really have to create a new treesitter syntax just for this mode?
 
 - How to implement a save mode? Can one place some hidden markers in the buffer for the initial file name, and then a new action is added which checks the editor buffer state to the hidden markers, and detects which files were modified?
 
