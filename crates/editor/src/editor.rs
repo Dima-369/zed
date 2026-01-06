@@ -2951,7 +2951,7 @@ impl Editor {
             let worktree_id = current_dir.worktree_id;
             let dir_path = current_dir.path.clone();
             
-            let entries = project.update(cx, |project, cx| {
+            let entries = project.update(cx, |project, cx| async move {
                 let worktree = project.worktree_for_id(worktree_id, cx)
                     .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
                 let worktree = worktree.read(cx);
@@ -2994,7 +2994,7 @@ impl Editor {
                         .map(|(path, is_dir)| {
                             let suffix = if *is_dir { "/" } else { "" };
                             let file_name = path.file_name()
-                                .map(|name| name.to_string())
+                                .map(|name| name.to_string_lossy())
                                 .unwrap_or("".to_string());
                             format!("{}{}\n", file_name, suffix)
                         })

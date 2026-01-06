@@ -5,9 +5,15 @@ so I now need to clean up my code for it
 
 ## initial
 
-- navigation keys, 
+- navigation keys, go a directory back, or forward when on a directory, replace buffer content 
+
+- A new SQL table, see `crates/workspace/src/persistence.rs`. This is used to track the last opened file for a directory, it is always a `dir:file` thing, 1 dir has one 1 last opened file. When `file_explorer_open_file` is triggered, remember the current row as the last opened file for a directory. Make sure to avoid any duplicate directories. 
 
 - on triggering the `open` action on a valid row with a file path, the tab should close
+
+- finish readme with all actions
+
+
 
 
 # >>> Investigations
