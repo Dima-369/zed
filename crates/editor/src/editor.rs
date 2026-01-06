@@ -3206,11 +3206,33 @@ impl Editor {
                                     );
                                 })
                             });
+                            
+                            let _ = editor.update(cx, |editor, cx| {
+                                if let Some(buffer) = editor.buffer.read(cx).as_singleton() {
+                                    buffer.update(cx, |buffer, cx| {
+                                        buffer.did_save(buffer.version(), None, cx);
+                                    });
+                                }
+                            });
                         }
                     } else {
                         workspace.update_in(cx, |workspace, window, cx| {
                             workspace.open_path(project_path, None, true, window, cx)
                         })?.await?;
+
+                        workspace.update_in(cx, |workspace, window, cx| {
+                            if let Some(pane) = workspace.pane_for(&editor) {
+                                pane.update(cx, |pane, cx| {
+                                    pane.close_item_by_id(
+                                        editor.item_id(),
+                                        ::workspace::SaveIntent::Close,
+                                        window,
+                                        cx,
+                                    )
+                                    .detach();
+                                });
+                            }
+                        })?;
                     }
                 }
                 Ok(())
@@ -3258,7 +3280,7 @@ impl Editor {
             // Navigate to parent directory
             cx.spawn_in(window, async move |workspace, cx| {
                 let current_path = PathBuf::from(&current_dir);
-                let dir_name_to_select = current_path
+                let current_dir_name = current_path
                     .file_name()
                     .map(|n| n.to_string_lossy().to_string());
 
@@ -3292,26 +3314,53 @@ impl Editor {
                         let _ = workspace.update_in(cx, |_workspace, window, cx| {
                             editor.update(cx, |editor, cx| {
                                 editor.set_text(content, window, cx);
-                                editor.move_to_beginning(&Default::default(), window, cx);
 
-                                if let Some(dir_name) = dir_name_to_select {
+                                let mut positioned = false;
+                                if let Some(dir_name) = current_dir_name {
+                                    let target_text = format!("{}/", dir_name);
                                     let snapshot = editor.buffer.read(cx).snapshot(cx);
-                                    for (i, line) in snapshot.text().lines().enumerate().skip(2) {
-                                        let line = line.trim();
-                                        let name = line.trim_end_matches('/');
-                                        if name == dir_name {
-                                            let point = Point::new(i as u32, 0);
+                                    for row in 0..snapshot.max_point().row + 1 {
+                                        let len =
+                                            snapshot.line_len(multi_buffer::MultiBufferRow(row));
+                                        let line_text = snapshot
+                                            .text_for_range(
+                                                language::Point::new(row, 0)
+                                                    ..language::Point::new(row, len),
+                                            )
+                                            .collect::<String>();
+
+                                        if line_text.trim() == target_text {
+                                            let point = language::Point::new(row, 0);
                                             editor.change_selections(
-                                                SelectionEffects::default(),
+                                                Default::default(),
                                                 window,
                                                 cx,
-                                                |s| s.select_ranges([point..point]),
+                                                |s| {
+                                                    s.select_ranges([point..point]);
+                                                },
                                             );
+                                            editor.request_autoscroll(
+                                                Autoscroll::center(),
+                                                cx,
+                                            );
+                                            positioned = true;
                                             break;
                                         }
                                     }
                                 }
+
+                                if !positioned {
+                                    editor.move_to_beginning(&Default::default(), window, cx);
+                                }
                             })
+                        });
+                        
+                        let _ = editor.update(cx, |editor, cx| {
+                            if let Some(buffer) = editor.buffer.read(cx).as_singleton() {
+                                buffer.update(cx, |buffer, cx| {
+                                    buffer.did_save(buffer.version(), None, cx);
+                                });
+                            }
                         });
                     }
                 }
