@@ -1,3 +1,5 @@
+- key j in terminal vi mode should also exit vi mode after copy to clipboard
+
 - https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
 so I now need to clean up my code for it
 
