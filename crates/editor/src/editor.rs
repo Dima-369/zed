@@ -3197,7 +3197,13 @@ impl Editor {
                             let _ = workspace.update_in(cx, |_workspace, window, cx| {
                                 editor.update(cx, |editor, cx| {
                                     editor.set_text(content, window, cx);
-                                    editor.move_to_beginning(&Default::default(), window, cx);
+                                    let point = Point::new(2, 0);
+                                    editor.change_selections(
+                                        SelectionEffects::default(),
+                                        window,
+                                        cx,
+                                        |s| s.select_ranges([point..point]),
+                                    );
                                 })
                             });
                         }
