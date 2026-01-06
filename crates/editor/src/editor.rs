@@ -3102,7 +3102,7 @@ impl Editor {
                 cursor.head().row().0
             });
 
-            if cursor_row <= 2 {
+            if cursor_row <= 1 {
                 // First lines are directory header, don't try to open it
                 return;
             }
