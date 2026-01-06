@@ -7,18 +7,11 @@ adjust my neovim config, so key.n does not open, but only on key.enter
 
 ## here
 
-VERIFY
-- fix that when on line 3, open fiel does not work
+See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 
 - rename `editor_file_explorer_open` to `file_explorer_open`
 
-- set the rust language for the editor buffer because it highlights nicely! (just a workaround though)
-
- in `pub fn file_explorer_open(` set rust language for the buffer
-
-- the `file_explorer_open_file` when on a directory, should replace buffer content with the new directory 
-
-- navigation keys, go a directory back, or forward when on a directory, replace buffer content 
+- add a new action to go a directory back, replace buffer content like using open_file fn
 
 - A new SQL table, see `crates/workspace/src/persistence.rs`. This is used to track the last opened file for a directory, it is always a `dir:file` thing, 1 dir has one 1 last opened file. When `file_explorer_open_file` is triggered, remember the current row as the last opened file for a directory. Make sure to avoid any duplicate directories. 
 
