@@ -2988,11 +2988,18 @@ impl Editor {
         let project = workspace.project().clone();
 
         // Get current directory from active editor
-        let current_dir = workspace.active_project_path(cx).and_then(|project_path| {
+        let active_project_path = workspace.active_project_path(cx);
+        let current_dir = active_project_path.as_ref().and_then(|project_path| {
             project_path.path.parent().map(|parent| ProjectPath {
                 worktree_id: project_path.worktree_id,
                 path: parent.to_rel_path_buf().into(),
             })
+        });
+
+        let file_to_select = active_project_path.and_then(|p| {
+            p.path
+                .file_name()
+                .map(|name| name.to_string())
         });
 
         let Some(current_dir) = current_dir else {
@@ -3044,6 +3051,24 @@ impl Editor {
                 editor.update(cx, |editor, cx| {
                     editor.move_to_beginning(&Default::default(), window, cx);
                     editor.set_file_explorer(true);
+
+                    if let Some(filename) = file_to_select {
+                        let snapshot = editor.buffer.read(cx).snapshot(cx);
+                        for (i, line) in snapshot.text().lines().enumerate().skip(2) {
+                            let line = line.trim();
+                            let name = line.trim_end_matches('/');
+                            if name == filename {
+                                let point = Point::new(i as u32, 0);
+                                editor.change_selections(
+                                    SelectionEffects::default(),
+                                    window,
+                                    cx,
+                                    |s| s.select_ranges([point..point]),
+                                );
+                                break;
+                            }
+                        }
+                    }
                 });
 
                 // Mark as saved to avoid unsaved changes prompt
@@ -3227,7 +3252,10 @@ impl Editor {
             // Navigate to parent directory
             cx.spawn_in(window, async move |workspace, cx| {
                 let current_path = PathBuf::from(&current_dir);
-                
+                let dir_name_to_select = current_path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string());
+
                 // Get parent directory
                 let parent_path = current_path.parent().unwrap_or(&current_path);
                 
@@ -3259,6 +3287,24 @@ impl Editor {
                             editor.update(cx, |editor, cx| {
                                 editor.set_text(content, window, cx);
                                 editor.move_to_beginning(&Default::default(), window, cx);
+
+                                if let Some(dir_name) = dir_name_to_select {
+                                    let snapshot = editor.buffer.read(cx).snapshot(cx);
+                                    for (i, line) in snapshot.text().lines().enumerate().skip(2) {
+                                        let line = line.trim();
+                                        let name = line.trim_end_matches('/');
+                                        if name == dir_name {
+                                            let point = Point::new(i as u32, 0);
+                                            editor.change_selections(
+                                                SelectionEffects::default(),
+                                                window,
+                                                cx,
+                                                |s| s.select_ranges([point..point]),
+                                            );
+                                            break;
+                                        }
+                                    }
+                                }
                             })
                         });
                     }
