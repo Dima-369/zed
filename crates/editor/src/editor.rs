@@ -212,7 +212,7 @@ use ui::{
     ButtonSize, ButtonStyle, ContextMenu, Disclosure, IconButton, IconButtonShape, IconName,
     IconSize, Indicator, Key, Tooltip, h_flex, prelude::*, scrollbars::ScrollbarAutoHide,
 };
-use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc};
+use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc, rel_path::RelPath};
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
@@ -349,6 +349,7 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::file_explorer_open);
             workspace.register_action(Editor::file_explorer_open_file);
             workspace.register_action(Editor::file_explorer_go_back);
+            workspace.register_action(Editor::file_explorer_save_modified);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
             workspace.register_action(|workspace, action, window, cx| {
@@ -2962,6 +2963,28 @@ impl Editor {
 
         let mut file_list_content = format!("{}\n\n", current_dir_display);
 
+        // Add hidden metadata marker with file state information
+        file_list_content.push_str("<!-- FILE_EXPLORER_METADATA_START -->\n");
+        for (path, is_dir) in &entries {
+            if !*is_dir {
+                // Get file metadata for modification tracking
+                let full_path = worktree_root.join(path.as_std_path());
+                if let Ok(metadata) = std::fs::metadata(&full_path) {
+                    let modified_time = metadata.modified()
+                        .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+                        .unwrap_or(0);
+                    let file_size = metadata.len();
+                    file_list_content.push_str(&format!(
+                        "<!-- FILE_META:{}|{}|{} -->\n",
+                        path.as_ref().as_unix_str().to_string(),
+                        modified_time,
+                        file_size
+                    ));
+                }
+            }
+        }
+        file_list_content.push_str("<!-- FILE_EXPLORER_METADATA_END -->\n\n");
+
         file_list_content.push_str(
             &entries
                 .iter()
@@ -2977,6 +3000,76 @@ impl Editor {
         );
 
         anyhow::Ok(file_list_content)
+    }
+
+    fn parse_file_metadata(buffer_content: &str) -> std::collections::HashMap<String, (u64, u64)> {
+        let mut metadata = std::collections::HashMap::new();
+        let lines: Vec<&str> = buffer_content.lines().collect();
+        
+        let mut in_metadata_section = false;
+        
+        for line in lines {
+            if line.contains("FILE_EXPLORER_METADATA_START") {
+                in_metadata_section = true;
+                continue;
+            }
+            if line.contains("FILE_EXPLORER_METADATA_END") {
+                break;
+            }
+            if !in_metadata_section {
+                continue;
+            }
+            
+            if let Some(start) = line.find("<!-- FILE_META:") {
+                if let Some(end) = line.find("-->") {
+                    let meta_content = &line[start + 17..end];
+                    let parts: Vec<&str> = meta_content.split('|').collect();
+                    if parts.len() == 3 {
+                        if let (Ok(modified_time), Ok(file_size)) = (
+                            parts[1].parse::<u64>(),
+                            parts[2].parse::<u64>(),
+                        ) {
+                            metadata.insert(parts[0].to_string(), (modified_time, file_size));
+                        }
+                    }
+                }
+            }
+        }
+        
+        metadata
+    }
+
+    fn get_modified_files(
+        project: &Project,
+        project_path: &ProjectPath,
+        stored_metadata: &std::collections::HashMap<String, (u64, u64)>,
+        cx: &mut App,
+    ) -> anyhow::Result<Vec<String>> {
+        let worktree = project
+            .worktree_for_id(project_path.worktree_id, cx)
+            .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
+        let worktree = worktree.read(cx);
+        let worktree_root = worktree.abs_path();
+        
+        let mut modified_files = Vec::new();
+        
+        for (file_path, (stored_modified, stored_size)) in stored_metadata {
+            let full_path = worktree_root.join(file_path);
+            
+            if let Ok(current_metadata) = std::fs::metadata(&full_path) {
+                let current_modified = current_metadata.modified()
+                    .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+                    .unwrap_or(0);
+                let current_size = current_metadata.len();
+                
+                // File is modified if timestamp or size changed
+                if current_modified != *stored_modified || current_size != *stored_size {
+                    modified_files.push(file_path.clone());
+                }
+            }
+        }
+        
+        Ok(modified_files)
     }
 
     pub fn file_explorer_open(
@@ -3363,6 +3456,104 @@ impl Editor {
                             }
                         });
                     }
+                }
+            })
+            .detach();
+        }
+    }
+
+    pub fn file_explorer_save_modified(
+        workspace: &mut Workspace,
+        _action: &workspace::FileExplorerSaveModified,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+            let project = workspace.project().clone();
+            let editor = editor.clone();
+
+            // Get current directory and buffer content
+            let (current_dir, buffer_content) = editor.update(cx, |editor, cx| {
+                let display_snapshot = editor.display_snapshot(cx);
+                let buffer_snapshot = display_snapshot.buffer_snapshot();
+                let full_content = buffer_snapshot.text();
+
+                // Parse the directory header to get the current path
+                let first_line = full_content
+                    .lines()
+                    .find(|line| !line.trim().is_empty())
+                    .unwrap_or("")
+                    .trim();
+
+                (first_line.to_string(), full_content.to_string())
+            });
+
+            if current_dir.is_empty() {
+                log::warn!("No directory found in file explorer for save modified");
+                return;
+            }
+
+            cx.spawn_in(window, async move |workspace, cx| {
+                // Parse stored metadata from buffer
+                let stored_metadata = Self::parse_file_metadata(&buffer_content);
+                
+                if stored_metadata.is_empty() {
+                    log::warn!("No file metadata found in file explorer buffer");
+                    return;
+                }
+
+                // Find the project path for the current directory
+                let project_path = project
+                    .read_with(cx, |project, cx| {
+                        project.find_project_path(&PathBuf::from(&current_dir), cx)
+                    })
+                    .ok()
+                    .flatten();
+
+                if let Some(project_path) = project_path {
+                    // Get list of modified files
+                    let modified_files = project
+                        .update(cx, |project, cx| {
+                            Self::get_modified_files(project, &project_path, &stored_metadata, cx)
+                        })
+                        .ok()
+                        .and_then(|result| result.ok())
+                        .unwrap_or_default();
+
+                    if modified_files.is_empty() {
+                        log::info!("No modified files found in directory: {}", current_dir);
+                        return;
+                    }
+
+                    log::info!("Found {} modified files in directory: {}", modified_files.len(), current_dir);
+                    
+                    // Open each modified file and save it
+                    for file_path in modified_files {
+                        let file_path_buf = PathBuf::from(&file_path);
+                        if let Ok(file_rel_path) = RelPath::new(&file_path_buf, util::paths::PathStyle::Posix) {
+                            let file_project_path = ProjectPath {
+                                worktree_id: project_path.worktree_id,
+                                path: project_path.path.join(&file_rel_path),
+                            };
+
+                            if let Ok(open_task) = workspace.update_in(cx, |workspace, window, cx| {
+                                workspace.open_path(file_project_path.clone(), None, true, window, cx)
+                            }) {
+                                if let Ok(_item_handle) = open_task.await {
+                                    log::info!("Opened modified file: {}", file_path);
+                                    // TODO: Add save logic here if needed
+                                } else {
+                                    log::error!("Failed to open modified file: {}", file_path);
+                                }
+                            } else {
+                                log::error!("Failed to create open task for file: {}", file_path);
+                            }
+                        } else {
+                            log::error!("Failed to create relative path for file: {}", file_path);
+                        }
+                    }
+                } else {
+                    log::error!("Could not find project path for directory: {}", current_dir);
                 }
             })
             .detach();

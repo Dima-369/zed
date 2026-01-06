@@ -260,6 +260,8 @@ actions!(
         FileExplorerOpenFile,
         /// Goes back to the parent directory in the file explorer.
         FileExplorerGoBack,
+        /// Saves all modified files in the current file explorer directory.
+        FileExplorerSaveModified,
         /// Reloads the active item.
         ReloadActiveItem,
         /// Resets the active dock to its default size.
