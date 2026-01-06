@@ -13,7 +13,7 @@ See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 
 - How to implement a save mode? Can one place some hidden markers in the buffer for the initial file name, and then a new action is added which checks the editor buffer state to the hidden markers, and detects which files were modified?
 
-read my last commit, I did a bad start implementation, the html comments are displayed inside the buffer, can you find out how
+read commit dbefb449715d, I did a bad start implementation, the html comments are displayed inside the buffer, can you find out how
  to hide them or do this entirely different? I want a save action properly implemented, adn need to store initial file state on
  opening this buffer (and update it on navigating)
 
