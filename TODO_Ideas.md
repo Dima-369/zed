@@ -7,6 +7,8 @@ adjust my neovim config, so key.n does not open, but only on key.enter
 
 ## here
 
+- set the rust language for the editor buffer because it highlights nicely! (just a workaround though)
+
 - the `file_explorer_open_file` when on a directory, should replace buffer content with the new directory 
 
 - navigation keys, go a directory back, or forward when on a directory, replace buffer content 
