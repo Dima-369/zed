@@ -21,6 +21,61 @@ adjust my neovim config, so key.n does not open, but only on key.enter
 
 
 
+
+  Error 1: Result is not a future
+  In what code: In the editor_file_explorer_open function when calling project.update():
+
+   1 let entries = project.update(cx, |project, cx| async move {
+   2     // ... worktree operations returning a Result
+   3 })?.await;  // This was wrong - can't await Result<Future, _> directly
+  Why: project.update() returns Result<Future, _>, so you need to unwrap the Result with ? first, then await the
+  Future.
+
+  Error 2: ok_or_else on Result
+  In what code: In the file_explorer_open_file function when calling workspace.update():
+
+   1 let result = workspace.update(cx, |workspace, cx| {
+   2     // ... operations returning Option
+   3 }).ok_or_else(|| anyhow::anyhow!("error"))?;  // This was wrong - trying to call ok_or_else on Result
+  Why: The workspace.update() call was returning a Result, but the code was trying to use ok_or_else which is for
+  Option types, not Result types.
+
+  Error 3: Private field access
+  In what code: In the file_explorer_open_file function when accessing the active pane:
+
+   1 if let Some(pane) = workspace.active_pane().as_mut(cx).inner {  // This was wrong - .inner is private
+   2     // ... operations on pane
+   3 }
+  Why: The .inner field is private and not accessible directly - need to use the public API methods like .update()
+  instead.
+
+> nono, I mean what is the code doing, like closing the pane or so?
+
+✦ What the Code is Doing
+
+  Error 1: Result is not a future
+  What the code is doing: Fetching directory entries from a worktree to display in the file explorer
+   - Getting the current directory from the active editor
+   - Listing files and directories in that directory
+   - Sorting them (directories first, then files)
+   - Creating a formatted string to display in the editor as a file explorer view
+
+  Error 2: ok_or_else on Result
+  What the code is doing: Resolving worktree and absolute paths to navigate the file system
+   - Finding the correct worktree that contains the current file
+   - Determining the absolute path of the current directory being viewed
+   - Setting up navigation between directories in the file explorer
+
+  Error 3: Private field access
+  What the code is doing: Closing the current explorer view and opening a selected file
+   - When a user clicks on a file in the explorer, it removes the current explorer view from the pane
+   - Then opens the selected file in the workspace
+   - This happens in the "handle file" section when is_dir is false
+
+
+
+
+
 # >>> Investigations
 
 ## edit predictions: Amp Tab support
