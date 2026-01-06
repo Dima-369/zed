@@ -5,7 +5,9 @@ so I now need to clean up my code for it
 
 adjust my neovim config, so key.n does not open, but only on key.enter
 
-## initial
+## here
+
+- is it possible to set a new keyboard context for this tab? So I can bind the actions better here?
 
 - navigation keys, go a directory back, or forward when on a directory, replace buffer content 
 

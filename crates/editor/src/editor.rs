@@ -212,7 +212,7 @@ use ui::{
     ButtonSize, ButtonStyle, ContextMenu, Disclosure, IconButton, IconButtonShape, IconName,
     IconSize, Indicator, Key, Tooltip, h_flex, prelude::*, scrollbars::ScrollbarAutoHide,
 };
-use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc, rel_path::RelPath};
+use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc};
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
@@ -2978,19 +2978,8 @@ impl Editor {
 
                     // Create file listing content with current directory header
                     let worktree_root = worktree.abs_path();
-                    let current_dir_display = if dir_path.as_std_path() == &*worktree_root {
-                        "~".to_string() // Show ~ for project root
-                    } else {
-                        // Show relative path from worktree root
-                        dir_path
-                            .strip_prefix(
-                                RelPath::unix(worktree_root.to_string_lossy().as_ref())
-                                    .unwrap_or(RelPath::empty()),
-                            )
-                            .unwrap_or(&dir_path)
-                            .display(util::paths::PathStyle::Posix)
-                            .to_string()
-                    };
+                    let abs_path = worktree_root.join(dir_path.as_std_path());
+                    let current_dir_display = abs_path.to_string_lossy().to_string();
 
                     let mut file_list_content = format!("{}\n\n", current_dir_display);
 
@@ -3112,49 +3101,38 @@ impl Editor {
                 return;
             }
 
-            // Get current directory from the file explorer state
-            let current_dir = workspace.active_project_path(&cx).and_then(|project_path| {
-                let worktree = project
-                    .read(cx)
-                    .worktree_for_id(project_path.worktree_id, &cx)?;
-                let worktree = worktree.read(cx);
-                let worktree_root = worktree.abs_path();
-                let current_dir = if file_list_content.trim_start().starts_with('~') {
-                    worktree_root // If showing ~, we're at project root
-                } else {
-                    // Parse the directory header to get the actual path
-                    let first_line = file_list_content
-                        .lines()
-                        .find(|line| !line.trim().is_empty())
-                        .unwrap_or("");
-                    if first_line == "~" {
-                        worktree_root
-                    } else {
-                        worktree_root.join(first_line).into()
-                    }
-                };
+            // Parse the directory header to get the actual path
+            let first_line = file_list_content
+                .lines()
+                .find(|line| !line.trim().is_empty())
+                .unwrap_or("")
+                .trim();
 
-                RelPath::unix(&file_path).ok().map(|_| ProjectPath {
-                    worktree_id: project_path.worktree_id,
-                    path: RelPath::unix(&format!("{}/{}", current_dir.display(), file_path))
-                        .unwrap_or(RelPath::empty())
-                        .into(),
-                })
-            });
-
-            let Some(target_path) = current_dir else {
-                log::warn!("Could not determine target path for file: {}", file_path);
+            if first_line.is_empty() {
                 return;
-            };
+            }
+
+            let mut full_path = PathBuf::from(first_line);
+            full_path.push(file_path);
 
             // Open the file
             cx.spawn_in(window, async move |workspace, cx| {
-                workspace.update_in(cx, |workspace, window, cx| {
-                    workspace.open_path(target_path, None, true, window, cx)
-                })
-                .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?
-                .await
-                .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?;
+                let project_path = project
+                    .read_with(cx, |project, cx| {
+                        project.find_project_path(&full_path, cx)
+                    })
+                    .ok()
+                    .flatten();
+
+                if let Some(project_path) = project_path {
+                    workspace
+                        .update_in(cx, |workspace, window, cx| {
+                            workspace.open_path(project_path, None, true, window, cx)
+                        })
+                        .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?
+                        .await
+                        .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?;
+                }
                 anyhow::Ok(())
             })
             .detach_and_prompt_err(
