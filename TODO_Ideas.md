@@ -6,6 +6,8 @@ you might inspect how `workspace::NewFileFromClipboard` is implemented
 
 NEXT, you implement a new action for this (assume it will be bound to enter)  to open the file path row under cursor as a new Zed tab (or reuse an existing one)
 
+check if it makes sense to have this in an own crate
+
 
 # >>> Investigations
 
