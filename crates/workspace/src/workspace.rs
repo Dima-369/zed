@@ -16,7 +16,7 @@ pub mod tasks;
 mod theme_preview;
 mod toast_layer;
 mod toolbar;
-mod unsaved_changes_modal;
+pub mod unsaved_changes_modal;
 pub mod utility_pane;
 pub mod welcome;
 mod workspace_settings;

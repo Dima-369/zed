@@ -223,6 +223,7 @@ use workspace::{
     item::{BreadcrumbText, ItemBufferKind, ItemHandle, PreviewTabsSettings, SaveOptions},
     notifications::{DetachAndPromptErr, NotificationId, NotifyTaskExt},
     searchable::{CollapseDirection, SearchEvent},
+    unsaved_changes_modal::UnsavedChangesModal,
 };
 
 use crate::{
@@ -3505,103 +3506,138 @@ impl Editor {
             let project = workspace.project().clone();
             let editor = editor.clone();
 
-            // Get current directory and stored metadata from the editor
+            // Get the current state synchronously first
             let (current_dir, stored_state, current_buffer_content) = editor.update(cx, |editor, cx| {
                 let display_snapshot = editor.display_snapshot(cx);
                 let buffer_snapshot = display_snapshot.buffer_snapshot();
                 let full_content = buffer_snapshot.text();
 
-                // Parse the directory header to get the current path
                 let first_line = full_content
                     .lines()
                     .find(|line| !line.trim().is_empty())
                     .unwrap_or("")
                     .trim();
 
-                (first_line.to_string(), editor.file_explorer_metadata.clone().unwrap_or_default(), full_content.to_string())
+                (
+                    first_line.to_string(),
+                    editor.file_explorer_metadata.clone().unwrap_or_default(),
+                    full_content.to_string(),
+                )
             });
 
-            println!("File explorer save modified: current_dir = {}, stored_state count = {}", current_dir, stored_state.len());
-
-            if current_dir.is_empty() {
-                log::warn!("No directory found in file explorer for save modified");
+            if current_dir.is_empty() || stored_state.is_empty() {
                 return;
             }
 
-            cx.spawn_in(window, async move |workspace, cx| {
-                if stored_state.is_empty() {
-                    log::warn!("No file state found in file explorer editor");
-                    println!("No file state found in file explorer editor");
-                    return;
-                }
+            let current_entries: Vec<String> = current_buffer_content
+                .lines()
+                .skip(2)
+                .map(|line| line.trim().to_string())
+                .filter(|line| !line.is_empty())
+                .collect();
 
-                // Compare stored state with current buffer content to detect changes
-                let changes = Self::get_modified_files_from_buffer(&stored_state, &current_buffer_content);
-                println!("Detected {} changes in buffer", changes.len());
-
-                // Check if there are validation errors
-                if changes.iter().any(|change| change.starts_with("ERROR:")) {
-                    log::error!("Validation error in file explorer buffer: {}", changes[0]);
-                    println!("Validation error in file explorer buffer: {}", changes[0]);
-
-                    // Log the error (for now, until we determine the proper notification mechanism)
-                    log::error!("File explorer validation error: {}", changes[0]);
-                    return;
-                }
-
-                if changes.is_empty() {
-                    log::info!("No changes detected in file explorer buffer: {}", current_dir);
-                    return;
-                }
-
-                log::info!("Found {} changes in file explorer buffer: {}", changes.len(), current_dir);
-
-                // Refresh the file explorer buffer to show current state
-                println!("Refreshing file explorer buffer...");
-
-                // Get the current file explorer editor
-                if let Some(file_explorer_editor) = workspace.update_in(cx, |workspace, _, cx| {
-                    workspace.active_item_as::<Editor>(cx)
-                }).ok().flatten() {
-                    println!("Found file explorer editor, refreshing content...");
-
-                    // Get the current project path again to refresh the content
-                    let project_path = project
-                        .read_with(cx, |project, cx| {
-                            project.find_project_path(&PathBuf::from(&current_dir), cx)
-                        })
-                        .ok()
-                        .flatten();
-
-                    if let Some(project_path) = project_path {
-                        // Get the current directory content again to refresh the content
-                        let refresh_result = project.update(cx, |project, cx| {
-                            Self::file_explorer_get_directory_content(project, &project_path, cx)
-                        }).and_then(|e| e);
-
-                        if let Ok((new_content, new_metadata)) = refresh_result {
-                            println!("Got new content and metadata, updating buffer...");
-
-                            // Update the file explorer buffer with fresh content
-                            workspace.update_in(cx, |_workspace, window, cx| {
-                                file_explorer_editor.update(cx, |editor, cx| {
-                                    editor.set_text(new_content, window, cx);
-
-                                    // Update the stored metadata with the new values
-                                    editor.file_explorer_metadata = Some(new_metadata);
-
-                                    log::info!("File explorer refreshed with current directory contents");
-                                    println!("File explorer buffer updated successfully");
-                                });
-                            }).ok();
-                        } else {
-                            log::error!("Failed to get updated directory content");
-                            println!("Failed to get updated directory content");
-                        }
-                    } else {
-                        log::error!("Could not find project path for directory: {}", current_dir);
+            let mut renames = Vec::new();
+            for (i, stored_name) in stored_state.iter().enumerate() {
+                if let Some(current_name) = current_entries.get(i) {
+                    if stored_name != current_name {
+                        renames.push((stored_name.clone(), current_name.clone()));
                     }
                 }
+            }
+
+            if renames.is_empty() {
+                return;
+            }
+
+            let detail = renames
+                .iter()
+                .map(|(old, new)| format!("{} -> {}", old, new))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            // Show confirmation modal synchronously
+            let confirmation_task = UnsavedChangesModal::show(
+                workspace,
+                "Confirm Renames",
+                Some(detail),
+                vec!["Confirm", "Cancel"],
+                window,
+                cx,
+            );
+
+            // Spawn async task to handle the confirmation result
+            cx.spawn_in(window, async move |workspace, cx| {
+                let confirmation = confirmation_task.await;
+
+                if confirmation == Some(0) {
+                    // Confirmed - perform the renames
+                    let fs = project.read_with(cx, |project, _| project.fs().clone())?;
+                    let base_path = PathBuf::from(&current_dir);
+
+                    for (old_name, new_name) in renames {
+                        // Strip trailing slash for directories
+                        let old_clean = old_name.trim_end_matches('/');
+                        let new_clean = new_name.trim_end_matches('/');
+                        let old_path = base_path.join(old_clean);
+                        let new_path = base_path.join(new_clean);
+
+                        if let Err(e) = fs.rename(&old_path, &new_path, Default::default()).await {
+                            log::error!(
+                                "Failed to rename {:?} to {:?}: {}",
+                                old_path,
+                                new_path,
+                                e
+                            );
+                        }
+                    }
+
+                    // Refresh buffer
+                    if let Some(file_explorer_editor) = workspace
+                        .update_in(cx, |workspace, _, cx| {
+                            workspace.active_item_as::<Editor>(cx)
+                        })
+                        .ok()
+                        .flatten()
+                    {
+                        let project_path = project
+                            .read_with(cx, |project, cx| {
+                                project.find_project_path(&PathBuf::from(&current_dir), cx)
+                            })
+                            .ok()
+                            .flatten();
+
+                        if let Some(project_path) = project_path {
+                            let refresh_result = project
+                                .update(cx, |project, cx| {
+                                    Self::file_explorer_get_directory_content(
+                                        project,
+                                        &project_path,
+                                        cx,
+                                    )
+                                })
+                                .and_then(|e| e);
+
+                            if let Ok((new_content, new_metadata)) = refresh_result {
+                                workspace
+                                    .update_in(cx, |_workspace, window, cx| {
+                                        file_explorer_editor.update(cx, |editor, cx| {
+                                            editor.set_text(new_content, window, cx);
+                                            editor.file_explorer_metadata = Some(new_metadata);
+                                            if let Some(buffer) = editor.buffer.read(cx).as_singleton()
+                                            {
+                                                buffer.update(cx, |buffer, cx| {
+                                                    buffer.did_save(buffer.version(), None, cx);
+                                                });
+                                            }
+                                        });
+                                    })
+                                    .ok();
+                            }
+                        }
+                    }
+                }
+
+                anyhow::Ok(())
             })
             .detach();
         }
