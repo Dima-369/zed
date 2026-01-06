@@ -11,8 +11,6 @@ See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 
 - on opening the buffer INITIALLY, you set the cursor position at the start of the 
 
-- rename `editor_file_explorer_open` to `file_explorer_open`
-
 - add a new action to go a directory back, replace buffer content like using open_file fn
 make sure to stay on / and not go backwards
 
