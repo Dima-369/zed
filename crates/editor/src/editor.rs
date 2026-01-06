@@ -346,7 +346,7 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::new_file_from_clipboard);
             workspace.register_action(Editor::new_file_vertical);
             workspace.register_action(Editor::new_file_horizontal);
-            workspace.register_action(Editor::editor_file_explorer_open);
+            workspace.register_action(Editor::file_explorer_open);
             workspace.register_action(Editor::file_explorer_open_file);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
@@ -2932,7 +2932,53 @@ impl Editor {
         );
     }
 
-    pub fn editor_file_explorer_open(
+    fn file_explorer_get_directory_content(
+        project: &Project,
+        project_path: &ProjectPath,
+        cx: &mut App,
+    ) -> anyhow::Result<String> {
+        let worktree = project
+            .worktree_for_id(project_path.worktree_id, cx)
+            .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
+        let worktree = worktree.read(cx);
+
+        let mut entries = Vec::new();
+        for child_entry in worktree.child_entries(&project_path.path) {
+            let path = child_entry.path.clone();
+            let is_dir = child_entry.is_dir();
+            entries.push((path, is_dir));
+        }
+
+        entries.sort_by(|a, b| match (a.1, b.1) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.0.cmp(&b.0),
+        });
+
+        let worktree_root = worktree.abs_path();
+        let abs_path = worktree_root.join(project_path.path.as_std_path());
+        let current_dir_display = abs_path.to_string_lossy().to_string();
+
+        let mut file_list_content = format!("{}\n\n", current_dir_display);
+
+        file_list_content.push_str(
+            &entries
+                .iter()
+                .map(|(path, is_dir)| {
+                    let suffix = if *is_dir { "/" } else { "" };
+                    let file_name = path
+                        .file_name()
+                        .map(|name| name.to_string())
+                        .unwrap_or("".to_string());
+                    format!("{}{}\n", file_name, suffix)
+                })
+                .collect::<String>(),
+        );
+
+        anyhow::Ok(file_list_content)
+    }
+
+    pub fn file_explorer_open(
         workspace: &mut Workspace,
         _action: &workspace::EditorFileExplorerOpen,
         window: &mut Window,
@@ -2954,61 +3000,14 @@ impl Editor {
         };
 
         cx.spawn_in(window, async move |workspace, cx| {
-            // Get worktree and list files
-            let worktree_id = current_dir.worktree_id;
-            let dir_path = current_dir.path.clone();
-
-            let entries = project
+            // Get directory content
+            let file_list_content = project
                 .update(cx, |project, cx| {
-                    let worktree = project
-                        .worktree_for_id(worktree_id, cx)
-                        .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
-                    let worktree = worktree.read(cx);
-
-                    // List entries in directory
-                    let mut entries = Vec::new();
-                    for child_entry in worktree.child_entries(&dir_path) {
-                        let path = child_entry.path.clone();
-                        let is_dir = child_entry.is_dir();
-                        entries.push((path, is_dir));
-                    }
-
-                    // Sort: directories first, then files, both alphabetically
-                    entries.sort_by(|a, b| {
-                        match (a.1, b.1) {
-                            (true, false) => std::cmp::Ordering::Less, // directories first
-                            (false, true) => std::cmp::Ordering::Greater, // files after directories
-                            _ => a.0.cmp(&b.0), // alphabetical within each group
-                        }
-                    });
-
-                    // Create file listing content with current directory header
-                    let worktree_root = worktree.abs_path();
-                    let abs_path = worktree_root.join(dir_path.as_std_path());
-                    let current_dir_display = abs_path.to_string_lossy().to_string();
-
-                    let mut file_list_content = format!("{}\n\n", current_dir_display);
-
-                    // Add file names (without paths)
-                    file_list_content.push_str(
-                        &entries
-                            .iter()
-                            .map(|(path, is_dir)| {
-                                let suffix = if *is_dir { "/" } else { "" };
-                                let file_name = path
-                                    .file_name()
-                                    .map(|name| name.to_string())
-                                    .unwrap_or("".to_string());
-                                format!("{}{}\n", file_name, suffix)
-                            })
-                            .collect::<String>(),
-                    );
-
-                    anyhow::Ok((entries, file_list_content))
+                    Self::file_explorer_get_directory_content(project, &current_dir, cx)
                 })
                 .and_then(|e| e);
 
-            let Ok((_entries, file_list_content)) = entries else {
+            let Ok(file_list_content) = file_list_content else {
                 log::error!("Failed to get directory entries");
                 return;
             };
@@ -3153,46 +3152,7 @@ impl Editor {
                     if is_dir {
                         let directory_content = project
                             .update(cx, |project, cx| {
-                                let worktree =
-                                    project.worktree_for_id(project_path.worktree_id, cx)
-                                    .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
-                                let worktree = worktree.read(cx);
-                                let dir_path = &project_path.path;
-
-                                let mut entries = Vec::new();
-                                for child_entry in worktree.child_entries(dir_path) {
-                                    let path = child_entry.path.clone();
-                                    let is_dir = child_entry.is_dir();
-                                    entries.push((path, is_dir));
-                                }
-
-                                entries.sort_by(|a, b| match (a.1, b.1) {
-                                    (true, false) => std::cmp::Ordering::Less,
-                                    (false, true) => std::cmp::Ordering::Greater,
-                                    _ => a.0.cmp(&b.0),
-                                });
-
-                                let worktree_root = worktree.abs_path();
-                                let abs_path = worktree_root.join(dir_path.as_std_path());
-                                let current_dir_display = abs_path.to_string_lossy().to_string();
-
-                                let mut file_list_content = format!("{}\n\n", current_dir_display);
-
-                                file_list_content.push_str(
-                                    &entries
-                                        .iter()
-                                        .map(|(path, is_dir)| {
-                                            let suffix = if *is_dir { "/" } else { "" };
-                                            let file_name = path
-                                                .file_name()
-                                                .map(|name| name.to_string())
-                                                .unwrap_or("".to_string());
-                                            format!("{}{}\n", file_name, suffix)
-                                        })
-                                        .collect::<String>(),
-                                );
-
-                                anyhow::Ok(file_list_content)
+                                Self::file_explorer_get_directory_content(project, &project_path, cx)
                             })
                             .ok()
                             .and_then(|result| result.ok());
