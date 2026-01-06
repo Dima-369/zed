@@ -1,15 +1,13 @@
 - https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
 so I now need to clean up my code for it
 
-create a new action which is named like `editor file explorer open`, it spawns a new tab, it considers the editor where it was opened from and takes its directory
+# editor file explorer
 
-In this new tab you list all files, sorted with directories at top, from the editor tab directory in an Editor::Multi thing, so it is editable
+## initial
 
-you might inspect how `workspace::NewFileFromClipboard` is implemented
+- navigation keys, 
 
-NEXT, you implement a new action for this (assume it will be bound to enter)  to open the file path row under cursor as a new Zed tab (or reuse an existing one)
-
-check if it makes sense to have this in an own crate
+- on triggering the `open` action on a valid row with a file path, the tab should close
 
 
 # >>> Investigations
