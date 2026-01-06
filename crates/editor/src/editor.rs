@@ -212,7 +212,7 @@ use ui::{
     ButtonSize, ButtonStyle, ContextMenu, Disclosure, IconButton, IconButtonShape, IconName,
     IconSize, Indicator, Key, Tooltip, h_flex, prelude::*, scrollbars::ScrollbarAutoHide,
 };
-use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc};
+use util::{rel_path::RelPath, ResultExt, TryFutureExt, maybe, post_inc, RangeExt};
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
@@ -346,6 +346,8 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::new_file_from_clipboard);
             workspace.register_action(Editor::new_file_vertical);
             workspace.register_action(Editor::new_file_horizontal);
+            workspace.register_action(Editor::editor_file_explorer_open);
+            workspace.register_action(Editor::file_explorer_open_file);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
             workspace.register_action(|workspace, action, window, cx| {
@@ -2922,6 +2924,197 @@ impl Editor {
                 _ => None,
             },
         );
+    }
+
+    pub fn editor_file_explorer_open(
+        workspace: &mut Workspace,
+        _action: &workspace::EditorFileExplorerOpen,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let project = workspace.project().clone();
+        
+        // Get current directory from active editor
+        let current_dir = workspace.active_project_path(cx).and_then(|project_path| {
+            project_path.path.parent().map(|parent| {
+                ProjectPath { worktree_id: project_path.worktree_id, path: parent.to_rel_path_buf().into() }
+            })
+        });
+
+        let Some(current_dir) = current_dir else {
+            log::warn!("No active editor or directory found for file explorer");
+            return;
+        };
+
+        cx.spawn_in(window, async move |workspace, cx| {
+            // Get worktree and list files
+            let worktree_id = current_dir.worktree_id;
+            let dir_path = current_dir.path.clone();
+            
+            let entries = project.update(cx, |project, cx| {
+                let worktree = project.worktree_for_id(worktree_id, cx)
+                    .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
+                let worktree = worktree.read(cx);
+                
+                // List entries in directory
+                let mut entries = Vec::new();
+                for child_entry in worktree.child_entries(&dir_path) {
+                    let path = child_entry.path.clone();
+                    let is_dir = child_entry.is_dir();
+                    entries.push((path, is_dir));
+                }
+                
+                // Sort: directories first, then files, both alphabetically
+                entries.sort_by(|a, b| {
+                    match (a.1, b.1) {
+                        (true, false) => std::cmp::Ordering::Less,  // directories first
+                        (false, true) => std::cmp::Ordering::Greater, // files after directories
+                        _ => a.0.cmp(&b.0), // alphabetical within each group
+                    }
+                });
+                
+                // Create file listing content
+                let file_list_content = entries
+                    .iter()
+                    .map(|(path, is_dir)| {
+                        let prefix = if *is_dir { "📁 " } else { "📄 " };
+                        format!("{}{}\n", prefix, path.as_ref().display(util::paths::PathStyle::Posix))
+                    })
+                    .collect::<String>();
+
+                anyhow::Ok((entries, file_list_content))
+            });
+            
+            let entries = match entries {
+                Ok(entries) => entries,
+                Err(e) => {
+                    log::error!("Failed to get directory entries: {}", e);
+                    return;
+                }
+            };
+
+            let Ok((_entries, file_list_content)) = entries else {
+                log::error!("Failed to get directory entries");
+                return;
+            };
+
+            // Create a buffer with the file listing
+            let buffer = project.update(cx, |project, cx| {
+                project.create_local_buffer(&file_list_content, None, true, cx)
+            });
+            
+            let buffer = match buffer {
+                Ok(buffer) => buffer,
+                Err(e) => {
+                    log::error!("Failed to create buffer: {}", e);
+                    return;
+                }
+            };
+
+            let _ = workspace.update_in(cx, |workspace, window, cx| {
+                let editor = cx.new(|cx| {
+                    Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
+                });
+                workspace.add_item_to_active_pane(
+                    Box::new(editor.clone()),
+                    None,
+                    true,
+                    window,
+                    cx,
+                );
+                editor.update(cx, |editor, cx| {
+                    editor.move_to_beginning(&Default::default(), window, cx);
+                });
+                
+                // Mark as saved to avoid unsaved changes prompt
+                buffer.update(cx, |buffer, cx| {
+                    buffer.did_save(buffer.version(), None, cx);
+                });
+            });
+        })
+        .detach();
+    }
+
+    pub fn file_explorer_open_file(
+        workspace: &mut Workspace,
+        _action: &workspace::FileExplorerOpenFile,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+            let _project = workspace.project().clone();
+            
+            // Get current line content
+            let line_content = editor.update(cx, |editor, cx| {
+                let display_snapshot = editor.display_snapshot(cx);
+                let cursor = editor.selections.newest_display(&display_snapshot);
+                let cursor_display_point = cursor.head();
+                
+                // Convert display point to buffer point
+                let buffer_point = display_snapshot.to_buffer_point(display_map::InlayPoint::new(cursor_display_point.row().0, cursor_display_point.column()));
+                let buffer_row = buffer_point.row;
+                
+                // Get the line text from the buffer snapshot
+                let buffer_snapshot = display_snapshot.buffer_snapshot();
+                buffer_snapshot
+                    .text_for_range(text::Point::new(buffer_row, 0)..text::Point::new(buffer_row + 1, 0))
+                    .next()
+                    .map(|s| s.to_string())
+            });
+
+            let Some(line_content) = line_content else {
+                return;
+            };
+
+            // Extract file path from line (remove emoji and whitespace)
+            let file_path = line_content.trim()
+                .strip_prefix("📁 ")
+                .or_else(|| line_content.trim().strip_prefix("📄 "))
+                .unwrap_or(line_content.trim())
+                .to_string();
+
+            if file_path.is_empty() {
+                return;
+            }
+
+            // Get current directory from workspace
+            let current_dir = workspace.active_project_path(cx).and_then(|project_path| {
+                project_path.path.parent().and_then(|parent| {
+                    RelPath::unix(&file_path).ok().map(|file_rel_path| {
+                        ProjectPath { worktree_id: project_path.worktree_id, path: parent.join(&file_rel_path) }
+                    })
+                })
+            });
+
+            let Some(target_path) = current_dir else {
+                log::warn!("Could not determine target path for file: {}", file_path);
+                return;
+            };
+
+            // Open the file
+            cx.spawn_in(window, async move |workspace, cx| {
+                workspace.update_in(cx, |workspace, window, cx| {
+                    workspace.open_path(target_path, None, true, window, cx)
+                })
+                .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?;
+                
+                anyhow::Ok(())
+            })
+            .detach_and_prompt_err(
+                "Failed to open file",
+                window,
+                cx,
+                |e, _, _| match e.error_code() {
+                    ErrorCode::RemoteUpgradeRequired => Some(format!(
+                        "The remote instance of Zed does not support this yet. It must be upgraded to {}",
+                        e.error_tag("required").unwrap_or("the latest version")
+                    )),
+                    _ => None,
+                },
+            );
+        }
     }
 
     pub fn new_in_workspace(

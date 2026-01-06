@@ -254,6 +254,10 @@ actions!(
         OpenInTerminal,
         /// Opens the component preview.
         OpenComponentPreview,
+        /// Opens a file explorer for the current editor's directory.
+        EditorFileExplorerOpen,
+        /// Opens the file under cursor in the file explorer.
+        FileExplorerOpenFile,
         /// Reloads the active item.
         ReloadActiveItem,
         /// Resets the active dock to its default size.
@@ -3037,7 +3041,7 @@ impl Workspace {
         item.to_any_view().downcast::<I>().ok()
     }
 
-    fn active_project_path(&self, cx: &App) -> Option<ProjectPath> {
+    pub fn active_project_path(&self, cx: &App) -> Option<ProjectPath> {
         self.active_item(cx).and_then(|item| item.project_path(cx))
     }
 
