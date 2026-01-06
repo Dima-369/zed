@@ -2998,6 +2998,13 @@ impl Editor {
     }
 
 
+    fn validate_file_name(file_name: &str) -> bool {
+        // Check for invalid characters in file names
+        // On Unix-like systems, the only invalid character is null byte
+        // On Windows, there are more restrictions, but we'll check for common ones
+        !file_name.contains(|c: char| c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
+    }
+
     fn get_modified_files_from_buffer(
         stored_state: &FileExplorerState,
         current_buffer_content: &str,
@@ -3012,23 +3019,82 @@ impl Editor {
             .filter(|line| !line.is_empty()) // Filter out empty lines
             .collect();
 
-        println!("Current entries from buffer: {:?}", current_entries);
-        println!("Stored entries: {:?}", stored_state);
+        // Validate file names for disallowed characters
+        for entry in &current_entries {
+            // Remove trailing "/" if it's a directory
+            let name_to_check = if entry.ends_with('/') {
+                &entry[..entry.len()-1]
+            } else {
+                entry
+            };
 
-        // Find entries that were removed (in stored but not in current)
-        let mut changes = Vec::new();
-        for stored_entry in stored_state {
-            if !current_entries.contains(stored_entry) {
-                println!("Entry {} was removed from buffer", stored_entry);
-                changes.push(format!("REMOVED: {}", stored_entry));
+            if !Self::validate_file_name(name_to_check) {
+                println!("Invalid file name detected: {}", name_to_check);
+                // Return early with validation error
+                return vec![format!("ERROR: Invalid file name '{}'. Contains disallowed characters.", name_to_check)];
             }
         }
 
-        // Find entries that were added (in current but not in stored)
+        println!("Current entries from buffer: {:?}", current_entries);
+        println!("Stored entries: {:?}", stored_state);
+
+        let mut changes = Vec::new();
+
+        // Compare entries by index to detect renames
+        let max_len = stored_state.len().max(current_entries.len());
+        for i in 0..max_len {
+            let stored_entry = stored_state.get(i);
+            let current_entry = current_entries.get(i);
+
+            match (stored_entry, current_entry) {
+                (Some(stored), Some(current)) => {
+                    if stored != current {
+                        // Check if this is a rename (entry exists but in different position)
+                        if current_entries.contains(stored) && !stored_state.contains(current) {
+                            println!("Entry renamed: {} -> {}", stored, current);
+                            changes.push(format!("RENAMED: {} -> {}", stored, current));
+                        } else {
+                            // Regular change
+                            println!("Entry changed at index {}: {} -> {}", i, stored, current);
+                            changes.push(format!("CHANGED: {} -> {}", stored, current));
+                        }
+                    }
+                },
+                (Some(stored), None) => {
+                    // Entry was removed
+                    println!("Entry {} was removed from buffer at index {}", stored, i);
+                    changes.push(format!("REMOVED: {}", stored));
+                },
+                (None, Some(current)) => {
+                    // Entry was added
+                    println!("Entry {} was added to buffer at index {}", current, i);
+                    changes.push(format!("ADDED: {}", current));
+                },
+                (None, None) => {
+                    // Should not happen due to the loop condition
+                }
+            }
+        }
+
+        // Also check for entries that exist in different positions (moved entries)
+        // This handles cases where entries were reordered rather than renamed
+        for stored_entry in stored_state {
+            if !current_entries.contains(stored_entry) {
+                // Already handled above, but double-checking
+                if !changes.iter().any(|change| change.starts_with("REMOVED:") && change.contains(stored_entry)) {
+                    println!("Entry {} was removed from buffer", stored_entry);
+                    changes.push(format!("REMOVED: {}", stored_entry));
+                }
+            }
+        }
+
         for current_entry in &current_entries {
             if !stored_state.contains(current_entry) {
-                println!("Entry {} was added to buffer", current_entry);
-                changes.push(format!("ADDED: {}", current_entry));
+                // Already handled above, but double-checking
+                if !changes.iter().any(|change| change.starts_with("ADDED:") && change.contains(current_entry)) {
+                    println!("Entry {} was added to buffer", current_entry);
+                    changes.push(format!("ADDED: {}", current_entry));
+                }
             }
         }
 
@@ -3472,6 +3538,16 @@ impl Editor {
                 // Compare stored state with current buffer content to detect changes
                 let changes = Self::get_modified_files_from_buffer(&stored_state, &current_buffer_content);
                 println!("Detected {} changes in buffer", changes.len());
+
+                // Check if there are validation errors
+                if changes.iter().any(|change| change.starts_with("ERROR:")) {
+                    log::error!("Validation error in file explorer buffer: {}", changes[0]);
+                    println!("Validation error in file explorer buffer: {}", changes[0]);
+
+                    // Log the error (for now, until we determine the proper notification mechanism)
+                    log::error!("File explorer validation error: {}", changes[0]);
+                    return;
+                }
 
                 if changes.is_empty() {
                     log::info!("No changes detected in file explorer buffer: {}", current_dir);
