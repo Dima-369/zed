@@ -3122,8 +3122,10 @@ impl Editor {
             let mut full_path = PathBuf::from(first_line);
             full_path.push(file_path);
 
+            let editor = editor.clone();
+
             // Open the file
-            cx.spawn_in(window, async move |workspace, cx| {
+            cx.spawn_in(window, async move |workspace, cx| -> anyhow::Result<()> {
                 let project_path = project
                     .read_with(cx, |project, cx| {
                         project.find_project_path(&full_path, cx)
@@ -3132,28 +3134,86 @@ impl Editor {
                     .flatten();
 
                 if let Some(project_path) = project_path {
-                    workspace
-                        .update_in(cx, |workspace, window, cx| {
-                            workspace.open_path(project_path, None, true, window, cx)
+                    let is_dir = project
+                        .read_with(cx, |project, cx| {
+                            project
+                                .worktree_for_id(project_path.worktree_id, cx)
+                                .map(|worktree| {
+                                    worktree
+                                        .read(cx)
+                                        .entry_for_path(&project_path.path)
+                                        .map(|entry| entry.is_dir())
+                                        .unwrap_or(false)
+                                })
+                                .unwrap_or(false)
                         })
-                        .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?
-                        .await
-                        .map_err(|e| anyhow::anyhow!("Failed to open file: {}", e))?;
+                        .ok()
+                        .unwrap_or(false);
+
+                    if is_dir {
+                        let directory_content = project
+                            .update(cx, |project, cx| {
+                                let worktree =
+                                    project.worktree_for_id(project_path.worktree_id, cx)
+                                    .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
+                                let worktree = worktree.read(cx);
+                                let dir_path = &project_path.path;
+
+                                let mut entries = Vec::new();
+                                for child_entry in worktree.child_entries(dir_path) {
+                                    let path = child_entry.path.clone();
+                                    let is_dir = child_entry.is_dir();
+                                    entries.push((path, is_dir));
+                                }
+
+                                entries.sort_by(|a, b| match (a.1, b.1) {
+                                    (true, false) => std::cmp::Ordering::Less,
+                                    (false, true) => std::cmp::Ordering::Greater,
+                                    _ => a.0.cmp(&b.0),
+                                });
+
+                                let worktree_root = worktree.abs_path();
+                                let abs_path = worktree_root.join(dir_path.as_std_path());
+                                let current_dir_display = abs_path.to_string_lossy().to_string();
+
+                                let mut file_list_content = format!("{}\n\n", current_dir_display);
+
+                                file_list_content.push_str(
+                                    &entries
+                                        .iter()
+                                        .map(|(path, is_dir)| {
+                                            let suffix = if *is_dir { "/" } else { "" };
+                                            let file_name = path
+                                                .file_name()
+                                                .map(|name| name.to_string())
+                                                .unwrap_or("".to_string());
+                                            format!("{}{}\n", file_name, suffix)
+                                        })
+                                        .collect::<String>(),
+                                );
+
+                                anyhow::Ok(file_list_content)
+                            })
+                            .ok()
+                            .and_then(|result| result.ok());
+
+                        if let Some(content) = directory_content {
+                            let _ = workspace.update_in(cx, |_workspace, window, cx| {
+                                editor.update(cx, |editor, cx| {
+                                    editor.set_text(content, window, cx);
+                                    editor.move_to_beginning(&Default::default(), window, cx);
+                                })
+                            });
+                        }
+                    } else {
+                        workspace.update_in(cx, |workspace, window, cx| {
+                            workspace.open_path(project_path, None, true, window, cx)
+                        })?.await?;
+                    }
                 }
-                anyhow::Ok(())
+                Ok(())
             })
-            .detach_and_prompt_err(
-                "Failed to open file",
-                window,
-                cx,
-                |e, _, _| match e.error_code() {
-                    ErrorCode::RemoteUpgradeRequired => Some(format!(
-                        "The remote instance of Zed does not support this yet. It must be upgraded to {}",
-                        e.error_tag("required").unwrap_or("the latest version")
-                    )),
-                    _ => None,
-                },
-            );
+            .detach();
         }
     }
 
