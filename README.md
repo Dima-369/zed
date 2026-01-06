@@ -72,6 +72,8 @@ This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim)
 
 It is relatively basic and the displayed buffer uses the `Rust` programming language buffer language which highlights directories differently to files.
 
+Added in `crates/editor/src/editor.rs`, see the `file_explorer_*` functions.
+
 New actions:
 ARE THOSE correct?
 - `editor::FileExplorerOpenFile`
