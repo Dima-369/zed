@@ -213,6 +213,9 @@ use ui::{
     IconSize, Indicator, Key, Tooltip, h_flex, prelude::*, scrollbars::ScrollbarAutoHide,
 };
 use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc, rel_path::RelPath};
+
+/// Represents file metadata: (last_modified_timestamp, file_size)
+type FileMetadata = (u64, u64);
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
@@ -1165,6 +1168,8 @@ pub struct Editor {
     input_enabled: bool,
     use_modal_editing: bool,
     is_file_explorer: bool,
+    /// Stores file metadata for file explorer save action: (last_modified_timestamp, file_size)
+    file_explorer_metadata: Option<std::collections::HashMap<String, FileMetadata>>,
     read_only: bool,
     leader_id: Option<CollaboratorId>,
     remote_id: Option<ViewId>,
@@ -2339,6 +2344,7 @@ impl Editor {
             input_enabled: !is_minimap,
             use_modal_editing: full_mode,
             is_file_explorer: false,
+            file_explorer_metadata: None,
             read_only: is_minimap,
             use_autoclose: true,
             use_auto_surround: true,
@@ -2938,7 +2944,7 @@ impl Editor {
         project: &Project,
         project_path: &ProjectPath,
         cx: &mut App,
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<(String, std::collections::HashMap<String, FileMetadata>)> {
         let worktree = project
             .worktree_for_id(project_path.worktree_id, cx)
             .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
@@ -2963,27 +2969,21 @@ impl Editor {
 
         let mut file_list_content = format!("{}\n\n", current_dir_display);
 
-        // Add hidden metadata marker with file state information
-        file_list_content.push_str("<!-- FILE_EXPLORER_METADATA_START -->\n");
+        // Collect file metadata for modification tracking
+        let mut metadata = std::collections::HashMap::new();
         for (path, is_dir) in &entries {
             if !*is_dir {
                 // Get file metadata for modification tracking
                 let full_path = worktree_root.join(path.as_std_path());
-                if let Ok(metadata) = std::fs::metadata(&full_path) {
-                    let modified_time = metadata.modified()
+                if let Ok(file_metadata) = std::fs::metadata(&full_path) {
+                    let modified_time = file_metadata.modified()
                         .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
                         .unwrap_or(0);
-                    let file_size = metadata.len();
-                    file_list_content.push_str(&format!(
-                        "<!-- FILE_META:{}|{}|{} -->\n",
-                        path.as_ref().as_unix_str().to_string(),
-                        modified_time,
-                        file_size
-                    ));
+                    let file_size = file_metadata.len();
+                    metadata.insert(path.as_ref().as_unix_str().to_string(), (modified_time, file_size));
                 }
             }
         }
-        file_list_content.push_str("<!-- FILE_EXPLORER_METADATA_END -->\n\n");
 
         file_list_content.push_str(
             &entries
@@ -2999,50 +2999,14 @@ impl Editor {
                 .collect::<String>(),
         );
 
-        anyhow::Ok(file_list_content)
+        anyhow::Ok((file_list_content, metadata))
     }
 
-    fn parse_file_metadata(buffer_content: &str) -> std::collections::HashMap<String, (u64, u64)> {
-        let mut metadata = std::collections::HashMap::new();
-        let lines: Vec<&str> = buffer_content.lines().collect();
-        
-        let mut in_metadata_section = false;
-        
-        for line in lines {
-            if line.contains("FILE_EXPLORER_METADATA_START") {
-                in_metadata_section = true;
-                continue;
-            }
-            if line.contains("FILE_EXPLORER_METADATA_END") {
-                break;
-            }
-            if !in_metadata_section {
-                continue;
-            }
-            
-            if let Some(start) = line.find("<!-- FILE_META:") {
-                if let Some(end) = line.find("-->") {
-                    let meta_content = &line[start + 17..end];
-                    let parts: Vec<&str> = meta_content.split('|').collect();
-                    if parts.len() == 3 {
-                        if let (Ok(modified_time), Ok(file_size)) = (
-                            parts[1].parse::<u64>(),
-                            parts[2].parse::<u64>(),
-                        ) {
-                            metadata.insert(parts[0].to_string(), (modified_time, file_size));
-                        }
-                    }
-                }
-            }
-        }
-        
-        metadata
-    }
 
     fn get_modified_files(
         project: &Project,
         project_path: &ProjectPath,
-        stored_metadata: &std::collections::HashMap<String, (u64, u64)>,
+        stored_metadata: &std::collections::HashMap<String, FileMetadata>,
         cx: &mut App,
     ) -> anyhow::Result<Vec<String>> {
         let worktree = project
@@ -3055,13 +3019,13 @@ impl Editor {
         
         for (file_path, (stored_modified, stored_size)) in stored_metadata {
             let full_path = worktree_root.join(file_path);
-            
+
             if let Ok(current_metadata) = std::fs::metadata(&full_path) {
                 let current_modified = current_metadata.modified()
                     .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
                     .unwrap_or(0);
                 let current_size = current_metadata.len();
-                
+
                 // File is modified if timestamp or size changed
                 if current_modified != *stored_modified || current_size != *stored_size {
                     modified_files.push(file_path.clone());
@@ -3101,14 +3065,14 @@ impl Editor {
         };
 
         cx.spawn_in(window, async move |workspace, cx| {
-            // Get directory content
-            let file_list_content = project
+            // Get directory content and metadata
+            let file_list_content_result = project
                 .update(cx, |project, cx| {
                     Self::file_explorer_get_directory_content(project, &current_dir, cx)
                 })
                 .and_then(|e| e);
 
-            let Ok(file_list_content) = file_list_content else {
+            let Ok((file_list_content, metadata)) = file_list_content_result else {
                 log::error!("Failed to get directory entries");
                 return;
             };
@@ -3144,6 +3108,7 @@ impl Editor {
                 editor.update(cx, |editor, cx| {
                     editor.move_to_beginning(&Default::default(), window, cx);
                     editor.set_file_explorer(true);
+                    editor.file_explorer_metadata = Some(metadata);
 
                     if let Some(filename) = file_to_select {
                         let snapshot = editor.buffer.read(cx).snapshot(cx);
@@ -3286,10 +3251,11 @@ impl Editor {
                             .ok()
                             .and_then(|result| result.ok());
 
-                        if let Some(content) = directory_content {
+                        if let Some((content, metadata)) = directory_content {
                             let _ = workspace.update_in(cx, |_workspace, window, cx| {
                                 editor.update(cx, |editor, cx| {
                                     editor.set_text(content, window, cx);
+                                    editor.file_explorer_metadata = Some(metadata);
                                     let point = Point::new(2, 0);
                                     editor.change_selections(
                                         SelectionEffects::default(),
@@ -3299,7 +3265,7 @@ impl Editor {
                                     );
                                 })
                             });
-                            
+
                             let _ = editor.update(cx, |editor, cx| {
                                 if let Some(buffer) = editor.buffer.read(cx).as_singleton() {
                                     buffer.update(cx, |buffer, cx| {
@@ -3403,10 +3369,11 @@ impl Editor {
                         .ok()
                         .and_then(|result| result.ok());
 
-                    if let Some(content) = directory_content {
+                    if let Some((content, metadata)) = directory_content {
                         let _ = workspace.update_in(cx, |_workspace, window, cx| {
                             editor.update(cx, |editor, cx| {
                                 editor.set_text(content, window, cx);
+                                editor.file_explorer_metadata = Some(metadata);
 
                                 let mut positioned = false;
                                 if let Some(dir_name) = current_dir_name {
@@ -3447,7 +3414,7 @@ impl Editor {
                                 }
                             })
                         });
-                        
+
                         let _ = editor.update(cx, |editor, cx| {
                             if let Some(buffer) = editor.buffer.read(cx).as_singleton() {
                                 buffer.update(cx, |buffer, cx| {
@@ -3472,8 +3439,8 @@ impl Editor {
             let project = workspace.project().clone();
             let editor = editor.clone();
 
-            // Get current directory and buffer content
-            let (current_dir, buffer_content) = editor.update(cx, |editor, cx| {
+            // Get current directory and stored metadata from the editor
+            let (current_dir, stored_metadata) = editor.update(cx, |editor, cx| {
                 let display_snapshot = editor.display_snapshot(cx);
                 let buffer_snapshot = display_snapshot.buffer_snapshot();
                 let full_content = buffer_snapshot.text();
@@ -3485,7 +3452,7 @@ impl Editor {
                     .unwrap_or("")
                     .trim();
 
-                (first_line.to_string(), full_content.to_string())
+                (first_line.to_string(), editor.file_explorer_metadata.clone().unwrap_or_default())
             });
 
             if current_dir.is_empty() {
@@ -3494,11 +3461,8 @@ impl Editor {
             }
 
             cx.spawn_in(window, async move |workspace, cx| {
-                // Parse stored metadata from buffer
-                let stored_metadata = Self::parse_file_metadata(&buffer_content);
-                
                 if stored_metadata.is_empty() {
-                    log::warn!("No file metadata found in file explorer buffer");
+                    log::warn!("No file metadata found in file explorer editor");
                     return;
                 }
 
@@ -3539,9 +3503,37 @@ impl Editor {
                             if let Ok(open_task) = workspace.update_in(cx, |workspace, window, cx| {
                                 workspace.open_path(file_project_path.clone(), None, true, window, cx)
                             }) {
-                                if let Ok(_item_handle) = open_task.await {
+                                if let Ok(item_handle) = open_task.await {
                                     log::info!("Opened modified file: {}", file_path);
-                                    // TODO: Add save logic here if needed
+
+                                    // Try to save the file if it's an editor
+                                    if let Some(editor) = item_handle.downcast::<Editor>() {
+                                        let save_result = workspace.update_in(cx, |_workspace, window, cx| {
+                                            editor.update(cx, |editor, cx| {
+                                                editor.save(
+                                                    workspace::item::SaveOptions {
+                                                        format: true,
+                                                        autosave: false,
+                                                    },
+                                                    project.clone(),
+                                                    window,
+                                                    cx,
+                                                )
+                                            })
+                                        });
+
+                                        if let Ok(save_task) = save_result {
+                                            if let Err(err) = save_task.await {
+                                                log::error!("Failed to save file {}: {}", file_path, err);
+                                            } else {
+                                                log::info!("Saved modified file: {}", file_path);
+                                            }
+                                        } else {
+                                            log::error!("Failed to create save task for file: {}", file_path);
+                                        }
+                                    } else {
+                                        log::warn!("Opened file is not an editor: {}", file_path);
+                                    }
                                 } else {
                                     log::error!("Failed to open modified file: {}", file_path);
                                 }
