@@ -66,11 +66,11 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - inspired from `Choose Content to Paste` from JetBrains IDEs
   - in `crates/workspace/src/persistence.rs` there is own SQL table `clipboard_history`, so the recent entries is remembered across restarts
 
-## Open directory as a Editor
+## Open directory listing as a Editor (relatively basic)
 
 This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
 
-It is relatively basic and the displayed buffer uses the `Rust` programming language buffer language which highlights directories differently to files.
+The displayed buffer uses the `Rust` programming language buffer language which highlights directories differently to files; it is not perfect, but works.
 
 Added in `crates/editor/src/editor.rs`, see the `file_explorer_*` functions.
 
