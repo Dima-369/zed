@@ -2977,9 +2977,8 @@ impl Editor {
                 let file_list_content = entries
                     .iter()
                     .map(|(path, is_dir)| {
-                        let prefix = if *is_dir { "📁 " } else { "📄 " };
                         let suffix = if *is_dir { "/" } else { "" };
-                        format!("{}{}{}\n", prefix, path.as_ref().display(util::paths::PathStyle::Posix), suffix)
+                        format!("{}{}\n", path.as_ref().display(util::paths::PathStyle::Posix), suffix)
                     })
                     .collect::<String>();
 
@@ -3070,10 +3069,7 @@ impl Editor {
             
             let file_path = line_content
                 .trim()
-                .strip_prefix("📁 ")
-                .map(|s| s.trim_end_matches('/')) // Remove trailing slash from directories
-                .or_else(|| line_content.trim().strip_prefix("📄 "))
-                .unwrap_or(line_content.trim())
+                .trim_end_matches('/') // Remove trailing slash from directories
                 .to_string();
 
             if file_path.is_empty() {
