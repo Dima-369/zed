@@ -189,7 +189,6 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 - always allow all edits, otherwise it kepts asking for "Allow All Edits" every single time a new ACP thread is started which is just annoying. Note that it still asks for tool permissions
 - show command output for `acp::ToolKind::Execute` always below the `Run Command` view in a plain text view to preserve newlines
   - I added `prepare_execute_tool_output_from_qwen()` to strip trailing and leading information for cleaner output
-- integrate external agent history from https://github.com/zed-industries/zed/pull/45734
 - allow `New From Summary` for ACP agents, instead of only for Zed Agent
 - add `agent::LaunchAgent` action which takes an external agent name and can be bound like this:
   - `"cmd-t": ["agent::LaunchAgent", { "agent_name": "qwen" }]`
