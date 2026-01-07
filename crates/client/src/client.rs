@@ -122,7 +122,9 @@ pub struct ProxySettings {
 impl ProxySettings {
     pub fn proxy_url(&self) -> Option<Url> {
         self.proxy
-            .as_ref()
+            .as_deref()
+            .map(str::trim)
+            .filter(|input| !input.is_empty())
             .and_then(|input| {
                 input
                     .parse::<Url>()
@@ -136,7 +138,12 @@ impl ProxySettings {
 impl Settings for ProxySettings {
     fn from_settings(content: &settings::SettingsContent) -> Self {
         Self {
-            proxy: content.proxy.clone(),
+            proxy: content
+                .proxy
+                .as_deref()
+                .map(str::trim)
+                .filter(|proxy| !proxy.is_empty())
+                .map(ToOwned::to_owned),
             proxy_no_verify: content.proxy_no_verify,
         }
     }
@@ -1802,6 +1809,19 @@ mod tests {
     use proto::TypedEnvelope;
     use settings::SettingsStore;
     use std::future;
+
+    #[test]
+    fn test_proxy_settings_trims_and_ignores_empty_proxy() {
+        let mut content = SettingsContent::default();
+        content.proxy = Some("   ".to_owned());
+        assert_eq!(ProxySettings::from_settings(&content).proxy, None);
+
+        content.proxy = Some("http://127.0.0.1:10809".to_owned());
+        assert_eq!(
+            ProxySettings::from_settings(&content).proxy.as_deref(),
+            Some("http://127.0.0.1:10809")
+        );
+    }
 
     #[gpui::test(iterations = 10)]
     async fn test_reconnection(cx: &mut TestAppContext) {

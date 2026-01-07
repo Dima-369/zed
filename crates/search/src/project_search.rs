@@ -4,7 +4,10 @@ use crate::{
     ToggleCaseSensitive, ToggleIncludeIgnored, ToggleRegex, ToggleReplace, ToggleSearchOnInput,
     ToggleWholeWord,
     buffer_search::Deploy,
-    search_bar::{ActionButtonState, input_base_styles, render_action_button, render_text_input},
+    search_bar::{
+        ActionButtonState, alignment_element, input_base_styles, render_action_button,
+        render_text_input,
+    },
 };
 use anyhow::Context as _;
 use collections::HashMap;
@@ -2148,7 +2151,7 @@ impl Render for ProjectSearchBar {
                     .then_some(ActionButtonState::Disabled),
                 "Select Next Match",
                 &SelectNextMatch,
-                query_focus,
+                query_focus.clone(),
             ))
             .child(
                 div()
@@ -2220,14 +2223,13 @@ impl Render for ProjectSearchBar {
             (IconName::ChevronDownUp, "Collapse All Search Results")
         };
 
-        let tooltip_focus_handle = focus_handle.clone();
-
         let expand_button = IconButton::new("project-search-collapse-expand", icon)
+            .shape(IconButtonShape::Square)
             .tooltip(move |_, cx| {
                 Tooltip::for_action_in(
                     tooltip_label,
                     &ToggleAllSearchResults,
-                    &tooltip_focus_handle.clone(),
+                    &query_focus.clone(),
                     cx,
                 )
             })
@@ -2240,7 +2242,7 @@ impl Render for ProjectSearchBar {
             }));
 
         let search_line = h_flex()
-            .pl_1()
+            .pl_0p5()
             .w_full()
             .gap_2()
             .child(expand_button)
@@ -2276,6 +2278,7 @@ impl Render for ProjectSearchBar {
             h_flex()
                 .w_full()
                 .gap_2()
+                .child(alignment_element())
                 .child(replace_column)
                 .child(replace_actions)
         });
@@ -2314,6 +2317,7 @@ impl Render for ProjectSearchBar {
                     SearchSource::Project(cx),
                     focus_handle,
                 ));
+
             h_flex()
                 .w_full()
                 .gap_2()
@@ -2321,6 +2325,7 @@ impl Render for ProjectSearchBar {
                     h_flex()
                         .gap_2()
                         .w(input_width)
+                        .child(alignment_element())
                         .child(include)
                         .child(exclude),
                 )
@@ -2362,7 +2367,6 @@ impl Render for ProjectSearchBar {
 
         v_flex()
             .gap_2()
-            .py_px()
             .w_full()
             .key_context(key_context)
             .on_action(cx.listener(|this, _: &ToggleFocus, window, cx| {

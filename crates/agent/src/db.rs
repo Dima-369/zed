@@ -137,6 +137,63 @@ pub struct DbThread {
     pub completion_mode: Option<CompletionMode>,
     #[serde(default)]
     pub profile: Option<AgentProfileId>,
+    #[serde(default)]
+    pub imported: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SharedThread {
+    pub title: SharedString,
+    pub messages: Vec<DbMessage>,
+    pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub model: Option<DbLanguageModel>,
+    #[serde(default)]
+    pub completion_mode: Option<CompletionMode>,
+    pub version: String,
+}
+
+impl SharedThread {
+    pub const VERSION: &'static str = "1.0.0";
+
+    pub fn from_db_thread(thread: &DbThread) -> Self {
+        Self {
+            title: thread.title.clone(),
+            messages: thread.messages.clone(),
+            updated_at: thread.updated_at,
+            model: thread.model.clone(),
+            completion_mode: thread.completion_mode,
+            version: Self::VERSION.to_string(),
+        }
+    }
+
+    pub fn to_db_thread(self) -> DbThread {
+        DbThread {
+            title: format!("🔗 {}", self.title).into(),
+            messages: self.messages,
+            updated_at: self.updated_at,
+            detailed_summary: None,
+            initial_project_snapshot: None,
+            cumulative_token_usage: Default::default(),
+            request_token_usage: Default::default(),
+            model: self.model,
+            completion_mode: self.completion_mode,
+            profile: None,
+            imported: true,
+        }
+    }
+
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        const COMPRESSION_LEVEL: i32 = 3;
+        let json = serde_json::to_vec(self)?;
+        let compressed = zstd::encode_all(json.as_slice(), COMPRESSION_LEVEL)?;
+        Ok(compressed)
+    }
+
+    pub fn from_bytes(data: &[u8]) -> Result<Self> {
+        let decompressed = zstd::decode_all(data)?;
+        Ok(serde_json::from_slice(&decompressed)?)
+    }
 }
 
 impl DbThread {
@@ -296,6 +353,7 @@ impl DbThread {
             model: thread.model,
             completion_mode: thread.completion_mode,
             profile: thread.profile,
+            imported: false,
         })
     }
 }
@@ -626,103 +684,41 @@ impl ThreadsDatabase {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
 
     #[test]
-    fn test_agent_identity_from_name() {
-        // Test Zed agent
-        let zed_identity = AgentIdentity::from_name("zed");
-        assert!(zed_identity.is_zed());
-        assert_eq!(zed_identity.name(), "zed");
-        assert_eq!(zed_identity.display_name(), "Zed");
+    fn test_shared_thread_roundtrip() {
+        let original = SharedThread {
+            title: "Test Thread".into(),
+            messages: vec![],
+            updated_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+            model: None,
+            completion_mode: None,
+            version: SharedThread::VERSION.to_string(),
+        };
 
-        // Test external agents with known names
-        let claude_identity = AgentIdentity::from_name("claude-code");
-        assert!(!claude_identity.is_zed());
-        assert_eq!(claude_identity.name(), "claude-code");
-        assert_eq!(
-            claude_identity.display_name(),
-            "Claude Code",
-            "Known agent names should use human-readable display names"
-        );
+        let bytes = original.to_bytes().expect("Failed to serialize");
+        let restored = SharedThread::from_bytes(&bytes).expect("Failed to deserialize");
 
-        let codex_identity = AgentIdentity::from_name("codex");
-        assert!(!codex_identity.is_zed());
-        assert_eq!(codex_identity.name(), "codex");
-        assert_eq!(
-            codex_identity.display_name(),
-            "Codex",
-            "Known agent names should use human-readable display names"
-        );
+        assert_eq!(restored.title, original.title);
+        assert_eq!(restored.version, original.version);
+        assert_eq!(restored.updated_at, original.updated_at);
     }
 
     #[test]
-    fn test_agent_identity_display_name_title_case() {
-        // Test unknown agents get title case fallback
-        let custom_agent = AgentIdentity::from_name("my-custom-agent");
-        assert_eq!(
-            custom_agent.display_name(),
-            "My Custom Agent",
-            "Unknown agents should use title case with dashes as spaces"
-        );
+    fn test_imported_flag_defaults_to_false() {
+        // Simulate deserializing a thread without the imported field (backwards compatibility).
+        let json = r#"{
+            "title": "Old Thread",
+            "messages": [],
+            "updated_at": "2024-01-01T00:00:00Z"
+        }"#;
 
-        let underscore_agent = AgentIdentity::from_name("another_custom_agent");
-        assert_eq!(
-            underscore_agent.display_name(),
-            "Another Custom Agent",
-            "Unknown agents should use title case with underscores as spaces"
-        );
-
-        let mixed_agent = AgentIdentity::from_name("mixed-agent_name");
-        assert_eq!(
-            mixed_agent.display_name(),
-            "Mixed Agent Name",
-            "Unknown agents should handle mixed separators"
-        );
-    }
-
-    #[test]
-    fn test_migrations() {
-        use super::*;
-
-        let connection = Connection::open_memory(Some("test_migration_entry"));
-
-        connection
-            .exec(indoc! {"
-                CREATE TABLE threads (
-                    id TEXT PRIMARY KEY,
-                    summary TEXT NOT NULL
-                );
-            "})
-            .unwrap()()
-        .unwrap();
-
-        connection
-            .migrate(
-                <ThreadsDatabase as Domain>::NAME,
-                <ThreadsDatabase as Domain>::MIGRATIONS,
-                |_, _, _| false,
-            )
-            .unwrap();
-
-        let migration_sql: Option<(usize, String)> =
-            connection
-                .select_bound::<&str, (usize, String)>(
-                    "SELECT step, migration FROM migrations WHERE domain = ?",
-                )
-                .unwrap()(<ThreadsDatabase as Domain>::NAME)
-            .unwrap()
-            .into_iter()
-            .next();
+        let db_thread: DbThread = serde_json::from_str(json).expect("Failed to deserialize");
 
         assert!(
-            migration_sql.is_some(),
-            "Migration should be stored in migrations table"
+            !db_thread.imported,
+            "Legacy threads without imported field should default to false"
         );
-
-        let (step, sql) = migration_sql.unwrap();
-        assert_eq!(step, 0, "First migration should have step 0");
-        assert!(sql.contains("agent_name"), "SQL: {}", sql);
-        assert!(sql.contains("agent_version"), "SQL: {}", sql);
-        assert!(sql.contains("agent_provider_id"), "SQL: {}", sql);
     }
 }

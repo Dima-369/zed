@@ -103,6 +103,7 @@ use dap::TelemetrySpawnLocation;
 use display_map::*;
 use edit_prediction_types::{
     EditPredictionDelegate, EditPredictionDelegateHandle, EditPredictionGranularity,
+    SuggestionDisplayType,
 };
 use editor_settings::{GoToDefinitionFallback, Minimap as MinimapSettings};
 use element::{AcceptEditPredictionBinding, LineWithInvisibles, PositionMap, layout_line};
@@ -4185,6 +4186,14 @@ impl Editor {
             self.autoindent_mode = Some(AutoindentMode::EachLine);
         } else {
             self.autoindent_mode = None;
+        }
+    }
+
+    pub fn capability(&self, cx: &App) -> Capability {
+        if self.read_only {
+            Capability::ReadOnly
+        } else {
+            self.buffer.read(cx).capability()
         }
     }
 
@@ -9118,10 +9127,6 @@ impl Editor {
                 self.edit_prediction_preview,
                 EditPredictionPreview::Inactive { .. }
             ) {
-                if let Some(provider) = self.edit_prediction_provider.as_ref() {
-                    provider.provider.did_show(cx)
-                }
-
                 self.edit_prediction_preview = EditPredictionPreview::Active {
                     previous_scroll_position: None,
                     since: Instant::now(),
@@ -9244,6 +9249,9 @@ impl Editor {
                 snapshot,
                 target,
             } => {
+                if let Some(provider) = &self.edit_prediction_provider {
+                    provider.provider.did_show(SuggestionDisplayType::Jump, cx);
+                }
                 self.stale_edit_prediction_in_menu = None;
                 self.active_edit_prediction = Some(EditPredictionState {
                     inlay_ids: vec![],
@@ -9299,6 +9307,9 @@ impl Editor {
         let is_move = supports_jump
             && (move_invalidation_row_range.is_some() || self.edit_predictions_hidden_for_vim_mode);
         let completion = if is_move {
+            if let Some(provider) = &self.edit_prediction_provider {
+                provider.provider.did_show(SuggestionDisplayType::Jump, cx);
+            }
             invalidation_row_range =
                 move_invalidation_row_range.unwrap_or(edit_start_row..edit_end_row);
             let target = first_edit_start;
@@ -9307,9 +9318,25 @@ impl Editor {
             let show_completions_in_buffer = !self.edit_prediction_visible_in_cursor_popover(true)
                 && !self.edit_predictions_hidden_for_vim_mode;
 
+            let display_mode = if all_edits_insertions_or_deletions(&edits, &multibuffer) {
+                if provider.show_tab_accept_marker() {
+                    EditDisplayMode::TabAccept
+                } else {
+                    EditDisplayMode::Inline
+                }
+            } else {
+                EditDisplayMode::DiffPopover
+            };
+
             if show_completions_in_buffer {
                 if let Some(provider) = &self.edit_prediction_provider {
-                    provider.provider.did_show(cx);
+                    let suggestion_display_type = match display_mode {
+                        EditDisplayMode::DiffPopover => SuggestionDisplayType::DiffPopover,
+                        EditDisplayMode::Inline | EditDisplayMode::TabAccept => {
+                            SuggestionDisplayType::GhostText
+                        }
+                    };
+                    provider.provider.did_show(suggestion_display_type, cx);
                 }
                 if edits
                     .iter()
@@ -9341,16 +9368,6 @@ impl Editor {
             }
 
             invalidation_row_range = edit_start_row..edit_end_row;
-
-            let display_mode = if all_edits_insertions_or_deletions(&edits, &multibuffer) {
-                if provider.show_tab_accept_marker() {
-                    EditDisplayMode::TabAccept
-                } else {
-                    EditDisplayMode::Inline
-                }
-            } else {
-                EditDisplayMode::DiffPopover
-            };
 
             EditPrediction::Edit {
                 edits,
@@ -16113,23 +16130,44 @@ impl Editor {
                     let direction = if above { -1 } else { 1 };
 
                     while row != end_row {
-                        if skip_soft_wrap {
-                            row = display_map
-                                .start_of_relative_buffer_row(DisplayPoint::new(row, 0), direction)
-                                .row();
-                        } else if above {
-                            row.0 -= 1;
+                        let new_buffer_row = if skip_soft_wrap {
+                            let new_row = display_map
+                                .start_of_relative_buffer_row(DisplayPoint::new(row, 0), direction);
+                            row = new_row.row();
+                            Some(new_row.to_point(&display_map).row)
                         } else {
-                            row.0 += 1;
-                        }
+                            if above {
+                                row.0 -= 1;
+                            } else {
+                                row.0 += 1;
+                            }
+                            None
+                        };
 
-                        if let Some(new_selection) = self.selections.build_columnar_selection(
-                            &display_map,
-                            row,
-                            &positions,
-                            selection.reversed,
-                            &text_layout_details,
-                        ) {
+                        let new_selection = if let Some(buffer_row) = new_buffer_row {
+                            let start_col = selection.start.column;
+                            let end_col = selection.end.column;
+                            let buffer_columns = start_col.min(end_col)..start_col.max(end_col);
+
+                            self.selections
+                                .build_columnar_selection_from_buffer_columns(
+                                    &display_map,
+                                    buffer_row,
+                                    &buffer_columns,
+                                    selection.reversed,
+                                    &text_layout_details,
+                                )
+                        } else {
+                            self.selections.build_columnar_selection(
+                                &display_map,
+                                row,
+                                &positions,
+                                selection.reversed,
+                                &text_layout_details,
+                            )
+                        };
+
+                        if let Some(new_selection) = new_selection {
                             maybe_new_selection = Some(new_selection);
                             break;
                         }
@@ -20252,7 +20290,7 @@ impl Editor {
                 if already_used_buffers.insert(buffer_id) {
                     if let Some(worktree_id) = buffer.file().map(|f| f.worktree_id(cx)) {
                         return !edited_buffer_ids.contains(&buffer_id)
-                            && !edited_worktree_ids.contains(&worktree_id);
+                            && edited_worktree_ids.contains(&worktree_id);
                     }
                 }
                 false

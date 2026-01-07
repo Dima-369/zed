@@ -811,8 +811,8 @@ impl Item for Editor {
         self.buffer().read(cx).read(cx).is_dirty()
     }
 
-    fn is_read_only(&self, cx: &App) -> bool {
-        self.read_only(cx)
+    fn capability(&self, cx: &App) -> Capability {
+        self.capability(cx)
     }
 
     // Note: this mirrors the logic in `Editor::toggle_read_only`, but is reachable
@@ -1653,19 +1653,27 @@ impl SearchableItem for Editor {
         let text = text.snapshot(cx);
         let mut edits = vec![];
 
-        for m in matches {
-            let text = text.text_for_range(m.clone()).collect::<Vec<_>>();
+        // A regex might have replacement variables so we cannot apply
+        // the same replacement to all matches
+        if query.is_regex() {
+            edits = matches
+                .filter_map(|m| {
+                    let text = text.text_for_range(m.clone()).collect::<Vec<_>>();
 
-            let text: Cow<_> = if text.len() == 1 {
-                text.first().cloned().unwrap().into()
-            } else {
-                let joined_chunks = text.join("");
-                joined_chunks.into()
-            };
+                    let text: Cow<_> = if text.len() == 1 {
+                        text.first().cloned().unwrap().into()
+                    } else {
+                        let joined_chunks = text.join("");
+                        joined_chunks.into()
+                    };
 
-            if let Some(replacement) = query.replacement_for(&text) {
-                edits.push((m.clone(), Arc::from(&*replacement)));
-            }
+                    query
+                        .replacement_for(&text)
+                        .map(|replacement| (m.clone(), Arc::from(&*replacement)))
+                })
+                .collect();
+        } else if let Some(replacement) = query.replacement().map(Arc::<str>::from) {
+            edits = matches.map(|m| (m.clone(), replacement.clone())).collect();
         }
 
         if !edits.is_empty() {

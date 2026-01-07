@@ -407,6 +407,7 @@ impl VsCodeSettings {
             terminal: None,
             dap: Default::default(),
             context_servers: self.context_servers(),
+            context_server_timeout: None,
             load_direnv: None,
             slash_commands: None,
             git_hosting_providers: None,
@@ -660,6 +661,7 @@ impl VsCodeSettings {
             active_language_button: None,
             cursor_position_button: None,
             line_endings_button: None,
+            active_encoding_button: None,
         })
     }
 
@@ -822,6 +824,7 @@ impl VsCodeSettings {
     fn workspace_settings_content(&self) -> WorkspaceSettingsContent {
         WorkspaceSettingsContent {
             active_pane_modifiers: self.active_pane_modifiers(),
+            text_rendering_mode: None,
             autosave: self.read_enum("files.autoSave", |s| match s {
                 "off" => Some(AutosaveSetting::Off),
                 "afterDelay" => Some(AutosaveSetting::AfterDelay {

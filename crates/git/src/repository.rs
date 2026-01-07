@@ -144,6 +144,12 @@ impl Upstream {
     pub fn stripped_ref_name(&self) -> Option<&str> {
         self.ref_name.strip_prefix("refs/remotes/")
     }
+
+    pub fn branch_name(&self) -> Option<&str> {
+        self.ref_name
+            .strip_prefix("refs/remotes/")
+            .and_then(|stripped| stripped.split_once('/').map(|(_, name)| name))
+    }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -569,6 +575,7 @@ pub trait GitRepository: Send + Sync {
     fn push(
         &self,
         branch_name: String,
+        remote_branch_name: String,
         upstream_name: String,
         options: Option<PushOptions>,
         askpass: AskPassDelegate,
@@ -1916,6 +1923,7 @@ impl GitRepository for RealGitRepository {
     fn push(
         &self,
         branch_name: String,
+        remote_branch_name: String,
         remote_name: String,
         options: Option<PushOptions>,
         ask_pass: AskPassDelegate,
@@ -1940,7 +1948,7 @@ impl GitRepository for RealGitRepository {
                     PushOptions::Force => "--force-with-lease",
                 }))
                 .arg(remote_name)
-                .arg(format!("{}:{}", branch_name, branch_name))
+                .arg(format!("{}:{}", branch_name, remote_branch_name))
                 .stdin(smol::process::Stdio::null())
                 .stdout(smol::process::Stdio::piped())
                 .stderr(smol::process::Stdio::piped());
@@ -3163,182 +3171,44 @@ mod tests {
         )
     }
 
-    #[gpui::test]
-    async fn test_show_file_returns_content_for_existing_file(cx: &mut TestAppContext) {
-        disable_git_global_config();
-        cx.executor().allow_parking();
+    #[test]
+    fn test_upstream_branch_name() {
+        let upstream = Upstream {
+            ref_name: "refs/remotes/origin/feature/branch".into(),
+            tracking: UpstreamTracking::Tracked(UpstreamTrackingStatus {
+                ahead: 0,
+                behind: 0,
+            }),
+        };
+        assert_eq!(upstream.branch_name(), Some("feature/branch"));
 
-        let repo_dir = tempfile::tempdir().unwrap();
-        git2::Repository::init(repo_dir.path()).unwrap();
+        let upstream = Upstream {
+            ref_name: "refs/remotes/upstream/main".into(),
+            tracking: UpstreamTracking::Tracked(UpstreamTrackingStatus {
+                ahead: 0,
+                behind: 0,
+            }),
+        };
+        assert_eq!(upstream.branch_name(), Some("main"));
 
-        let file_path = repo_dir.path().join("test.txt");
-        smol::fs::write(&file_path, "initial content")
-            .await
-            .unwrap();
+        let upstream = Upstream {
+            ref_name: "refs/heads/local".into(),
+            tracking: UpstreamTracking::Tracked(UpstreamTrackingStatus {
+                ahead: 0,
+                behind: 0,
+            }),
+        };
+        assert_eq!(upstream.branch_name(), None);
 
-        let repo = RealGitRepository::new(
-            &repo_dir.path().join(".git"),
-            None,
-            Some("git".into()),
-            cx.executor(),
-        )
-        .unwrap();
-
-        repo.stage_paths(vec![repo_path("test.txt")], Arc::new(HashMap::default()))
-            .await
-            .unwrap();
-        repo.commit(
-            "Initial commit".into(),
-            None,
-            CommitOptions::default(),
-            AskPassDelegate::new(&mut cx.to_async(), |_, _, _| {}),
-            Arc::new(checkpoint_author_envs()),
-        )
-        .await
-        .unwrap();
-
-        let content = repo
-            .show_file("HEAD".into(), repo_path("test.txt"))
-            .await
-            .unwrap();
-        assert_eq!(content, Some("initial content".to_string()));
-    }
-
-    #[gpui::test]
-    async fn test_show_file_returns_none_for_nonexistent_file(cx: &mut TestAppContext) {
-        disable_git_global_config();
-        cx.executor().allow_parking();
-
-        let repo_dir = tempfile::tempdir().unwrap();
-        git2::Repository::init(repo_dir.path()).unwrap();
-
-        let file_path = repo_dir.path().join("test.txt");
-        smol::fs::write(&file_path, "content").await.unwrap();
-
-        let repo = RealGitRepository::new(
-            &repo_dir.path().join(".git"),
-            None,
-            Some("git".into()),
-            cx.executor(),
-        )
-        .unwrap();
-
-        repo.stage_paths(vec![repo_path("test.txt")], Arc::new(HashMap::default()))
-            .await
-            .unwrap();
-        repo.commit(
-            "Initial commit".into(),
-            None,
-            CommitOptions::default(),
-            AskPassDelegate::new(&mut cx.to_async(), |_, _, _| {}),
-            Arc::new(checkpoint_author_envs()),
-        )
-        .await
-        .unwrap();
-
-        let content = repo
-            .show_file("HEAD".into(), repo_path("nonexistent.txt"))
-            .await
-            .unwrap();
-        assert_eq!(content, None);
-    }
-
-    #[gpui::test]
-    async fn test_show_file_returns_none_for_invalid_commit(cx: &mut TestAppContext) {
-        disable_git_global_config();
-        cx.executor().allow_parking();
-
-        let repo_dir = tempfile::tempdir().unwrap();
-        git2::Repository::init(repo_dir.path()).unwrap();
-
-        let file_path = repo_dir.path().join("test.txt");
-        smol::fs::write(&file_path, "content").await.unwrap();
-
-        let repo = RealGitRepository::new(
-            &repo_dir.path().join(".git"),
-            None,
-            Some("git".into()),
-            cx.executor(),
-        )
-        .unwrap();
-
-        repo.stage_paths(vec![repo_path("test.txt")], Arc::new(HashMap::default()))
-            .await
-            .unwrap();
-        repo.commit(
-            "Initial commit".into(),
-            None,
-            CommitOptions::default(),
-            AskPassDelegate::new(&mut cx.to_async(), |_, _, _| {}),
-            Arc::new(checkpoint_author_envs()),
-        )
-        .await
-        .unwrap();
-
-        let content = repo
-            .show_file("invalid_commit_sha".into(), repo_path("test.txt"))
-            .await
-            .unwrap();
-        assert_eq!(content, None);
-    }
-
-    #[gpui::test]
-    async fn test_show_file_returns_content_at_specific_commit(cx: &mut TestAppContext) {
-        disable_git_global_config();
-        cx.executor().allow_parking();
-
-        let repo_dir = tempfile::tempdir().unwrap();
-        git2::Repository::init(repo_dir.path()).unwrap();
-
-        let file_path = repo_dir.path().join("test.txt");
-        smol::fs::write(&file_path, "version 1").await.unwrap();
-
-        let repo = RealGitRepository::new(
-            &repo_dir.path().join(".git"),
-            None,
-            Some("git".into()),
-            cx.executor(),
-        )
-        .unwrap();
-
-        repo.stage_paths(vec![repo_path("test.txt")], Arc::new(HashMap::default()))
-            .await
-            .unwrap();
-        repo.commit(
-            "First commit".into(),
-            None,
-            CommitOptions::default(),
-            AskPassDelegate::new(&mut cx.to_async(), |_, _, _| {}),
-            Arc::new(checkpoint_author_envs()),
-        )
-        .await
-        .unwrap();
-
-        smol::fs::write(&file_path, "version 2").await.unwrap();
-        repo.stage_paths(vec![repo_path("test.txt")], Arc::new(HashMap::default()))
-            .await
-            .unwrap();
-        repo.commit(
-            "Second commit".into(),
-            None,
-            CommitOptions::default(),
-            AskPassDelegate::new(&mut cx.to_async(), |_, _, _| {}),
-            Arc::new(checkpoint_author_envs()),
-        )
-        .await
-        .unwrap();
-
-        let content_head = repo
-            .show_file("HEAD".into(), repo_path("test.txt"))
-            .await
-            .unwrap();
-        assert_eq!(content_head, Some("version 2".to_string()));
-
-        let content_parent = repo
-            .show_file("HEAD~1".into(), repo_path("test.txt"))
-            .await
-            .unwrap();
-        assert_eq!(content_parent, Some("version 1".to_string()));
+        // Test case where upstream branch name differs from what might be the local branch name
+        let upstream = Upstream {
+            ref_name: "refs/remotes/origin/feature/git-pull-request".into(),
+            tracking: UpstreamTracking::Tracked(UpstreamTrackingStatus {
+                ahead: 0,
+                behind: 0,
+            }),
+        };
+        assert_eq!(upstream.branch_name(), Some("feature/git-pull-request"));
     }
 
     impl RealGitRepository {

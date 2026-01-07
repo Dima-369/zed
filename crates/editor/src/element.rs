@@ -1032,6 +1032,10 @@ impl EditorElement {
             && hovered_link_modifier
             && mouse_down_hovered_link_modifier
             && text_hitbox.is_hovered(window)
+            && !matches!(
+                editor.selection_drag_state,
+                SelectionDragState::Dragging { .. }
+            )
         {
             let point = position_map.point_for_position(mouse_position);
             editor.handle_click_hovered_link(point, event.modifiers(), window, cx);
@@ -4070,74 +4074,103 @@ impl EditorElement {
                             .id("path_header_block")
                             .min_w_0()
                             .size_full()
+                            .gap_1()
                             .justify_between()
                             .overflow_hidden()
-                            .child(h_flex().min_w_0().flex_1().gap_0p5().map(|path_header| {
-                                let filename = filename
-                                    .map(SharedString::from)
-                                    .unwrap_or_else(|| "untitled".into());
+                            .child(h_flex().min_w_0().flex_1().gap_0p5().overflow_hidden().map(
+                                |path_header| {
+                                    let filename = filename
+                                        .map(SharedString::from)
+                                        .unwrap_or_else(|| "untitled".into());
 
-                                path_header
-                                    .when(ItemSettings::get_global(cx).file_icons, |el| {
-                                        let path = path::Path::new(filename.as_str());
-                                        let icon =
-                                            FileIcons::get_icon(path, cx).unwrap_or_default();
+                                    let full_path = match parent_path.as_deref() {
+                                        Some(parent) if !parent.is_empty() => {
+                                            format!("{}{}", parent, filename.as_str())
+                                        }
+                                        _ => filename.as_str().to_string(),
+                                    };
 
-                                        el.child(Icon::from_path(icon).color(Color::Muted))
-                                    })
-                                    .child(
-                                        ButtonLike::new("filename-button")
-                                            .child(
-                                                Label::new(filename)
-                                                    .single_line()
-                                                    .color(file_status_label_color(file_status))
+                                    path_header
+                                        .child(
+                                            ButtonLike::new("filename-button")
+                                                .when(
+                                                    ItemSettings::get_global(cx).file_icons,
+                                                    |this| {
+                                                        let path =
+                                                            path::Path::new(filename.as_str());
+                                                        let icon = FileIcons::get_icon(path, cx)
+                                                            .unwrap_or_default();
+
+                                                        this.child(
+                                                            Icon::from_path(icon)
+                                                                .color(Color::Muted),
+                                                        )
+                                                    },
+                                                )
+                                                .child(
+                                                    Label::new(filename)
+                                                        .single_line()
+                                                        .color(file_status_label_color(file_status))
+                                                        .buffer_font(cx)
+                                                        .when(
+                                                            file_status
+                                                                .is_some_and(|s| s.is_deleted()),
+                                                            |label| label.strikethrough(),
+                                                        ),
+                                                )
+                                                .tooltip(move |_, cx| {
+                                                    Tooltip::with_meta(
+                                                        "Open File",
+                                                        None,
+                                                        full_path.clone(),
+                                                        cx,
+                                                    )
+                                                })
+                                                .on_click(window.listener_for(&self.editor, {
+                                                    let jump_data = jump_data.clone();
+                                                    move |editor, e: &ClickEvent, window, cx| {
+                                                        editor.open_excerpts_common(
+                                                            Some(jump_data.clone()),
+                                                            e.modifiers().secondary(),
+                                                            window,
+                                                            cx,
+                                                        );
+                                                    }
+                                                })),
+                                        )
+                                        .when_some(parent_path, |then, path| {
+                                            then.child(
+                                                Label::new(path)
                                                     .buffer_font(cx)
-                                                    .when(
-                                                        file_status.is_some_and(|s| s.is_deleted()),
-                                                        |label| label.strikethrough(),
+                                                    .truncate_start()
+                                                    .color(
+                                                        if file_status
+                                                            .is_some_and(FileStatus::is_deleted)
+                                                        {
+                                                            Color::Custom(colors.text_disabled)
+                                                        } else {
+                                                            Color::Custom(colors.text_muted)
+                                                        },
                                                     ),
                                             )
-                                            .on_click(window.listener_for(&self.editor, {
-                                                let jump_data = jump_data.clone();
-                                                move |editor, e: &ClickEvent, window, cx| {
-                                                    editor.open_excerpts_common(
-                                                        Some(jump_data.clone()),
-                                                        e.modifiers().secondary(),
-                                                        window,
-                                                        cx,
-                                                    );
-                                                }
-                                            })),
-                                    )
-                                    .when(!for_excerpt.buffer.capability.editable(), |el| {
-                                        el.child(Icon::new(IconName::FileLock).color(Color::Muted))
-                                    })
-                                    .when_some(parent_path, |then, path| {
-                                        then.child(
-                                            Label::new(path)
-                                                .buffer_font(cx)
-                                                .truncate_start()
-                                                .color(
-                                                    if file_status
-                                                        .is_some_and(FileStatus::is_deleted)
-                                                    {
-                                                        Color::Custom(colors.text_disabled)
-                                                    } else {
-                                                        Color::Custom(colors.text_muted)
-                                                    },
-                                                ),
-                                        )
-                                    })
-                                    .when_some(breadcrumbs, |then, breadcrumbs| {
-                                        then.child(render_breadcrumb_text(
-                                            breadcrumbs,
-                                            None,
-                                            editor_handle,
-                                            window,
-                                            cx,
-                                        ))
-                                    })
-                            }))
+                                        })
+                                        .when(!for_excerpt.buffer.capability.editable(), |el| {
+                                            el.child(
+                                                Icon::new(IconName::FileLock).color(Color::Muted),
+                                            )
+                                        })
+                                        .when_some(breadcrumbs, |then, breadcrumbs| {
+                                            then.child(render_breadcrumb_text(
+                                                breadcrumbs,
+                                                None,
+                                                editor_handle,
+                                                true,
+                                                window,
+                                                cx,
+                                            ))
+                                        })
+                                },
+                            ))
                             .when(
                                 can_open_excerpts && is_selected && relative_path.is_some(),
                                 |el| {
@@ -8102,12 +8135,13 @@ pub fn render_breadcrumb_text(
     mut segments: Vec<BreadcrumbText>,
     prefix: Option<gpui::AnyElement>,
     active_item: &dyn ItemHandle,
+    multibuffer_header: bool,
     window: &mut Window,
     cx: &App,
 ) -> impl IntoElement {
     const MAX_SEGMENTS: usize = 12;
 
-    let element = h_flex().id("breadcrumb-container").flex_grow().text_ui(cx);
+    let element = h_flex().flex_grow().text_ui(cx);
 
     let prefix_end_ix = cmp::min(segments.len(), MAX_SEGMENTS / 2);
     let suffix_start_ix = cmp::max(
@@ -8148,11 +8182,19 @@ pub fn render_breadcrumb_text(
             .with_default_highlights(&text_style, segment.highlights.unwrap_or_default())
             .into_any()
     });
+
     let breadcrumbs = Itertools::intersperse_with(highlighted_segments, || {
         Label::new("›").color(Color::Placeholder).into_any_element()
     });
 
-    let breadcrumbs_stack = h_flex().gap_1().children(breadcrumbs);
+    let breadcrumbs_stack = h_flex()
+        .gap_1()
+        .when(multibuffer_header, |this| {
+            this.pl_2()
+                .border_l_1()
+                .border_color(cx.theme().colors().border.opacity(0.6))
+        })
+        .children(breadcrumbs);
 
     let breadcrumbs = if let Some(prefix) = prefix {
         h_flex().gap_1p5().child(prefix).child(breadcrumbs_stack)
@@ -8160,48 +8202,51 @@ pub fn render_breadcrumb_text(
         breadcrumbs_stack
     };
 
-    match active_item
+    let editor = active_item
         .downcast::<Editor>()
-        .map(|editor| editor.downgrade())
-    {
-        Some(editor) => element.child(
-            ButtonLike::new("toggle outline view")
-                .child(breadcrumbs)
-                .style(ButtonStyle::Transparent)
-                .on_click({
-                    let editor = editor.clone();
-                    move |_, window, cx| {
-                        if let Some((editor, callback)) = editor
-                            .upgrade()
-                            .zip(zed_actions::outline::TOGGLE_OUTLINE.get())
-                        {
-                            callback(editor.to_any_view(), window, cx);
-                        }
-                    }
-                })
-                .tooltip(move |_window, cx| {
-                    if let Some(editor) = editor.upgrade() {
-                        let focus_handle = editor.read(cx).focus_handle(cx);
-                        Tooltip::for_action_in(
-                            "Show Symbol Outline",
-                            &zed_actions::outline::ToggleOutline,
-                            &focus_handle,
-                            cx,
-                        )
-                    } else {
-                        Tooltip::for_action(
-                            "Show Symbol Outline",
-                            &zed_actions::outline::ToggleOutline,
-                            cx,
-                        )
-                    }
-                }),
-        ),
+        .map(|editor| editor.downgrade());
+
+    match editor {
+        Some(editor) => element
+            .id("breadcrumb_container")
+            .when(!multibuffer_header, |this| this.overflow_x_scroll())
+            .child(
+                ButtonLike::new("toggle outline view")
+                    .child(breadcrumbs)
+                    .when(multibuffer_header, |this| {
+                        this.style(ButtonStyle::Transparent)
+                    })
+                    .when(!multibuffer_header, |this| {
+                        let focus_handle = editor.upgrade().unwrap().focus_handle(&cx);
+
+                        this.tooltip(move |_window, cx| {
+                            Tooltip::for_action_in(
+                                "Show Symbol Outline",
+                                &zed_actions::outline::ToggleOutline,
+                                &focus_handle,
+                                cx,
+                            )
+                        })
+                        .on_click({
+                            let editor = editor.clone();
+                            move |_, window, cx| {
+                                if let Some((editor, callback)) = editor
+                                    .upgrade()
+                                    .zip(zed_actions::outline::TOGGLE_OUTLINE.get())
+                                {
+                                    callback(editor.to_any_view(), window, cx);
+                                }
+                            }
+                        })
+                    }),
+            )
+            .into_any_element(),
         None => element
             // Match the height and padding of the `ButtonLike` in the other arm.
             .h(rems_from_px(22.))
             .pl_1()
-            .child(breadcrumbs),
+            .child(breadcrumbs)
+            .into_any_element(),
     }
 }
 

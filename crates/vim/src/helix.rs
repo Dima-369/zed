@@ -6,6 +6,7 @@ mod jump_list;
 mod object;
 mod paste;
 mod select;
+mod surround;
 
 pub use jump_list::{JumpEntry, JumpList};
 
@@ -26,9 +27,9 @@ use workspace::Workspace;
 use workspace::searchable::{self, Direction, FilteredSearchRange};
 
 use crate::motion::{self, MotionKind};
-use crate::state::SearchState;
+use crate::state::{Operator, SearchState};
 use crate::{
-    Vim,
+    PushHelixSurroundAdd, PushHelixSurroundDelete, PushHelixSurroundReplace, Vim,
     motion::{Motion, right},
     state::{HelixJumpBehaviour, HelixJumpLabel, Mode, Operator},
 };
@@ -99,6 +100,32 @@ pub fn register(editor: &mut Editor, cx: &mut Context<Vim>) {
     Vim::action(editor, cx, Vim::helix_jump_to_word);
     Vim::action(editor, cx, Vim::helix_select_next);
     Vim::action(editor, cx, Vim::helix_select_previous);
+    Vim::action(editor, cx, |vim, _: &PushHelixSurroundAdd, window, cx| {
+        vim.clear_operator(window, cx);
+        vim.push_operator(Operator::HelixSurroundAdd, window, cx);
+    });
+    Vim::action(
+        editor,
+        cx,
+        |vim, _: &PushHelixSurroundReplace, window, cx| {
+            vim.clear_operator(window, cx);
+            vim.push_operator(
+                Operator::HelixSurroundReplace {
+                    replaced_char: None,
+                },
+                window,
+                cx,
+            );
+        },
+    );
+    Vim::action(
+        editor,
+        cx,
+        |vim, _: &PushHelixSurroundDelete, window, cx| {
+            vim.clear_operator(window, cx);
+            vim.push_operator(Operator::HelixSurroundDelete, window, cx);
+        },
+    );
     Vim::action(editor, cx, Vim::helix_save_selection);
     Vim::action(editor, cx, Vim::helix_jump_backward);
     Vim::action(editor, cx, Vim::helix_jump_forward);
