@@ -1,4 +1,4 @@
-
+- in the agent panel/dock middle mouse click should close a tab like clicking the X
 
 
 # >>> Investigations
