@@ -1,4 +1,5 @@
-- in the agent panel/dock middle mouse click should close a tab like clicking the X
+TEST
+new file explorer validation logic, test error cases and see if it disallows `:` chars, etc.
 
 
 # >>> Investigations
