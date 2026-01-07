@@ -12,9 +12,11 @@ See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 - show error when line count differs from old state to the one user wants to save, this would indicate that user deleted some file
 USER should instead EMPTY a line fully, to trash a file, use `trash` CLI on mac (and always assume mac)
 
-- how to display real file icons from actual tabs/project panel? currently, I am faking it by setting a `Rust` language which kinda sucks. Is there an easy way to highlight just directories in blue fg text color and then file extensions in same blue?
+- how to display real file icons from actual tabs/project panel?
+
+- I am faking highlighing by setting a `Rust` language which kinda sucks. Is there an easy way to highlight just directories in blue fg text color and then file extensions in same blue?
 or does one really have to create a new treesitter syntax just for this mode?
-- upon saving, it moves the cursor at the very end, I do not want that, it should stay on the exact same file name (even if the row
+
 - upon saving, it moves the cursor at the very end, I do not want that, it should stay on the exact same file name (even if the row changes, I think because other files could be created in the mean-time?) as before saving
 
 
@@ -251,4 +253,3 @@ To implement this feature, you would need to:
 2. **Modify the permission logic** in `crates/acp_thread/src/acp_thread.rs` to check these settings before prompting
 3. **Update the UI** to show when commands are auto-allowed/blocked based on these settings
 4. **Store the command patterns** in Zed's settings database
-
