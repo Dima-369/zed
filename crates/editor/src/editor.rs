@@ -3170,8 +3170,7 @@ impl Editor {
                     .text_for_range(
                         text::Point::new(buffer_row, 0)..text::Point::new(buffer_row + 1, 0),
                     )
-                    .next()
-                    .map(|s| s.to_string());
+                    .collect::<String>();
 
                 // Get full editor content
                 let full_content = buffer_snapshot.text();
@@ -3180,10 +3179,6 @@ impl Editor {
             });
 
             // Extract file path from line content
-            let Some(line_content) = line_content else {
-                return;
-            };
-
             let file_path = line_content
                 .trim()
                 .trim_end_matches('/') // Remove trailing slash from directories
@@ -3449,7 +3444,7 @@ impl Editor {
             let editor = editor.clone();
 
             // Get the current state synchronously first
-            let (current_dir, stored_state, current_buffer_content) =
+            let (current_dir, stored_state, current_buffer_content, cursor_filename) =
                 editor.update(cx, |editor, cx| {
                     let display_snapshot = editor.display_snapshot(cx);
                     let buffer_snapshot = display_snapshot.buffer_snapshot();
@@ -3461,10 +3456,18 @@ impl Editor {
                         .unwrap_or("")
                         .trim();
 
+                    let cursor = editor.selections.newest_display(&display_snapshot);
+                    let cursor_point = cursor.head().to_point(&display_snapshot);
+                    let cursor_filename = full_content
+                        .lines()
+                        .nth(cursor_point.row as usize)
+                        .map(|s| s.trim().to_string());
+
                     (
                         first_line.to_string(),
                         editor.file_explorer_metadata.clone().unwrap_or_default(),
                         full_content.to_string(),
+                        cursor_filename,
                     )
                 });
 
@@ -3585,8 +3588,33 @@ impl Editor {
                                     workspace
                                         .update_in(cx, |_workspace, window, cx| {
                                             file_explorer_editor.update(cx, |editor, cx| {
+                                                let mut new_cursor_point = None;
+                                                if let Some(filename) = &cursor_filename {
+                                                    for (i, line) in new_content.lines().enumerate() {
+                                                        if line.trim() == filename {
+                                                            new_cursor_point =
+                                                                Some(Point::new(i as u32, 0));
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+
                                                 editor.set_text(new_content, window, cx);
                                                 editor.file_explorer_metadata = Some(new_metadata);
+
+                                                if let Some(point) = new_cursor_point {
+                                                    editor.change_selections(
+                                                        SelectionEffects::default(),
+                                                        window,
+                                                        cx,
+                                                        |s| s.select_ranges([point..point]),
+                                                    );
+                                                    editor.request_autoscroll(
+                                                        Autoscroll::fit(),
+                                                        cx,
+                                                    );
+                                                }
+
                                                 if let Some(buffer) =
                                                     editor.buffer.read(cx).as_singleton()
                                                 {
