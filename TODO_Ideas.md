@@ -1,8 +1,16 @@
 - merge main then configure https://github.com/zed-industries/zed/pull/45476#event-21891616303
 
-- https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
-so I now need to clean up my code for it
 
+# main merge issues
+
+the rejected ACP agent history is causing many issues
+
+error[E0432]: unresolved import `crate::AgentIdentity`
+ --> crates/agent/src/history_store.rs:2:13
+
+---
+
+- fix broken Qwen code for Zed Agent use
 
 # >>> Investigations
 

@@ -13,10 +13,8 @@ use serde::{Deserialize, Serialize};
 use sqlez::{
     bindable::{Bind, Column},
     connection::Connection,
-    domain::Domain,
     statement::Statement,
 };
-use sqlez_macros::sql;
 use std::sync::Arc;
 use ui::{App, SharedString};
 use zed_env_vars::ZED_STATELESS;
@@ -25,97 +23,12 @@ pub type DbMessage = crate::Message;
 pub type DbSummary = crate::legacy_thread::DetailedSummaryState;
 pub type DbLanguageModel = crate::legacy_thread::SerializedLanguageModel;
 
-/// Identifier for different agent types (Zed Native Agent vs external agents)
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum AgentIdentity {
-    Zed,
-    External(SharedString),
-}
-
-impl AgentIdentity {
-    /// Default agent name for Zed's native agent
-    pub const ZED_AGENT_NAME: &'static str = "zed";
-
-    /// Create an AgentIdentity from an agent name string
-    pub fn from_name(name: &str) -> Self {
-        if name == Self::ZED_AGENT_NAME {
-            AgentIdentity::Zed
-        } else {
-            AgentIdentity::External(name.to_string().into())
-        }
-    }
-
-    /// Get the string representation of this agent identity
-    pub fn name(&self) -> SharedString {
-        match self {
-            AgentIdentity::Zed => SharedString::from(Self::ZED_AGENT_NAME),
-            AgentIdentity::External(name) => name.clone(),
-        }
-    }
-
-    /// Get a human-readable display name for this agent.
-    /// Converts known agent names to human-readable format, and uses a
-    /// title case fallback for unknown agents (e.g., "my-agent" → "My Agent").
-    pub fn display_name(&self) -> SharedString {
-        match self {
-            AgentIdentity::Zed => SharedString::from("Zed"),
-            AgentIdentity::External(name) => {
-                // Convert known agent names to human-readable format
-                match name.as_ref() {
-                    "claude-code" => SharedString::from("Claude Code"),
-                    "opencode" => SharedString::from("OpenCode"),
-                    "codex" => SharedString::from("Codex"),
-                    "gemini" => SharedString::from("Gemini"),
-                    _ => {
-                        // Fallback: convert to title case with separators as spaces
-                        let title_case = name
-                            .split(|c| c == '-' || c == '_')
-                            .filter(|s| !s.is_empty())
-                            .map(|word| {
-                                let mut chars = word.chars();
-                                match chars.next() {
-                                    Some(first) => {
-                                        first.to_uppercase().to_string() + chars.as_str()
-                                    }
-                                    None => String::new(),
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" ");
-                        SharedString::from(title_case)
-                    }
-                }
-            }
-        }
-    }
-
-    /// Check if this is the Zed native agent
-    pub fn is_zed(&self) -> bool {
-        matches!(self, AgentIdentity::Zed)
-    }
-}
-
-impl From<AgentIdentity> for SharedString {
-    fn from(identity: AgentIdentity) -> Self {
-        identity.name()
-    }
-}
-
-impl<'a> From<&'a AgentIdentity> for SharedString {
-    fn from(identity: &'a AgentIdentity) -> Self {
-        identity.name()
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbThreadMetadata {
     pub id: acp::SessionId,
     #[serde(alias = "summary")]
     pub title: SharedString,
     pub updated_at: DateTime<Utc>,
-    pub agent_name: SharedString,
-    pub agent_version: Option<SharedString>,
-    pub agent_provider_id: Option<SharedString>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -397,16 +310,6 @@ struct GlobalThreadsDatabase(Shared<Task<Result<Arc<ThreadsDatabase>, Arc<anyhow
 
 impl Global for GlobalThreadsDatabase {}
 
-impl Domain for ThreadsDatabase {
-    const NAME: &str = stringify!(ThreadsDatabase);
-
-    const MIGRATIONS: &[&str] = &[sql!(
-        ALTER TABLE threads ADD COLUMN agent_name TEXT NOT NULL DEFAULT "zed";
-        ALTER TABLE threads ADD COLUMN agent_version TEXT;
-        ALTER TABLE threads ADD COLUMN agent_provider_id TEXT;
-    )];
-}
-
 impl ThreadsDatabase {
     pub fn connect(cx: &mut App) -> Shared<Task<Result<Arc<ThreadsDatabase>, Arc<anyhow::Error>>>> {
         if cx.has_global::<GlobalThreadsDatabase>() {
@@ -451,66 +354,15 @@ impl ThreadsDatabase {
         };
 
         connection.exec(indoc! {"
-                CREATE TABLE IF NOT EXISTS threads (
-                    id TEXT PRIMARY KEY,
-                    summary TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    data_type TEXT NOT NULL,
-                    data BLOB NOT NULL
-                )
-            "})?()
+            CREATE TABLE IF NOT EXISTS threads (
+                id TEXT PRIMARY KEY,
+                summary TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                data_type TEXT NOT NULL,
+                data BLOB NOT NULL
+            )
+        "})?()
         .map_err(|e| anyhow!("Failed to create threads table: {}", e))?;
-
-        // Check if the migration was already applied outside the framework
-        // (e.g., during development or a previous build that added columns directly)
-        let agent_name_column_exists = {
-            let table_info = connection.select::<String>(
-                "SELECT name FROM pragma_table_info('threads') WHERE name = 'agent_name'",
-            );
-            match table_info {
-                Ok(mut query) => query().map(|rows| !rows.is_empty()).unwrap_or(false),
-                Err(_) => false,
-            }
-        };
-
-        // Create migrations table if needed and check if migration is already tracked
-        connection.exec(indoc! {"
-            CREATE TABLE IF NOT EXISTS migrations (
-                domain TEXT,
-                step INTEGER,
-                migration TEXT
-            )"})?()
-        .map_err(|e| anyhow!("Failed to create migrations table: {}", e))?;
-
-        // Check if the migration is already tracked
-        let migration_tracked = {
-            let result = connection.select_bound::<(&str, usize), String>(
-                "SELECT migration FROM migrations WHERE domain = ? AND step = ?",
-            );
-            match result {
-                Ok(mut query) => query((<ThreadsDatabase as Domain>::NAME, 0))
-                    .map(|rows| !rows.is_empty())
-                    .unwrap_or(false),
-                Err(_) => false,
-            }
-        };
-
-        // If columns exist but migration isn't tracked, manually record it as complete
-        // Store the raw migration SQL - the migrate() function will format it when comparing
-        if agent_name_column_exists && !migration_tracked {
-            let migration_sql = <ThreadsDatabase as Domain>::MIGRATIONS[0].to_string();
-            connection.exec_bound::<(&str, usize, String)>(
-                "INSERT INTO migrations (domain, step, migration) VALUES (?, ?, ?)",
-            )?((<ThreadsDatabase as Domain>::NAME, 0, migration_sql))
-            .map_err(|e| anyhow!("Failed to record migration: {}", e))?;
-        }
-
-        // Run migrations using sqlez Domain pattern
-        connection.migrate(
-            <ThreadsDatabase as Domain>::NAME,
-            <ThreadsDatabase as Domain>::MIGRATIONS,
-            |_, _, _| false,
-        )?;
 
         let db = Self {
             executor,
@@ -524,9 +376,6 @@ impl ThreadsDatabase {
         connection: &Arc<Mutex<Connection>>,
         id: acp::SessionId,
         thread: DbThread,
-        agent_name: &str,
-        agent_version: Option<&str>,
-        agent_provider_id: Option<&str>,
     ) -> Result<()> {
         const COMPRESSION_LEVEL: i32 = 3;
 
@@ -550,20 +399,11 @@ impl ThreadsDatabase {
         let data_type = DataType::Zstd;
         let data = compressed;
 
-        let mut insert = connection.exec_bound::<(Arc<str>, String, String, DataType, Vec<u8>, String, Option<String>, Option<String>)>(indoc! {"
-            INSERT OR REPLACE INTO threads (id, summary, updated_at, data_type, data, agent_name, agent_version, agent_provider_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        let mut insert = connection.exec_bound::<(Arc<str>, String, String, DataType, Vec<u8>)>(indoc! {"
+            INSERT OR REPLACE INTO threads (id, summary, updated_at, data_type, data) VALUES (?, ?, ?, ?, ?)
         "})?;
 
-        insert((
-            id.0,
-            title,
-            updated_at,
-            data_type,
-            data,
-            agent_name.to_string(),
-            agent_version.map(|v| v.to_string()),
-            agent_provider_id.map(|p| p.to_string()),
-        ))?;
+        insert((id.0, title, updated_at, data_type, data))?;
 
         Ok(())
     }
@@ -575,21 +415,18 @@ impl ThreadsDatabase {
             let connection = connection.lock();
 
             let mut select =
-                connection.select_bound::<(), (Arc<str>, String, String, String, Option<String>, Option<String>)>(indoc! {"
-                SELECT id, summary, updated_at, agent_name, agent_version, agent_provider_id FROM threads ORDER BY updated_at DESC
+                connection.select_bound::<(), (Arc<str>, String, String)>(indoc! {"
+                SELECT id, summary, updated_at FROM threads ORDER BY updated_at DESC
             "})?;
 
             let rows = select(())?;
             let mut threads = Vec::new();
 
-            for (id, summary, updated_at, agent_name, agent_version, agent_provider_id) in rows {
+            for (id, summary, updated_at) in rows {
                 threads.push(DbThreadMetadata {
                     id: acp::SessionId::new(id),
                     title: summary.into(),
                     updated_at: DateTime::parse_from_rfc3339(&updated_at)?.with_timezone(&Utc),
-                    agent_name: agent_name.into(),
-                    agent_version: agent_version.map(|v| v.into()),
-                    agent_provider_id: agent_provider_id.map(|p| p.into()),
                 });
             }
 
@@ -623,29 +460,11 @@ impl ThreadsDatabase {
         })
     }
 
-    pub fn save_thread(
-        &self,
-        id: acp::SessionId,
-        thread: DbThread,
-        agent_name: &str,
-        agent_version: Option<&str>,
-        agent_provider_id: Option<&str>,
-    ) -> Task<Result<()>> {
+    pub fn save_thread(&self, id: acp::SessionId, thread: DbThread) -> Task<Result<()>> {
         let connection = self.connection.clone();
-        let agent_name = agent_name.to_string();
-        let agent_version = agent_version.map(|v| v.to_string());
-        let agent_provider_id = agent_provider_id.map(|p| p.to_string());
 
-        self.executor.spawn(async move {
-            Self::save_thread_sync(
-                &connection,
-                id,
-                thread,
-                &agent_name,
-                agent_version.as_deref(),
-                agent_provider_id.as_deref(),
-            )
-        })
+        self.executor
+            .spawn(async move { Self::save_thread_sync(&connection, id, thread) })
     }
 
     pub fn delete_thread(&self, id: acp::SessionId) -> Task<Result<()>> {

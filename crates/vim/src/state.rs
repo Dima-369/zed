@@ -1072,7 +1072,8 @@ impl Operator {
             Operator::HelixPrevious { .. } => "helix_previous",
             Operator::HelixSurroundAdd => "helix_ms",
             Operator::HelixSurroundReplace { .. } => "helix_mr",
-            Operator::HelixSurroundDelete => "helix_md"
+            Operator::HelixSurroundDelete => "helix_md",
+            Operator::HelixJump { .. } => "gw",
         }
     }
 

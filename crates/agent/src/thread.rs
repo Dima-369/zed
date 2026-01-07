@@ -5,7 +5,7 @@ use crate::{
     RestoreFileFromDiskTool, SaveFileTool, SystemPromptTemplate, Template, Templates, TerminalTool,
     ThinkingTool, WebSearchTool,
 };
-use acp_thread::{DEFAULT_THREAD_TITLE, MentionUri, UserMessageId};
+use acp_thread::{MentionUri, UserMessageId};
 use action_log::ActionLog;
 
 use agent_client_protocol as acp;
@@ -1377,7 +1377,6 @@ impl Thread {
                 })?;
             }
 
-            println!("Flushing pending message");
             this.update(cx, |this, cx| {
                 this.flush_pending_message(cx);
             })?;
@@ -1751,7 +1750,7 @@ impl Thread {
     }
 
     pub fn title(&self) -> SharedString {
-        self.title.clone().unwrap_or(DEFAULT_THREAD_TITLE.into())
+        self.title.clone().unwrap_or("New Thread".into())
     }
 
     pub fn is_generating_summary(&self) -> bool {
@@ -1834,10 +1833,6 @@ impl Thread {
             return;
         };
 
-        println!(
-            "Generating title with model: {:?}",
-            self.summarization_model.as_ref().map(|model| model.name())
-        );
         log::debug!(
             "Generating title with model: {:?}",
             self.summarization_model.as_ref().map(|model| model.name())

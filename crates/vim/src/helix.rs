@@ -31,7 +31,7 @@ use crate::state::{Operator, SearchState};
 use crate::{
     PushHelixSurroundAdd, PushHelixSurroundDelete, PushHelixSurroundReplace, Vim,
     motion::{Motion, right},
-    state::{HelixJumpBehaviour, HelixJumpLabel, Mode, Operator},
+    state::{HelixJumpBehaviour, HelixJumpLabel, Mode},
 };
 use std::ops::Range;
 
