@@ -70,8 +70,6 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
 
-Added in `crates/editor/src/editor.rs`, search for `file_explorer` and related functions.
-
 Take care to only modify the file names in the editor, not the top directory name or the newlines below the directory name, otherwise the logic on saving will not work.
 
 You can empty a line to trash a file. It only works on macOS because it is using the `trash` CLI.
@@ -84,6 +82,12 @@ Deleting or adding lines is not supported, this is for file browsing and file re
 - `workspace::FileExplorerOpenFile`
 - `workspace::FileExplorerNavigateToParentDirectory`
 - `workspace::FileExplorerSaveModified` (it shows a confirmation dialog which lists all changes)
+
+### Implementation
+
+See `crates/editor/src/editor.rs`, search for `file_explorer` and related functions.
+
+`FileIcon(usize)` was added to `pub enum InlayId` to display the SVG icon from the theme, same as the file icons from the file tabsu
 
 ## Emoji Picker
 
