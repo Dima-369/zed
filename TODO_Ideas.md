@@ -1,3 +1,5 @@
+- merge main then configure https://github.com/zed-industries/zed/pull/45476#event-21891616303
+
 - key j in terminal vi mode should also exit vi mode after copy to clipboard
 
 - https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
@@ -18,12 +20,6 @@ USER should instead EMPTY a line fully, to trash a file, use `trash` CLI on mac 
 or does one really have to create a new treesitter syntax just for this mode?
 
 - refactor code (except action entry in editor.rs) into own crate
-
-- How to implement a save mode? Can one place some hidden markers in the buffer for the initial file name, and then a new action is added which checks the editor buffer state to the hidden markers, and detects which files were modified?
-
-read commit dbefb449715d, I did a bad start implementation, the html comments are displayed inside the buffer, can you find out how
- to hide them or do this entirely different? I want a save action properly implemented, adn need to store initial file state on
- opening this buffer (and update it on navigating)
 
 - finish readme with all proper action names
 
