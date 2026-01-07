@@ -1,14 +1,10 @@
 - merge main then configure https://github.com/zed-industries/zed/pull/45476#event-21891616303
 
+"status_bar": {
+  "active_encoding_button": "disabled"/enabled
+}
 
-# main merge issues
-
-the rejected ACP agent history is causing many issues
-
-error[E0432]: unresolved import `crate::AgentIdentity`
- --> crates/agent/src/history_store.rs:2:13
-
----
+default is hide on non utf8
 
 - fix broken Qwen code for Zed Agent use
 
