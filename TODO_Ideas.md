@@ -55,7 +55,7 @@ Caused by:
 ```
 
 I then let AI apply the diff directly on my `dima` branch, and it correctly starts up and shows the smooth cursor.
-But it has the same annoying character misplaced bug as the other diff, but in this PR it instantly jumps to the character of where the cursor will be which also looks bad.
+But it has the same annoying character misplaced bug as the other diff, but in this PR it instantly jumps to the character of where the cursor will be, which also looks bad.
 
 https://github.com/zed-industries/zed/pull/43826
 
@@ -91,7 +91,7 @@ https://github.com/zed-industries/zed/pull/44530
 
 ## Filter for code actions
 
-Absolutely not important since I rarely, if ever, need to search.
+Absolutely not important since I rarely, if ever, need to search. It depends on LSP server and programming language.
 
 ### Add filter for code actions (PR open)
 
