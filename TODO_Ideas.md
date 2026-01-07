@@ -3,6 +3,9 @@
 - https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
 so I now need to clean up my code for it
 
+# editor file explorer
+
+- when the directory is updated, it is janky, like the scroll position (due to my smooth scroll) ends up at the bottom of the buffer while the cursor is still somewhere else
 
 
 # >>> Investigations
