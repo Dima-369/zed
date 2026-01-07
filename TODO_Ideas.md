@@ -3,13 +3,6 @@
 - https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
 so I now need to clean up my code for it
 
-# editor file explorer
-
-See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
-
-- how to display real file icons from actual tabs/project panel?
-
-
 
 
 # >>> Investigations
