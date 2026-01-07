@@ -1,3 +1,4 @@
+pub mod confirmation_dialog;
 pub mod dock;
 pub mod history_manager;
 pub mod invalid_item_view;
@@ -16,7 +17,6 @@ pub mod tasks;
 mod theme_preview;
 mod toast_layer;
 mod toolbar;
-pub mod confirmation_dialog;
 pub mod utility_pane;
 pub mod welcome;
 mod workspace_settings;

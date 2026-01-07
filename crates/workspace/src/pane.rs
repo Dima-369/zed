@@ -2,6 +2,7 @@ use crate::{
     CloseWindow, NewFile, NewTerminal, OpenInTerminal, OpenOptions, OpenTerminal, OpenVisible,
     SplitDirection, ToggleFileFinder, ToggleProjectSymbols, ToggleZoom, Workspace,
     WorkspaceItemBuilder, ZoomIn, ZoomOut,
+    confirmation_dialog::ConfirmationDialog,
     invalid_item_view::InvalidItemView,
     item::{
         ActivateOnClose, ClosePosition, Item, ItemBufferKind, ItemHandle, ItemSettings,
@@ -11,7 +12,6 @@ use crate::{
     move_item,
     notifications::NotifyResultExt,
     toolbar::Toolbar,
-    confirmation_dialog::ConfirmationDialog,
     utility_pane::UtilityPaneSlot,
     workspace_settings::{AutosaveSetting, TabBarSettings, WorkspaceSettings},
 };

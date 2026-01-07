@@ -220,10 +220,10 @@ use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
     ViewId, Workspace, WorkspaceId, WorkspaceSettings,
+    confirmation_dialog::ConfirmationDialog,
     item::{BreadcrumbText, ItemBufferKind, ItemHandle, PreviewTabsSettings, SaveOptions},
     notifications::{DetachAndPromptErr, NotificationId, NotifyTaskExt},
     searchable::{CollapseDirection, SearchEvent},
-    confirmation_dialog::ConfirmationDialog,
 };
 
 use crate::{
@@ -2998,12 +2998,13 @@ impl Editor {
         anyhow::Ok((file_list_content, file_names))
     }
 
-
     fn validate_file_name(file_name: &str) -> bool {
         // Check for invalid characters in file names
         // On Unix-like systems, the only invalid character is null byte
         // On Windows, there are more restrictions, but we'll check for common ones
-        !file_name.contains(|c: char| c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*')
+        !file_name.contains(|c: char| {
+            c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*'
+        })
     }
 
     fn get_modified_files_from_buffer(
@@ -3024,7 +3025,7 @@ impl Editor {
         for entry in &current_entries {
             // Remove trailing "/" if it's a directory
             let name_to_check = if entry.ends_with('/') {
-                &entry[..entry.len()-1]
+                &entry[..entry.len() - 1]
             } else {
                 entry
             };
@@ -3032,7 +3033,10 @@ impl Editor {
             if !Self::validate_file_name(name_to_check) {
                 println!("Invalid file name detected: {}", name_to_check);
                 // Return early with validation error
-                return vec![format!("ERROR: Invalid file name '{}'. Contains disallowed characters.", name_to_check)];
+                return vec![format!(
+                    "ERROR: Invalid file name '{}'. Contains disallowed characters.",
+                    name_to_check
+                )];
             }
         }
 
@@ -3060,17 +3064,17 @@ impl Editor {
                             changes.push(format!("CHANGED: {} -> {}", stored, current));
                         }
                     }
-                },
+                }
                 (Some(stored), None) => {
                     // Entry was removed
                     println!("Entry {} was removed from buffer at index {}", stored, i);
                     changes.push(format!("REMOVED: {}", stored));
-                },
+                }
                 (None, Some(current)) => {
                     // Entry was added
                     println!("Entry {} was added to buffer at index {}", current, i);
                     changes.push(format!("ADDED: {}", current));
-                },
+                }
                 (None, None) => {
                     // Should not happen due to the loop condition
                 }
@@ -3082,7 +3086,10 @@ impl Editor {
         for stored_entry in stored_state {
             if !current_entries.contains(stored_entry) {
                 // Already handled above, but double-checking
-                if !changes.iter().any(|change| change.starts_with("REMOVED:") && change.contains(stored_entry)) {
+                if !changes
+                    .iter()
+                    .any(|change| change.starts_with("REMOVED:") && change.contains(stored_entry))
+                {
                     println!("Entry {} was removed from buffer", stored_entry);
                     changes.push(format!("REMOVED: {}", stored_entry));
                 }
@@ -3092,7 +3099,10 @@ impl Editor {
         for current_entry in &current_entries {
             if !stored_state.contains(current_entry) {
                 // Already handled above, but double-checking
-                if !changes.iter().any(|change| change.starts_with("ADDED:") && change.contains(current_entry)) {
+                if !changes
+                    .iter()
+                    .any(|change| change.starts_with("ADDED:") && change.contains(current_entry))
+                {
                     println!("Entry {} was added to buffer", current_entry);
                     changes.push(format!("ADDED: {}", current_entry));
                 }
@@ -3120,11 +3130,8 @@ impl Editor {
             })
         });
 
-        let file_to_select = active_project_path.and_then(|p| {
-            p.path
-                .file_name()
-                .map(|name| name.to_string())
-        });
+        let file_to_select =
+            active_project_path.and_then(|p| p.path.file_name().map(|name| name.to_string()));
 
         let Some(current_dir) = current_dir else {
             log::warn!("No active editor or directory found for file explorer");
@@ -3287,9 +3294,7 @@ impl Editor {
             // Open the file
             cx.spawn_in(window, async move |workspace, cx| -> anyhow::Result<()> {
                 let project_path = project
-                    .read_with(cx, |project, cx| {
-                        project.find_project_path(&full_path, cx)
-                    })
+                    .read_with(cx, |project, cx| project.find_project_path(&full_path, cx))
                     .ok()
                     .flatten();
 
@@ -3313,7 +3318,11 @@ impl Editor {
                     if is_dir {
                         let directory_content = project
                             .update(cx, |project, cx| {
-                                Self::file_explorer_get_directory_content(project, &project_path, cx)
+                                Self::file_explorer_get_directory_content(
+                                    project,
+                                    &project_path,
+                                    cx,
+                                )
                             })
                             .ok()
                             .and_then(|result| result.ok());
@@ -3342,9 +3351,11 @@ impl Editor {
                             });
                         }
                     } else {
-                        workspace.update_in(cx, |workspace, window, cx| {
-                            workspace.open_path(project_path, None, true, window, cx)
-                        })?.await?;
+                        workspace
+                            .update_in(cx, |workspace, window, cx| {
+                                workspace.open_path(project_path, None, true, window, cx)
+                            })?
+                            .await?;
 
                         workspace.update_in(cx, |workspace, window, cx| {
                             if let Some(pane) = workspace.pane_for(&editor) {
@@ -3412,7 +3423,7 @@ impl Editor {
 
                 // Get parent directory
                 let parent_path = current_path.parent().unwrap_or(&current_path);
-                
+
                 // Convert to string, ensure we don't go beyond root
                 let parent_dir = if parent_path.as_os_str().is_empty() {
                     "/".to_string()
@@ -3466,10 +3477,7 @@ impl Editor {
                                                     s.select_ranges([point..point]);
                                                 },
                                             );
-                                            editor.request_autoscroll(
-                                                Autoscroll::center(),
-                                                cx,
-                                            );
+                                            editor.request_autoscroll(Autoscroll::center(), cx);
                                             positioned = true;
                                             break;
                                         }
@@ -3507,23 +3515,24 @@ impl Editor {
             let editor = editor.clone();
 
             // Get the current state synchronously first
-            let (current_dir, stored_state, current_buffer_content) = editor.update(cx, |editor, cx| {
-                let display_snapshot = editor.display_snapshot(cx);
-                let buffer_snapshot = display_snapshot.buffer_snapshot();
-                let full_content = buffer_snapshot.text();
+            let (current_dir, stored_state, current_buffer_content) =
+                editor.update(cx, |editor, cx| {
+                    let display_snapshot = editor.display_snapshot(cx);
+                    let buffer_snapshot = display_snapshot.buffer_snapshot();
+                    let full_content = buffer_snapshot.text();
 
-                let first_line = full_content
-                    .lines()
-                    .find(|line| !line.trim().is_empty())
-                    .unwrap_or("")
-                    .trim();
+                    let first_line = full_content
+                        .lines()
+                        .find(|line| !line.trim().is_empty())
+                        .unwrap_or("")
+                        .trim();
 
-                (
-                    first_line.to_string(),
-                    editor.file_explorer_metadata.clone().unwrap_or_default(),
-                    full_content.to_string(),
-                )
-            });
+                    (
+                        first_line.to_string(),
+                        editor.file_explorer_metadata.clone().unwrap_or_default(),
+                        full_content.to_string(),
+                    )
+                });
 
             if current_dir.is_empty() || stored_state.is_empty() {
                 return;
@@ -3582,12 +3591,7 @@ impl Editor {
                         let new_path = base_path.join(new_clean);
 
                         if let Err(e) = fs.rename(&old_path, &new_path, Default::default()).await {
-                            log::error!(
-                                "Failed to rename {:?} to {:?}: {}",
-                                old_path,
-                                new_path,
-                                e
-                            );
+                            log::error!("Failed to rename {:?} to {:?}: {}", old_path, new_path, e);
                         }
                     }
 
