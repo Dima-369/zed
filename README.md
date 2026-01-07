@@ -87,7 +87,7 @@ Deleting or adding lines is not supported, this is for file browsing and file re
 
 See `crates/editor/src/editor.rs`, search for `file_explorer` and related functions.
 
-`FileIcon(usize)` was added to `pub enum InlayId` to display the SVG icon from the theme, same as the file icons from the file tabsu
+`FileIcon(usize)` was added to `pub enum InlayId` to display the SVG icon from the theme, same as the file icons from the file tabs.
 
 ## Emoji Picker
 
