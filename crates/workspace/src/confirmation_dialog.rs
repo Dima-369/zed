@@ -9,7 +9,7 @@ use ui::{Button, ButtonStyle, Label, LabelSize, TintColor, prelude::*};
 
 use crate::modal_layer::ModalView;
 
-pub struct UnsavedChangesModal {
+pub struct ConfirmationDialog {
     message: Arc<str>,
     detail: Option<Arc<str>>,
     buttons: Vec<String>,
@@ -18,9 +18,9 @@ pub struct UnsavedChangesModal {
     result_sender: Option<oneshot::Sender<usize>>,
 }
 
-impl ModalView for UnsavedChangesModal {}
+impl ModalView for ConfirmationDialog {}
 
-impl UnsavedChangesModal {
+impl ConfirmationDialog {
     pub fn show(
         workspace: &mut crate::Workspace,
         message: impl Into<Arc<str>>,
@@ -79,20 +79,20 @@ impl UnsavedChangesModal {
     }
 }
 
-impl EventEmitter<DismissEvent> for UnsavedChangesModal {}
+impl EventEmitter<DismissEvent> for ConfirmationDialog {}
 
-impl Focusable for UnsavedChangesModal {
+impl Focusable for ConfirmationDialog {
     fn focus_handle(&self, _cx: &App) -> FocusHandle {
         self.focus_handle.clone()
     }
 }
 
-impl Render for UnsavedChangesModal {
+impl Render for ConfirmationDialog {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let focus_handle = self.focus_handle.clone();
 
         v_flex()
-            .key_context("UnsavedChangesModal")
+            .key_context("ConfirmationDialog")
             .track_focus(&focus_handle)
             .w(rems(28.))
             .p_6()

@@ -11,7 +11,7 @@ use crate::{
     move_item,
     notifications::NotifyResultExt,
     toolbar::Toolbar,
-    unsaved_changes_modal::UnsavedChangesModal,
+    confirmation_dialog::ConfirmationDialog,
     utility_pane::UtilityPaneSlot,
     workspace_settings::{AutosaveSetting, TabBarSettings, WorkspaceSettings},
 };
@@ -1850,7 +1850,7 @@ impl Pane {
             if save_intent == SaveIntent::Close && dirty_items.len() > 1 {
                 let answer = workspace.update_in(cx, |workspace, window, cx| {
                     let detail = Self::file_names_for_prompt(&mut dirty_items.iter(), cx);
-                    UnsavedChangesModal::show(
+                    ConfirmationDialog::show(
                         workspace,
                         "Do you want to save changes to the following files?",
                         Some(detail),
@@ -1893,7 +1893,7 @@ impl Pane {
                                     &mut [&item_to_close].into_iter(),
                                     cx,
                                 );
-                                UnsavedChangesModal::show(
+                                ConfirmationDialog::show(
                                     workspace,
                                     format!("Unable to save file: {}", &err),
                                     Some(detail),
@@ -2155,7 +2155,7 @@ impl Pane {
                     pane.activate_item(item_ix, true, true, window, cx);
                     if let Some(workspace) = pane.workspace.upgrade() {
                         workspace.update(cx, |workspace, cx| {
-                            UnsavedChangesModal::show(
+                            ConfirmationDialog::show(
                                 workspace,
                                 DELETED_MESSAGE,
                                 None::<String>,
@@ -2196,7 +2196,7 @@ impl Pane {
                     pane.activate_item(item_ix, true, true, window, cx);
                     if let Some(workspace) = pane.workspace.upgrade() {
                         workspace.update(cx, |workspace, cx| {
-                            UnsavedChangesModal::show(
+                            ConfirmationDialog::show(
                                 workspace,
                                 CONFLICT_MESSAGE,
                                 None::<String>,
@@ -2245,7 +2245,7 @@ impl Pane {
                             let prompt = dirty_message_for(item.project_path(cx), path_style);
                             if let Some(workspace) = pane.workspace.upgrade() {
                                 Some(workspace.update(cx, |workspace, cx| {
-                                    UnsavedChangesModal::show(
+                                    ConfirmationDialog::show(
                                         workspace,
                                         prompt,
                                         None::<String>,

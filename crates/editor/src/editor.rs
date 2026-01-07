@@ -223,7 +223,7 @@ use workspace::{
     item::{BreadcrumbText, ItemBufferKind, ItemHandle, PreviewTabsSettings, SaveOptions},
     notifications::{DetachAndPromptErr, NotificationId, NotifyTaskExt},
     searchable::{CollapseDirection, SearchEvent},
-    unsaved_changes_modal::UnsavedChangesModal,
+    confirmation_dialog::ConfirmationDialog,
 };
 
 use crate::{
@@ -3556,7 +3556,7 @@ impl Editor {
                 .join("\n");
 
             // Show confirmation modal synchronously
-            let confirmation_task = UnsavedChangesModal::show(
+            let confirmation_task = ConfirmationDialog::show(
                 workspace,
                 "Confirm Renames",
                 Some(detail),

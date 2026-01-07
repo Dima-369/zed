@@ -283,12 +283,18 @@ There is this new actoin:  `zed::DeeplTranslate` which translates the current se
 
 ## UI changes
 
-- on macOS, the unsaved changes model uses the native macOS dialog instead of Zed's custom one which has bad keyboard support, so `unsaved_changes_model.rs` was created which allows keyboard navigation (and just looks nicer)
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
 - lower status bar height, see `impl Render for StatusBar`
 - add scrollbar to `outline::Toggle`, `file_finder::Toggle` and `command_palette::Toggle` (why is it not shown in the first place?)
 - lower `toolbar.rs` height to save space, same in `breadcrumbs.rs` (here no padding is set). This applies for terminals, as well
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
+
+### Custom Confirmation Modal
+
+A new custom modal which bypasses the macOS native dialog to allow for easier keybindings and nicer UI.
+This replaces Zed's unsaved changes modal.
+
+See `crates/workspace/src/confirmation_dialog.rs`. The dismiss action is currently hardcoded to key `h`.
 
 ### Scrollbar
 
