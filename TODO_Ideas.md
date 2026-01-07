@@ -17,11 +17,10 @@ or does one really have to create a new treesitter syntax just for this mode?
 - upon saving, it moves the cursor at the very end, I do not want that, it should stay on the exact same file name (even if the row
 - upon saving, it moves the cursor at the very end, I do not want that, it should stay on the exact same file name (even if the row changes, I think because other files could be created in the mean-time?) as before saving
 
+
+
+MAYBE? or not?
 - refactor code (except action entries in `editor.rs`) into own crate
-
-- finish readme with all proper action names
-
-
 
 
 # >>> Investigations
