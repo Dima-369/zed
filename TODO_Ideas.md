@@ -5,8 +5,6 @@ so I now need to clean up my code for it
 
 # editor file explorer
 
-adjust my neovim config, so key.n does not open, but only on key.enter
-
 ## here
 
 See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
