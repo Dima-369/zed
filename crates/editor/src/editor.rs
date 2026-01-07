@@ -39,6 +39,10 @@ mod selections_collection;
 mod split;
 pub mod tasks;
 
+// Custom highlight types for file explorer
+struct DirectoryHighlight;
+struct FileExtensionHighlight;
+
 #[cfg(test)]
 mod code_completion_tests;
 #[cfg(test)]
@@ -3086,6 +3090,44 @@ impl Editor {
                             }
                         }
                     }
+
+                    // Apply custom highlighting for directories and file extensions
+                    let snapshot = editor.buffer.read(cx).snapshot(cx);
+                    let mut directory_ranges = Vec::new();
+                    let mut extension_ranges = Vec::new();
+
+                    for (line_idx, line) in snapshot.text().lines().enumerate().skip(2) {
+                        let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
+                        
+                        if line.ends_with('/') {
+                            // Directory - highlight entire line (excluding the newline)
+                            let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, (line.len() - 1) as u32));
+                            directory_ranges.push(snapshot.anchor_before(line_start)..snapshot.anchor_after(line_end));
+                        } else if let Some(dot_pos) = line.rfind('.') {
+                            // File - highlight just the extension
+                            let ext_start = snapshot.point_to_offset(Point::new(line_idx as u32, (dot_pos + 1) as u32));
+                            let ext_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
+                            extension_ranges.push(snapshot.anchor_before(ext_start)..snapshot.anchor_after(ext_end));
+                        }
+                    }
+
+                    // Apply blue highlights for directories
+                    if !directory_ranges.is_empty() {
+                        editor.highlight_background::<DirectoryHighlight>(
+                            &directory_ranges,
+                            |_, _| gpui::blue(),
+                            cx,
+                        );
+                    }
+
+                    // Apply blue highlights for file extensions
+                    if !extension_ranges.is_empty() {
+                        editor.highlight_background::<FileExtensionHighlight>(
+                            &extension_ranges,
+                            |_, _| gpui::blue(),
+                            cx,
+                        );
+                    }
                 });
 
                 // Mark as saved to avoid unsaved changes prompt
@@ -3224,6 +3266,44 @@ impl Editor {
                                         cx,
                                         |s| s.select_ranges([point..point]),
                                     );
+
+                                    // Apply custom highlighting for directories and file extensions
+                                    let snapshot = editor.buffer.read(cx).snapshot(cx);
+                                    let mut directory_ranges = Vec::new();
+                                    let mut extension_ranges = Vec::new();
+
+                                    for (line_idx, line) in snapshot.text().lines().enumerate().skip(2) {
+                                        let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
+                                        
+                                        if line.ends_with('/') {
+                                            // Directory - highlight entire line (excluding newline)
+                                            let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, (line.len() - 1) as u32));
+                                            directory_ranges.push(snapshot.anchor_before(line_start)..snapshot.anchor_after(line_end));
+                                        } else if let Some(dot_pos) = line.rfind('.') {
+                                            // File - highlight just the extension
+                                            let ext_start = snapshot.point_to_offset(Point::new(line_idx as u32, (dot_pos + 1) as u32));
+                                            let ext_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
+                                            extension_ranges.push(snapshot.anchor_before(ext_start)..snapshot.anchor_after(ext_end));
+                                        }
+                                    }
+
+                                    // Apply blue highlights for directories
+                                    if !directory_ranges.is_empty() {
+                                        editor.highlight_background::<DirectoryHighlight>(
+                                            &directory_ranges,
+                                            |_, _| gpui::blue(),
+                                            cx,
+                                        );
+                                    }
+
+                                    // Apply blue highlights for file extensions
+                                    if !extension_ranges.is_empty() {
+                                        editor.highlight_background::<FileExtensionHighlight>(
+                                            &extension_ranges,
+                                            |_, _| gpui::blue(),
+                                            cx,
+                                        );
+                                    }
                                 })
                             });
 
@@ -3371,6 +3451,44 @@ impl Editor {
 
                                 if !positioned {
                                     editor.move_to_beginning(&Default::default(), window, cx);
+                                }
+
+                                // Apply custom highlighting for directories and file extensions
+                                let snapshot = editor.buffer.read(cx).snapshot(cx);
+                                let mut directory_ranges = Vec::new();
+                                let mut extension_ranges = Vec::new();
+
+                                for (line_idx, line) in snapshot.text().lines().enumerate().skip(2) {
+                                    let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
+                                    
+                                    if line.ends_with('/') {
+                                        // Directory - highlight entire line (excluding newline)
+                                        let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, (line.len() - 1) as u32));
+                                        directory_ranges.push(snapshot.anchor_before(line_start)..snapshot.anchor_after(line_end));
+                                    } else if let Some(dot_pos) = line.rfind('.') {
+                                        // File - highlight just the extension
+                                        let ext_start = snapshot.point_to_offset(Point::new(line_idx as u32, (dot_pos + 1) as u32));
+                                        let ext_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
+                                        extension_ranges.push(snapshot.anchor_before(ext_start)..snapshot.anchor_after(ext_end));
+                                    }
+                                }
+
+                                // Apply blue highlights for directories
+                                if !directory_ranges.is_empty() {
+                                    editor.highlight_background::<DirectoryHighlight>(
+                                        &directory_ranges,
+                                        |_, _| gpui::blue(),
+                                        cx,
+                                    );
+                                }
+
+                                // Apply blue highlights for file extensions
+                                if !extension_ranges.is_empty() {
+                                    editor.highlight_background::<FileExtensionHighlight>(
+                                        &extension_ranges,
+                                        |_, _| gpui::blue(),
+                                        cx,
+                                    );
                                 }
                             })
                         });
@@ -3544,6 +3662,44 @@ impl Editor {
                                                     buffer.update(cx, |buffer, cx| {
                                                         buffer.did_save(buffer.version(), None, cx);
                                                     });
+                                                }
+
+                                                // Apply custom highlighting for directories and file extensions
+                                                let snapshot = editor.buffer.read(cx).snapshot(cx);
+                                                let mut directory_ranges = Vec::new();
+                                                let mut extension_ranges = Vec::new();
+
+                                                for (line_idx, line) in snapshot.text().lines().enumerate().skip(2) {
+                                                    let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
+                                                    
+                                                    if line.ends_with('/') {
+                                                        // Directory - highlight entire line (excluding newline)
+                                                        let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, (line.len() - 1) as u32));
+                                                        directory_ranges.push(snapshot.anchor_before(line_start)..snapshot.anchor_after(line_end));
+                                                    } else if let Some(dot_pos) = line.rfind('.') {
+                                                        // File - highlight just the extension
+                                                        let ext_start = snapshot.point_to_offset(Point::new(line_idx as u32, (dot_pos + 1) as u32));
+                                                        let ext_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
+                                                        extension_ranges.push(snapshot.anchor_before(ext_start)..snapshot.anchor_after(ext_end));
+                                                    }
+                                                }
+
+                                                // Apply blue highlights for directories
+                                                if !directory_ranges.is_empty() {
+                                                    editor.highlight_background::<DirectoryHighlight>(
+                                                        &directory_ranges,
+                                                        |_, _| gpui::blue(),
+                                                        cx,
+                                                    );
+                                                }
+
+                                                // Apply blue highlights for file extensions
+                                                if !extension_ranges.is_empty() {
+                                                    editor.highlight_background::<FileExtensionHighlight>(
+                                                        &extension_ranges,
+                                                        |_, _| gpui::blue(),
+                                                        cx,
+                                                    );
                                                 }
                                             });
                                         })
