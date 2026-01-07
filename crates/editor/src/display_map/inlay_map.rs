@@ -23,7 +23,7 @@ use std::{
 };
 use sum_tree::{Bias, Cursor, Dimensions, SumTree};
 use text::{ChunkBitmaps, Patch};
-use ui::{ActiveTheme, IntoElement as _, ParentElement as _, Styled as _, div};
+use ui::{ActiveTheme, Icon, IntoElement as _, ParentElement as _, Styled as _, div};
 
 use super::{Highlights, custom_highlights::CustomHighlightsChunks, fold_map::ChunkRendererId};
 
@@ -357,6 +357,23 @@ impl<'a> Iterator for InlayChunks<'a> {
                                                 )
                                                 .bg(color),
                                         )
+                                        .into_any_element()
+                                }),
+                                constrain_width: false,
+                                measured_width: None,
+                            });
+                        }
+                        self.highlight_styles.inlay_hint
+                    }
+                    InlayId::FileIcon(_) => {
+                        if let InlayContent::FileIcon(icon_path) = &inlay.content {
+                            let icon_path = icon_path.clone();
+                            renderer = Some(ChunkRenderer {
+                                id: ChunkRendererId::Inlay(inlay.id),
+                                render: Arc::new(move |_cx| {
+                                    Icon::from_path(icon_path.clone())
+                                        .size(ui::IconSize::Small)
+                                        .color(ui::Color::Muted)
                                         .into_any_element()
                                 }),
                                 constrain_width: false,

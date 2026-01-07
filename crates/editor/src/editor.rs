@@ -3013,7 +3013,7 @@ impl Editor {
 
         for (line_idx, line) in snapshot.text().lines().enumerate().skip(2) {
             let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
-            
+
             if line.ends_with('/') {
                 // Directory - highlight entire line including the trailing slash
                 let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
@@ -3048,6 +3048,42 @@ impl Editor {
                 },
                 cx,
             );
+        }
+    }
+
+    fn apply_file_explorer_icons(editor: &mut Editor, cx: &mut Context<Editor>) {
+        use crate::inlays::Inlay;
+        use file_icons::FileIcons;
+        use std::path::Path;
+
+        let snapshot = editor.buffer.read(cx).snapshot(cx);
+        let mut inlays_to_insert = Vec::new();
+
+        // Skip first 2 lines (directory header and blank line)
+        for (line_idx, line) in snapshot.text().lines().enumerate().skip(2) {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+
+            // Get the file/directory name (remove trailing slash for directories)
+            let name = line.trim_end_matches('/');
+
+            // Get the icon path for this file/directory
+            if let Some(icon_path) = FileIcons::get_icon(Path::new(name), cx) {
+                // Create an anchor at the beginning of this line
+                let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
+                let anchor = snapshot.anchor_before(line_start);
+
+                // Create a file icon inlay
+                let inlay = Inlay::file_icon(line_idx, anchor, icon_path);
+                inlays_to_insert.push(inlay);
+            }
+        }
+
+        // Insert all the inlays at once
+        if !inlays_to_insert.is_empty() {
+            editor.splice_inlays(&[], inlays_to_insert, cx);
         }
     }
 
@@ -3131,6 +3167,7 @@ impl Editor {
                     }
 
                     Self::apply_file_explorer_highlighting(editor, window, cx);
+                    Self::apply_file_explorer_icons(editor, cx);
                 });
 
                 // Mark as saved to avoid unsaved changes prompt
@@ -3266,6 +3303,7 @@ impl Editor {
                                     );
 
                                     Self::apply_file_explorer_highlighting(editor, window, cx);
+                                    Self::apply_file_explorer_icons(editor, cx);
                                 })
                             });
 
