@@ -14,8 +14,6 @@ See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 - show error when line count differs from old state to the one user wants to save, this would indicate that user deleted some file
 USER should instead EMPTY a line fully, to trash a file, use `trash` CLI on mac (and always assume mac)
 
-- rename the workspace::FileExplorerGoBack action better, to workspace::FileExplorerNavigateToParentDirectory
-
 - how to display real file icons from actual tabs/project panel? currently, I am faking it by setting a `Rust` language which kinda sucks. Is there an easy way to highlight just directories in blue fg text color and then file extensions in same blue?
 or does one really have to create a new treesitter syntax just for this mode?
 - upon saving, it moves the cursor at the very end, I do not want that, it should stay on the exact same file name (even if the row
