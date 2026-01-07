@@ -3485,6 +3485,7 @@ impl Editor {
                     "Cannot Save Changes",
                     Some(detail),
                     vec!["OK"],
+                    false,
                     window,
                     cx,
                 )
@@ -3535,6 +3536,7 @@ impl Editor {
                 "Confirm Changes",
                 Some(detail),
                 vec!["Confirm", "Cancel"],
+                false,
                 window,
                 cx,
             );
