@@ -66,6 +66,29 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - inspired from `Choose Content to Paste` from JetBrains IDEs
   - in `crates/workspace/src/persistence.rs` there is own SQL table `clipboard_history`, so the recent entries is remembered across restarts
 
+## Open directory listing as a Editor (relatively basic)
+
+This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
+
+Take care to only modify the file names in the editor, not the top directory name or the newlines below the directory name, otherwise the logic on saving will not work.
+
+You can empty a line to trash a file. It only works on macOS because it is using the `trash` CLI.
+
+Deleting or adding lines is not supported, this is for file browsing and file renaming via usual editor keybindings.
+
+### New actions
+
+- `workspace::FileExplorerOpen` (the entry point)
+- `workspace::FileExplorerOpenFile`
+- `workspace::FileExplorerNavigateToParentDirectory`
+- `workspace::FileExplorerSaveModified` (it shows a confirmation dialog which lists all changes)
+
+### Implementation
+
+See `crates/editor/src/editor.rs`, search for `file_explorer` and related functions.
+
+`FileIcon(usize)` was added to `pub enum InlayId` to display the SVG icon from the theme, same as the file icons from the file tabs.
+
 ## Emoji Picker
 
 Implement `emoji_picker_modal::ToggleEmojiPicker` which opens a modal and on picking an emoji, it is copied into the clipboard.
@@ -266,12 +289,18 @@ There is this new actoin:  `zed::DeeplTranslate` which translates the current se
 
 ## UI changes
 
-- on macOS, the unsaved changes model uses the native macOS dialog instead of Zed's custom one which has bad keyboard support, so `unsaved_changes_model.rs` was created which allows keyboard navigation (and just looks nicer)
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
 - lower status bar height, see `impl Render for StatusBar`
 - add scrollbar to `outline::Toggle`, `file_finder::Toggle` and `command_palette::Toggle` (why is it not shown in the first place?)
 - lower `toolbar.rs` height to save space, same in `breadcrumbs.rs` (here no padding is set). This applies for terminals, as well
 - lower `DEFAULT_TOAST_DURATION` from 10 to 5 seconds
+
+### Custom Confirmation Modal
+
+A new custom modal which bypasses the macOS native dialog to allow for easier keybindings and nicer UI.
+This replaces Zed's unsaved changes modal.
+
+See `crates/workspace/src/confirmation_dialog.rs`. The dismiss action is currently hardcoded to key `h`.
 
 ### Scrollbar
 

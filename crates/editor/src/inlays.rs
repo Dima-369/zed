@@ -19,7 +19,7 @@ pub mod inlay_hints;
 
 use std::{any::TypeId, sync::OnceLock};
 
-use gpui::{Context, HighlightStyle, Hsla, Rgba, Task};
+use gpui::{Context, HighlightStyle, Hsla, Rgba, SharedString, Task};
 use multi_buffer::Anchor;
 use project::{InlayHint, InlayId};
 use text::Rope;
@@ -53,6 +53,7 @@ pub struct Inlay {
 pub enum InlayContent {
     Text(text::Rope),
     Color(Hsla),
+    FileIcon(SharedString),
 }
 
 impl Inlay {
@@ -104,11 +105,21 @@ impl Inlay {
         }
     }
 
+    pub fn file_icon(id: usize, position: Anchor, icon_path: SharedString) -> Self {
+        Self {
+            id: InlayId::FileIcon(id),
+            position,
+            content: InlayContent::FileIcon(icon_path),
+        }
+    }
+
     pub fn text(&self) -> &Rope {
         static COLOR_TEXT: OnceLock<Rope> = OnceLock::new();
+        static FILE_ICON_TEXT: OnceLock<Rope> = OnceLock::new();
         match &self.content {
             InlayContent::Text(text) => text,
             InlayContent::Color(_) => COLOR_TEXT.get_or_init(|| Rope::from("◼")),
+            InlayContent::FileIcon(_) => FILE_ICON_TEXT.get_or_init(|| Rope::from(" ")),
         }
     }
 

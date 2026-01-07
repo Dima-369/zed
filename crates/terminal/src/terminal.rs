@@ -1527,6 +1527,8 @@ impl Terminal {
 
             "j" => {
                 self.copy(Some(false));
+                self.scroll_to_bottom();
+                self.toggle_vi_mode();
             }
 
             "i" => {

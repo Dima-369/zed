@@ -39,6 +39,10 @@ mod selections_collection;
 mod split;
 pub mod tasks;
 
+// Custom highlight types for file explorer
+struct DirectoryHighlight;
+struct FileExtensionHighlight;
+
 #[cfg(test)]
 mod code_completion_tests;
 #[cfg(test)]
@@ -213,10 +217,14 @@ use ui::{
     IconSize, Indicator, Key, Tooltip, h_flex, prelude::*, scrollbars::ScrollbarAutoHide,
 };
 use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc};
+
+/// Represents the original file and directory names when the explorer was opened
+type FileExplorerState = Vec<String>;
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
     ViewId, Workspace, WorkspaceId, WorkspaceSettings,
+    confirmation_dialog::ConfirmationDialog,
     item::{BreadcrumbText, ItemBufferKind, ItemHandle, PreviewTabsSettings, SaveOptions},
     notifications::{DetachAndPromptErr, NotificationId, NotifyTaskExt},
     searchable::{CollapseDirection, SearchEvent},
@@ -346,6 +354,10 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::new_file_from_clipboard);
             workspace.register_action(Editor::new_file_vertical);
             workspace.register_action(Editor::new_file_horizontal);
+            workspace.register_action(Editor::file_explorer_open);
+            workspace.register_action(Editor::file_explorer_open_file);
+            workspace.register_action(Editor::file_explorer_navigate_to_parent_directory);
+            workspace.register_action(Editor::file_explorer_save_modified);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
             workspace.register_action(|workspace, action, window, cx| {
@@ -1160,6 +1172,9 @@ pub struct Editor {
     workspace: Option<(WeakEntity<Workspace>, Option<WorkspaceId>)>,
     input_enabled: bool,
     use_modal_editing: bool,
+    is_file_explorer: bool,
+    /// Stores the original file and directory names for file explorer save action
+    file_explorer_metadata: Option<FileExplorerState>,
     read_only: bool,
     leader_id: Option<CollaboratorId>,
     remote_id: Option<ViewId>,
@@ -2333,6 +2348,8 @@ impl Editor {
             workspace: None,
             input_enabled: !is_minimap,
             use_modal_editing: full_mode,
+            is_file_explorer: false,
+            file_explorer_metadata: None,
             read_only: is_minimap,
             use_autoclose: true,
             use_auto_surround: true,
@@ -2767,6 +2784,10 @@ impl Editor {
             key_context.add("diffs_expanded");
         }
 
+        if self.is_file_explorer {
+            key_context.add("FileExplorer");
+        }
+
         key_context
     }
 
@@ -2922,6 +2943,823 @@ impl Editor {
                 _ => None,
             },
         );
+    }
+
+    fn file_explorer_get_directory_content(
+        project: &Project,
+        project_path: &ProjectPath,
+        cx: &mut App,
+    ) -> anyhow::Result<(String, FileExplorerState)> {
+        let worktree = project
+            .worktree_for_id(project_path.worktree_id, cx)
+            .ok_or_else(|| anyhow::anyhow!("Worktree not found"))?;
+        let worktree = worktree.read(cx);
+
+        let mut entries = Vec::new();
+        for child_entry in worktree.child_entries(&project_path.path) {
+            let path = child_entry.path.clone();
+            let is_dir = child_entry.is_dir();
+            entries.push((path, is_dir));
+        }
+
+        entries.sort_by(|a, b| match (a.1, b.1) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.0.cmp(&b.0),
+        });
+
+        let worktree_root = worktree.abs_path();
+        let abs_path = worktree_root.join(project_path.path.as_std_path());
+        let current_dir_display = abs_path.to_string_lossy().to_string();
+
+        let mut file_list_content = format!("{}\n\n", current_dir_display);
+
+        // Collect file and directory names for comparison tracking
+        let mut file_names = Vec::new();
+        for (path, is_dir) in &entries {
+            let suffix = if *is_dir { "/" } else { "" };
+            let file_name = path
+                .file_name()
+                .map(|name| name.to_string())
+                .unwrap_or("".to_string());
+            file_names.push(format!("{}{}", file_name, suffix));
+        }
+
+        file_list_content.push_str(
+            &entries
+                .iter()
+                .map(|(path, is_dir)| {
+                    let suffix = if *is_dir { "/" } else { "" };
+                    let file_name = path
+                        .file_name()
+                        .map(|name| name.to_string())
+                        .unwrap_or("".to_string());
+                    format!("{}{}\n", file_name, suffix)
+                })
+                .collect::<String>(),
+        );
+
+        anyhow::Ok((file_list_content, file_names))
+    }
+
+    fn apply_file_explorer_highlighting(
+        editor: &mut Editor,
+        _window: &mut Window,
+        cx: &mut Context<Editor>,
+    ) {
+        let snapshot = editor.buffer.read(cx).snapshot(cx);
+        let mut directory_ranges = Vec::new();
+        let mut extension_ranges = Vec::new();
+
+        for (line_idx, line) in snapshot.text().lines().enumerate().skip(2) {
+            let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
+
+            if line.ends_with('/') {
+                // Directory - highlight entire line including the trailing slash
+                let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
+                directory_ranges.push(snapshot.anchor_before(line_start)..snapshot.anchor_after(line_end));
+            } else if let Some(dot_pos) = line.rfind('.') {
+                // File - highlight just the extension
+                let ext_start = snapshot.point_to_offset(Point::new(line_idx as u32, (dot_pos + 1) as u32));
+                let ext_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
+                extension_ranges.push(snapshot.anchor_before(ext_start)..snapshot.anchor_after(ext_end));
+            }
+        }
+
+        // Apply accent highlights for directories
+        if !directory_ranges.is_empty() {
+            editor.highlight_text::<DirectoryHighlight>(
+                directory_ranges,
+                HighlightStyle {
+                    color: Some(cx.theme().colors().text_accent),
+                    ..Default::default()
+                },
+                cx,
+            );
+        }
+
+        // Apply accent highlights for file extensions
+        if !extension_ranges.is_empty() {
+            editor.highlight_text::<FileExtensionHighlight>(
+                extension_ranges,
+                HighlightStyle {
+                    color: Some(cx.theme().colors().text_accent),
+                    ..Default::default()
+                },
+                cx,
+            );
+        }
+
+        Self::apply_file_explorer_icons(editor, cx);
+    }
+
+    fn apply_file_explorer_icons(editor: &mut Editor, cx: &mut Context<Editor>) {
+        use crate::inlays::Inlay;
+        use file_icons::FileIcons;
+        use std::path::Path;
+
+        let snapshot = editor.buffer.read(cx).snapshot(cx);
+        let mut inlays_to_insert = Vec::new();
+
+        // Skip first 2 lines (directory header and blank line)
+        for (line_idx, line) in snapshot.text().lines().enumerate().skip(2) {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+
+            // Get the file/directory name (remove trailing slash for directories)
+            let name = line.trim_end_matches('/');
+
+            // Get the icon path for this file/directory
+            if let Some(icon_path) = FileIcons::get_icon(Path::new(name), cx) {
+                // Create an anchor at the beginning of this line
+                let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
+                let anchor = snapshot.anchor_before(line_start);
+
+                // Create a file icon inlay
+                let inlay = Inlay::file_icon(line_idx, anchor, icon_path);
+                inlays_to_insert.push(inlay);
+            }
+        }
+
+        // Insert all the inlays at once
+        if !inlays_to_insert.is_empty() {
+            editor.splice_inlays(&[], inlays_to_insert, cx);
+        }
+    }
+
+    pub fn file_explorer_open(
+        workspace: &mut Workspace,
+        _action: &workspace::FileExplorerOpen,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let project = workspace.project().clone();
+
+        // Get current directory from active editor
+        let active_project_path = workspace.active_project_path(cx);
+        let current_dir = active_project_path.as_ref().and_then(|project_path| {
+            project_path.path.parent().map(|parent| ProjectPath {
+                worktree_id: project_path.worktree_id,
+                path: parent.to_rel_path_buf().into(),
+            })
+        });
+
+        let file_to_select =
+            active_project_path.and_then(|p| p.path.file_name().map(|name| name.to_string()));
+
+        let Some(current_dir) = current_dir else {
+            log::warn!("No active editor or directory found for file explorer");
+            return;
+        };
+
+        cx.spawn_in(window, async move |workspace, cx| {
+            // Get directory content and metadata
+            let file_list_content_result = project
+                .update(cx, |project, cx| {
+                    Self::file_explorer_get_directory_content(project, &current_dir, cx)
+                })
+                .and_then(|e| e);
+
+            let Ok((file_list_content, metadata)) = file_list_content_result else {
+                log::error!("Failed to get directory entries");
+                return;
+            };
+
+            // Create a buffer with the file listing
+            let buffer = project.update(cx, |project, cx| {
+                project.create_local_buffer(&file_list_content, None, true, cx)
+            });
+
+            let buffer = match buffer {
+                Ok(buffer) => buffer,
+                Err(e) => {
+                    log::error!("Failed to create buffer: {}", e);
+                    return;
+                }
+            };
+
+            let _ = workspace.update_in(cx, |workspace, window, cx| {
+                let editor = cx.new(|cx| {
+                    Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
+                });
+                workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
+                editor.update(cx, |editor, cx| {
+                    editor.move_to_beginning(&Default::default(), window, cx);
+                    editor.set_file_explorer(true);
+                    editor.file_explorer_metadata = Some(metadata);
+
+                    if let Some(filename) = file_to_select {
+                        let snapshot = editor.buffer.read(cx).snapshot(cx);
+                        for (i, line) in snapshot.text().lines().enumerate().skip(2) {
+                            let line = line.trim();
+                            let name = line.trim_end_matches('/');
+                            if name == filename {
+                                let point = Point::new(i as u32, 0);
+                                editor.change_selections(
+                                    SelectionEffects::default(),
+                                    window,
+                                    cx,
+                                    |s| s.select_ranges([point..point]),
+                                );
+                                break;
+                            }
+                        }
+                    }
+
+                    Self::apply_file_explorer_highlighting(editor, window, cx);
+                });
+
+                // Mark as saved to avoid unsaved changes prompt
+                buffer.update(cx, |buffer, cx| {
+                    buffer.did_save(buffer.version(), None, cx);
+                });
+            });
+        })
+        .detach();
+    }
+
+    pub fn file_explorer_open_file(
+        workspace: &mut Workspace,
+        _action: &workspace::FileExplorerOpenFile,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+            let project = workspace.project().clone();
+
+            // Get current line content and full editor content
+            let (line_content, file_list_content) = editor.update(cx, |editor, cx| {
+                let display_snapshot = editor.display_snapshot(cx);
+                let cursor = editor.selections.newest_display(&display_snapshot);
+                let cursor_display_point = cursor.head();
+
+                // Convert display point to buffer point
+                let buffer_point = display_snapshot.to_buffer_point(display_map::InlayPoint::new(
+                    cursor_display_point.row().0,
+                    cursor_display_point.column(),
+                ));
+                let buffer_row = buffer_point.row;
+
+                // Get the line text from the buffer snapshot
+                let buffer_snapshot = display_snapshot.buffer_snapshot();
+                let line_content = buffer_snapshot
+                    .text_for_range(
+                        text::Point::new(buffer_row, 0)..text::Point::new(buffer_row + 1, 0),
+                    )
+                    .collect::<String>();
+
+                // Get full editor content
+                let full_content = buffer_snapshot.text();
+
+                (line_content, full_content.to_string())
+            });
+
+            // Extract file path from line content
+            let file_path = line_content
+                .trim()
+                .trim_end_matches('/') // Remove trailing slash from directories
+                .to_string();
+
+            if file_path.is_empty() {
+                return;
+            }
+
+            // Skip if it's the first line (directory header) or empty
+            let cursor_row = editor.update(cx, |editor, cx| {
+                let display_snapshot = editor.display_snapshot(cx);
+                let cursor = editor.selections.newest_display(&display_snapshot);
+                cursor.head().row().0
+            });
+
+            if cursor_row <= 1 {
+                // First lines are directory header, don't try to open it
+                return;
+            }
+
+            // Parse the directory header to get the actual path
+            let first_line = file_list_content
+                .lines()
+                .find(|line| !line.trim().is_empty())
+                .unwrap_or("")
+                .trim();
+
+            if first_line.is_empty() {
+                return;
+            }
+
+            let mut full_path = PathBuf::from(first_line);
+            full_path.push(file_path);
+
+            let editor = editor.clone();
+
+            // Open the file
+            cx.spawn_in(window, async move |workspace, cx| -> anyhow::Result<()> {
+                let project_path = project
+                    .read_with(cx, |project, cx| project.find_project_path(&full_path, cx))
+                    .ok()
+                    .flatten();
+
+                if let Some(project_path) = project_path {
+                    let is_dir = project
+                        .read_with(cx, |project, cx| {
+                            project
+                                .worktree_for_id(project_path.worktree_id, cx)
+                                .map(|worktree| {
+                                    worktree
+                                        .read(cx)
+                                        .entry_for_path(&project_path.path)
+                                        .map(|entry| entry.is_dir())
+                                        .unwrap_or(false)
+                                })
+                                .unwrap_or(false)
+                        })
+                        .ok()
+                        .unwrap_or(false);
+
+                    if is_dir {
+                        let directory_content = project
+                            .update(cx, |project, cx| {
+                                Self::file_explorer_get_directory_content(
+                                    project,
+                                    &project_path,
+                                    cx,
+                                )
+                            })
+                            .ok()
+                            .and_then(|result| result.ok());
+
+                        if let Some((content, metadata)) = directory_content {
+                            let _ = workspace.update_in(cx, |_workspace, window, cx| {
+                                editor.update(cx, |editor, cx| {
+                                    editor.set_text(content, window, cx);
+                                    editor.file_explorer_metadata = Some(metadata);
+                                    let point = Point::new(2, 0);
+                                    editor.change_selections(
+                                        SelectionEffects::default(),
+                                        window,
+                                        cx,
+                                        |s| s.select_ranges([point..point]),
+                                    );
+
+                                    Self::apply_file_explorer_highlighting(editor, window, cx);
+                                })
+                            });
+
+                            let _ = editor.update(cx, |editor, cx| {
+                                if let Some(buffer) = editor.buffer.read(cx).as_singleton() {
+                                    buffer.update(cx, |buffer, cx| {
+                                        buffer.did_save(buffer.version(), None, cx);
+                                    });
+                                }
+                            });
+                        }
+                    } else {
+                        workspace
+                            .update_in(cx, |workspace, window, cx| {
+                                workspace.open_path(project_path, None, true, window, cx)
+                            })?
+                            .await?;
+
+                        workspace.update_in(cx, |workspace, window, cx| {
+                            if let Some(pane) = workspace.pane_for(&editor) {
+                                pane.update(cx, |pane, cx| {
+                                    pane.close_item_by_id(
+                                        editor.item_id(),
+                                        ::workspace::SaveIntent::Close,
+                                        window,
+                                        cx,
+                                    )
+                                    .detach();
+                                });
+                            }
+                        })?;
+                    }
+                }
+                Ok(())
+            })
+            .detach();
+        }
+    }
+
+    pub fn file_explorer_navigate_to_parent_directory(
+        workspace: &mut Workspace,
+        _action: &workspace::FileExplorerNavigateToParentDirectory,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+            let project = workspace.project().clone();
+
+            // Get current directory from the file explorer content
+            let current_dir = editor.update(cx, |editor, cx| {
+                let display_snapshot = editor.display_snapshot(cx);
+                let buffer_snapshot = display_snapshot.buffer_snapshot();
+                let full_content = buffer_snapshot.text();
+
+                // Parse the directory header to get the current path
+                let first_line = full_content
+                    .lines()
+                    .find(|line| !line.trim().is_empty())
+                    .unwrap_or("")
+                    .trim();
+
+                first_line.to_string()
+            });
+
+            if current_dir.is_empty() {
+                return;
+            }
+
+            // Don't go back if we're already at the root ("/")
+            if current_dir == "/" {
+                return;
+            }
+
+            let editor = editor.clone();
+
+            // Navigate to parent directory
+            cx.spawn_in(window, async move |workspace, cx| {
+                let current_path = PathBuf::from(&current_dir);
+                let current_dir_name = current_path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string());
+
+                // Get parent directory
+                let parent_path = current_path.parent().unwrap_or(&current_path);
+
+                // Convert to string, ensure we don't go beyond root
+                let parent_dir = if parent_path.as_os_str().is_empty() {
+                    "/".to_string()
+                } else {
+                    parent_path.to_string_lossy().to_string()
+                };
+
+                // Find the project path for the parent directory
+                let project_path = project
+                    .read_with(cx, |project, cx| {
+                        project.find_project_path(&PathBuf::from(&parent_dir), cx)
+                    })
+                    .ok()
+                    .flatten();
+
+                if let Some(project_path) = project_path {
+                    let directory_content = project
+                        .update(cx, |project, cx| {
+                            Self::file_explorer_get_directory_content(project, &project_path, cx)
+                        })
+                        .ok()
+                        .and_then(|result| result.ok());
+
+                    if let Some((content, metadata)) = directory_content {
+                        let _ = workspace.update_in(cx, |_workspace, window, cx| {
+                            editor.update(cx, |editor, cx| {
+                                editor.set_text(content, window, cx);
+                                editor.file_explorer_metadata = Some(metadata);
+
+                                let mut positioned = false;
+                                if let Some(dir_name) = current_dir_name {
+                                    let target_text = format!("{}/", dir_name);
+                                    let snapshot = editor.buffer.read(cx).snapshot(cx);
+                                    for row in 0..snapshot.max_point().row + 1 {
+                                        let len =
+                                            snapshot.line_len(multi_buffer::MultiBufferRow(row));
+                                        let line_text = snapshot
+                                            .text_for_range(
+                                                language::Point::new(row, 0)
+                                                    ..language::Point::new(row, len),
+                                            )
+                                            .collect::<String>();
+
+                                        if line_text.trim() == target_text {
+                                            let point = language::Point::new(row, 0);
+                                            editor.change_selections(
+                                                Default::default(),
+                                                window,
+                                                cx,
+                                                |s| {
+                                                    s.select_ranges([point..point]);
+                                                },
+                                            );
+                                            editor.request_autoscroll(Autoscroll::center(), cx);
+                                            positioned = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if !positioned {
+                                    editor.move_to_beginning(&Default::default(), window, cx);
+                                }
+
+                                Self::apply_file_explorer_highlighting(editor, window, cx);
+                            })
+                        });
+
+                        let _ = editor.update(cx, |editor, cx| {
+                            if let Some(buffer) = editor.buffer.read(cx).as_singleton() {
+                                buffer.update(cx, |buffer, cx| {
+                                    buffer.did_save(buffer.version(), None, cx);
+                                });
+                            }
+                        });
+                    }
+                }
+            })
+            .detach();
+        }
+    }
+
+    pub fn file_explorer_save_modified(
+        workspace: &mut Workspace,
+        _action: &workspace::FileExplorerSaveModified,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
+            let project = workspace.project().clone();
+            let editor = editor.clone();
+
+            // Get the current state synchronously first
+            let (current_dir, stored_state, current_buffer_content, cursor_row) =
+                editor.update(cx, |editor, cx| {
+                    let display_snapshot = editor.display_snapshot(cx);
+                    let cursor_row = editor
+                        .selections
+                        .newest_display(&display_snapshot)
+                        .head()
+                        .row()
+                        .0;
+                    let buffer_snapshot = display_snapshot.buffer_snapshot();
+                    let full_content = buffer_snapshot.text();
+
+                    let first_line = full_content
+                        .lines()
+                        .find(|line| !line.trim().is_empty())
+                        .unwrap_or("")
+                        .trim();
+
+                    (
+                        first_line.to_string(),
+                        editor.file_explorer_metadata.clone().unwrap_or_default(),
+                        full_content.to_string(),
+                        cursor_row,
+                    )
+                });
+
+            if current_dir.is_empty() || stored_state.is_empty() {
+                return;
+            }
+
+            let current_entries: Vec<String> = current_buffer_content
+                .lines()
+                .skip(2)
+                .map(|line| line.trim().to_string())
+                .collect();
+
+            let cursor_target_name = if cursor_row >= 2 {
+                current_entries
+                    .get((cursor_row - 2) as usize)
+                    .filter(|name| !name.is_empty())
+                    .cloned()
+            } else {
+                None
+            };
+
+            if current_entries.len() != stored_state.len() {
+                let detail = format!(
+                    "The number of lines ({}) does not match the original number of files ({}).\n\nTo delete a file, empty its line content instead of deleting the line itself.",
+                    current_entries.len(),
+                    stored_state.len()
+                );
+
+                ConfirmationDialog::show(
+                    workspace,
+                    "Cannot Save Changes",
+                    Some(detail),
+                    vec!["OK"],
+                    false,
+                    window,
+                    cx,
+                )
+                .detach();
+                return;
+            }
+
+            let mut renames = Vec::new();
+            let mut deletions = Vec::new();
+
+            for (i, stored_name) in stored_state.iter().enumerate() {
+                if let Some(current_name) = current_entries.get(i) {
+                    if current_name.is_empty() {
+                        deletions.push(stored_name.clone());
+                    } else if stored_name != current_name {
+                        renames.push((stored_name.clone(), current_name.clone()));
+                    }
+                }
+            }
+
+            if renames.is_empty() && deletions.is_empty() {
+                return;
+            }
+
+            let mut detail = String::new();
+            if !renames.is_empty() {
+                detail.push_str("Renames:\n");
+                detail.push_str(
+                    &renames
+                        .iter()
+                        .map(|(old, new)| format!("{} -> {}", old, new))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                );
+            }
+
+            if !deletions.is_empty() {
+                if !detail.is_empty() {
+                    detail.push_str("\n\n");
+                }
+                detail.push_str("Deletions (Trash):\n");
+                detail.push_str(&deletions.join("\n"));
+            }
+
+            // Show confirmation modal synchronously
+            let confirmation_task = ConfirmationDialog::show(
+                workspace,
+                "Confirm Changes",
+                Some(detail),
+                vec!["Confirm", "Cancel"],
+                false,
+                window,
+                cx,
+            );
+
+            // Spawn async task to handle confirmation result
+            cx.spawn_in(window, async move |workspace, cx| {
+                let confirmation = confirmation_task.await;
+
+                if confirmation == Some(0) {
+                    // Confirmed - perform renames
+                    let fs = project.read_with(cx, |project, _| project.fs().clone())?;
+                    let base_path = PathBuf::from(&current_dir);
+
+                    for (old_name, new_name) in &renames {
+                        // Strip trailing slash for directories
+                        let old_clean = old_name.trim_end_matches('/');
+                        let new_clean = new_name.trim_end_matches('/');
+                        let old_path = base_path.join(old_clean);
+                        let new_path = base_path.join(new_clean);
+
+                        if let Err(e) = fs.rename(&old_path, &new_path, Default::default()).await {
+                            log::error!("Failed to rename {:?} to {:?}: {}", old_path, new_path, e);
+                        }
+                    }
+
+                    for name in &deletions {
+                        let clean_name = name.trim_end_matches('/');
+                        let path = base_path.join(clean_name);
+
+                        let output = std::process::Command::new("trash").arg(&path).output();
+
+                        match output {
+                            Ok(output) => {
+                                if !output.status.success() {
+                                    log::error!(
+                                        "Failed to trash {:?}: {}",
+                                        path,
+                                        String::from_utf8_lossy(&output.stderr)
+                                    );
+                                }
+                            }
+                            Err(e) => {
+                                log::error!("Failed to execute trash command for {:?}: {}", path, e);
+                            }
+                        }
+                    }
+
+                    // Refresh buffer with retry logic to wait for FS events
+                    let mut retries = 0;
+                    const MAX_RETRIES: usize = 20; // 1 second total
+                    const RETRY_DELAY: Duration = Duration::from_millis(50);
+
+                    loop {
+                        // Get editor again to ensure it's still valid/active
+                        let file_explorer_editor = workspace
+                            .update_in(cx, |workspace, _, cx| {
+                                workspace.active_item_as::<Editor>(cx)
+                            })
+                            .ok()
+                            .flatten();
+
+                        let Some(file_explorer_editor) = file_explorer_editor else {
+                            break;
+                        };
+
+                        let project_path = project
+                            .read_with(cx, |project, cx| {
+                                project.find_project_path(&PathBuf::from(&current_dir), cx)
+                            })
+                            .ok()
+                            .flatten();
+
+                        if let Some(project_path) = project_path {
+                            let refresh_result = project
+                                .update(cx, |project, cx| {
+                                    Self::file_explorer_get_directory_content(
+                                        project,
+                                        &project_path,
+                                        cx,
+                                    )
+                                })
+                                .and_then(|e| e);
+
+                            if let Ok((new_content, new_metadata)) = refresh_result {
+                                // Check if metadata is stale (still contains old names or deletions)
+                                let mut is_stale = false;
+
+                                if !renames.is_empty() {
+                                    let new_names: HashSet<&String> =
+                                        renames.iter().map(|(_, new)| new).collect();
+                                    for (old_name, _) in &renames {
+                                        if new_metadata.contains(old_name)
+                                            && !new_names.contains(old_name)
+                                        {
+                                            is_stale = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if !is_stale && !deletions.is_empty() {
+                                    for deleted_name in &deletions {
+                                        if new_metadata.contains(deleted_name) {
+                                            is_stale = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if !is_stale || retries >= MAX_RETRIES {
+                                    workspace
+                                        .update_in(cx, |_workspace, window, cx| {
+                                            file_explorer_editor.update(cx, |editor, cx| {
+                                                editor.set_text(new_content, window, cx);
+                                                editor.file_explorer_metadata = Some(new_metadata);
+                                                if let Some(buffer) =
+                                                    editor.buffer.read(cx).as_singleton()
+                                                {
+                                                    buffer.update(cx, |buffer, cx| {
+                                                        buffer.did_save(buffer.version(), None, cx);
+                                                    });
+                                                }
+
+                                                Self::apply_file_explorer_highlighting(
+                                                    editor, window, cx,
+                                                );
+
+                                                let snapshot = editor.buffer.read(cx).snapshot(cx);
+                                                let mut new_row = cursor_row;
+                                                if let Some(target_name) = &cursor_target_name {
+                                                    let target_name = target_name.trim_end_matches('/');
+                                                    for (i, line) in
+                                                        snapshot.text().lines().enumerate().skip(2)
+                                                    {
+                                                        if line.trim().trim_end_matches('/') == target_name
+                                                        {
+                                                            new_row = i as u32;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+
+                                                let max_row = snapshot.max_point().row;
+                                                new_row = std::cmp::min(new_row, max_row);
+                                                let point = Point::new(new_row, 0);
+                                                editor.change_selections(
+                                                    SelectionEffects::default(),
+                                                    window,
+                                                    cx,
+                                                    |s| s.select_ranges([point..point]),
+                                                );
+                                                editor.request_autoscroll(Autoscroll::center(), cx);
+                                            });
+                                        })
+                                        .ok();
+                                    break;
+                                }
+                            }
+                        }
+
+                        cx.background_executor().timer(RETRY_DELAY).await;
+                        retries += 1;
+                    }
+                }
+
+                anyhow::Ok(())
+            })
+            .detach();
+        }
     }
 
     pub fn new_in_workspace(
@@ -3441,6 +4279,10 @@ impl Editor {
 
     pub fn set_use_modal_editing(&mut self, to: bool) {
         self.use_modal_editing = to;
+    }
+
+    pub fn set_file_explorer(&mut self, is_file_explorer: bool) {
+        self.is_file_explorer = is_file_explorer;
     }
 
     pub fn use_modal_editing(&self) -> bool {

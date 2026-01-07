@@ -2,6 +2,7 @@ use crate::{
     CloseWindow, NewFile, NewTerminal, OpenInTerminal, OpenOptions, OpenTerminal, OpenVisible,
     SplitDirection, ToggleFileFinder, ToggleProjectSymbols, ToggleZoom, Workspace,
     WorkspaceItemBuilder, ZoomIn, ZoomOut,
+    confirmation_dialog::ConfirmationDialog,
     invalid_item_view::InvalidItemView,
     item::{
         ActivateOnClose, ClosePosition, Item, ItemBufferKind, ItemHandle, ItemSettings,
@@ -11,7 +12,6 @@ use crate::{
     move_item,
     notifications::NotifyResultExt,
     toolbar::Toolbar,
-    unsaved_changes_modal::UnsavedChangesModal,
     utility_pane::UtilityPaneSlot,
     workspace_settings::{AutosaveSetting, TabBarSettings, WorkspaceSettings},
 };
@@ -1850,11 +1850,12 @@ impl Pane {
             if save_intent == SaveIntent::Close && dirty_items.len() > 1 {
                 let answer = workspace.update_in(cx, |workspace, window, cx| {
                     let detail = Self::file_names_for_prompt(&mut dirty_items.iter(), cx);
-                    UnsavedChangesModal::show(
+                    ConfirmationDialog::show(
                         workspace,
                         "Do you want to save changes to the following files?",
                         Some(detail),
                         vec!["Save all", "Discard all", "Cancel"],
+                        true,
                         window,
                         cx,
                     )
@@ -1893,11 +1894,12 @@ impl Pane {
                                     &mut [&item_to_close].into_iter(),
                                     cx,
                                 );
-                                UnsavedChangesModal::show(
+                                ConfirmationDialog::show(
                                     workspace,
                                     format!("Unable to save file: {}", &err),
                                     Some(detail),
                                     vec!["Close Without Saving", "Cancel"],
+                                    true,
                                     window,
                                     cx,
                                 )
@@ -2155,11 +2157,12 @@ impl Pane {
                     pane.activate_item(item_ix, true, true, window, cx);
                     if let Some(workspace) = pane.workspace.upgrade() {
                         workspace.update(cx, |workspace, cx| {
-                            UnsavedChangesModal::show(
+                            ConfirmationDialog::show(
                                 workspace,
                                 DELETED_MESSAGE,
                                 None::<String>,
                                 vec!["Save", "Close", "Cancel"],
+                                false,
                                 window,
                                 cx,
                             )
@@ -2196,11 +2199,12 @@ impl Pane {
                     pane.activate_item(item_ix, true, true, window, cx);
                     if let Some(workspace) = pane.workspace.upgrade() {
                         workspace.update(cx, |workspace, cx| {
-                            UnsavedChangesModal::show(
+                            ConfirmationDialog::show(
                                 workspace,
                                 CONFLICT_MESSAGE,
                                 None::<String>,
                                 vec!["Overwrite", "Discard", "Cancel"],
+                                false,
                                 window,
                                 cx,
                             )
@@ -2245,11 +2249,12 @@ impl Pane {
                             let prompt = dirty_message_for(item.project_path(cx), path_style);
                             if let Some(workspace) = pane.workspace.upgrade() {
                                 Some(workspace.update(cx, |workspace, cx| {
-                                    UnsavedChangesModal::show(
+                                    ConfirmationDialog::show(
                                         workspace,
                                         prompt,
                                         None::<String>,
                                         vec!["Save", "Don't Save", "Cancel"],
+                                        true,
                                         window,
                                         cx,
                                     )

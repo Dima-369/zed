@@ -1,15 +1,7 @@
+- merge main then configure https://github.com/zed-industries/zed/pull/45476#event-21891616303
+
 - https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
 so I now need to clean up my code for it
-
-create a new action which is named like `editor file explorer open`, it spawns a new tab, it considers the editor where it was opened from and takes its directory
-
-In this new tab you list all files, sorted with directories at top, from the editor tab directory in an Editor::Multi thing, so it is editable
-
-you might inspect how `workspace::NewFileFromClipboard` is implemented
-
-NEXT, you implement a new action for this (assume it will be bound to enter)  to open the file path row under cursor as a new Zed tab (or reuse an existing one)
-
-check if it makes sense to have this in an own crate
 
 
 # >>> Investigations
@@ -62,7 +54,7 @@ Caused by:
 ```
 
 I then let AI apply the diff directly on my `dima` branch, and it correctly starts up and shows the smooth cursor.
-But it has the same annoying character misplaced bug as the other diff, but in this PR it instantly jumps to the character of where the cursor will be which also looks bad.
+But it has the same annoying character misplaced bug as the other diff, but in this PR it instantly jumps to the character of where the cursor will be, which also looks bad.
 
 https://github.com/zed-industries/zed/pull/43826
 
@@ -98,7 +90,7 @@ https://github.com/zed-industries/zed/pull/44530
 
 ## Filter for code actions
 
-Absolutely not important since I rarely, if ever, need to search.
+Absolutely not important since I rarely, if ever, need to search. It depends on LSP server and programming language.
 
 ### Add filter for code actions (PR open)
 
@@ -240,4 +232,3 @@ To implement this feature, you would need to:
 2. **Modify the permission logic** in `crates/acp_thread/src/acp_thread.rs` to check these settings before prompting
 3. **Update the UI** to show when commands are auto-allowed/blocked based on these settings
 4. **Store the command patterns** in Zed's settings database
-

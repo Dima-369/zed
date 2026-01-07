@@ -9,23 +9,25 @@ use ui::{Button, ButtonStyle, Label, LabelSize, TintColor, prelude::*};
 
 use crate::modal_layer::ModalView;
 
-pub struct UnsavedChangesModal {
+pub struct ConfirmationDialog {
     message: Arc<str>,
     detail: Option<Arc<str>>,
     buttons: Vec<String>,
     selected_button: usize,
     focus_handle: FocusHandle,
     result_sender: Option<oneshot::Sender<usize>>,
+    show_key_h_for_dont_save: bool,
 }
 
-impl ModalView for UnsavedChangesModal {}
+impl ModalView for ConfirmationDialog {}
 
-impl UnsavedChangesModal {
+impl ConfirmationDialog {
     pub fn show(
         workspace: &mut crate::Workspace,
         message: impl Into<Arc<str>>,
         detail: Option<impl Into<Arc<str>>>,
         buttons: Vec<impl Into<String>>,
+        show_key_h_for_dont_save: bool,
         window: &mut Window,
         cx: &mut Context<crate::Workspace>,
     ) -> Task<Option<usize>> {
@@ -43,6 +45,7 @@ impl UnsavedChangesModal {
                 selected_button: 0,
                 focus_handle: cx.focus_handle(),
                 result_sender: Some(sender),
+                show_key_h_for_dont_save,
             };
             modal.focus_handle.focus(window, cx);
             modal
@@ -79,20 +82,20 @@ impl UnsavedChangesModal {
     }
 }
 
-impl EventEmitter<DismissEvent> for UnsavedChangesModal {}
+impl EventEmitter<DismissEvent> for ConfirmationDialog {}
 
-impl Focusable for UnsavedChangesModal {
+impl Focusable for ConfirmationDialog {
     fn focus_handle(&self, _cx: &App) -> FocusHandle {
         self.focus_handle.clone()
     }
 }
 
-impl Render for UnsavedChangesModal {
+impl Render for ConfirmationDialog {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let focus_handle = self.focus_handle.clone();
 
         v_flex()
-            .key_context("UnsavedChangesModal")
+            .key_context("ConfirmationDialog")
             .track_focus(&focus_handle)
             .w(rems(28.))
             .p_6()
@@ -115,7 +118,7 @@ impl Render for UnsavedChangesModal {
                         this.select_button(0, window, cx);
                         this.confirm_selection(window, cx);
                     }
-                    "h" => {
+                    "h" if this.show_key_h_for_dont_save => {
                         // Don't Save (second button)
                         this.select_button(1, window, cx);
                         this.confirm_selection(window, cx);
@@ -151,26 +154,6 @@ impl Render for UnsavedChangesModal {
                                         .color(Color::Muted),
                                 )
                             })
-                            .child(
-                                v_flex()
-                                    .gap_1()
-                                    .mt_2()
-                                    .child(
-                                        Label::new("Enter: Save")
-                                            .size(LabelSize::Small)
-                                            .color(Color::Muted),
-                                    )
-                                    .child(
-                                        Label::new("h: Don't Save")
-                                            .size(LabelSize::Small)
-                                            .color(Color::Muted),
-                                    )
-                                    .child(
-                                        Label::new("Escape: Cancel")
-                                            .size(LabelSize::Small)
-                                            .color(Color::Muted),
-                                    ),
-                            ),
                     ),
             )
             .child(
@@ -184,7 +167,17 @@ impl Render for UnsavedChangesModal {
                         let is_destructive = button_text.to_lowercase().contains("don't save")
                             || button_text.to_lowercase().contains("discard");
 
-                        Button::new(("button", index), button_text.clone())
+                        // Add keybinding hint to button text
+                        let mut button_text_with_key = button_text.clone();
+                        if index == 0 {
+                            button_text_with_key.push_str(" (Enter)");
+                        } else if index == 1 && self.show_key_h_for_dont_save {
+                            button_text_with_key.push_str(" (h)");
+                        } else if index == self.buttons.len().saturating_sub(1) {
+                            button_text_with_key.push_str(" (Escape)");
+                        }
+
+                        Button::new(("button", index), button_text_with_key)
                             .style(if is_primary {
                                 ButtonStyle::Filled
                             } else if is_destructive {
