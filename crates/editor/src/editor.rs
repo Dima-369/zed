@@ -3101,24 +3101,24 @@ impl Editor {
                         }
                     }
 
-                    // Apply blue highlights for directories
+                    // Apply accent highlights for directories
                     if !directory_ranges.is_empty() {
                         editor.highlight_text::<DirectoryHighlight>(
                             directory_ranges,
                             HighlightStyle {
-                                color: Some(gpui::blue()),
+                                color: Some(cx.theme().colors().text_accent),
                                 ..Default::default()
                             },
                             cx,
                         );
                     }
 
-                    // Apply blue highlights for file extensions
+                    // Apply accent highlights for file extensions
                     if !extension_ranges.is_empty() {
                         editor.highlight_text::<FileExtensionHighlight>(
                             extension_ranges,
                             HighlightStyle {
-                                color: Some(gpui::blue()),
+                                color: Some(cx.theme().colors().text_accent),
                                 ..Default::default()
                             },
                             cx,
@@ -3283,24 +3283,24 @@ impl Editor {
                                         }
                                     }
 
-                                    // Apply blue highlights for directories
+                                    // Apply accent highlights for directories
                                     if !directory_ranges.is_empty() {
                                         editor.highlight_text::<DirectoryHighlight>(
                                             directory_ranges,
                                             HighlightStyle {
-                                                color: Some(gpui::blue()),
+                                                color: Some(cx.theme().colors().text_accent),
                                                 ..Default::default()
                                             },
                                             cx,
                                         );
                                     }
 
-                                    // Apply blue highlights for file extensions
+                                    // Apply accent highlights for file extensions
                                     if !extension_ranges.is_empty() {
                                         editor.highlight_text::<FileExtensionHighlight>(
                                             extension_ranges,
                                             HighlightStyle {
-                                                color: Some(gpui::blue()),
+                                                color: Some(cx.theme().colors().text_accent),
                                                 ..Default::default()
                                             },
                                             cx,
@@ -3475,24 +3475,24 @@ impl Editor {
                                     }
                                 }
 
-                                // Apply blue highlights for directories
+                                // Apply accent highlights for directories
                                 if !directory_ranges.is_empty() {
                                     editor.highlight_text::<DirectoryHighlight>(
                                         directory_ranges,
                                         HighlightStyle {
-                                            color: Some(gpui::blue()),
+                                            color: Some(cx.theme().colors().text_accent),
                                             ..Default::default()
                                         },
                                         cx,
                                     );
                                 }
 
-                                // Apply blue highlights for file extensions
+                                // Apply accent highlights for file extensions
                                 if !extension_ranges.is_empty() {
                                     editor.highlight_text::<FileExtensionHighlight>(
                                         extension_ranges,
                                         HighlightStyle {
-                                            color: Some(gpui::blue()),
+                                            color: Some(cx.theme().colors().text_accent),
                                             ..Default::default()
                                         },
                                         cx,
@@ -3692,24 +3692,24 @@ impl Editor {
                                                     }
                                                 }
 
-                                                // Apply blue highlights for directories
+                                                // Apply accent highlights for directories
                                                 if !directory_ranges.is_empty() {
                                                     editor.highlight_text::<DirectoryHighlight>(
                                                         directory_ranges,
                                                         HighlightStyle {
-                                                            color: Some(gpui::blue()),
+                                                            color: Some(cx.theme().colors().text_accent),
                                                             ..Default::default()
                                                         },
                                                         cx,
                                                     );
                                                 }
 
-                                                // Apply blue highlights for file extensions
+                                                // Apply accent highlights for file extensions
                                                 if !extension_ranges.is_empty() {
                                                     editor.highlight_text::<FileExtensionHighlight>(
                                                         extension_ranges,
                                                         HighlightStyle {
-                                                            color: Some(gpui::blue()),
+                                                            color: Some(cx.theme().colors().text_accent),
                                                             ..Default::default()
                                                         },
                                                         cx,
