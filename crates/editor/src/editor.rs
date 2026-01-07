@@ -3049,6 +3049,8 @@ impl Editor {
                 cx,
             );
         }
+
+        Self::apply_file_explorer_icons(editor, cx);
     }
 
     fn apply_file_explorer_icons(editor: &mut Editor, cx: &mut Context<Editor>) {
@@ -3167,7 +3169,6 @@ impl Editor {
                     }
 
                     Self::apply_file_explorer_highlighting(editor, window, cx);
-                    Self::apply_file_explorer_icons(editor, cx);
                 });
 
                 // Mark as saved to avoid unsaved changes prompt
@@ -3303,7 +3304,6 @@ impl Editor {
                                     );
 
                                     Self::apply_file_explorer_highlighting(editor, window, cx);
-                                    Self::apply_file_explorer_icons(editor, cx);
                                 })
                             });
 
