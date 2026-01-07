@@ -70,16 +70,15 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
 
-WIP: Can this be improved?
-The displayed buffer uses the `Rust` programming language buffer language which highlights directories differently to files; it is not perfect, but works.
+Added in `crates/editor/src/editor.rs`, search for `file_explorer` and related functions.
 
-Added in `crates/editor/src/editor.rs`, see the `file_explorer_*` functions.
+Take care to only modify the file names in the editor, not the top directory name or the newlines below the directory name, otherwise the logic on saving will not work.
 
-Take care to only modify the file names, not the top directory name or the newlines, otherwise the logic on saving will not work.
+You can empty a line to trash a file.
 
-You can empty a line to trash a file, but do not modify line count.
+Deleting or adding lines is not supported, this is for file browsing and file renaming via usual editor keybindings.
 
-New actions:
+### New actions
 
 - `workspace::FileExplorerOpen` (the entry point)
 - `workspace::FileExplorerOpenFile`
