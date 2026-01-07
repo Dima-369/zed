@@ -3,6 +3,12 @@
 - https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
 so I now need to clean up my code for it
 
+- add boolean into confirmation modal construction, named show_key_h_for_dont_save
+then set it to false in `editor.rs` usage since it's usage does not need it
+
+- better show keybindings in confirmation modal directly inside the buttons at teh bottom in paretheses
+instead of taking up too much vertical space
+
 # editor file explorer
 
 ## here
