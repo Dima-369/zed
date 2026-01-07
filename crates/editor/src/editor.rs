@@ -3015,8 +3015,8 @@ impl Editor {
             let line_start = snapshot.point_to_offset(Point::new(line_idx as u32, 0));
             
             if line.ends_with('/') {
-                // Directory - highlight entire line (excluding newline)
-                let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, (line.len() - 1) as u32));
+                // Directory - highlight entire line including the trailing slash
+                let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
                 directory_ranges.push(snapshot.anchor_before(line_start)..snapshot.anchor_after(line_end));
             } else if let Some(dot_pos) = line.rfind('.') {
                 // File - highlight just the extension
