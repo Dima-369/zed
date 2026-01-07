@@ -3742,7 +3742,7 @@ impl Editor {
                                                     cx,
                                                     |s| s.select_ranges([point..point]),
                                                 );
-                                                editor.request_autoscroll(Autoscroll::fit(), cx);
+                                                editor.request_autoscroll(Autoscroll::center(), cx);
                                             });
                                         })
                                         .ok();
