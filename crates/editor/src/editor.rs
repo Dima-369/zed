@@ -3482,9 +3482,15 @@ impl Editor {
             let editor = editor.clone();
 
             // Get the current state synchronously first
-            let (current_dir, stored_state, current_buffer_content) =
+            let (current_dir, stored_state, current_buffer_content, cursor_row) =
                 editor.update(cx, |editor, cx| {
                     let display_snapshot = editor.display_snapshot(cx);
+                    let cursor_row = editor
+                        .selections
+                        .newest_display(&display_snapshot)
+                        .head()
+                        .row()
+                        .0;
                     let buffer_snapshot = display_snapshot.buffer_snapshot();
                     let full_content = buffer_snapshot.text();
 
@@ -3498,6 +3504,7 @@ impl Editor {
                         first_line.to_string(),
                         editor.file_explorer_metadata.clone().unwrap_or_default(),
                         full_content.to_string(),
+                        cursor_row,
                     )
                 });
 
@@ -3510,6 +3517,15 @@ impl Editor {
                 .skip(2)
                 .map(|line| line.trim().to_string())
                 .collect();
+
+            let cursor_target_name = if cursor_row >= 2 {
+                current_entries
+                    .get((cursor_row - 2) as usize)
+                    .filter(|name| !name.is_empty())
+                    .cloned()
+            } else {
+                None
+            };
 
             if current_entries.len() != stored_state.len() {
                 let detail = format!(
@@ -3701,6 +3717,32 @@ impl Editor {
                                                 Self::apply_file_explorer_highlighting(
                                                     editor, window, cx,
                                                 );
+
+                                                let snapshot = editor.buffer.read(cx).snapshot(cx);
+                                                let mut new_row = cursor_row;
+                                                if let Some(target_name) = &cursor_target_name {
+                                                    let target_name = target_name.trim_end_matches('/');
+                                                    for (i, line) in
+                                                        snapshot.text().lines().enumerate().skip(2)
+                                                    {
+                                                        if line.trim().trim_end_matches('/') == target_name
+                                                        {
+                                                            new_row = i as u32;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+
+                                                let max_row = snapshot.max_point().row;
+                                                new_row = std::cmp::min(new_row, max_row);
+                                                let point = Point::new(new_row, 0);
+                                                editor.change_selections(
+                                                    SelectionEffects::default(),
+                                                    window,
+                                                    cx,
+                                                    |s| s.select_ranges([point..point]),
+                                                );
+                                                editor.request_autoscroll(Autoscroll::fit(), cx);
                                             });
                                         })
                                         .ok();
