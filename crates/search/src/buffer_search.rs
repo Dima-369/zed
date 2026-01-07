@@ -841,7 +841,6 @@ impl BufferSearchBar {
             self.replace_enabled = false;
             active_editor.search_bar_visibility_changed(false, window, cx);
             active_editor.toggle_filtered_search_ranges(None, window, cx);
-            is_in_project_search = active_editor.supported_options(cx).find_in_results;
             let handle = active_editor.item_focus_handle(cx);
             self.focus(&handle, window, cx);
         }
