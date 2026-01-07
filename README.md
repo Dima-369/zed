@@ -173,7 +173,7 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
   - AI agent text threads
 - add the Qwen provider with models `qwen3-coder-plus` and `qwen3-coder-flash` which can be used for Inline Assist and in Zed Agent
   - the implementation is based on how https://github.com/RooCodeInc/Roo-Code interacts with Qwen and requires the `~/.qwen/oauth_creds.json` file to set which can be done by using the `qwen` binary and authenticating with OAuth
-  - inside the Zed Agent, it performs weirdly, you often do not see the `Color::Muted` tool call rows, although the model does call them. And `agent::OpenActiveThreadAsMarkdown` then sometimes shows incorrect context. I did not investigate that further
+  - inside the Zed Agent, it performs buggy (I also often see the modal using the `open` tool which is incorrect); you often do not see the `Color::Muted` tool call rows, although the model does call them. And `agent::OpenActiveThreadAsMarkdown` then sometimes shows incorrect context. I did not investigate that further
 
 ### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 

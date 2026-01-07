@@ -1,4 +1,4 @@
-- fix broken Qwen code for Zed Agent use
+- fix broken Qwen code for Zed Agent use, compare with gemini 3 tool use via proxy
 
 
 
