@@ -14,13 +14,6 @@ USER should instead EMPTY a line fully, to trash a file, use `trash` CLI on mac 
 
 - how to display real file icons from actual tabs/project panel?
 
-- the / for directory names should also have the text_accent
-
-TEST
-- there is a bug browsing (via open file action) to a dir named `image_viewer/`, why? it just kinda opens a blank `image_v` editor tab?
-
-TEST
-- upon saving, it moves the cursor at the very end, I do not want that, it should stay on the exact same file name (even if the row changes, I think because other files could be created in the mean-time?) as before saving
 
 
 
