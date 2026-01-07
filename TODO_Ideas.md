@@ -20,6 +20,8 @@ USER should instead EMPTY a line fully, to trash a file, use `trash` CLI on mac 
 
 - how to display real file icons from actual tabs/project panel? currently, I am faking it by setting a `Rust` language which kinda sucks. Is there an easy way to highlight just directories in blue fg text color and then file extensions in same blue?
 or does one really have to create a new treesitter syntax just for this mode?
+- upon saving, it moves the cursor at the very end, I do not want that, it should stay on the exact same file name (even if the row
+- upon saving, it moves the cursor at the very end, I do not want that, it should stay on the exact same file name (even if the row changes, I think because other files could be created in the mean-time?) as before saving
 
 - refactor code (except action entries in `editor.rs`) into own crate
 
