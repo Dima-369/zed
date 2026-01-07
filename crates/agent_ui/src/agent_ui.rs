@@ -24,7 +24,6 @@ mod ui;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use ::ui::IconName;
 use agent_settings::{AgentProfileId, AgentSettings};
 use assistant_slash_command::SlashCommandRegistry;
 use client::Client;
@@ -230,16 +229,6 @@ impl ExternalAgent {
             Self::NativeAgent => Rc::new(agent::NativeAgentServer::new(fs, history)),
             Self::Custom { name } => Rc::new(agent_servers::CustomAgentServer::new(name.clone())),
         }
-    }
-}
-
-pub(crate) fn icon_for_agent_name(agent_name: Option<&str>) -> IconName {
-    match agent_name.map(|name| name.to_ascii_lowercase()).as_deref() {
-        Some("zed") => IconName::AiZed,
-        Some("gemini") | Some("gemini cli") => IconName::AiGemini,
-        Some("claude") | Some("claude code") | Some("claude-code") => IconName::AiClaude,
-        Some("codex") | Some("codex cli") => IconName::AiOpenAi,
-        _ => IconName::Sparkle,
     }
 }
 

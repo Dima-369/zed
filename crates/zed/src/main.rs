@@ -37,8 +37,6 @@ use parking_lot::Mutex;
 use project::{project_settings::ProjectSettings, trusted_worktrees};
 use proto;
 use recent_projects::{RemoteSettings, open_remote_project};
-use recent_files;
-use recent_projects::{SshSettings, open_remote_project};
 use release_channel::{AppCommitSha, AppVersion, ReleaseChannel};
 use session::{AppSession, Session};
 use settings::{BaseKeymap, Settings, SettingsStore, watch_config_file};

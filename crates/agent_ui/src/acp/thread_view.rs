@@ -1813,10 +1813,6 @@ impl AcpThreadView {
                 } else if !self.message_queue.is_empty() {
                     self.send_queued_message_at_index(0, false, window, cx);
                 }
-
-                if self.as_native_thread(cx).is_none() {
-                    self.generate_title(thread.clone(), cx);
-                }
             }
             AcpThreadEvent::Refusal => {
                 self.thread_retry_status.take();
@@ -3153,6 +3149,7 @@ impl AcpThreadView {
                                                 content_ix,
                                                 tool_call,
                                                 use_card_layout,
+                                                false,
                                                 window,
                                                 cx,
                                             ),
@@ -5274,12 +5271,6 @@ impl AcpThreadView {
             return false;
         };
         thread.read(cx).is_imported()
-    }
-
-    fn is_using_zed_ai_models(&self, cx: &App) -> bool {
-        self.as_native_thread(cx)
-            .and_then(|thread| thread.read(cx).model())
-            .is_some_and(|model| model.provider_id() == language_model::ZED_CLOUD_PROVIDER_ID)
     }
 
     fn render_token_usage(&self, cx: &mut Context<Self>) -> Option<Div> {
