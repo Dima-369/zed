@@ -796,12 +796,18 @@ impl OpenAiEventMapper {
                     let entry = self.tool_calls_by_index.entry(tool_call.index).or_default();
 
                     if let Some(tool_id) = tool_call.id.clone() {
-                        entry.id = tool_id;
+                        // Only update the ID if it's not empty (some providers send empty strings in subsequent chunks)
+                        if !tool_id.is_empty() {
+                            entry.id = tool_id;
+                        }
                     }
 
                     if let Some(function) = tool_call.function.as_ref() {
                         if let Some(name) = function.name.clone() {
-                            entry.name = name;
+                            // Only update the name if it's not empty
+                            if !name.is_empty() {
+                                entry.name = name;
+                            }
                         }
 
                         if let Some(arguments) = function.arguments.clone() {
