@@ -15,9 +15,6 @@ instead of taking up too much vertical space
 
 See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 
-- show error when line count differs from old state to the one user wants to save, this would indicate that user deleted some file
-USER should instead EMPTY a line fully, to trash a file, use `trash` CLI on mac (and always assume mac). so implement the trashing and the line count differing thing, just use the confirmation dialog to warn about that
-
 - how to display real file icons from actual tabs/project panel?
 
 
