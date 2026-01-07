@@ -14,6 +14,8 @@ USER should instead EMPTY a line fully, to trash a file, use `trash` CLI on mac 
 
 - how to display real file icons from actual tabs/project panel?
 
+- the / for directory names should also have the text_accent
+
 TEST
 - there is a bug browsing (via open file action) to a dir named `image_viewer/`, why? it just kinda opens a blank `image_v` editor tab?
 
