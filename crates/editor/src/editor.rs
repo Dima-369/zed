@@ -3219,7 +3219,7 @@ impl Editor {
                 // Get full editor content
                 let full_content = buffer_snapshot.text();
 
-                (line_content, full_content.to_string())
+                (line_content, full_content)
             });
 
             // Extract file path from line content
@@ -3485,7 +3485,7 @@ impl Editor {
     ) {
         if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
             let project = workspace.project().clone();
-            let editor = editor.clone();
+            let editor = editor;
 
             // Get the current state synchronously first
             let (current_dir, stored_state, current_buffer_content, cursor_row) =
@@ -3626,7 +3626,7 @@ impl Editor {
                         let clean_name = name.trim_end_matches('/');
                         let path = base_path.join(clean_name);
 
-                        let output = std::process::Command::new("trash").arg(&path).output();
+                        let output = smol::process::Command::new("trash").arg(&path).output().await;
 
                         match output {
                             Ok(output) => {
