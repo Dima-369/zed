@@ -3565,16 +3565,16 @@ impl Editor {
                 cx,
             );
 
-            // Spawn async task to handle the confirmation result
+            // Spawn async task to handle confirmation result
             cx.spawn_in(window, async move |workspace, cx| {
                 let confirmation = confirmation_task.await;
 
                 if confirmation == Some(0) {
-                    // Confirmed - perform the renames
+                    // Confirmed - perform renames
                     let fs = project.read_with(cx, |project, _| project.fs().clone())?;
                     let base_path = PathBuf::from(&current_dir);
 
-                    for (old_name, new_name) in renames {
+                    for (old_name, new_name) in &renames {
                         // Strip trailing slash for directories
                         let old_clean = old_name.trim_end_matches('/');
                         let new_clean = new_name.trim_end_matches('/');
@@ -3591,14 +3591,24 @@ impl Editor {
                         }
                     }
 
-                    // Refresh buffer
-                    if let Some(file_explorer_editor) = workspace
-                        .update_in(cx, |workspace, _, cx| {
-                            workspace.active_item_as::<Editor>(cx)
-                        })
-                        .ok()
-                        .flatten()
-                    {
+                    // Refresh buffer with retry logic to wait for FS events
+                    let mut retries = 0;
+                    const MAX_RETRIES: usize = 20; // 1 second total
+                    const RETRY_DELAY: Duration = Duration::from_millis(50);
+
+                    loop {
+                        // Get editor again to ensure it's still valid/active
+                        let file_explorer_editor = workspace
+                            .update_in(cx, |workspace, _, cx| {
+                                workspace.active_item_as::<Editor>(cx)
+                            })
+                            .ok()
+                            .flatten();
+
+                        let Some(file_explorer_editor) = file_explorer_editor else {
+                            break;
+                        };
+
                         let project_path = project
                             .read_with(cx, |project, cx| {
                                 project.find_project_path(&PathBuf::from(&current_dir), cx)
@@ -3618,22 +3628,44 @@ impl Editor {
                                 .and_then(|e| e);
 
                             if let Ok((new_content, new_metadata)) = refresh_result {
-                                workspace
-                                    .update_in(cx, |_workspace, window, cx| {
-                                        file_explorer_editor.update(cx, |editor, cx| {
-                                            editor.set_text(new_content, window, cx);
-                                            editor.file_explorer_metadata = Some(new_metadata);
-                                            if let Some(buffer) = editor.buffer.read(cx).as_singleton()
-                                            {
-                                                buffer.update(cx, |buffer, cx| {
-                                                    buffer.did_save(buffer.version(), None, cx);
-                                                });
-                                            }
-                                        });
-                                    })
-                                    .ok();
+                                // Check if metadata is stale (still contains old names)
+                                let mut is_stale = false;
+                                if !renames.is_empty() {
+                                    let new_names: HashSet<&String> =
+                                        renames.iter().map(|(_, new)| new).collect();
+                                    for (old_name, _) in &renames {
+                                        if new_metadata.contains(old_name)
+                                            && !new_names.contains(old_name)
+                                        {
+                                            is_stale = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if !is_stale || retries >= MAX_RETRIES {
+                                    workspace
+                                        .update_in(cx, |_workspace, window, cx| {
+                                            file_explorer_editor.update(cx, |editor, cx| {
+                                                editor.set_text(new_content, window, cx);
+                                                editor.file_explorer_metadata = Some(new_metadata);
+                                                if let Some(buffer) =
+                                                    editor.buffer.read(cx).as_singleton()
+                                                {
+                                                    buffer.update(cx, |buffer, cx| {
+                                                        buffer.did_save(buffer.version(), None, cx);
+                                                    });
+                                                }
+                                            });
+                                        })
+                                        .ok();
+                                    break;
+                                }
                             }
                         }
+
+                        cx.background_executor().timer(RETRY_DELAY).await;
+                        retries += 1;
                     }
                 }
 
