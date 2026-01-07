@@ -11,6 +11,9 @@ adjust my neovim config, so key.n does not open, but only on key.enter
 
 See `pub fn file_explorer_open_file(` and `pub fn editor_file_explorer_open(`.
 
+- show error when line count differs from old state to the one user wants to save, this would indicate that user deleted some file
+USER should instead EMPTY a line fully, to trash a file, use `trash` CLI on mac (and always assume mac)
+
 - how to display real file icons from actual tabs/project panel? currently, I am faking it by setting a `Rust` language which kinda sucks. Is there an easy way to highlight just directories in blue fg text color and then file extensions in same blue?
 or does one really have to create a new treesitter syntax just for this mode?
 
