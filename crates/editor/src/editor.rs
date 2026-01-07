@@ -352,7 +352,7 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::new_file_horizontal);
             workspace.register_action(Editor::file_explorer_open);
             workspace.register_action(Editor::file_explorer_open_file);
-            workspace.register_action(Editor::file_explorer_go_back);
+            workspace.register_action(Editor::file_explorer_navigate_to_parent_directory);
             workspace.register_action(Editor::file_explorer_save_modified);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
@@ -3367,9 +3367,9 @@ impl Editor {
         }
     }
 
-    pub fn file_explorer_go_back(
+    pub fn file_explorer_navigate_to_parent_directory(
         workspace: &mut Workspace,
-        _action: &workspace::FileExplorerGoBack,
+        _action: &workspace::FileExplorerNavigateToParentDirectory,
         window: &mut Window,
         cx: &mut Context<Workspace>,
     ) {

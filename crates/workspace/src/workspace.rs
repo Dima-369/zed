@@ -258,8 +258,8 @@ actions!(
         FileExplorerOpen,
         /// Opens the file under cursor in the file explorer.
         FileExplorerOpenFile,
-        /// Goes back to the parent directory in the file explorer.
-        FileExplorerGoBack,
+        /// Navigates to the parent directory in the file explorer.
+        FileExplorerNavigateToParentDirectory,
         /// Saves all modified files in the current file explorer directory.
         FileExplorerSaveModified,
         /// Reloads the active item.
