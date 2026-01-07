@@ -1,12 +1,6 @@
-- merge main then configure https://github.com/zed-industries/zed/pull/45476#event-21891616303
-
-"status_bar": {
-  "active_encoding_button": "disabled"/enabled
-}
-
-default is hide on non utf8
-
 - fix broken Qwen code for Zed Agent use
+
+
 
 # >>> Investigations
 
