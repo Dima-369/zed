@@ -3444,7 +3444,7 @@ impl Editor {
             let editor = editor.clone();
 
             // Get the current state synchronously first
-            let (current_dir, stored_state, current_buffer_content, cursor_filename) =
+            let (current_dir, stored_state, current_buffer_content) =
                 editor.update(cx, |editor, cx| {
                     let display_snapshot = editor.display_snapshot(cx);
                     let buffer_snapshot = display_snapshot.buffer_snapshot();
@@ -3456,18 +3456,10 @@ impl Editor {
                         .unwrap_or("")
                         .trim();
 
-                    let cursor = editor.selections.newest_display(&display_snapshot);
-                    let cursor_point = cursor.head().to_point(&display_snapshot);
-                    let cursor_filename = full_content
-                        .lines()
-                        .nth(cursor_point.row as usize)
-                        .map(|s| s.trim().to_string());
-
                     (
                         first_line.to_string(),
                         editor.file_explorer_metadata.clone().unwrap_or_default(),
                         full_content.to_string(),
-                        cursor_filename,
                     )
                 });
 
@@ -3479,32 +3471,68 @@ impl Editor {
                 .lines()
                 .skip(2)
                 .map(|line| line.trim().to_string())
-                .filter(|line| !line.is_empty())
                 .collect();
 
+            if current_entries.len() != stored_state.len() {
+                let detail = format!(
+                    "The number of lines ({}) does not match the original number of files ({}).\n\nTo delete a file, empty its line content instead of deleting the line itself.",
+                    current_entries.len(),
+                    stored_state.len()
+                );
+
+                ConfirmationDialog::show(
+                    workspace,
+                    "Cannot Save Changes",
+                    Some(detail),
+                    vec!["OK"],
+                    window,
+                    cx,
+                )
+                .detach();
+                return;
+            }
+
             let mut renames = Vec::new();
+            let mut deletions = Vec::new();
+
             for (i, stored_name) in stored_state.iter().enumerate() {
                 if let Some(current_name) = current_entries.get(i) {
-                    if stored_name != current_name {
+                    if current_name.is_empty() {
+                        deletions.push(stored_name.clone());
+                    } else if stored_name != current_name {
                         renames.push((stored_name.clone(), current_name.clone()));
                     }
                 }
             }
 
-            if renames.is_empty() {
+            if renames.is_empty() && deletions.is_empty() {
                 return;
             }
 
-            let detail = renames
-                .iter()
-                .map(|(old, new)| format!("{} -> {}", old, new))
-                .collect::<Vec<_>>()
-                .join("\n");
+            let mut detail = String::new();
+            if !renames.is_empty() {
+                detail.push_str("Renames:\n");
+                detail.push_str(
+                    &renames
+                        .iter()
+                        .map(|(old, new)| format!("{} -> {}", old, new))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                );
+            }
+
+            if !deletions.is_empty() {
+                if !detail.is_empty() {
+                    detail.push_str("\n\n");
+                }
+                detail.push_str("Deletions (Trash):\n");
+                detail.push_str(&deletions.join("\n"));
+            }
 
             // Show confirmation modal synchronously
             let confirmation_task = ConfirmationDialog::show(
                 workspace,
-                "Confirm Renames",
+                "Confirm Changes",
                 Some(detail),
                 vec!["Confirm", "Cancel"],
                 window,
@@ -3529,6 +3557,28 @@ impl Editor {
 
                         if let Err(e) = fs.rename(&old_path, &new_path, Default::default()).await {
                             log::error!("Failed to rename {:?} to {:?}: {}", old_path, new_path, e);
+                        }
+                    }
+
+                    for name in &deletions {
+                        let clean_name = name.trim_end_matches('/');
+                        let path = base_path.join(clean_name);
+
+                        let output = std::process::Command::new("trash").arg(&path).output();
+
+                        match output {
+                            Ok(output) => {
+                                if !output.status.success() {
+                                    log::error!(
+                                        "Failed to trash {:?}: {}",
+                                        path,
+                                        String::from_utf8_lossy(&output.stderr)
+                                    );
+                                }
+                            }
+                            Err(e) => {
+                                log::error!("Failed to execute trash command for {:?}: {}", path, e);
+                            }
                         }
                     }
 
@@ -3569,8 +3619,9 @@ impl Editor {
                                 .and_then(|e| e);
 
                             if let Ok((new_content, new_metadata)) = refresh_result {
-                                // Check if metadata is stale (still contains old names)
+                                // Check if metadata is stale (still contains old names or deletions)
                                 let mut is_stale = false;
+
                                 if !renames.is_empty() {
                                     let new_names: HashSet<&String> =
                                         renames.iter().map(|(_, new)| new).collect();
@@ -3584,37 +3635,21 @@ impl Editor {
                                     }
                                 }
 
+                                if !is_stale && !deletions.is_empty() {
+                                    for deleted_name in &deletions {
+                                        if new_metadata.contains(deleted_name) {
+                                            is_stale = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
                                 if !is_stale || retries >= MAX_RETRIES {
                                     workspace
                                         .update_in(cx, |_workspace, window, cx| {
                                             file_explorer_editor.update(cx, |editor, cx| {
-                                                let mut new_cursor_point = None;
-                                                if let Some(filename) = &cursor_filename {
-                                                    for (i, line) in new_content.lines().enumerate() {
-                                                        if line.trim() == filename {
-                                                            new_cursor_point =
-                                                                Some(Point::new(i as u32, 0));
-                                                            break;
-                                                        }
-                                                    }
-                                                }
-
                                                 editor.set_text(new_content, window, cx);
                                                 editor.file_explorer_metadata = Some(new_metadata);
-
-                                                if let Some(point) = new_cursor_point {
-                                                    editor.change_selections(
-                                                        SelectionEffects::default(),
-                                                        window,
-                                                        cx,
-                                                        |s| s.select_ranges([point..point]),
-                                                    );
-                                                    editor.request_autoscroll(
-                                                        Autoscroll::fit(),
-                                                        cx,
-                                                    );
-                                                }
-
                                                 if let Some(buffer) =
                                                     editor.buffer.read(cx).as_singleton()
                                                 {
@@ -3623,7 +3658,9 @@ impl Editor {
                                                     });
                                                 }
 
-                                                Self::apply_file_explorer_highlighting(editor, window, cx);
+                                                Self::apply_file_explorer_highlighting(
+                                                    editor, window, cx,
+                                                );
                                             });
                                         })
                                         .ok();
