@@ -74,7 +74,7 @@ Added in `crates/editor/src/editor.rs`, search for `file_explorer` and related f
 
 Take care to only modify the file names in the editor, not the top directory name or the newlines below the directory name, otherwise the logic on saving will not work.
 
-You can empty a line to trash a file.
+You can empty a line to trash a file. It only works on macOS because it is using the `trash` CLI.
 
 Deleting or adding lines is not supported, this is for file browsing and file renaming via usual editor keybindings.
 
