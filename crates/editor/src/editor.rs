@@ -3103,18 +3103,24 @@ impl Editor {
 
                     // Apply blue highlights for directories
                     if !directory_ranges.is_empty() {
-                        editor.highlight_background::<DirectoryHighlight>(
-                            &directory_ranges,
-                            |_, _| gpui::blue(),
+                        editor.highlight_text::<DirectoryHighlight>(
+                            directory_ranges,
+                            HighlightStyle {
+                                color: Some(gpui::blue()),
+                                ..Default::default()
+                            },
                             cx,
                         );
                     }
 
                     // Apply blue highlights for file extensions
                     if !extension_ranges.is_empty() {
-                        editor.highlight_background::<FileExtensionHighlight>(
-                            &extension_ranges,
-                            |_, _| gpui::blue(),
+                        editor.highlight_text::<FileExtensionHighlight>(
+                            extension_ranges,
+                            HighlightStyle {
+                                color: Some(gpui::blue()),
+                                ..Default::default()
+                            },
                             cx,
                         );
                     }
@@ -3279,18 +3285,24 @@ impl Editor {
 
                                     // Apply blue highlights for directories
                                     if !directory_ranges.is_empty() {
-                                        editor.highlight_background::<DirectoryHighlight>(
-                                            &directory_ranges,
-                                            |_, _| gpui::blue(),
+                                        editor.highlight_text::<DirectoryHighlight>(
+                                            directory_ranges,
+                                            HighlightStyle {
+                                                color: Some(gpui::blue()),
+                                                ..Default::default()
+                                            },
                                             cx,
                                         );
                                     }
 
                                     // Apply blue highlights for file extensions
                                     if !extension_ranges.is_empty() {
-                                        editor.highlight_background::<FileExtensionHighlight>(
-                                            &extension_ranges,
-                                            |_, _| gpui::blue(),
+                                        editor.highlight_text::<FileExtensionHighlight>(
+                                            extension_ranges,
+                                            HighlightStyle {
+                                                color: Some(gpui::blue()),
+                                                ..Default::default()
+                                            },
                                             cx,
                                         );
                                     }
@@ -3465,18 +3477,24 @@ impl Editor {
 
                                 // Apply blue highlights for directories
                                 if !directory_ranges.is_empty() {
-                                    editor.highlight_background::<DirectoryHighlight>(
-                                        &directory_ranges,
-                                        |_, _| gpui::blue(),
+                                    editor.highlight_text::<DirectoryHighlight>(
+                                        directory_ranges,
+                                        HighlightStyle {
+                                            color: Some(gpui::blue()),
+                                            ..Default::default()
+                                        },
                                         cx,
                                     );
                                 }
 
                                 // Apply blue highlights for file extensions
                                 if !extension_ranges.is_empty() {
-                                    editor.highlight_background::<FileExtensionHighlight>(
-                                        &extension_ranges,
-                                        |_, _| gpui::blue(),
+                                    editor.highlight_text::<FileExtensionHighlight>(
+                                        extension_ranges,
+                                        HighlightStyle {
+                                            color: Some(gpui::blue()),
+                                            ..Default::default()
+                                        },
                                         cx,
                                     );
                                 }
@@ -3676,18 +3694,24 @@ impl Editor {
 
                                                 // Apply blue highlights for directories
                                                 if !directory_ranges.is_empty() {
-                                                    editor.highlight_background::<DirectoryHighlight>(
-                                                        &directory_ranges,
-                                                        |_, _| gpui::blue(),
+                                                    editor.highlight_text::<DirectoryHighlight>(
+                                                        directory_ranges,
+                                                        HighlightStyle {
+                                                            color: Some(gpui::blue()),
+                                                            ..Default::default()
+                                                        },
                                                         cx,
                                                     );
                                                 }
 
                                                 // Apply blue highlights for file extensions
                                                 if !extension_ranges.is_empty() {
-                                                    editor.highlight_background::<FileExtensionHighlight>(
-                                                        &extension_ranges,
-                                                        |_, _| gpui::blue(),
+                                                    editor.highlight_text::<FileExtensionHighlight>(
+                                                        extension_ranges,
+                                                        HighlightStyle {
+                                                            color: Some(gpui::blue()),
+                                                            ..Default::default()
+                                                        },
                                                         cx,
                                                     );
                                                 }
