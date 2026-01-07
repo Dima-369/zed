@@ -1,5 +1,7 @@
 - merge main then configure https://github.com/zed-industries/zed/pull/45476#event-21891616303
 
+- rename unsaved changes model file entirely and rename to better reflect what it is actually doing
+
 - key j in terminal vi mode should also exit vi mode after copy to clipboard
 
 - https://github.com/zed-industries/zed/pull/45547#event-21875865337 was merged
