@@ -70,18 +70,21 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
 
+WIP: Can this be improved?
 The displayed buffer uses the `Rust` programming language buffer language which highlights directories differently to files; it is not perfect, but works.
 
 Added in `crates/editor/src/editor.rs`, see the `file_explorer_*` functions.
 
-New actions:
-ARE THOSE correct?
-- `editor::FileExplorerOpenFile`
-- `editor::FileExplorerOpen`
-- ``
-- ``
+Take care to only modify the file names, not the top directory name or the newlines, otherwise the logic on saving will not work.
 
-WIP: Make it editable and save to rename files.
+You can empty a line to trash a file, but do not modify line count.
+
+New actions:
+
+- `workspace::FileExplorerOpen` (the entry point)
+- `workspace::FileExplorerOpenFile`
+- `workspace::FileExplorerNavigateToParentDirectory`
+- `workspace::FileExplorerSaveModified` (it shows a confirmation dialog which lists all changes)
 
 ## Emoji Picker
 
