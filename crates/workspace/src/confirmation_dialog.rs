@@ -153,7 +153,7 @@ impl Render for ConfirmationDialog {
                                         .size(LabelSize::Small)
                                         .color(Color::Muted),
                                 )
-                            })
+                            }),
                     ),
             )
             .child(

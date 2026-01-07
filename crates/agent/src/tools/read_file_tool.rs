@@ -109,7 +109,10 @@ where
             if value >= 0 {
                 Ok(Some(value as u32))
             } else {
-                Err(E::custom(format!("line number cannot be negative: {}", value)))
+                Err(E::custom(format!(
+                    "line number cannot be negative: {}",
+                    value
+                )))
             }
         }
 

@@ -3017,13 +3017,18 @@ impl Editor {
 
             if line.ends_with('/') {
                 // Directory - highlight entire line including the trailing slash
-                let line_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
-                directory_ranges.push(snapshot.anchor_before(line_start)..snapshot.anchor_after(line_end));
+                let line_end =
+                    snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
+                directory_ranges
+                    .push(snapshot.anchor_before(line_start)..snapshot.anchor_after(line_end));
             } else if let Some(dot_pos) = line.rfind('.') {
                 // File - highlight just the extension
-                let ext_start = snapshot.point_to_offset(Point::new(line_idx as u32, (dot_pos + 1) as u32));
-                let ext_end = snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
-                extension_ranges.push(snapshot.anchor_before(ext_start)..snapshot.anchor_after(ext_end));
+                let ext_start =
+                    snapshot.point_to_offset(Point::new(line_idx as u32, (dot_pos + 1) as u32));
+                let ext_end =
+                    snapshot.point_to_offset(Point::new(line_idx as u32, line.len() as u32));
+                extension_ranges
+                    .push(snapshot.anchor_before(ext_start)..snapshot.anchor_after(ext_end));
             }
         }
 
@@ -3634,7 +3639,11 @@ impl Editor {
                                 }
                             }
                             Err(e) => {
-                                log::error!("Failed to execute trash command for {:?}: {}", path, e);
+                                log::error!(
+                                    "Failed to execute trash command for {:?}: {}",
+                                    path,
+                                    e
+                                );
                             }
                         }
                     }
@@ -3722,11 +3731,13 @@ impl Editor {
                                                 let snapshot = editor.buffer.read(cx).snapshot(cx);
                                                 let mut new_row = cursor_row;
                                                 if let Some(target_name) = &cursor_target_name {
-                                                    let target_name = target_name.trim_end_matches('/');
+                                                    let target_name =
+                                                        target_name.trim_end_matches('/');
                                                     for (i, line) in
                                                         snapshot.text().lines().enumerate().skip(2)
                                                     {
-                                                        if line.trim().trim_end_matches('/') == target_name
+                                                        if line.trim().trim_end_matches('/')
+                                                            == target_name
                                                         {
                                                             new_row = i as u32;
                                                             break;
