@@ -401,13 +401,10 @@ impl Render for BufferSearchBar {
 
         let search_line = h_flex()
             .w_full()
-            .gap_1()
+            .gap_2()
             .when(find_in_results, |el| el.child(alignment_element()))
             .when(!find_in_results && has_collapse_button, |el| {
                 el.pl_0p5().child(collapse_expand_button.expect("button"))
-            })
-            .when(!find_in_results && collapse_expand_button.is_some(), |el| {
-                el.child(collapse_expand_button.expect("button"))
             })
             .child(query_column)
             .child(mode_column);
@@ -632,8 +629,9 @@ impl ToolbarItemView for BufferSearchBar {
             } else if !self.is_dismissed() {
                 if is_project_search {
                     self.dismiss(&Default::default(), window, cx);
+                } else {
+                    return ToolbarItemLocation::Secondary;
                 }
-                return ToolbarItemLocation::Secondary;
             }
         }
         ToolbarItemLocation::Hidden
@@ -771,14 +769,19 @@ impl BufferSearchBar {
                 .set_language_registry(languages.clone());
 
             cx.spawn(async move |buffer_search_bar, cx| {
-                if let Ok(regex_language) = languages.language_for_name("regex").await {
-                    buffer_search_bar
-                        .update(cx, |buffer_search_bar, cx| {
-                            buffer_search_bar.regex_language = Some(regex_language);
-                            buffer_search_bar.adjust_query_regex_language(cx);
-                        })
-                        .ok();
-                }
+                use anyhow::Context as _;
+
+                let regex_language = languages
+                    .language_for_name("regex")
+                    .await
+                    .context("loading regex language")?;
+
+                buffer_search_bar
+                    .update(cx, |buffer_search_bar, cx| {
+                        buffer_search_bar.regex_language = Some(regex_language);
+                        buffer_search_bar.adjust_query_regex_language(cx);
+                    })
+                    .ok();
                 anyhow::Ok(())
             })
             .detach_and_log_err(cx);
