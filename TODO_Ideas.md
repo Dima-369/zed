@@ -1,3 +1,5 @@
+= in empty pane (no changes) should open terminal
+
 on opening the buffer search modal on a large buffer with many lines, it lags entire GUI
 any idea how to better handle this? to not lag GUI? and be able to abort while it is loading
 
