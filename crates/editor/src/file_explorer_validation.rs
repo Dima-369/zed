@@ -36,7 +36,7 @@ pub struct ValidatedFileOperation {
     pub operation_type: FileOperationType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum FileOperationType {
     Rename,
     Delete,
@@ -182,7 +182,6 @@ fn has_invalid_filename_chars(name: &str) -> bool {
 }
 
 /// Analyze changes to determine operation types
-
 #[cfg(test)]
 mod tests {
     use super::*;

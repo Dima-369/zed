@@ -3006,7 +3006,7 @@ impl Editor {
                     let full_name = format!("{}{}", file_name, suffix);
 
                     // Only include valid names in the content
-                    if FilePath::new(full_name.clone()).is_ok() {
+                    if FilePath::new(full_name).is_ok() {
                         format!("{}{}\n", file_name, suffix)
                     } else {
                         String::new() // Skip invalid entries
