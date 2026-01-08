@@ -172,7 +172,7 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
   - AI agent text threads
 - add the Qwen provider with models `qwen3-coder-plus` and `qwen3-coder-flash` which can be used for Inline Assist and in Zed Agent
   - their server might be buggy, I have adjusted `map_event()` in `open_ai.rs` to handle the case when the `tool_calls` array contains `id: ""`
-  - their models keep sending start and end line as strings, so I adjusted `crates/agent/src/tools/read_file_tool.rs` to allow both integers and strings
+  - their models keep sending start and end line as strings (instead as numbers as the Zed Agent requires), so I adjusted `crates/agent/src/tools/read_file_tool.rs` and the terminal tool `timeout_ms` to allow both integers and strings
   - the implementation is based on how https://github.com/RooCodeInc/Roo-Code interacts with Qwen and requires the `~/.qwen/oauth_creds.json` file to set which can be done by using the `qwen` binary and authenticating with OAuth
 
 ### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
