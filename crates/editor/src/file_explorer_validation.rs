@@ -183,7 +183,6 @@ fn has_invalid_filename_chars(name: &str) -> bool {
 
 /// Analyze changes to determine operation types
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

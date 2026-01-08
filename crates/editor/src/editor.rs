@@ -223,9 +223,7 @@ use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc};
 /// Represents the original file and directory names when the explorer was opened
 type FileExplorerState = Vec<String>;
 
-use crate::file_explorer_validation::{
-    FileOperationType, FilePath, validate_file_operations,
-};
+use crate::file_explorer_validation::{FileOperationType, FilePath, validate_file_operations};
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
@@ -3587,7 +3585,6 @@ impl Editor {
                             FileOperationType::Delete => {
                                 deletions.push(op.old_name);
                             }
-
                         }
                     }
                 }
