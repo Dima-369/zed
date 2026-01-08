@@ -1,5 +1,4 @@
-- qwen sends timeout as string as well, not number for shell AI LLM tool, can you handle it like the read_file tool to parse both strings and numbers?
-verify via mitmproxy, run `cargo check`
+hide the agent_panel/thread/view code "Output Preview (last 1024 characters):" section entirely when in Zed Agent (but keep showing for other ACP agents)
 
 
 # >>> Investigations
