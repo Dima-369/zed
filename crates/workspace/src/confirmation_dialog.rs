@@ -146,7 +146,7 @@ impl Render for ConfirmationDialog {
                             .flex_1()
                             .max_w_full()
                             .child(
-                                div().w_full().overflow_hidden().child(
+                                div().w_full().overflow_hidden().pr_2().child(
                                     Label::new(self.message.clone())
                                         .size(LabelSize::Default)
                                         .weight(FontWeight::MEDIUM),
@@ -154,7 +154,7 @@ impl Render for ConfirmationDialog {
                             )
                             .when_some(self.detail.clone(), |this, detail| {
                                 this.child(
-                                    div().w_full().overflow_hidden().child(
+                                    div().w_full().overflow_hidden().pr_2().child(
                                         Label::new(detail)
                                             .size(LabelSize::Small)
                                             .color(Color::Muted),
