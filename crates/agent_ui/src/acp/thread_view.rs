@@ -3963,7 +3963,7 @@ impl AcpThreadView {
                         ),
                     ),
             )
-            .when(has_preview, |this| {
+            .when(has_preview && self.as_native_connection(cx).is_none(), |this| {
                 this.child(
                     div()
                         .pt_2()
