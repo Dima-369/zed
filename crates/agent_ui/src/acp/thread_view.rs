@@ -3963,43 +3963,46 @@ impl AcpThreadView {
                         ),
                     ),
             )
-            .when(has_preview && self.as_native_connection(cx).is_none(), |this| {
-                this.child(
-                    div()
-                        .pt_2()
-                        .border_t_1()
-                        .border_color(border_color)
-                        .bg(cx.theme().colors().editor_background)
-                        .rounded_b_md()
-                        .text_ui_sm(cx)
-                        .child(
-                            v_flex()
-                                .px_3()
-                                .pb_2()
-                                .gap_1()
-                                .child(
-                                    Label::new("Output Preview (last 1024 characters):")
-                                        .size(LabelSize::XSmall)
-                                        .color(Color::Muted)
-                                        .buffer_font(cx),
-                                )
-                                .child(
-                                    div()
-                                        .bg(cx.theme().colors().editor_background)
-                                        .rounded_md()
-                                        .px_2()
-                                        .py_1()
-                                        .text_ui_xs(cx)
-                                        .text_color(cx.theme().colors().text)
-                                        .child(
-                                            Label::new(preview_content)
-                                                .buffer_font(cx)
-                                                .size(LabelSize::XSmall),
-                                        ),
-                                ),
-                        ),
-                )
-            })
+            .when(
+                has_preview && self.as_native_connection(cx).is_none(),
+                |this| {
+                    this.child(
+                        div()
+                            .pt_2()
+                            .border_t_1()
+                            .border_color(border_color)
+                            .bg(cx.theme().colors().editor_background)
+                            .rounded_b_md()
+                            .text_ui_sm(cx)
+                            .child(
+                                v_flex()
+                                    .px_3()
+                                    .pb_2()
+                                    .gap_1()
+                                    .child(
+                                        Label::new("Output Preview (last 1024 characters):")
+                                            .size(LabelSize::XSmall)
+                                            .color(Color::Muted)
+                                            .buffer_font(cx),
+                                    )
+                                    .child(
+                                        div()
+                                            .bg(cx.theme().colors().editor_background)
+                                            .rounded_md()
+                                            .px_2()
+                                            .py_1()
+                                            .text_ui_xs(cx)
+                                            .text_color(cx.theme().colors().text)
+                                            .child(
+                                                Label::new(preview_content)
+                                                    .buffer_font(cx)
+                                                    .size(LabelSize::XSmall),
+                                            ),
+                                    ),
+                            ),
+                    )
+                },
+            )
             .when(show_output, |this| {
                 this.child(
                     div()
