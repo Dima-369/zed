@@ -19,6 +19,7 @@ pub mod code_context_menus;
 pub mod display_map;
 mod editor_settings;
 mod element;
+mod file_explorer_validation;
 mod git;
 mod highlight_matching_bracket;
 mod hover_links;
@@ -221,6 +222,10 @@ use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc};
 
 /// Represents the original file and directory names when the explorer was opened
 type FileExplorerState = Vec<String>;
+
+use crate::file_explorer_validation::{
+    FileOperationType, FilePath, validate_file_operations,
+};
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
     RestoreOnStartupBehavior, SERIALIZATION_THROTTLE_TIME, SplitDirection, TabBarSettings, Toast,
@@ -2983,7 +2988,12 @@ impl Editor {
                 .file_name()
                 .map(|name| name.to_string())
                 .unwrap_or("".to_string());
-            file_names.push(format!("{}{}", file_name, suffix));
+            let full_name = format!("{}{}", file_name, suffix);
+
+            // Validate the file name for macOS compatibility
+            if FilePath::new(full_name.clone()).is_ok() {
+                file_names.push(full_name);
+            }
         }
 
         file_list_content.push_str(
@@ -2995,10 +3005,20 @@ impl Editor {
                         .file_name()
                         .map(|name| name.to_string())
                         .unwrap_or("".to_string());
-                    format!("{}{}\n", file_name, suffix)
+                    let full_name = format!("{}{}", file_name, suffix);
+
+                    // Only include valid names in the content
+                    if FilePath::new(full_name.clone()).is_ok() {
+                        format!("{}{}\n", file_name, suffix)
+                    } else {
+                        String::new() // Skip invalid entries
+                    }
                 })
                 .collect::<String>(),
         );
+
+        // Filter out any empty strings from the collected names
+        file_names.retain(|name| !name.is_empty());
 
         anyhow::Ok((file_list_content, file_names))
     }
@@ -3556,13 +3576,34 @@ impl Editor {
             let mut renames = Vec::new();
             let mut deletions = Vec::new();
 
-            for (i, stored_name) in stored_state.iter().enumerate() {
-                if let Some(current_name) = current_entries.get(i) {
-                    if current_name.is_empty() {
-                        deletions.push(stored_name.clone());
-                    } else if stored_name != current_name {
-                        renames.push((stored_name.clone(), current_name.clone()));
+            // Use the typed validation system to process operations
+            match validate_file_operations(&current_entries, &stored_state) {
+                Ok(operations) => {
+                    for op in operations {
+                        match op.operation_type {
+                            FileOperationType::Rename => {
+                                renames.push((op.old_name, op.new_name));
+                            }
+                            FileOperationType::Delete => {
+                                deletions.push(op.old_name);
+                            }
+
+                        }
                     }
+                }
+                Err(validation_error) => {
+                    let detail = validation_error.to_user_friendly_message();
+                    ConfirmationDialog::show(
+                        workspace,
+                        "Validation Error",
+                        Some(detail),
+                        vec!["OK"],
+                        false,
+                        window,
+                        cx,
+                    )
+                    .detach();
+                    return;
                 }
             }
 
@@ -3626,7 +3667,10 @@ impl Editor {
                         let clean_name = name.trim_end_matches('/');
                         let path = base_path.join(clean_name);
 
-                        let output = smol::process::Command::new("trash").arg(&path).output().await;
+                        let output = smol::process::Command::new("trash")
+                            .arg(&path)
+                            .output()
+                            .await;
 
                         match output {
                             Ok(output) => {
