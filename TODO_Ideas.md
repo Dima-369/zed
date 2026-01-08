@@ -1,6 +1,3 @@
-TEST
-new file explorer validation logic, test error cases and see if it disallows `:` chars, etc.
-
 - the confirmation modal (test with `:` in file explorer rename) width is sometimes too small and the text inside it then wraps out of the right, can that be fixed? can the inner text just wrap to next lines when a line gets too long?
 
 
