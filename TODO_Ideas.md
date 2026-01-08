@@ -1,3 +1,5 @@
+- qwen sends timeout as string as well, not number for shell AI LLM tool, can you handle it like the read_file tool to parse both strings and numbers?
+verify via mitmproxy, run `cargo check`
 
 
 # >>> Investigations
