@@ -23,8 +23,8 @@ use std::{
 };
 use text::Bias;
 use ui::{
-    Button, ButtonStyle, Color, Divider, KeyBinding as UiKeyBinding, Label, ListItem, Tooltip,
-    prelude::*,
+    Button, ButtonStyle, Color, CommonAnimationExt, Divider, Icon, IconName,
+    KeyBinding as UiKeyBinding, Label, ListItem, Tooltip, prelude::*,
 };
 use util::{ResultExt, paths::PathMatcher};
 use vim_mode_setting::VimModeSetting;
@@ -664,150 +664,164 @@ impl BufferSearchDelegate {
                 return;
             }
 
-            let terms: Vec<String> = query.split_whitespace().map(str::to_string).collect();
+            let cancelled_clone = cancelled.clone();
 
-            let line_count = buffer_snapshot.max_point().row + 1;
-            let mut new_items = Vec::new();
-            let mut all_match_ranges = Vec::new();
+            let (new_items, all_match_ranges) = cx
+                .background_executor()
+                .spawn(async move {
+                    let terms: Vec<String> = query.split_whitespace().map(str::to_string).collect();
 
-            for line in 0..line_count {
-                if cancelled.load(Ordering::Relaxed) {
-                    return;
-                }
+                    let line_count = buffer_snapshot.max_point().row + 1;
+                    let mut new_items = Vec::new();
+                    let mut all_match_ranges = Vec::new();
 
-                let line_start_offset = buffer_snapshot.point_to_offset(Point::new(line, 0));
-                let line_end_offset = if line < buffer_snapshot.max_point().row {
-                    buffer_snapshot.point_to_offset(Point::new(line + 1, 0))
-                } else {
-                    buffer_snapshot.len()
-                };
+                    for line in 0..line_count {
+                        if cancelled_clone.load(Ordering::Relaxed) {
+                            return (new_items, all_match_ranges);
+                        }
 
-                let line_text: String = buffer_snapshot
-                    .text_for_range(line_start_offset..line_end_offset)
-                    .collect();
+                        let line_start_offset =
+                            buffer_snapshot.point_to_offset(Point::new(line, 0));
+                        let line_end_offset = if line < buffer_snapshot.max_point().row {
+                            buffer_snapshot.point_to_offset(Point::new(line + 1, 0))
+                        } else {
+                            buffer_snapshot.len()
+                        };
 
-                let mut line_match_ranges = Vec::new();
-                let mut matches = true;
+                        let line_text: String = buffer_snapshot
+                            .text_for_range(line_start_offset..line_end_offset)
+                            .collect();
 
-                // Case insensitive search for line mode
-                for term in &terms {
-                    let mut start = 0;
-                    let mut term_matches = false;
-                    let term_lower = term.to_lowercase();
-                    let line_text_lower = line_text.to_lowercase();
-                    while let Some(relative_idx) = line_text_lower[start..].find(&term_lower) {
-                        let idx = start + relative_idx;
-                        line_match_ranges.push(idx..idx + term.len());
-                        start = idx + term.len();
-                        term_matches = true;
-                    }
+                        let mut line_match_ranges = Vec::new();
+                        let mut matches = true;
 
-                    if !term_matches {
-                        matches = false;
-                        break;
-                    }
-                }
+                        // Case insensitive search for line mode
+                        for term in &terms {
+                            let mut start = 0;
+                            let mut term_matches = false;
+                            let term_lower = term.to_lowercase();
+                            let line_text_lower = line_text.to_lowercase();
+                            while let Some(relative_idx) =
+                                line_text_lower[start..].find(&term_lower)
+                            {
+                                let idx = start + relative_idx;
+                                line_match_ranges.push(idx..idx + term.len());
+                                start = idx + term.len();
+                                term_matches = true;
+                            }
 
-                if matches {
-                    line_match_ranges.sort_by_key(|r| r.start);
-
-                    let start_match_index = all_match_ranges.len();
-                    for range in &line_match_ranges {
-                        let start = line_start_offset + range.start;
-                        let end = line_start_offset + range.end;
-                        all_match_ranges.push(
-                            buffer_snapshot.anchor_at(start, Bias::Left)
-                                ..buffer_snapshot.anchor_at(end, Bias::Right),
-                        );
-                    }
-                    let end_match_index = all_match_ranges.len();
-
-                    let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
-                    let trimmed_line = line_text.trim();
-                    let left_trimmed_len = line_text.len() - line_text.trim_start().len();
-                    let preview_len = preview_content_len(&preview_text);
-
-                    let mut list_match_ranges = Vec::new();
-                    for range in &line_match_ranges {
-                        let start_in_trimmed = range.start.saturating_sub(left_trimmed_len);
-                        let end_in_trimmed = range.end.saturating_sub(left_trimmed_len);
-
-                        if start_in_trimmed < trimmed_line.len() {
-                            let p_start = start_in_trimmed;
-                            let p_end = end_in_trimmed;
-
-                            if p_start < preview_len {
-                                let valid_p_end = p_end.min(preview_len);
-                                if p_start < valid_p_end {
-                                    list_match_ranges.push(p_start..valid_p_end);
-                                }
+                            if !term_matches {
+                                matches = false;
+                                break;
                             }
                         }
-                    }
 
-                    // Re-calculate syntax highlights as in text search
-                    let syntax_highlights = {
-                        let mut highlights = Vec::new();
-                        let trimmed_line = line_text.trim();
-                        let left_trimmed_len = line_text.len() - line_text.trim_start().len();
-                        let mut current_offset: usize = 0;
-                        for chunk in
-                            buffer_snapshot.chunks(line_start_offset..line_end_offset, true)
-                        {
-                            let chunk_len = chunk.text.len();
-                            if let Some(highlight_id) = chunk.syntax_highlight_id {
-                                let chunk_in_trimmed_start =
-                                    current_offset.saturating_sub(left_trimmed_len);
-                                let chunk_in_trimmed_end =
-                                    (current_offset + chunk_len).saturating_sub(left_trimmed_len);
-                                if chunk_in_trimmed_start < trimmed_line.len() {
-                                    let start = chunk_in_trimmed_start.max(0).min(preview_len);
-                                    let end = chunk_in_trimmed_end
-                                        .min(trimmed_line.len())
-                                        .min(preview_len);
-                                    if start < end {
-                                        highlights.push((start..end, highlight_id));
+                        if matches {
+                            line_match_ranges.sort_by_key(|r| r.start);
+
+                            let start_match_index = all_match_ranges.len();
+                            for range in &line_match_ranges {
+                                let start = line_start_offset + range.start;
+                                let end = line_start_offset + range.end;
+                                all_match_ranges.push(
+                                    buffer_snapshot.anchor_at(start, Bias::Left)
+                                        ..buffer_snapshot.anchor_at(end, Bias::Right),
+                                );
+                            }
+                            let end_match_index = all_match_ranges.len();
+
+                            let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
+                            let trimmed_line = line_text.trim();
+                            let left_trimmed_len = line_text.len() - line_text.trim_start().len();
+                            let preview_len = preview_content_len(&preview_text);
+
+                            let mut list_match_ranges = Vec::new();
+                            for range in &line_match_ranges {
+                                let start_in_trimmed = range.start.saturating_sub(left_trimmed_len);
+                                let end_in_trimmed = range.end.saturating_sub(left_trimmed_len);
+
+                                if start_in_trimmed < trimmed_line.len() {
+                                    let p_start = start_in_trimmed;
+                                    let p_end = end_in_trimmed;
+
+                                    if p_start < preview_len {
+                                        let valid_p_end = p_end.min(preview_len);
+                                        if p_start < valid_p_end {
+                                            list_match_ranges.push(p_start..valid_p_end);
+                                        }
                                     }
                                 }
                             }
-                            current_offset += chunk_len;
-                        }
-                        if highlights.is_empty() {
-                            None
-                        } else {
-                            Some(Arc::new(highlights))
-                        }
-                    };
 
-                    let line_label = if let Some((_, buffer_point, _)) =
-                        buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
-                    {
-                        (buffer_point.row + 1).to_string().into()
-                    } else {
-                        (line + 1).to_string().into()
-                    };
+                            // Re-calculate syntax highlights as in text search
+                            let syntax_highlights = {
+                                let mut highlights = Vec::new();
+                                let trimmed_line = line_text.trim();
+                                let left_trimmed_len =
+                                    line_text.len() - line_text.trim_start().len();
+                                let mut current_offset: usize = 0;
+                                for chunk in
+                                    buffer_snapshot.chunks(line_start_offset..line_end_offset, true)
+                                {
+                                    let chunk_len = chunk.text.len();
+                                    if let Some(highlight_id) = chunk.syntax_highlight_id {
+                                        let chunk_in_trimmed_start =
+                                            current_offset.saturating_sub(left_trimmed_len);
+                                        let chunk_in_trimmed_end = (current_offset + chunk_len)
+                                            .saturating_sub(left_trimmed_len);
+                                        if chunk_in_trimmed_start < trimmed_line.len() {
+                                            let start =
+                                                chunk_in_trimmed_start.max(0).min(preview_len);
+                                            let end = chunk_in_trimmed_end
+                                                .min(trimmed_line.len())
+                                                .min(preview_len);
+                                            if start < end {
+                                                highlights.push((start..end, highlight_id));
+                                            }
+                                        }
+                                    }
+                                    current_offset += chunk_len;
+                                }
+                                if highlights.is_empty() {
+                                    None
+                                } else {
+                                    Some(Arc::new(highlights))
+                                }
+                            };
 
-                    new_items.push(LineMatchData {
-                        line_label,
-                        preview_text,
-                        list_match_ranges: Arc::new(list_match_ranges),
-                        active_match_index_in_list: None,
-                        syntax_highlights,
-                        primary_match_offset: (line_start_offset
-                            + line_match_ranges.first().map(|r| r.start).unwrap_or(0))
-                        .0,
-                        match_indices: start_match_index..end_match_index,
-                    });
-                }
+                            let line_label = if let Some((_, buffer_point, _)) =
+                                buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
+                            {
+                                (buffer_point.row + 1).to_string().into()
+                            } else {
+                                (line + 1).to_string().into()
+                            };
+
+                            new_items.push(LineMatchData {
+                                line_label,
+                                preview_text,
+                                list_match_ranges: Arc::new(list_match_ranges),
+                                active_match_index_in_list: None,
+                                syntax_highlights,
+                                primary_match_offset: (line_start_offset
+                                    + line_match_ranges.first().map(|r| r.start).unwrap_or(0))
+                                .0,
+                                match_indices: start_match_index..end_match_index,
+                            });
+                        }
+                    }
+                    (new_items, all_match_ranges)
+                })
+                .await;
+
+            if cancelled.load(Ordering::Relaxed) {
+                return;
             }
 
             let all_match_ranges = Arc::new(all_match_ranges);
 
             picker
                 .update(cx, |picker, cx| {
-                    if cancelled.load(Ordering::Relaxed) {
-                        return;
-                    }
                     picker.delegate.match_count = new_items.len();
                     picker.delegate.items = new_items;
                     picker.delegate.is_searching = false;
@@ -1021,7 +1035,15 @@ impl PickerDelegate for BufferSearchDelegate {
                             .child(
                                 h_flex()
                                     .gap_1()
-                                    .when(self.match_count > 0, |this| {
+                                    .when(self.is_searching, |this| {
+                                        this.child(
+                                            Icon::new(IconName::ArrowCircle)
+                                                .size(IconSize::Small)
+                                                .color(Color::Muted)
+                                                .with_rotate_animation(2),
+                                        )
+                                    })
+                                    .when(self.match_count > 0 && !self.is_searching, |this| {
                                         this.child(
                                             Label::new(format!(
                                                 "{} / {}",
@@ -1101,101 +1123,120 @@ impl PickerDelegate for BufferSearchDelegate {
                 }
 
                 let line_count = buffer_snapshot.max_point().row + 1;
-                let mut new_items = Vec::with_capacity(line_count as usize);
+                let cancelled_clone = cancelled.clone();
+                let buffer_snapshot_clone = buffer_snapshot.clone();
 
-                for line in 0..line_count {
-                    if cancelled.load(Ordering::Relaxed) {
-                        return;
-                    }
+                let new_items = cx
+                    .background_executor()
+                    .spawn(async move {
+                        let mut new_items = Vec::with_capacity(line_count as usize);
 
-                    let line_start = buffer_snapshot.point_to_offset(Point::new(line, 0));
-                    let line_end = if line < buffer_snapshot.max_point().row {
-                        buffer_snapshot.point_to_offset(Point::new(line + 1, 0))
-                    } else {
-                        buffer_snapshot.len()
-                    };
+                        for line in 0..line_count {
+                            if cancelled_clone.load(Ordering::Relaxed) {
+                                return new_items;
+                            }
 
-                    let line_text: String = buffer_snapshot
-                        .text_for_range(line_start..line_end)
-                        .collect();
+                            let line_start =
+                                buffer_snapshot_clone.point_to_offset(Point::new(line, 0));
+                            let line_end = if line < buffer_snapshot_clone.max_point().row {
+                                buffer_snapshot_clone.point_to_offset(Point::new(line + 1, 0))
+                            } else {
+                                buffer_snapshot_clone.len()
+                            };
 
-                    let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
-                    let preview_len = preview_content_len(&preview_text);
-                    let preview_str: &str = preview_text.as_ref();
+                            let line_text: String = buffer_snapshot_clone
+                                .text_for_range(line_start..line_end)
+                                .collect();
 
-                    // For syntax highlighting, map original line chunks to preview text coordinates
-                    let syntax_highlights = {
-                        let mut highlights = Vec::new();
+                            let preview_text = truncate_preview(&line_text, MAX_PREVIEW_BYTES);
+                            let preview_len = preview_content_len(&preview_text);
+                            let preview_str: &str = preview_text.as_ref();
 
-                        // Since truncate_preview operates on trimmed text (line_text.trim()),
-                        // we need to map the syntax highlighting chunks accordingly
-                        let trimmed_line = line_text.trim();
-                        let left_trimmed_len = line_text.len() - line_text.trim_start().len();
+                            // For syntax highlighting, map original line chunks to preview text coordinates
+                            let syntax_highlights = {
+                                let mut highlights = Vec::new();
 
-                        let mut current_offset = 0;
-                        for chunk in buffer_snapshot.chunks(line_start..line_end, true) {
-                            let chunk_len = chunk.text.len();
-                            if let Some(highlight_id) = chunk.syntax_highlight_id {
-                                let chunk_absolute_start = current_offset;
-                                let chunk_absolute_end = current_offset + chunk_len;
+                                // Since truncate_preview operates on trimmed text (line_text.trim()),
+                                // we need to map the syntax highlighting chunks accordingly
+                                let trimmed_line = line_text.trim();
+                                let left_trimmed_len =
+                                    line_text.len() - line_text.trim_start().len();
 
-                                // Map to trimmed line coordinates
-                                let chunk_in_trimmed_start =
-                                    chunk_absolute_start.saturating_sub(left_trimmed_len);
-                                let chunk_in_trimmed_end =
-                                    chunk_absolute_end.saturating_sub(left_trimmed_len);
+                                let mut current_offset = 0;
+                                for chunk in
+                                    buffer_snapshot_clone.chunks(line_start..line_end, true)
+                                {
+                                    let chunk_len = chunk.text.len();
+                                    if let Some(highlight_id) = chunk.syntax_highlight_id {
+                                        let chunk_absolute_start = current_offset;
+                                        let chunk_absolute_end = current_offset + chunk_len;
 
-                                // Only highlight if within the trimmed content range
-                                if chunk_in_trimmed_start < trimmed_line.len() {
-                                    let start_in_preview = chunk_in_trimmed_start.max(0);
-                                    let end_in_preview =
-                                        chunk_in_trimmed_end.min(trimmed_line.len());
+                                        // Map to trimmed line coordinates
+                                        let chunk_in_trimmed_start =
+                                            chunk_absolute_start.saturating_sub(left_trimmed_len);
+                                        let chunk_in_trimmed_end =
+                                            chunk_absolute_end.saturating_sub(left_trimmed_len);
 
-                                    if start_in_preview < end_in_preview
-                                        && start_in_preview < preview_len
-                                    {
-                                        let clamped_start = start_in_preview.min(preview_len);
-                                        let clamped_end = end_in_preview.min(preview_len);
+                                        // Only highlight if within the trimmed content range
+                                        if chunk_in_trimmed_start < trimmed_line.len() {
+                                            let start_in_preview = chunk_in_trimmed_start.max(0);
+                                            let end_in_preview =
+                                                chunk_in_trimmed_end.min(trimmed_line.len());
 
-                                        if let Some((safe_start, safe_end)) =
-                                            find_safe_char_boundaries(
-                                                preview_str,
-                                                clamped_start,
-                                                clamped_end,
-                                            )
-                                        {
-                                            highlights.push((safe_start..safe_end, highlight_id));
+                                            if start_in_preview < end_in_preview
+                                                && start_in_preview < preview_len
+                                            {
+                                                let clamped_start =
+                                                    start_in_preview.min(preview_len);
+                                                let clamped_end = end_in_preview.min(preview_len);
+
+                                                if let Some((safe_start, safe_end)) =
+                                                    find_safe_char_boundaries(
+                                                        preview_str,
+                                                        clamped_start,
+                                                        clamped_end,
+                                                    )
+                                                {
+                                                    highlights
+                                                        .push((safe_start..safe_end, highlight_id));
+                                                }
+                                            }
                                         }
                                     }
+                                    current_offset += chunk_len;
                                 }
-                            }
-                            current_offset += chunk_len;
+
+                                if highlights.is_empty() {
+                                    None
+                                } else {
+                                    Some(Arc::new(highlights))
+                                }
+                            };
+
+                            let line_label = if let Some((_, buffer_point, _)) =
+                                buffer_snapshot_clone.point_to_buffer_point(Point::new(line, 0))
+                            {
+                                (buffer_point.row + 1).to_string().into()
+                            } else {
+                                (line + 1).to_string().into()
+                            };
+
+                            new_items.push(LineMatchData {
+                                line_label,
+                                preview_text,
+                                list_match_ranges: Arc::new(Vec::new()),
+                                active_match_index_in_list: None,
+                                syntax_highlights,
+                                primary_match_offset: line_start.0,
+                                match_indices: 0..0,
+                            });
                         }
+                        new_items
+                    })
+                    .await;
 
-                        if highlights.is_empty() {
-                            None
-                        } else {
-                            Some(Arc::new(highlights))
-                        }
-                    };
-
-                    let line_label = if let Some((_, buffer_point, _)) =
-                        buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
-                    {
-                        (buffer_point.row + 1).to_string().into()
-                    } else {
-                        (line + 1).to_string().into()
-                    };
-
-                    new_items.push(LineMatchData {
-                        line_label,
-                        preview_text,
-                        list_match_ranges: Arc::new(Vec::new()),
-                        active_match_index_in_list: None,
-                        syntax_highlights,
-                        primary_match_offset: line_start.0,
-                        match_indices: 0..0,
-                    });
+                if cancelled.load(Ordering::Relaxed) {
+                    return;
                 }
 
                 picker
@@ -1271,51 +1312,201 @@ impl PickerDelegate for BufferSearchDelegate {
                 }
             };
 
-            let matches: Result<Vec<AnchorRange>, _> = cx
+            let cancelled_clone = cancelled.clone();
+
+            let (all_match_ranges, new_items) = cx
                 .background_executor()
-                .spawn({
-                    let snapshot = buffer_snapshot.clone();
-                    let query = search_query.clone();
-                    async move {
-                        let mut ranges = Vec::new();
+                .spawn(async move {
+                    let mut ranges = Vec::new();
 
-                        // Search the entire multi-buffer range
-                        let full_range = snapshot.anchor_before(MultiBufferOffset(0))
-                            ..snapshot.anchor_after(snapshot.len());
+                    // Search the entire multi-buffer range
+                    let full_range = buffer_snapshot.anchor_before(MultiBufferOffset(0))
+                        ..buffer_snapshot.anchor_after(buffer_snapshot.len());
 
-                        // Break down multi-buffer into individual buffer ranges, following Editor::find_matches pattern
-                        for (search_buffer, search_range, excerpt_id, deleted_hunk_anchor) in
-                            snapshot.range_to_buffer_ranges_with_deleted_hunks(full_range)
-                        {
-                            // Perform search on this buffer segment
-                            let buffer_matches = query
-                                .search(
-                                    search_buffer,
-                                    Some(search_range.start.0..search_range.end.0),
-                                )
-                                .await;
+                    // Break down multi-buffer into individual buffer ranges, following Editor::find_matches pattern
+                    for (search_buffer, search_range, excerpt_id, deleted_hunk_anchor) in
+                        buffer_snapshot.range_to_buffer_ranges_with_deleted_hunks(full_range)
+                    {
+                        // Perform search on this buffer segment
+                        let buffer_matches = search_query
+                            .search(
+                                search_buffer,
+                                Some(search_range.start.0..search_range.end.0),
+                            )
+                            .await;
 
-                            // Convert buffer-relative matches to multi-buffer anchor ranges
-                            ranges.extend(buffer_matches.into_iter().map(|match_range| {
-                                if let Some(deleted_hunk_anchor) = deleted_hunk_anchor {
-                                    let start = search_buffer
-                                        .anchor_after(search_range.start + match_range.start);
-                                    let end = search_buffer
-                                        .anchor_before(search_range.start + match_range.end);
-                                    deleted_hunk_anchor.with_diff_base_anchor(start)
-                                        ..deleted_hunk_anchor.with_diff_base_anchor(end)
-                                } else {
-                                    let start = search_buffer
-                                        .anchor_after(search_range.start + match_range.start);
-                                    let end = search_buffer
-                                        .anchor_before(search_range.start + match_range.end);
-                                    MultiBufferAnchor::range_in_buffer(excerpt_id, start..end)
-                                }
-                            }));
+                        // Convert buffer-relative matches to multi-buffer anchor ranges
+                        ranges.extend(buffer_matches.into_iter().map(|match_range| {
+                            if let Some(deleted_hunk_anchor) = deleted_hunk_anchor {
+                                let start = search_buffer
+                                    .anchor_after(search_range.start + match_range.start);
+                                let end = search_buffer
+                                    .anchor_before(search_range.start + match_range.end);
+                                deleted_hunk_anchor.with_diff_base_anchor(start)
+                                    ..deleted_hunk_anchor.with_diff_base_anchor(end)
+                            } else {
+                                let start = search_buffer
+                                    .anchor_after(search_range.start + match_range.start);
+                                let end = search_buffer
+                                    .anchor_before(search_range.start + match_range.end);
+                                MultiBufferAnchor::range_in_buffer(excerpt_id, start..end)
+                            }
+                        }));
+                    }
+
+                    if cancelled_clone.load(Ordering::Relaxed) {
+                        return (Vec::new(), Vec::new());
+                    }
+
+                    // Group matches by line to compute preview text once per line
+                    let mut lines_data: HashMap<u32, Vec<Range<MultiBufferOffset>>> =
+                        HashMap::default();
+                    for range in ranges.iter() {
+                        let start_offset = range.start.to_offset(&buffer_snapshot);
+                        let start_point = buffer_snapshot.offset_to_point(start_offset);
+                        let end_offset = range.end.to_offset(&buffer_snapshot);
+                        lines_data
+                            .entry(start_point.row)
+                            .or_default()
+                            .push(start_offset..end_offset);
+                    }
+
+                    let mut new_items: Vec<LineMatchData> = Vec::with_capacity(ranges.len());
+                    let mut sorted_lines: Vec<u32> = lines_data.keys().cloned().collect();
+                    sorted_lines.sort();
+
+                    let mut match_indices_counter = 0;
+
+                    for line in sorted_lines {
+                        if cancelled_clone.load(Ordering::Relaxed) {
+                            return (Vec::new(), Vec::new());
                         }
 
-                        Ok::<Vec<AnchorRange>, anyhow::Error>(ranges)
+                        if let Some(ranges) = lines_data.remove(&line) {
+                            let line_start = buffer_snapshot.point_to_offset(Point::new(line, 0));
+                            let line_end = if line < buffer_snapshot.max_point().row {
+                                buffer_snapshot.point_to_offset(Point::new(line + 1, 0))
+                            } else {
+                                buffer_snapshot.len()
+                            };
+                            let line_text: String = buffer_snapshot
+                                .text_for_range(line_start..line_end)
+                                .collect();
+
+                            let trim_start = line_text.len() - line_text.trim_start().len();
+
+                            // Create an item for each match with its own preview text centered around the match
+                            for (i, range) in ranges.iter().enumerate() {
+                                let rel_match_start = range.start.0.saturating_sub(line_start.0);
+
+                                let (p_start, p_end) = {
+                                    let match_len = range.end.0 - range.start.0;
+                                    let context = (MAX_PREVIEW_BYTES.saturating_sub(match_len)) / 2;
+                                    let mut start = rel_match_start.saturating_sub(context);
+
+                                    if start < trim_start {
+                                        start = trim_start;
+                                    }
+
+                                    if rel_match_start < start {
+                                        start = rel_match_start;
+                                    }
+
+                                    let end = (start + MAX_PREVIEW_BYTES).min(line_text.len());
+                                    (start, end)
+                                };
+                                let (p_start, p_end) =
+                                    find_safe_char_boundaries(&line_text, p_start, p_end)
+                                        .unwrap_or((p_start, p_end));
+
+                                let mut preview_string = String::new();
+                                if p_start > trim_start {
+                                    preview_string.push('…');
+                                }
+                                preview_string.push_str(&line_text[p_start..p_end]);
+                                if p_end < line_text.len() {
+                                    preview_string.push('…');
+                                }
+                                let preview_text: SharedString = preview_string.into();
+                                let prefix_len = if p_start > trim_start {
+                                    '…'.len_utf8()
+                                } else {
+                                    0
+                                };
+
+                                let mut list_match_ranges = Vec::new();
+                                let mut active_match_index_in_list = None;
+
+                                for (j, other_range) in ranges.iter().enumerate() {
+                                    let other_rel_start =
+                                        other_range.start.0.saturating_sub(line_start.0);
+                                    let other_rel_end = other_range
+                                        .end
+                                        .0
+                                        .saturating_sub(line_start.0)
+                                        .min(line_text.len());
+
+                                    let start = other_rel_start.max(p_start);
+                                    let end = other_rel_end.min(p_end);
+                                    if start < end {
+                                        let rel_start = (start - p_start) + prefix_len;
+                                        let rel_end = (end - p_start) + prefix_len;
+                                        list_match_ranges.push(rel_start..rel_end);
+                                        if i == j {
+                                            active_match_index_in_list =
+                                                Some(list_match_ranges.len() - 1);
+                                        }
+                                    }
+                                }
+
+                                let mut item_syntax = Vec::new();
+                                let chunk_offset_start = line_start.0 + p_start;
+                                let chunk_offset_end = line_start.0 + p_end;
+                                let mut current_rel_offset = prefix_len;
+
+                                for chunk in buffer_snapshot.chunks(
+                                    MultiBufferOffset(chunk_offset_start)
+                                        ..MultiBufferOffset(chunk_offset_end),
+                                    true,
+                                ) {
+                                    let len = chunk.text.len();
+                                    if let Some(id) = chunk.syntax_highlight_id {
+                                        item_syntax.push((
+                                            current_rel_offset..current_rel_offset + len,
+                                            id,
+                                        ));
+                                    }
+                                    current_rel_offset += len;
+                                }
+                                let syntax_highlights = if item_syntax.is_empty() {
+                                    None
+                                } else {
+                                    Some(Arc::new(item_syntax))
+                                };
+
+                                let line_label = if let Some((_, buffer_point, _)) =
+                                    buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
+                                {
+                                    (buffer_point.row + 1).to_string().into()
+                                } else {
+                                    (line + 1).to_string().into()
+                                };
+
+                                new_items.push(LineMatchData {
+                                    line_label,
+                                    preview_text,
+                                    list_match_ranges: Arc::new(list_match_ranges),
+                                    active_match_index_in_list,
+                                    syntax_highlights,
+                                    primary_match_offset: range.start.0,
+                                    match_indices: match_indices_counter
+                                        ..(match_indices_counter + 1),
+                                });
+                                match_indices_counter += 1;
+                            }
+                        }
                     }
+                    (ranges, new_items)
                 })
                 .await;
 
@@ -1323,154 +1514,7 @@ impl PickerDelegate for BufferSearchDelegate {
                 return;
             }
 
-            let all_match_ranges = if let Ok(matches) = matches {
-                Arc::new(matches)
-            } else {
-                Arc::new(Vec::new())
-            };
-
-            // Group matches by line to compute preview text once per line
-            let mut lines_data: HashMap<u32, Vec<Range<MultiBufferOffset>>> = HashMap::default();
-            for range in all_match_ranges.iter() {
-                let start_offset = range.start.to_offset(&buffer_snapshot);
-                let start_point = buffer_snapshot.offset_to_point(start_offset);
-                let end_offset = range.end.to_offset(&buffer_snapshot);
-                lines_data
-                    .entry(start_point.row)
-                    .or_default()
-                    .push(start_offset..end_offset);
-            }
-
-            let mut new_items: Vec<LineMatchData> = Vec::with_capacity(all_match_ranges.len());
-            let mut sorted_lines: Vec<u32> = lines_data.keys().cloned().collect();
-            sorted_lines.sort();
-
-            let mut match_indices_counter = 0;
-
-            for line in sorted_lines {
-                if cancelled.load(Ordering::Relaxed) {
-                    return;
-                }
-
-                if let Some(ranges) = lines_data.remove(&line) {
-                    let line_start = buffer_snapshot.point_to_offset(Point::new(line, 0));
-                    let line_end = if line < buffer_snapshot.max_point().row {
-                        buffer_snapshot.point_to_offset(Point::new(line + 1, 0))
-                    } else {
-                        buffer_snapshot.len()
-                    };
-                    let line_text: String = buffer_snapshot
-                        .text_for_range(line_start..line_end)
-                        .collect();
-
-                    let trim_start = line_text.len() - line_text.trim_start().len();
-
-                    // Create an item for each match with its own preview text centered around the match
-                    for (i, range) in ranges.iter().enumerate() {
-                        let rel_match_start = range.start.0.saturating_sub(line_start.0);
-
-                        let (p_start, p_end) = {
-                            let match_len = range.end.0 - range.start.0;
-                            let context = (MAX_PREVIEW_BYTES.saturating_sub(match_len)) / 2;
-                            let mut start = rel_match_start.saturating_sub(context);
-
-                            if start < trim_start {
-                                start = trim_start;
-                            }
-
-                            if rel_match_start < start {
-                                start = rel_match_start;
-                            }
-
-                            let end = (start + MAX_PREVIEW_BYTES).min(line_text.len());
-                            (start, end)
-                        };
-                        let (p_start, p_end) =
-                            find_safe_char_boundaries(&line_text, p_start, p_end)
-                                .unwrap_or((p_start, p_end));
-
-                        let mut preview_string = String::new();
-                        if p_start > trim_start {
-                            preview_string.push('…');
-                        }
-                        preview_string.push_str(&line_text[p_start..p_end]);
-                        if p_end < line_text.len() {
-                            preview_string.push('…');
-                        }
-                        let preview_text: SharedString = preview_string.into();
-                        let prefix_len = if p_start > trim_start {
-                            '…'.len_utf8()
-                        } else {
-                            0
-                        };
-
-                        let mut list_match_ranges = Vec::new();
-                        let mut active_match_index_in_list = None;
-
-                        for (j, other_range) in ranges.iter().enumerate() {
-                            let other_rel_start = other_range.start.0.saturating_sub(line_start.0);
-                            let other_rel_end = other_range
-                                .end
-                                .0
-                                .saturating_sub(line_start.0)
-                                .min(line_text.len());
-
-                            let start = other_rel_start.max(p_start);
-                            let end = other_rel_end.min(p_end);
-                            if start < end {
-                                let rel_start = (start - p_start) + prefix_len;
-                                let rel_end = (end - p_start) + prefix_len;
-                                list_match_ranges.push(rel_start..rel_end);
-                                if i == j {
-                                    active_match_index_in_list = Some(list_match_ranges.len() - 1);
-                                }
-                            }
-                        }
-
-                        let mut item_syntax = Vec::new();
-                        let chunk_offset_start = line_start.0 + p_start;
-                        let chunk_offset_end = line_start.0 + p_end;
-                        let mut current_rel_offset = prefix_len;
-
-                        for chunk in buffer_snapshot.chunks(
-                            MultiBufferOffset(chunk_offset_start)
-                                ..MultiBufferOffset(chunk_offset_end),
-                            true,
-                        ) {
-                            let len = chunk.text.len();
-                            if let Some(id) = chunk.syntax_highlight_id {
-                                item_syntax
-                                    .push((current_rel_offset..current_rel_offset + len, id));
-                            }
-                            current_rel_offset += len;
-                        }
-                        let syntax_highlights = if item_syntax.is_empty() {
-                            None
-                        } else {
-                            Some(Arc::new(item_syntax))
-                        };
-
-                        let line_label = if let Some((_, buffer_point, _)) =
-                            buffer_snapshot.point_to_buffer_point(Point::new(line, 0))
-                        {
-                            (buffer_point.row + 1).to_string().into()
-                        } else {
-                            (line + 1).to_string().into()
-                        };
-
-                        new_items.push(LineMatchData {
-                            line_label,
-                            preview_text,
-                            list_match_ranges: Arc::new(list_match_ranges),
-                            active_match_index_in_list,
-                            syntax_highlights,
-                            primary_match_offset: range.start.0,
-                            match_indices: match_indices_counter..(match_indices_counter + 1),
-                        });
-                        match_indices_counter += 1;
-                    }
-                }
-            }
+            let all_match_ranges = Arc::new(all_match_ranges);
 
             picker
                 .update(cx, |picker, cx| {
@@ -1481,7 +1525,7 @@ impl PickerDelegate for BufferSearchDelegate {
                     picker.delegate.match_count = all_match_ranges.len();
                     picker.delegate.items = new_items;
                     picker.delegate.is_searching = false;
-                    picker.delegate.all_matches = all_match_ranges;
+                    picker.delegate.all_matches = all_match_ranges.clone();
 
                     // Find closest match to initial cursor
                     // For search results, we look at primary_match_offset (absolute offset in buffer)
