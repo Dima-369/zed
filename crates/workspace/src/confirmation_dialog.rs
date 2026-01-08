@@ -134,6 +134,7 @@ impl Render for ConfirmationDialog {
                 h_flex()
                     .gap_3()
                     .items_start()
+                    .flex_1()
                     .child(
                         Icon::new(IconName::Warning)
                             .size(IconSize::Medium)
@@ -142,16 +143,22 @@ impl Render for ConfirmationDialog {
                     .child(
                         v_flex()
                             .gap_3()
+                            .flex_1()
+                            .max_w_full()
                             .child(
-                                Label::new(self.message.clone())
-                                    .size(LabelSize::Default)
-                                    .weight(FontWeight::MEDIUM),
+                                div().w_full().overflow_hidden().child(
+                                    Label::new(self.message.clone())
+                                        .size(LabelSize::Default)
+                                        .weight(FontWeight::MEDIUM),
+                                ),
                             )
                             .when_some(self.detail.clone(), |this, detail| {
                                 this.child(
-                                    Label::new(detail)
-                                        .size(LabelSize::Small)
-                                        .color(Color::Muted),
+                                    div().w_full().overflow_hidden().child(
+                                        Label::new(detail)
+                                            .size(LabelSize::Small)
+                                            .color(Color::Muted),
+                                    ),
                                 )
                             }),
                     ),
