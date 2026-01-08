@@ -1136,7 +1136,8 @@ impl PickerDelegate for BufferSearchDelegate {
                                 return new_items;
                             }
 
-                            let line_start = buffer_snapshot_clone.point_to_offset(Point::new(line, 0));
+                            let line_start =
+                                buffer_snapshot_clone.point_to_offset(Point::new(line, 0));
                             let line_end = if line < buffer_snapshot_clone.max_point().row {
                                 buffer_snapshot_clone.point_to_offset(Point::new(line + 1, 0))
                             } else {
@@ -1162,7 +1163,9 @@ impl PickerDelegate for BufferSearchDelegate {
                                     line_text.len() - line_text.trim_start().len();
 
                                 let mut current_offset = 0;
-                                for chunk in buffer_snapshot_clone.chunks(line_start..line_end, true) {
+                                for chunk in
+                                    buffer_snapshot_clone.chunks(line_start..line_end, true)
+                                {
                                     let chunk_len = chunk.text.len();
                                     if let Some(highlight_id) = chunk.syntax_highlight_id {
                                         let chunk_absolute_start = current_offset;
@@ -1368,8 +1371,7 @@ impl PickerDelegate for BufferSearchDelegate {
                             .push(start_offset..end_offset);
                     }
 
-                    let mut new_items: Vec<LineMatchData> =
-                        Vec::with_capacity(ranges.len());
+                    let mut new_items: Vec<LineMatchData> = Vec::with_capacity(ranges.len());
                     let mut sorted_lines: Vec<u32> = lines_data.keys().cloned().collect();
                     sorted_lines.sort();
 
