@@ -23,8 +23,8 @@ use std::{
 };
 use text::Bias;
 use ui::{
-    Button, ButtonStyle, Color, Divider, KeyBinding as UiKeyBinding, Label, ListItem, Tooltip,
-    prelude::*,
+    Button, ButtonStyle, Color, CommonAnimationExt, Divider, Icon, IconName,
+    KeyBinding as UiKeyBinding, Label, ListItem, Tooltip, prelude::*,
 };
 use util::{ResultExt, paths::PathMatcher};
 use vim_mode_setting::VimModeSetting;
@@ -1035,7 +1035,15 @@ impl PickerDelegate for BufferSearchDelegate {
                             .child(
                                 h_flex()
                                     .gap_1()
-                                    .when(self.match_count > 0, |this| {
+                                    .when(self.is_searching, |this| {
+                                        this.child(
+                                            Icon::new(IconName::ArrowCircle)
+                                                .size(IconSize::Small)
+                                                .color(Color::Muted)
+                                                .with_rotate_animation(2),
+                                        )
+                                    })
+                                    .when(self.match_count > 0 && !self.is_searching, |this| {
                                         this.child(
                                             Label::new(format!(
                                                 "{} / {}",
