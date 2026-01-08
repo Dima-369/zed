@@ -1,5 +1,4 @@
-TEST
-hide the agent_panel/thread/view code "Output Preview (last 1024 characters):" section entirely when in Zed Agent (but keep showing for other ACP agents)
+
 
 
 # >>> Investigations
