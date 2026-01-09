@@ -1,13 +1,11 @@
-use crate::{Editor, EditorElement, EditorStyle};
+use crate::Editor;
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Pixels, Render,
     WeakEntity, Window, px,
 };
 use project::Project;
-use settings::Settings;
 use std::path::PathBuf;
-use theme::ThemeSettings;
-use ui::{Button, KeyBinding, Label, TextSize, prelude::*};
+use ui::{Button, KeyBinding, Label, prelude::*};
 use workspace::{ModalView, Workspace};
 
 pub struct CreateFileModal {
@@ -44,10 +42,13 @@ impl CreateFileModal {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let filename_editor = cx.new(|cx| {
-            let mut editor = Editor::single_line(window, cx);
+        let filename_editor = cx.new(|cx| Editor::multi_line(window, cx));
+
+        filename_editor.update(cx, |editor, cx| {
             editor.set_placeholder_text("Enter filename...", window, cx);
-            editor
+            editor.set_show_line_numbers(false, cx);
+            editor.set_show_gutter(false, cx);
+            editor.set_show_scrollbars(false, cx);
         });
 
         let focus_handle = filename_editor.focus_handle(cx);
@@ -93,29 +94,6 @@ impl CreateFileModal {
             self.error_message = None;
         }
         cx.notify();
-    }
-
-    fn editor_style(window: &Window, cx: &App) -> EditorStyle {
-        let settings = ThemeSettings::get_global(cx);
-        let font_size = TextSize::Default.rems(cx).to_pixels(window.rem_size());
-        let line_height = font_size * settings.buffer_line_height.value();
-
-        EditorStyle {
-            background: cx.theme().colors().editor_background,
-            local_player: cx.theme().players().local(),
-            text: gpui::TextStyle {
-                color: cx.theme().colors().text,
-                font_family: settings.buffer_font.family.clone(),
-                font_fallbacks: settings.buffer_font.fallbacks.clone(),
-                font_features: settings.buffer_font.features.clone(),
-                font_size: TextSize::Default.rems(cx).into(),
-                font_weight: settings.buffer_font.weight,
-                line_height: line_height.into(),
-                ..Default::default()
-            },
-            syntax: cx.theme().syntax().clone(),
-            ..Default::default()
-        }
     }
 
     fn cancel(&mut self, _: &menu::Cancel, _: &mut Window, cx: &mut Context<Self>) {
@@ -204,8 +182,7 @@ impl CreateFileModal {
 }
 
 impl Render for CreateFileModal {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let editor_style = Self::editor_style(window, cx);
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let focus_handle = self.focus_handle(cx);
 
         let directory_display = {
@@ -255,7 +232,12 @@ impl Render for CreateFileModal {
                             } else {
                                 cx.theme().colors().border_variant
                             })
-                            .child(EditorElement::new(&self.filename_editor, editor_style)),
+                            .child(
+                                h_flex()
+                                    .h_6()
+                                    .w_full()
+                                    .child(self.filename_editor.clone()),
+                            ),
                     )
                     .when_some(self.error_message.clone(), |this, message| {
                         this.child(
