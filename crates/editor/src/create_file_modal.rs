@@ -1,15 +1,13 @@
-use crate::{Editor, EditorElement, EditorMode, EditorStyle};
+use crate::{Editor, EditorElement, EditorStyle};
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Pixels, Render,
     WeakEntity, Window, px,
 };
-use language::Buffer;
-use multi_buffer::MultiBuffer;
 use project::Project;
 use settings::Settings;
 use std::path::PathBuf;
 use theme::ThemeSettings;
-use ui::{prelude::*, Button, KeyBinding, Label, TextSize};
+use ui::{Button, KeyBinding, Label, TextSize, prelude::*};
 use workspace::{ModalView, Workspace};
 
 pub struct CreateFileModal {
@@ -17,6 +15,7 @@ pub struct CreateFileModal {
     current_directory: PathBuf,
     project: Entity<Project>,
     workspace: WeakEntity<Workspace>,
+    error_message: Option<String>,
 }
 
 impl Focusable for CreateFileModal {
@@ -45,20 +44,9 @@ impl CreateFileModal {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let buffer = cx.new(|cx| Buffer::local("", cx));
-        let multi_buffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx));
-
         let filename_editor = cx.new(|cx| {
-            let mut editor = Editor::new(
-                EditorMode::SingleLine,
-                multi_buffer,
-                None,
-                window,
-                cx,
-            );
+            let mut editor = Editor::single_line(window, cx);
             editor.set_placeholder_text("Enter filename...", window, cx);
-            editor.set_use_modal_editing(false); // Disable modal editing to allow Enter key to be handled by the modal
-            editor.set_show_gutter(false, cx);
             editor
         });
 
@@ -69,12 +57,42 @@ impl CreateFileModal {
         })
         .detach();
 
+        cx.subscribe_in(
+            &filename_editor,
+            window,
+            |this, _, _event: &crate::EditorEvent, window, cx| {
+                this.validate_filename(window, cx);
+            },
+        )
+        .detach();
+
         Self {
             filename_editor,
             current_directory,
             project,
             workspace,
+            error_message: None,
         }
+    }
+
+    fn validate_filename(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        let filename = self.filename_editor.read(cx).text(cx);
+        let filename = filename.trim();
+
+        if filename.is_empty() {
+            self.error_message = None;
+            cx.notify();
+            return;
+        }
+
+        let new_file_path = self.current_directory.join(filename);
+
+        if new_file_path.exists() {
+            self.error_message = Some(format!("'{}' already exists", filename));
+        } else {
+            self.error_message = None;
+        }
+        cx.notify();
     }
 
     fn editor_style(window: &Window, cx: &App) -> EditorStyle {
@@ -107,15 +125,19 @@ impl CreateFileModal {
     fn confirm(&mut self, _: &menu::Confirm, window: &mut Window, cx: &mut Context<Self>) {
         let filename = self.filename_editor.read(cx).text(cx);
         let filename = filename.trim();
-        println!("[CreateFileModal] confirm called, filename: {:?}", filename);
 
         if filename.is_empty() {
-            println!("[CreateFileModal] filename is empty, dismissing");
             cx.emit(DismissEvent);
             return;
         }
 
         let new_file_path = self.current_directory.join(filename);
+
+        if new_file_path.exists() {
+            self.error_message = Some(format!("'{}' already exists", filename));
+            cx.notify();
+            return;
+        }
         println!("[CreateFileModal] new_file_path: {:?}", new_file_path);
         let project = self.project.clone();
         let workspace = self.workspace.clone();
@@ -123,7 +145,9 @@ impl CreateFileModal {
         cx.spawn_in(window, async move |_, cx| {
             println!("[CreateFileModal] spawn started");
             let project_path = project
-                .read_with(cx, |project, cx| project.find_project_path(&new_file_path, cx))
+                .read_with(cx, |project, cx| {
+                    project.find_project_path(&new_file_path, cx)
+                })
                 .ok()
                 .flatten();
             println!("[CreateFileModal] project_path: {:?}", project_path);
@@ -139,9 +163,7 @@ impl CreateFileModal {
 
                 if let Some(worktree) = worktree {
                     let abs_path = worktree
-                        .read_with(cx, |worktree, _| {
-                            worktree.absolutize(&project_path.path)
-                        })
+                        .read_with(cx, |worktree, _| worktree.absolutize(&project_path.path))
                         .ok();
                     println!("[CreateFileModal] abs_path: {:?}", abs_path);
 
@@ -159,7 +181,10 @@ impl CreateFileModal {
                             });
                             if let Ok(task) = open_task {
                                 let result = task.await;
-                                println!("[CreateFileModal] open_abs_path awaited result: {:?}", result.is_ok());
+                                println!(
+                                    "[CreateFileModal] open_abs_path awaited result: {:?}",
+                                    result.is_ok()
+                                );
                             }
                         }
                     }
@@ -215,15 +240,30 @@ impl Render for CreateFileModal {
                     ),
             )
             .child(
-                div()
-                    .w_full()
-                    .px_2()
-                    .py_1p5()
-                    .bg(cx.theme().colors().editor_background)
-                    .rounded_md()
-                    .border_1()
-                    .border_color(cx.theme().colors().border_variant)
-                    .child(EditorElement::new(&self.filename_editor, editor_style)),
+                v_flex()
+                    .gap_1()
+                    .child(
+                        div()
+                            .w_full()
+                            .px_2()
+                            .py_1p5()
+                            .bg(cx.theme().colors().editor_background)
+                            .rounded_md()
+                            .border_1()
+                            .border_color(if self.error_message.is_some() {
+                                Color::Error.color(cx)
+                            } else {
+                                cx.theme().colors().border_variant
+                            })
+                            .child(EditorElement::new(&self.filename_editor, editor_style)),
+                    )
+                    .when_some(self.error_message.clone(), |this, message| {
+                        this.child(
+                            Label::new(message)
+                                .size(LabelSize::Small)
+                                .color(Color::Error),
+                        )
+                    }),
             )
             .child(
                 h_flex()
@@ -232,12 +272,20 @@ impl Render for CreateFileModal {
                     .gap_2()
                     .child(
                         Button::new("cancel", "Cancel")
-                            .key_binding(KeyBinding::for_action_in(&menu::Cancel, &focus_handle, cx))
+                            .key_binding(KeyBinding::for_action_in(
+                                &menu::Cancel,
+                                &focus_handle,
+                                cx,
+                            ))
                             .on_click(cx.listener(|_, _, _, cx| cx.emit(DismissEvent))),
                     )
                     .child(
                         Button::new("create", "Create")
-                            .key_binding(KeyBinding::for_action_in(&menu::Confirm, &focus_handle, cx))
+                            .key_binding(KeyBinding::for_action_in(
+                                &menu::Confirm,
+                                &focus_handle,
+                                cx,
+                            ))
                             .style(ButtonStyle::Filled)
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.confirm(&menu::Confirm, window, cx);
