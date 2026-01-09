@@ -4,6 +4,8 @@
 
 - add a new action for the editor file explorer in `editor.rs` which opens up a modal with a vim enabled editor text input where it should create that file in the currently viewed directory
 
+- can it start in vim insert mode? instead of vim no in the file explorer
+
 - entering empty text should also show an error like on already existing file
 
 can the `crates/editor/src/create_file_modal.rs` on confirming, open the newly created file?
