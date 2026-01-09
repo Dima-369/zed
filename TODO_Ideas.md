@@ -5,6 +5,7 @@
 in `crates/editor/src/create_file_modal.rs`
 - can it start in vim insert mode? instead of vim no in the file explorer
 
+TEST
 in `crates/editor/src/create_file_modal.rs`
 - entering empty text should also show an error like on already existing file
 
