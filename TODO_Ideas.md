@@ -10,9 +10,6 @@ Purpose: Git commit message input
 Implementation: Uses a full Editor entity for multi-line commit message editing
 
 
-DONE, add keybindings now, is named `ImageViewer`
-- when viewing an image, it should get a new Keyboard Context, otherwise my keyboard shortcuts simply do not work there
-
 - can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`
 
 
