@@ -84,7 +84,9 @@ Deleting or adding lines is not supported, this is for file browsing and file re
 - `workspace::FileExplorerOpen` (the entry point)
 - `workspace::FileExplorerOpenFile` (has a `close: bool` parameter to close the file explorer after opening the file, default is `true`)
 - `workspace::FileExplorerNavigateToParentDirectory`
-- `workspace::FileExplorerSaveModified` (it shows a confirmation dialog which lists all changes)
+- `workspace::FileExplorerSaveModified` (show a confirmation dialog which lists all changes)
+- `workspace::FileExplorerCreateFile` (show a modal to input a file name and open the newly created file)
+- `workspace::FileExplorerReload` (reload the current directory listing while preserving the cursor position on file name)
 
 ### Implementation
 
