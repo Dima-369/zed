@@ -5,7 +5,6 @@
 can the `crates/editor/src/create_file_modal.rs` on confirming, open the newly created file?
 on confirming and file created, can you also open the file, like how file explorer open does it?
 
-enter to create file, does not open it?
 error handling when file already exists! maybe inline inside the editor? maybe check how project_panel code validates its create/rename file code?
 
 REMOVE debug println at end
