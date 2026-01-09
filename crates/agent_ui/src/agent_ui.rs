@@ -145,6 +145,8 @@ actions!(
         SendNextQueuedMessage,
         /// Clears all messages from the queue.
         ClearMessageQueue,
+        /// Dismisses all OS-level agent notifications.
+        DismissOsNotifications,
     ]
 );
 
@@ -273,6 +275,11 @@ pub fn init(
     is_eval: bool,
     cx: &mut App,
 ) {
+    // Register global action to dismiss all agent notifications
+    cx.on_action(|_: &DismissOsNotifications, cx| {
+        dismiss_all_agent_notifications(cx);
+    });
+
     assistant_text_thread::init(client, cx);
     rules_library::init(cx);
     if !is_eval {
@@ -478,6 +485,23 @@ fn register_slash_commands(cx: &mut App) {
         }
     })
     .detach();
+}
+
+fn dismiss_all_agent_notifications(cx: &mut App) {
+    // Find all windows that contain AgentNotification and dismiss them
+    let agent_notification_windows: Vec<_> = cx
+        .windows()
+        .iter()
+        .filter_map(|window| window.downcast::<crate::ui::AgentNotification>())
+        .collect();
+
+    for window in agent_notification_windows {
+        window
+            .update(cx, |_, window, _| {
+                window.remove_window();
+            })
+            .ok();
+    }
 }
 
 #[cfg(test)]
