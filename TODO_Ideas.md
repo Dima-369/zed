@@ -2,6 +2,7 @@
 
 - add a new action for the editor file explorer in `editor.rs` which opens up a modal with a vim enabled editor text input where it should create that file in the currently viewed directory
 
+can the `crates/editor/src/create_file_modal.rs` on confirming, open the newly created file?
 on confirming and file created, can you also open the file, like how file explorer open does it?
 
 - can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`
