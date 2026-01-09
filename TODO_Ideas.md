@@ -1,4 +1,5 @@
 - fix the monospace toggler
+check project_settings.rs diff to main
 
 - add new like `workspace::FileExplorerReload` which reloads the directory listing, but keeps cursor on same file (if it still exists)
 
