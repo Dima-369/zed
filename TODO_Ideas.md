@@ -1,8 +1,8 @@
 - check out https://github.com/zed-industries/zed/pull/46112
 
-- add `close` to `file_explorer_open_file` action in `editor.rs`. it is optional, assume `true` by default. if false, it does not close the file explorer editor tab.
-
 - add a new action for the editor file explorer in `editor.rs` which opens up a modal with a vim enabled editor text input where it should create that file in the currently viewed directory
+
+- can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`
 
 # >>> Investigations
 
