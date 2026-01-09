@@ -81,11 +81,10 @@ impl CreateFileModal {
         let filename = filename.trim();
 
         if filename.is_empty() {
-            self.error_message = Some("Please enter a filename".to_string());
-        } else {
-            self.error_message = None;
+            self.error_message = Some("Please enter a non-blank file name".to_string());
+            cx.notify();
+            return;
         }
-        cx.notify();
 
         let new_file_path = self.current_directory.join(filename);
 
