@@ -294,6 +294,15 @@ impl KeystrokeInput {
     ) {
         cx.stop_propagation();
 
+        // Check for cmd-escape to exit search mode
+        if self.search
+            && keystroke.key == "escape"
+            && (keystroke.modifiers.platform || keystroke.modifiers.control)
+        {
+            self.stop_recording(&StopRecording, window, cx);
+            return;
+        }
+
         let close_keystroke_result = self.handle_possible_close_keystroke(keystroke, window, cx);
         if close_keystroke_result == CloseKeystrokeResult::Close {
             self.stop_recording(&StopRecording, window, cx);

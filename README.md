@@ -102,6 +102,10 @@ You modify the emojis in your `settings.json` like this in the root setting obje
 ]
 ```
 
+## Keyboard Editor
+
+- allow `cmd-escape` to break out of the `Search by Keystroke` mode
+
 ## Keyboard Context
 
 - allow mouse left click on the action name or context to copy into clipboard
