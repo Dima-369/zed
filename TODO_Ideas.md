@@ -1,3 +1,6 @@
+- add `close` to `file_explorer_open_file` action in `editor.rs`. it is optional, assume `true` by default. if false, it does not close the file explorer editor tab.
+
+- can `cmd-escape` inside `Search by Keystroke` break out of the mode? can you hardcode that it in? it currently eats up all keystrokes to determine the key presses, but there is no way to break out of it with keyboard only
 
 
 # >>> Investigations
