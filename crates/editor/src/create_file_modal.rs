@@ -55,7 +55,7 @@ impl CreateFileModal {
                 cx,
             );
             editor.set_placeholder_text("Enter filename...", window, cx);
-            editor.set_use_modal_editing(true);
+            editor.set_use_modal_editing(false); // Disable modal editing to allow Enter key to be handled by the modal
             editor.set_show_gutter(false, cx);
             editor
         });
@@ -159,7 +159,15 @@ impl Render for CreateFileModal {
         let editor_style = Self::editor_style(window, cx);
         let focus_handle = self.focus_handle(cx);
 
-        let directory_display = self.current_directory.to_string_lossy().to_string();
+        let directory_display = {
+            let path_str = self.current_directory.to_string_lossy().to_string();
+            let home_dir = std::env::var("HOME").unwrap_or_else(|_| "".to_string());
+            if !home_dir.is_empty() && path_str.starts_with(&home_dir) {
+                path_str.replacen(&home_dir, "~", 1)
+            } else {
+                path_str
+            }
+        };
 
         v_flex()
             .key_context("CreateFileModal")
@@ -174,8 +182,7 @@ impl Render for CreateFileModal {
             .border_1()
             .border_color(cx.theme().colors().border)
             .child(
-                h_flex()
-                    .justify_between()
+                v_flex()
                     .child(Label::new("Create New File").size(LabelSize::Large))
                     .child(
                         Label::new(directory_display)
