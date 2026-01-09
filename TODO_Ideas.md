@@ -2,6 +2,7 @@
 
 - add new like `workspace::FileExplorerReload` which reloads the directory listing, but keeps cursor on same file (if it still exists)
 
+TEST, should be named `agent::DismissOsNotifications`
 - does workspace clear all notifications also clear the top right notifications the Zed AI Agent is showing? if not, can it do that?
 
 in `crates/editor/src/create_file_modal.rs`
