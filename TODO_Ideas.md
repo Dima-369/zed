@@ -2,7 +2,7 @@
 
 - add a new action for the editor file explorer in `editor.rs` which opens up a modal with a vim enabled editor text input where it should create that file in the currently viewed directory
 
-- when viewing a mode, it should get a new Keyboard Context, otherwise my keyboard shortcuts simply do not work there
+- when viewing an image, it should get a new Keyboard Context, otherwise my keyboard shortcuts simply do not work there
 
 - can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`
 
