@@ -1,7 +1,8 @@
+- check out https://github.com/zed-industries/zed/pull/46112
+
 - add `close` to `file_explorer_open_file` action in `editor.rs`. it is optional, assume `true` by default. if false, it does not close the file explorer editor tab.
 
-- can `cmd-escape` inside `Search by Keystroke` break out of the mode? can you hardcode that it in? it currently eats up all keystrokes to determine the key presses, but there is no way to break out of it with keyboard only
-
+- add a new action for the editor file explorer in `editor.rs` which opens up a modal with a vim enabled editor text input where it should create that file in the currently viewed directory
 
 # >>> Investigations
 
