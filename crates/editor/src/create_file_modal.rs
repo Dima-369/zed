@@ -81,10 +81,11 @@ impl CreateFileModal {
         let filename = filename.trim();
 
         if filename.is_empty() {
+            self.error_message = Some("Please enter a filename".to_string());
+        } else {
             self.error_message = None;
-            cx.notify();
-            return;
         }
+        cx.notify();
 
         let new_file_path = self.current_directory.join(filename);
 
@@ -105,7 +106,8 @@ impl CreateFileModal {
         let filename = filename.trim();
 
         if filename.is_empty() {
-            cx.emit(DismissEvent);
+            self.error_message = Some("Please enter a filename".to_string());
+            cx.notify();
             return;
         }
 
@@ -116,19 +118,17 @@ impl CreateFileModal {
             cx.notify();
             return;
         }
-        println!("[CreateFileModal] new_file_path: {:?}", new_file_path);
+
         let project = self.project.clone();
         let workspace = self.workspace.clone();
 
         cx.spawn_in(window, async move |_, cx| {
-            println!("[CreateFileModal] spawn started");
             let project_path = project
                 .read_with(cx, |project, cx| {
                     project.find_project_path(&new_file_path, cx)
                 })
                 .ok()
                 .flatten();
-            println!("[CreateFileModal] project_path: {:?}", project_path);
 
             if let Some(project_path) = project_path {
                 let worktree = project
@@ -137,17 +137,14 @@ impl CreateFileModal {
                     })
                     .ok()
                     .flatten();
-                println!("[CreateFileModal] worktree found: {}", worktree.is_some());
 
                 if let Some(worktree) = worktree {
                     let abs_path = worktree
                         .read_with(cx, |worktree, _| worktree.absolutize(&project_path.path))
                         .ok();
-                    println!("[CreateFileModal] abs_path: {:?}", abs_path);
 
                     if let Some(abs_path) = abs_path {
                         let write_result = smol::fs::write(&abs_path, "").await;
-                        println!("[CreateFileModal] write result: {:?}", write_result);
                         if write_result.is_ok() {
                             let open_task = workspace.update_in(cx, |workspace, window, cx| {
                                 workspace.open_abs_path(
@@ -158,17 +155,11 @@ impl CreateFileModal {
                                 )
                             });
                             if let Ok(task) = open_task {
-                                let result = task.await;
-                                println!(
-                                    "[CreateFileModal] open_abs_path awaited result: {:?}",
-                                    result.is_ok()
-                                );
+                                let _result = task.await;
                             }
                         }
                     }
                 }
-            } else {
-                println!("[CreateFileModal] no project_path found");
             }
         })
         .detach();
@@ -232,12 +223,7 @@ impl Render for CreateFileModal {
                             } else {
                                 cx.theme().colors().border_variant
                             })
-                            .child(
-                                h_flex()
-                                    .h_6()
-                                    .w_full()
-                                    .child(self.filename_editor.clone()),
-                            ),
+                            .child(h_flex().h_6().w_full().child(self.filename_editor.clone())),
                     )
                     .when_some(self.error_message.clone(), |this, message| {
                         this.child(
