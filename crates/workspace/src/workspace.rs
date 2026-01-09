@@ -256,8 +256,6 @@ actions!(
         OpenComponentPreview,
         /// Opens a file explorer for the current editor's directory.
         FileExplorerOpen,
-        /// Opens the file under cursor in the file explorer.
-        FileExplorerOpenFile,
         /// Navigates to the parent directory in the file explorer.
         FileExplorerNavigateToParentDirectory,
         /// Saves all modified files in the current file explorer directory.
@@ -405,6 +403,14 @@ pub struct CloseInactiveTabsAndPanes {
 #[derive(Clone, Deserialize, PartialEq, JsonSchema, Action)]
 #[action(namespace = workspace)]
 pub struct SendKeystrokes(pub String);
+
+/// Opens the file under cursor in the file explorer.
+#[derive(Clone, PartialEq, Default, Deserialize, JsonSchema, Action)]
+#[action(namespace = workspace)]
+#[serde(default)]
+pub struct FileExplorerOpenFile {
+    pub close: Option<bool>,
+}
 
 actions!(
     project_symbols,

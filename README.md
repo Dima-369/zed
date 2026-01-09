@@ -78,7 +78,7 @@ Deleting or adding lines is not supported, this is for file browsing and file re
 ### New actions
 
 - `workspace::FileExplorerOpen` (the entry point)
-- `workspace::FileExplorerOpenFile`
+- `workspace::FileExplorerOpenFile` (has a `close: bool` parameter to close the file explorer after opening the file, default is `true`)
 - `workspace::FileExplorerNavigateToParentDirectory`
 - `workspace::FileExplorerSaveModified` (it shows a confirmation dialog which lists all changes)
 

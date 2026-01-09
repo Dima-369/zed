@@ -3206,12 +3206,15 @@ impl Editor {
 
     pub fn file_explorer_open_file(
         workspace: &mut Workspace,
-        _action: &workspace::FileExplorerOpenFile,
+        action: &workspace::FileExplorerOpenFile,
         window: &mut Window,
         cx: &mut Context<Workspace>,
     ) {
         if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
             let project = workspace.project().clone();
+
+            // Extract the close value before the async block
+            let should_close = action.close.unwrap_or(true);
 
             // Get current line content and full editor content
             let (line_content, file_list_content) = editor.update(cx, |editor, cx| {
@@ -3277,6 +3280,7 @@ impl Editor {
             full_path.push(file_path);
 
             let editor = editor.clone();
+            let should_close_param = should_close; // Rename to avoid capture conflicts
 
             // Open the file
             cx.spawn_in(window, async move |workspace, cx| -> anyhow::Result<()> {
@@ -3348,15 +3352,17 @@ impl Editor {
 
                         workspace.update_in(cx, |workspace, window, cx| {
                             if let Some(pane) = workspace.pane_for(&editor) {
-                                pane.update(cx, |pane, cx| {
-                                    pane.close_item_by_id(
-                                        editor.item_id(),
-                                        ::workspace::SaveIntent::Close,
-                                        window,
-                                        cx,
-                                    )
-                                    .detach();
-                                });
+                                if should_close_param {
+                                    pane.update(cx, |pane, cx| {
+                                        pane.close_item_by_id(
+                                            editor.item_id(),
+                                            ::workspace::SaveIntent::Close,
+                                            window,
+                                            cx,
+                                        )
+                                        .detach();
+                                    });
+                                }
                             }
                         })?;
                     }
