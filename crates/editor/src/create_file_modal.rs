@@ -193,8 +193,8 @@ impl Render for CreateFileModal {
             .child(
                 div()
                     .w_full()
-                    .h(px(32.0))
-                    .p_2()
+                    .px_2()
+                    .py_1p5()
                     .bg(cx.theme().colors().editor_background)
                     .rounded_md()
                     .border_1()
