@@ -3239,8 +3239,9 @@ impl Editor {
             return;
         }
 
+        let workspace_handle = cx.entity().downgrade();
         workspace.toggle_modal(window, cx, |window, cx| {
-            CreateFileModal::new(current_directory, project, window, cx)
+            CreateFileModal::new(current_directory, project, workspace_handle, window, cx)
         });
     }
 

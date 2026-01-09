@@ -1,7 +1,7 @@
 use crate::{Editor, EditorElement, EditorMode, EditorStyle};
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Pixels, Render,
-    Window, px,
+    WeakEntity, Window, px,
 };
 use language::Buffer;
 use multi_buffer::MultiBuffer;
@@ -10,12 +10,13 @@ use settings::Settings;
 use std::path::PathBuf;
 use theme::ThemeSettings;
 use ui::{prelude::*, Button, KeyBinding, Label, TextSize};
-use workspace::ModalView;
+use workspace::{ModalView, Workspace};
 
 pub struct CreateFileModal {
     filename_editor: Entity<Editor>,
     current_directory: PathBuf,
     project: Entity<Project>,
+    workspace: WeakEntity<Workspace>,
 }
 
 impl Focusable for CreateFileModal {
@@ -40,6 +41,7 @@ impl CreateFileModal {
     pub fn new(
         current_directory: PathBuf,
         project: Entity<Project>,
+        workspace: WeakEntity<Workspace>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -71,6 +73,7 @@ impl CreateFileModal {
             filename_editor,
             current_directory,
             project,
+            workspace,
         }
     }
 
@@ -104,20 +107,26 @@ impl CreateFileModal {
     fn confirm(&mut self, _: &menu::Confirm, window: &mut Window, cx: &mut Context<Self>) {
         let filename = self.filename_editor.read(cx).text(cx);
         let filename = filename.trim();
+        println!("[CreateFileModal] confirm called, filename: {:?}", filename);
 
         if filename.is_empty() {
+            println!("[CreateFileModal] filename is empty, dismissing");
             cx.emit(DismissEvent);
             return;
         }
 
         let new_file_path = self.current_directory.join(filename);
+        println!("[CreateFileModal] new_file_path: {:?}", new_file_path);
         let project = self.project.clone();
+        let workspace = self.workspace.clone();
 
         cx.spawn_in(window, async move |_, cx| {
+            println!("[CreateFileModal] spawn started");
             let project_path = project
                 .read_with(cx, |project, cx| project.find_project_path(&new_file_path, cx))
                 .ok()
                 .flatten();
+            println!("[CreateFileModal] project_path: {:?}", project_path);
 
             if let Some(project_path) = project_path {
                 let worktree = project
@@ -126,6 +135,7 @@ impl CreateFileModal {
                     })
                     .ok()
                     .flatten();
+                println!("[CreateFileModal] worktree found: {}", worktree.is_some());
 
                 if let Some(worktree) = worktree {
                     let abs_path = worktree
@@ -133,15 +143,29 @@ impl CreateFileModal {
                             worktree.absolutize(&project_path.path)
                         })
                         .ok();
+                    println!("[CreateFileModal] abs_path: {:?}", abs_path);
 
                     if let Some(abs_path) = abs_path {
-                        if smol::fs::write(&abs_path, "").await.is_ok() {
-                            let _ = project.update(cx, |project, cx| {
-                                project.open_local_buffer(&abs_path, cx)
+                        let write_result = smol::fs::write(&abs_path, "").await;
+                        println!("[CreateFileModal] write result: {:?}", write_result);
+                        if write_result.is_ok() {
+                            let open_task = workspace.update_in(cx, |workspace, window, cx| {
+                                workspace.open_abs_path(
+                                    abs_path.clone(),
+                                    workspace::OpenOptions::default(),
+                                    window,
+                                    cx,
+                                )
                             });
+                            if let Ok(task) = open_task {
+                                let result = task.await;
+                                println!("[CreateFileModal] open_abs_path awaited result: {:?}", result.is_ok());
+                            }
                         }
                     }
                 }
+            } else {
+                println!("[CreateFileModal] no project_path found");
             }
         })
         .detach();
