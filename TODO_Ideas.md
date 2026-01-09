@@ -2,13 +2,12 @@
 
 - add new like `workspace::FileExplorerReload` which reloads the directory listing, but keeps cursor on same file (if it still exists)
 
-- add a new action for the editor file explorer in `editor.rs` which opens up a modal with a vim enabled editor text input where it should create that file in the currently viewed directory
-
+in `crates/editor/src/create_file_modal.rs`
 - can it start in vim insert mode? instead of vim no in the file explorer
 
+in `crates/editor/src/create_file_modal.rs`
 - entering empty text should also show an error like on already existing file
 
-REMOVE debug println at end
 
 - can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`
 
