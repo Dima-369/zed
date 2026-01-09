@@ -2,6 +2,15 @@
 
 - add a new action for the editor file explorer in `editor.rs` which opens up a modal with a vim enabled editor text input where it should create that file in the currently viewed directory
 
+base it on:
+Modals with Embedded Editor Text Inputs
+1. CommitModal (commit_modal.rs)
+Field: commit_editor: Entity<Editor>
+Purpose: Git commit message input
+Implementation: Uses a full Editor entity for multi-line commit message editing
+
+
+DONE, add keybindings now, is named `ImageViewer`
 - when viewing an image, it should get a new Keyboard Context, otherwise my keyboard shortcuts simply do not work there
 
 - can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`
