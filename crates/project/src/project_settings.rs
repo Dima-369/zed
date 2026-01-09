@@ -18,11 +18,11 @@ use rpc::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 pub use settings::DirenvSettings;
+use settings::FontFamilyName;
 pub use settings::LspSettings;
 use settings::{
-    DapSettingsContent, FontFamilyName, GitGutterSetting, GitHunkStyleSetting,
-    InvalidSettingsError, LocalSettingsKind, RegisterSetting, Settings, SettingsLocation,
-    SettingsStore, parse_json_with_comments, watch_config_file,
+    DapSettingsContent, InvalidSettingsError, LocalSettingsKind, RegisterSetting, Settings,
+    SettingsLocation, SettingsStore, parse_json_with_comments, watch_config_file,
 };
 use std::{cell::OnceCell, collections::BTreeMap, path::PathBuf, sync::Arc, time::Duration};
 use task::{DebugTaskFile, TaskTemplates, VsCodeDebugTaskFile, VsCodeTaskFile};
@@ -528,21 +528,11 @@ pub struct LspPullDiagnosticsSettings {
 impl Settings for ProjectSettings {
     fn from_settings(content: &settings::SettingsContent) -> Self {
         let project = &content.project.clone();
-        let diagnostics_default = settings::DiagnosticsSettingsContent::default();
-        let diagnostics = content.diagnostics.as_ref().unwrap_or(&diagnostics_default);
-        let lsp_pull_diagnostics_default = settings::LspPullDiagnosticsSettingsContent::default();
-        let lsp_pull_diagnostics = diagnostics
-            .lsp_pull_diagnostics
-            .as_ref()
-            .unwrap_or(&lsp_pull_diagnostics_default);
-        let inline_diagnostics_default = settings::InlineDiagnosticsSettingsContent::default();
-        let inline_diagnostics = diagnostics
-            .inline
-            .as_ref()
-            .unwrap_or(&inline_diagnostics_default);
+        let diagnostics = content.diagnostics.as_ref().unwrap();
+        let lsp_pull_diagnostics = diagnostics.lsp_pull_diagnostics.as_ref().unwrap();
+        let inline_diagnostics = diagnostics.inline.as_ref().unwrap();
 
-        let git_default = settings::GitSettings::default();
-        let git = content.git.as_ref().unwrap_or(&git_default);
+        let git = content.git.as_ref().unwrap();
         let git_enabled = {
             GitEnabledSettings {
                 status: git.enabled.as_ref().unwrap().is_git_status_enabled(),
@@ -551,32 +541,32 @@ impl Settings for ProjectSettings {
         };
         let git_settings = GitSettings {
             enabled: git_enabled,
-            git_gutter: git.git_gutter.unwrap_or(GitGutterSetting::TrackedFiles),
+            git_gutter: git.git_gutter.unwrap(),
             gutter_debounce: git.gutter_debounce.unwrap_or_default(),
             inline_blame: {
-                let inline = git.inline_blame.unwrap_or_default();
+                let inline = git.inline_blame.unwrap();
                 InlineBlameSettings {
-                    enabled: inline.enabled.unwrap_or(true),
-                    delay_ms: inline.delay_ms.unwrap_or_default(),
-                    padding: inline.padding.unwrap_or(7),
-                    min_column: inline.min_column.unwrap_or(0),
-                    show_commit_summary: inline.show_commit_summary.unwrap_or(false),
+                    enabled: inline.enabled.unwrap(),
+                    delay_ms: inline.delay_ms.unwrap(),
+                    padding: inline.padding.unwrap(),
+                    min_column: inline.min_column.unwrap(),
+                    show_commit_summary: inline.show_commit_summary.unwrap(),
                 }
             },
             blame: {
-                let blame = git.blame.clone().unwrap_or_default();
+                let blame = git.blame.clone().unwrap();
                 BlameSettings {
-                    show_avatar: blame.show_avatar.unwrap_or(true),
+                    show_avatar: blame.show_avatar.unwrap(),
                     git_blame_font_family: blame.git_blame_font_family,
                 }
             },
             branch_picker: {
-                let branch_picker = git.branch_picker.unwrap_or_default();
+                let branch_picker = git.branch_picker.unwrap();
                 BranchPickerSettings {
-                    show_author_name: branch_picker.show_author_name.unwrap_or(false),
+                    show_author_name: branch_picker.show_author_name.unwrap(),
                 }
             },
-            hunk_style: git.hunk_style.unwrap_or(GitHunkStyleSetting::StagedHollow),
+            hunk_style: git.hunk_style.unwrap(),
             path_style: git.path_style.unwrap().into(),
         };
         Self {
@@ -597,8 +587,9 @@ impl Settings for ProjectSettings {
                 button: content
                     .global_lsp_settings
                     .as_ref()
-                    .map(|settings| settings.button.unwrap_or(true))
-                    .unwrap_or(true),
+                    .unwrap()
+                    .button
+                    .unwrap(),
             },
             dap: project
                 .dap
@@ -607,29 +598,25 @@ impl Settings for ProjectSettings {
                 .map(|(key, value)| (DebugAdapterName(key.into()), DapSettings::from(value)))
                 .collect(),
             diagnostics: DiagnosticsSettings {
-                button: diagnostics.button.unwrap_or(true),
-                include_warnings: diagnostics.include_warnings.unwrap_or(true),
+                button: diagnostics.button.unwrap(),
+                include_warnings: diagnostics.include_warnings.unwrap(),
                 lsp_pull_diagnostics: LspPullDiagnosticsSettings {
-                    enabled: lsp_pull_diagnostics.enabled.unwrap_or(true),
-                    debounce_ms: lsp_pull_diagnostics.debounce_ms.unwrap_or_default().0,
+                    enabled: lsp_pull_diagnostics.enabled.unwrap(),
+                    debounce_ms: lsp_pull_diagnostics.debounce_ms.unwrap().0,
                 },
                 inline: InlineDiagnosticsSettings {
-                    enabled: inline_diagnostics.enabled.unwrap_or(false),
-                    update_debounce_ms: inline_diagnostics.update_debounce_ms.unwrap_or_default().0,
-                    padding: inline_diagnostics.padding.unwrap_or(4),
-                    min_column: inline_diagnostics.min_column.unwrap_or(0),
+                    enabled: inline_diagnostics.enabled.unwrap(),
+                    update_debounce_ms: inline_diagnostics.update_debounce_ms.unwrap().0,
+                    padding: inline_diagnostics.padding.unwrap(),
+                    min_column: inline_diagnostics.min_column.unwrap(),
                     max_severity: inline_diagnostics.max_severity.map(Into::into),
                 },
             },
             git: git_settings,
-            node: content.node.clone().unwrap_or_default().into(),
-            load_direnv: project.load_direnv.clone().unwrap_or_default(),
+            node: content.node.clone().unwrap().into(),
+            load_direnv: project.load_direnv.clone().unwrap(),
             session: SessionSettings {
-                restore_unsaved_buffers: content
-                    .session
-                    .unwrap_or_default()
-                    .restore_unsaved_buffers
-                    .unwrap_or(true),
+                restore_unsaved_buffers: content.session.unwrap().restore_unsaved_buffers.unwrap(),
                 trust_all_worktrees: content.session.unwrap().trust_all_worktrees.unwrap(),
             },
         }
