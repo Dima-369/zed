@@ -1,20 +1,10 @@
 - fix the monospace toggler
-
-- add new like `workspace::FileExplorerReload` which reloads the directory listing, but keeps cursor on same file (if it still exists)
-
-TEST, should be named `agent::DismissOsNotifications`
-- does workspace clear all notifications also clear the top right notifications the Zed AI Agent is showing? if not, can it do that?
+check project_settings.rs diff to main
 
 in `crates/editor/src/create_file_modal.rs`
 - can it start in vim insert mode? instead of vim no in the file explorer
 
 
-TEST
-in `crates/editor/src/create_file_modal.rs`
-- entering empty text should also show an error like on already existing file
-
-
-- can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`
 
 
 
@@ -202,3 +192,11 @@ This is not implemented anywhere else in Zed, so probably too difficult to imple
 Fix that in no line mode the candidate item list lines have incorrect bottom padding, They look weird, the ones for the line mode are fine weirdly, when no character is typed in, then in no line mode, the candidate rows have correct paddinge only as soon as anything is typed in.
 
 I have no idea why this is happening, and it would be amazing to fix, but I can not figure it out.
+
+# Too tough to implement
+
+## Editor File Explorer
+
+Can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`.
+
+This is insanely useful for previewing images.

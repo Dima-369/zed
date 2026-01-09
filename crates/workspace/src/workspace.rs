@@ -260,6 +260,8 @@ actions!(
         FileExplorerCreateFile,
         /// Navigates to the parent directory in the file explorer.
         FileExplorerNavigateToParentDirectory,
+        /// Reloads the directory listing, keeping cursor on same file if it still exists.
+        FileExplorerReload,
         /// Saves all modified files in the current file explorer directory.
         FileExplorerSaveModified,
         /// Reloads the active item.

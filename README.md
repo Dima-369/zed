@@ -84,7 +84,9 @@ Deleting or adding lines is not supported, this is for file browsing and file re
 - `workspace::FileExplorerOpen` (the entry point)
 - `workspace::FileExplorerOpenFile` (has a `close: bool` parameter to close the file explorer after opening the file, default is `true`)
 - `workspace::FileExplorerNavigateToParentDirectory`
-- `workspace::FileExplorerSaveModified` (it shows a confirmation dialog which lists all changes)
+- `workspace::FileExplorerSaveModified` (show a confirmation dialog which lists all changes)
+- `workspace::FileExplorerCreateFile` (show a modal to input a file name and open the newly created file)
+- `workspace::FileExplorerReload` (reload the current directory listing while preserving the cursor position on file name)
 
 ### Implementation
 
@@ -185,6 +187,7 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 
 ### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
+- add `agent::DismissOsNotifications` action to dismiss the top right OS notification from Zed Agent. With multiple tabs, I feel that gets stuck sometimes
 - add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
   - remove the opacity animation for the tabs when waiting for a response and instead rotate a circle like Windsurf
   - add `agent::CloseActiveThreadTabOrDock`
