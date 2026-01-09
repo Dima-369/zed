@@ -1,5 +1,5 @@
 - fix the monospace toggler
-check project_settings.rs diff to main
+In Zed.app toggling WORKS everywhere! so far in my own fork here, it only changes in a few places, like breadcrumbs font, agent `this here is changed` inline blocks and code tooltips?
 
 in `crates/editor/src/create_file_modal.rs`
 - can it start in vim insert mode? instead of vim no in the file explorer
