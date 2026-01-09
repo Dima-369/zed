@@ -59,6 +59,10 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - add structured outline for Markdown, modifies `crates/languages/src/markdown/outline.scm` (from https://github.com/zed-industries/zed/pull/45643)
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
 
+## Images
+
+- on viewing an image, the `ImageViewer` key context is enabled, previously there was no context
+
 ## Clipboard History Modal
 
 - implement a filterable clipboard history model (opened via `clipboard_history_modal::ToggleClipboardHistory`) which keeps tracks of copy text actions like `editor::Copy`. On confirming it pastes in the selected entry

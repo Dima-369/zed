@@ -347,7 +347,11 @@ impl Render for ImageView {
                 }
             };
 
-        div().track_focus(&self.focus_handle(cx)).size_full().child(
+        div()
+            .track_focus(&self.focus_handle(cx))
+            .key_context("ImageViewer")
+            .size_full()
+            .child(
             div()
                 .flex()
                 .justify_center()
