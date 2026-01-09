@@ -19,6 +19,7 @@ pub mod code_context_menus;
 pub mod display_map;
 mod editor_settings;
 mod element;
+mod create_file_modal;
 mod file_explorer_validation;
 mod git;
 mod highlight_matching_bracket;
@@ -223,6 +224,7 @@ use util::{RangeExt, ResultExt, TryFutureExt, maybe, post_inc};
 /// Represents the original file and directory names when the explorer was opened
 type FileExplorerState = Vec<String>;
 
+use crate::create_file_modal::CreateFileModal;
 use crate::file_explorer_validation::{FileOperationType, FilePath, validate_file_operations};
 use workspace::{
     CollaboratorId, Item as WorkspaceItem, ItemId, ItemNavHistory, OpenInTerminal, OpenTerminal,
@@ -360,6 +362,7 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::new_file_horizontal);
             workspace.register_action(Editor::file_explorer_open);
             workspace.register_action(Editor::file_explorer_open_file);
+            workspace.register_action(Editor::file_explorer_create_file);
             workspace.register_action(Editor::file_explorer_navigate_to_parent_directory);
             workspace.register_action(Editor::file_explorer_save_modified);
             workspace.register_action(Editor::cancel_language_server_work);
@@ -3202,6 +3205,43 @@ impl Editor {
             });
         })
         .detach();
+    }
+
+    pub fn file_explorer_create_file(
+        workspace: &mut Workspace,
+        _action: &workspace::FileExplorerCreateFile,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let Some(editor) = workspace.active_item_as::<Editor>(cx) else {
+            return;
+        };
+
+        if !editor.read(cx).is_file_explorer {
+            return;
+        }
+
+        let project = workspace.project().clone();
+
+        let current_directory = editor.update(cx, |editor, cx| {
+            let snapshot = editor.buffer.read(cx).snapshot(cx);
+            let first_line = snapshot
+                .text()
+                .lines()
+                .find(|line| !line.trim().is_empty())
+                .unwrap_or("")
+                .trim()
+                .to_string();
+            PathBuf::from(first_line)
+        });
+
+        if current_directory.as_os_str().is_empty() {
+            return;
+        }
+
+        workspace.toggle_modal(window, cx, |window, cx| {
+            CreateFileModal::new(current_directory, project, window, cx)
+        });
     }
 
     pub fn file_explorer_open_file(

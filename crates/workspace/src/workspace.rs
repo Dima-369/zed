@@ -256,6 +256,8 @@ actions!(
         OpenComponentPreview,
         /// Opens a file explorer for the current editor's directory.
         FileExplorerOpen,
+        /// Opens a modal to create a new file in the current file explorer directory.
+        FileExplorerCreateFile,
         /// Navigates to the parent directory in the file explorer.
         FileExplorerNavigateToParentDirectory,
         /// Saves all modified files in the current file explorer directory.
