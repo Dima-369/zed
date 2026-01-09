@@ -2,8 +2,11 @@
 
 - add new like `workspace::FileExplorerReload` which reloads the directory listing, but keeps cursor on same file (if it still exists)
 
+- does workspace clear all notifications also clear the top right notifications the Zed AI Agent is showing? if not, can it do that?
+
 in `crates/editor/src/create_file_modal.rs`
 - can it start in vim insert mode? instead of vim no in the file explorer
+
 
 TEST
 in `crates/editor/src/create_file_modal.rs`
