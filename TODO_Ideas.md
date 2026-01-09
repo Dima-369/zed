@@ -8,11 +8,6 @@
 
 - entering empty text should also show an error like on already existing file
 
-can the `crates/editor/src/create_file_modal.rs` on confirming, open the newly created file?
-on confirming and file created, can you also open the file, like how file explorer open does it?
-
-error handling when file already exists! maybe inline inside the editor? maybe check how project_panel code validates its create/rename file code?
-
 REMOVE debug println at end
 
 - can one enable preview tabs like in project panel for the editor file explorer in `editor.rs`? like every time I move cursor, it should update preview. Check how Markdown does it? Maybe see `markdown::OpenPreviewToTheSide`
