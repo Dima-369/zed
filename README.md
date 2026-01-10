@@ -187,6 +187,7 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 
 ### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
+- the notifications now include 
 - add `agent::DismissOsNotifications` action to dismiss the top right OS notification from Zed Agent. With multiple tabs, I feel that gets stuck sometimes
 - add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
   - remove the opacity animation for the tabs when waiting for a response and instead rotate a circle like Windsurf
@@ -203,6 +204,13 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 - allow `New From Summary` for ACP agents, instead of only for Zed Agent
 - add `agent::LaunchAgent` action which takes an external agent name and can be bound like this:
   - `"cmd-t": ["agent::LaunchAgent", { "agent_name": "qwen" }]`
+
+#### Agent OS Notifications
+
+See  `crates/agent_ui/src/ui/agent_notification.rs`.
+
+- increase button size
+- use vertical lines and display the agent tab name in the notification, if set
 
 ### Command palette
 
