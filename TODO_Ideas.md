@@ -2,7 +2,7 @@
 In Zed.app toggling WORKS everywhere! so far in my own fork here, it only changes in a few places, like breadcrumbs font, agent `this here is changed` inline blocks and code tooltips?
 
 in `crates/editor/src/create_file_modal.rs`
-- can it start in vim insert mode? instead of vim no in the file explorer
+- can it start in vim insert mode? instead of vim normal mode in the file explorer
 
 
 
