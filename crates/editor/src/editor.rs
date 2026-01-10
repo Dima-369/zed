@@ -3220,23 +3220,34 @@ impl Editor {
             return;
         };
 
-        if !editor.read(cx).is_file_explorer {
-            return;
-        }
-
         let project = workspace.project().clone();
 
-        let current_directory = editor.update(cx, |editor, cx| {
-            let snapshot = editor.buffer.read(cx).snapshot(cx);
-            let first_line = snapshot
-                .text()
-                .lines()
-                .find(|line| !line.trim().is_empty())
-                .unwrap_or("")
-                .trim()
-                .to_string();
-            PathBuf::from(first_line)
-        });
+        let current_directory = if editor.read(cx).is_file_explorer {
+            editor.update(cx, |editor, cx| {
+                let snapshot = editor.buffer.read(cx).snapshot(cx);
+                let first_line = snapshot
+                    .text()
+                    .lines()
+                    .find(|line| !line.trim().is_empty())
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+                PathBuf::from(first_line)
+            })
+        } else {
+            let project_path = editor.read(cx).project_path(cx);
+            if let Some(project_path) = project_path {
+                let worktree = project.read(cx).worktree_for_id(project_path.worktree_id, cx);
+                if let Some(worktree) = worktree {
+                    let abs_path = worktree.read(cx).absolutize(&project_path.path);
+                    abs_path.parent().map(|p| p.to_path_buf()).unwrap_or_default()
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        };
 
         if current_directory.as_os_str().is_empty() {
             return;
