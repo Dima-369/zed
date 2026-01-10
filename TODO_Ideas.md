@@ -1,5 +1,5 @@
 - the workspace create file action should also work to create in file when not in the editor file explorer
-then it takes the directory from the currently opened editor tab
+then it takes the directory from the currently opened editor tab, see editor.rs file explorer actions
 
 
 # >>> Investigations
