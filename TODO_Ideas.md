@@ -1,8 +1,3 @@
-- fix the monospace toggler
-In Zed.app toggling WORKS everywhere! so far in my own fork here, it only changes in a few places, like breadcrumbs font, agent `this here is changed` inline blocks and code tooltips?
-
-
-
 
 
 # >>> Investigations
