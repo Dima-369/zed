@@ -69,7 +69,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
   - inspired from `Choose Content to Paste` from JetBrains IDEs
   - in `crates/workspace/src/persistence.rs` there is own SQL table `clipboard_history`, so the recent entries is remembered across restarts
 
-## Open directory listing as a Editor (relatively basic)
+## Open directory listing as a Editor (relatively basic file explorer)
 
 This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
 
@@ -93,6 +93,8 @@ Deleting or adding lines is not supported, this is for file browsing and file re
 See `crates/editor/src/editor.rs`, search for `file_explorer` and related functions.
 
 `FileIcon(usize)` was added to `pub enum InlayId` to display the SVG icon from the theme, same as the file icons from the file tabs.
+
+`set_vim_insert_on_focus` was added to `editor.rs` to start in Vim insert mode when the editor is focused. I needed this for the `crates/editor/src/create_file_modal.rs` since I want to use Vim mode there, and start in insert mode instead of the default normal mode.
 
 ## Emoji Picker
 

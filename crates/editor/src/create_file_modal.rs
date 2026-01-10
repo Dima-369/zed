@@ -49,6 +49,7 @@ impl CreateFileModal {
             editor.set_show_line_numbers(false, cx);
             editor.set_show_gutter(false, cx);
             editor.set_show_scrollbars(false, cx);
+            editor.set_vim_insert_on_focus(true);
         });
 
         let focus_handle = filename_editor.focus_handle(cx);

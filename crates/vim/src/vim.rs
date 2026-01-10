@@ -640,7 +640,7 @@ impl Vim {
     fn activate(editor: &mut Editor, window: &mut Window, cx: &mut Context<Editor>) {
         let vim = Vim::new(window, cx);
 
-        if !editor.mode().is_full() {
+        if !editor.mode().is_full() || editor.vim_insert_on_focus() {
             vim.update(cx, |vim, _| {
                 vim.mode = Mode::Insert;
             });

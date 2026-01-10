@@ -1180,6 +1180,7 @@ pub struct Editor {
     workspace: Option<(WeakEntity<Workspace>, Option<WorkspaceId>)>,
     input_enabled: bool,
     use_modal_editing: bool,
+    vim_insert_on_focus: bool,
     is_file_explorer: bool,
     /// Stores the original file and directory names for file explorer save action
     file_explorer_metadata: Option<FileExplorerState>,
@@ -2356,6 +2357,7 @@ impl Editor {
             workspace: None,
             input_enabled: !is_minimap,
             use_modal_editing: full_mode,
+            vim_insert_on_focus: false,
             is_file_explorer: false,
             file_explorer_metadata: None,
             read_only: is_minimap,
@@ -4499,6 +4501,14 @@ impl Editor {
 
     pub fn use_modal_editing(&self) -> bool {
         self.use_modal_editing
+    }
+
+    pub fn set_vim_insert_on_focus(&mut self, to: bool) {
+        self.vim_insert_on_focus = to;
+    }
+
+    pub fn vim_insert_on_focus(&self) -> bool {
+        self.vim_insert_on_focus
     }
 
     fn selections_did_change(
