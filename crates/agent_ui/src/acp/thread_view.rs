@@ -6034,20 +6034,30 @@ impl AcpThreadView {
     ) {
         let options = AgentNotification::window_options(screen, cx);
 
-        let project_name = self.workspace.upgrade().and_then(|workspace| {
+        let project_name: Option<SharedString> = self.workspace.upgrade().and_then(|workspace| {
             workspace
                 .read(cx)
                 .project()
                 .read(cx)
                 .visible_worktrees(cx)
                 .next()
-                .map(|worktree| worktree.read(cx).root_name_str().to_string())
+                .map(|worktree| worktree.read(cx).root_name_str().to_string().into())
         });
+
+        // Get the thread title if available
+        let thread_title = self.thread().map(|thread| thread.read(cx).title());
+
+        // Create enhanced title that includes both agent name and thread title when available
+        let enhanced_title: SharedString = if let Some(thread_title) = thread_title {
+            format!("{} • {}", title, thread_title).into()
+        } else {
+            title.into()
+        };
 
         if let Some(screen_window) = cx
             .open_window(options, |_window, cx| {
                 cx.new(|_cx| {
-                    AgentNotification::new(title.clone(), caption.clone(), icon, project_name)
+                    AgentNotification::new(enhanced_title, caption.clone(), icon, project_name)
                 })
             })
             .log_err()

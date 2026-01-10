@@ -33,7 +33,7 @@ impl AgentNotification {
     pub fn window_options(screen: Rc<dyn PlatformDisplay>, cx: &App) -> WindowOptions {
         let size = Size {
             width: px(450.),
-            height: px(72.),
+            height: px(110.),
         };
 
         let notification_margin_width = px(16.);
@@ -95,12 +95,11 @@ impl Render for AgentNotification {
                 ))
         };
 
-        h_flex()
+        v_flex()
             .id("agent-notification")
             .size_full()
             .p_3()
-            .gap_4()
-            .justify_between()
+            .gap_1()
             .elevation_3(cx)
             .text_ui(cx)
             .font(ui_font)
@@ -110,7 +109,6 @@ impl Render for AgentNotification {
                 h_flex()
                     .items_start()
                     .gap_2()
-                    .flex_1()
                     .child(
                         h_flex().h(line_height).justify_center().child(
                             Icon::new(self.icon)
@@ -121,7 +119,7 @@ impl Render for AgentNotification {
                     .child(
                         v_flex()
                             .flex_1()
-                            .max_w(px(300.))
+                            .gap_1()
                             .child(
                                 div()
                                     .relative()
@@ -166,24 +164,34 @@ impl Render for AgentNotification {
                     ),
             )
             .child(
-                v_flex()
-                    .gap_1()
-                    .items_center()
+                h_flex()
+                    .gap_1p5()
+                    .w_full()
                     .child(
-                        Button::new("open", "View Panel")
-                            .style(ButtonStyle::Tinted(ui::TintColor::Accent))
-                            .full_width()
-                            .on_click({
-                                cx.listener(move |_this, _event, _, cx| {
-                                    cx.emit(AgentNotificationEvent::Accepted);
-                                })
-                            }),
+                        h_flex().flex_1().child(
+                            Button::new("open", "View Panel")
+                                .style(ButtonStyle::Tinted(ui::TintColor::Accent))
+                                .full_width()
+                                .size(ui::ButtonSize::Large)
+                                .on_click({
+                                    cx.listener(move |_this, _event, _, cx| {
+                                        cx.emit(AgentNotificationEvent::Accepted);
+                                    })
+                                }),
+                        ),
                     )
-                    .child(Button::new("dismiss", "Dismiss").full_width().on_click({
-                        cx.listener(move |_, _event, _, cx| {
-                            cx.emit(AgentNotificationEvent::Dismissed);
-                        })
-                    })),
+                    .child(
+                        h_flex().flex_1().child(
+                            Button::new("dismiss", "Dismiss")
+                                .full_width()
+                                .size(ui::ButtonSize::Large)
+                                .on_click({
+                                    cx.listener(move |_, _event, _, cx| {
+                                        cx.emit(AgentNotificationEvent::Dismissed);
+                                    })
+                                }),
+                        ),
+                    ),
             )
     }
 }
