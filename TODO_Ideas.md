@@ -1,11 +1,6 @@
 - fix the monospace toggler
 In Zed.app toggling WORKS everywhere! so far in my own fork here, it only changes in a few places, like breadcrumbs font, agent `this here is changed` inline blocks and code tooltips?
 
-- the agent system os notification should show the workspace name, like here `zed` and if a tab title is set, the tab title of the agent thread, as well
-- then move dismiss, view buttons down, so they are 50% left/right to be better clickable at bottom
-show tab title and project name on seperate rows
-
-
 in `crates/editor/src/create_file_modal.rs`
 - can it start in vim insert mode? instead of vim no in the file explorer
 
