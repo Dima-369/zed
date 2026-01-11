@@ -69,6 +69,12 @@ https://github.com/zed-industries/zed/pull/45307
 
 Not so important with `buffer_search_modal::ToggleBufferSearch` and `editor::SearchInCurrentFileViaMultiBuffer`.
 
+### Add Search modal for project-wide text search
+
+I have not checked this out yet, but goes in the same direction as my implementation. Just no line search.
+
+https://github.com/zed-industries/zed/pull/46478 (PR open)
+
 ###  Add telescope style search (PR closed)
 
 This was closed by Zed team in favor of the PR below.
