@@ -1,3 +1,5 @@
+- make B key as great as in IntelliJ, do not prefill on using tab without selection, etc.
+
 - add a new action like the file finder toggle or search recent files, in same design, it is named like `workspace::OpenFileFromDirectory` which uses `rg --files` to populate the list of files, then I want to pick one and open it. The action gets one parameter: the absolute directory, which can be ~ prefix or not
 
 
