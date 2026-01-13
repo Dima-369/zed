@@ -904,7 +904,7 @@ impl PickerDelegate for DirectoryFileDelegate {
             let path = self.files[hit.candidate_id].clone();
 
             if let Some(workspace) = self.workspace.upgrade() {
-                workspace.update_in(cx, window, |workspace, window, cx| {
+                workspace.update(cx, |workspace, cx| {
                     workspace
                         .open_paths(
                             vec![path],
