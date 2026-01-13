@@ -1,5 +1,4 @@
-Add Antigravity LLM Provider
-https://github.com/zed-industries/zed/pull/46620
+
 
 # >>> Investigations
 
