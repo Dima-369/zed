@@ -20,7 +20,7 @@ use workspace::{
     self, ModalView, PathList, SerializedWorkspaceLocation, WORKSPACE_DB, Workspace, WorkspaceId,
     with_active_or_new_workspace,
 };
-use zed_actions::OpenRecentFile;
+use zed_actions::{OpenFileFromDirectory, OpenRecentFile};
 
 /// Match strings with order-insensitive word matching.
 /// Splits the query into words and ensures all words match somewhere in the candidate,
@@ -292,6 +292,22 @@ pub fn init(cx: &mut App) {
 
             recent_files.update(cx, |recent_files, cx| {
                 recent_files
+                    .picker
+                    .update(cx, |picker, cx| picker.cycle_selection(window, cx))
+            });
+        });
+    });
+
+    cx.on_action(|action: &OpenFileFromDirectory, cx| {
+        let directory = PathBuf::from(&action.directory);
+        with_active_or_new_workspace(cx, move |workspace, window, cx| {
+            let Some(picker) = workspace.active_modal::<DirectoryFilePicker>(cx) else {
+                DirectoryFilePicker::open(workspace, directory, window, cx);
+                return;
+            };
+
+            picker.update(cx, |picker, cx| {
+                picker
                     .picker
                     .update(cx, |picker, cx| picker.cycle_selection(window, cx))
             });
@@ -709,6 +725,264 @@ fn full_path_budget(
     max_width: Pixels,
 ) -> usize {
     (((max_width / 0.8) - (file_name.len() as f32) * normal_em) / small_em) as usize
+}
+
+struct DirectoryFilePicker {
+    picker: Entity<Picker<DirectoryFileDelegate>>,
+    _subscription: Subscription,
+}
+
+impl ModalView for DirectoryFilePicker {}
+
+impl DirectoryFilePicker {
+    fn new(delegate: DirectoryFileDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let scroll_handle = UniformListScrollHandle::new();
+        let picker = cx.new(|cx| {
+            Picker::uniform_list(delegate, window, cx)
+                .track_scroll(scroll_handle.clone())
+                .show_scrollbar(true)
+        });
+        let _subscription = cx.subscribe(&picker, |_, _, _, cx| cx.emit(DismissEvent));
+        Self {
+            picker,
+            _subscription,
+        }
+    }
+
+    pub fn open(
+        workspace: &mut Workspace,
+        directory: PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let weak = cx.entity().downgrade();
+        workspace.toggle_modal(window, cx, |window, cx| {
+            let delegate = DirectoryFileDelegate::new(weak, directory);
+            Self::new(delegate, window, cx)
+        })
+    }
+}
+
+impl EventEmitter<DismissEvent> for DirectoryFilePicker {}
+
+impl Focusable for DirectoryFilePicker {
+    fn focus_handle(&self, cx: &App) -> FocusHandle {
+        self.picker.focus_handle(cx)
+    }
+}
+
+impl Render for DirectoryFilePicker {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        v_flex()
+            .key_context("DirectoryFilePicker")
+            .w(rems(48.))
+            .child(self.picker.clone())
+            .on_mouse_down_out(cx.listener(|this, _, window, cx| {
+                this.picker.update(cx, |this, cx| {
+                    this.cancel(&Default::default(), window, cx);
+                })
+            }))
+    }
+}
+
+struct DirectoryFileDelegate {
+    workspace: WeakEntity<Workspace>,
+    directory: PathBuf,
+    files: Vec<PathBuf>,
+    matches: Vec<StringMatch>,
+    selected_match_index: usize,
+}
+
+impl DirectoryFileDelegate {
+    fn new(workspace: WeakEntity<Workspace>, directory: PathBuf) -> Self {
+        let expanded_dir = expand_tilde(&directory);
+        let files = Self::list_files(&expanded_dir);
+        Self {
+            workspace,
+            directory: expanded_dir,
+            files,
+            matches: Vec::new(),
+            selected_match_index: 0,
+        }
+    }
+
+    fn list_files(directory: &Path) -> Vec<PathBuf> {
+        let output = std::process::Command::new("rg")
+            .args(["--files"])
+            .current_dir(directory)
+            .output();
+
+        match output {
+            Ok(output) if output.status.success() => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                stdout
+                    .lines()
+                    .map(|line| directory.join(line))
+                    .collect()
+            }
+            _ => Vec::new(),
+        }
+    }
+}
+
+impl EventEmitter<DismissEvent> for DirectoryFileDelegate {}
+
+impl PickerDelegate for DirectoryFileDelegate {
+    type ListItem = ListItem;
+
+    fn placeholder_text(&self, _: &mut Window, _: &mut App) -> Arc<str> {
+        Arc::from("Search files...")
+    }
+
+    fn match_count(&self) -> usize {
+        self.matches.len()
+    }
+
+    fn selected_index(&self) -> usize {
+        self.selected_match_index
+    }
+
+    fn set_selected_index(
+        &mut self,
+        ix: usize,
+        _window: &mut Window,
+        _cx: &mut Context<Picker<Self>>,
+    ) {
+        self.selected_match_index = ix;
+    }
+
+    fn update_matches(
+        &mut self,
+        query: String,
+        _: &mut Window,
+        _cx: &mut Context<Picker<Self>>,
+    ) -> gpui::Task<()> {
+        let query = query.trim_start();
+        let smart_case = query.chars().any(|c| c.is_uppercase());
+        let candidates = self
+            .files
+            .iter()
+            .enumerate()
+            .map(|(id, path)| {
+                let path_str = path
+                    .strip_prefix(&self.directory)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .into_owned();
+                StringMatchCandidate::new(id, &path_str)
+            })
+            .collect::<Vec<_>>();
+
+        self.matches = smol::block_on(match_strings_order_insensitive(
+            candidates.as_slice(),
+            query,
+            smart_case,
+            100,
+            &Default::default(),
+        ));
+        self.matches.sort_unstable_by_key(|m| m.candidate_id);
+
+        if self.matches.is_empty() {
+            self.selected_match_index = 0;
+        } else if query.is_empty() {
+            self.selected_match_index = 0;
+        } else {
+            self.selected_match_index = self
+                .matches
+                .iter()
+                .enumerate()
+                .max_by_key(|(_, m)| OrderedFloat(m.score))
+                .map(|(ix, _)| ix)
+                .unwrap_or(0);
+        }
+
+        Task::ready(())
+    }
+
+    fn confirm(&mut self, _secondary: bool, window: &mut Window, cx: &mut Context<Picker<Self>>) {
+        if let Some(hit) = self.matches.get(self.selected_index()) {
+            let path = self.files[hit.candidate_id].clone();
+
+            if let Some(workspace) = self.workspace.upgrade() {
+                workspace.update_in(cx, window, |workspace, window, cx| {
+                    workspace
+                        .open_paths(
+                            vec![path],
+                            workspace::OpenOptions::default(),
+                            None,
+                            window,
+                            cx,
+                        )
+                        .detach();
+                });
+            }
+        }
+        cx.emit(DismissEvent);
+    }
+
+    fn dismissed(&mut self, _window: &mut Window, _cx: &mut Context<Picker<Self>>) {}
+
+    fn render_match(
+        &self,
+        ix: usize,
+        selected: bool,
+        _window: &mut Window,
+        cx: &mut Context<Picker<Self>>,
+    ) -> Option<Self::ListItem> {
+        let hit = self.matches.get(ix)?;
+        let path = self.files.get(hit.candidate_id)?;
+
+        let relative_path = path
+            .strip_prefix(&self.directory)
+            .unwrap_or(path);
+        let path_string = relative_path.to_string_lossy();
+        let file_name = path
+            .file_name()
+            .map(|n| n.to_string_lossy())
+            .unwrap_or_default();
+
+        let file_name_start = path_string.len().saturating_sub(file_name.len());
+        let dir_name = path_string[0..file_name_start].to_string();
+
+        let file_name_highlights: Vec<usize> = hit
+            .positions
+            .iter()
+            .filter(|&&i| i >= file_name_start)
+            .map(|&i| i - file_name_start)
+            .collect();
+
+        let dir_highlights: Vec<usize> = hit
+            .positions
+            .iter()
+            .filter(|&&i| i < file_name_start)
+            .copied()
+            .collect();
+
+        let file_icon =
+            FileIcons::get_icon(path, cx).map(|icon| Icon::from_path(icon).color(Color::Muted));
+
+        Some(
+            ListItem::new(ix)
+                .spacing(ListItemSpacing::Sparse)
+                .toggle_state(selected)
+                .start_slot::<Icon>(file_icon)
+                .inset(true)
+                .child(
+                    h_flex()
+                        .gap_2()
+                        .py_px()
+                        .child(HighlightedLabel::new(
+                            file_name.to_string(),
+                            file_name_highlights,
+                        ))
+                        .child(
+                            HighlightedLabel::new(dir_name, dir_highlights)
+                                .size(LabelSize::Small)
+                                .color(Color::Muted),
+                        ),
+                ),
+        )
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

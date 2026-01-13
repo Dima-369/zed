@@ -227,6 +227,15 @@ pub struct OpenRecentFile {
     pub create_new_window: bool,
 }
 
+/// Opens a file picker populated with files from a specific directory using `rg --files`.
+#[derive(PartialEq, Clone, Deserialize, JsonSchema, Action)]
+#[action(namespace = workspace)]
+#[serde(deny_unknown_fields)]
+pub struct OpenFileFromDirectory {
+    /// The absolute directory path to list files from. Supports ~ prefix for home directory.
+    pub directory: String,
+}
+
 pub mod git {
     use gpui::actions;
 
