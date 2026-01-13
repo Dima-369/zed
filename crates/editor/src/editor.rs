@@ -16,10 +16,10 @@ pub mod blink_manager;
 mod bracket_colorization;
 mod clangd_ext;
 pub mod code_context_menus;
+mod create_file_modal;
 pub mod display_map;
 mod editor_settings;
 mod element;
-mod create_file_modal;
 mod file_explorer_validation;
 mod git;
 mod highlight_matching_bracket;
@@ -3237,10 +3237,15 @@ impl Editor {
         } else {
             let project_path = editor.read(cx).project_path(cx);
             if let Some(project_path) = project_path {
-                let worktree = project.read(cx).worktree_for_id(project_path.worktree_id, cx);
+                let worktree = project
+                    .read(cx)
+                    .worktree_for_id(project_path.worktree_id, cx);
                 if let Some(worktree) = worktree {
                     let abs_path = worktree.read(cx).absolutize(&project_path.path);
-                    abs_path.parent().map(|p| p.to_path_buf()).unwrap_or_default()
+                    abs_path
+                        .parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_default()
                 } else {
                     return;
                 }
@@ -3507,7 +3512,10 @@ impl Editor {
                                     let snapshot = editor.buffer.read(cx).snapshot(cx);
                                     for (i, line) in snapshot.text().lines().enumerate().skip(2) {
                                         let line = line.trim();
-                                        if line == target_name || line.trim_end_matches('/') == target_name.trim_end_matches('/') {
+                                        if line == target_name
+                                            || line.trim_end_matches('/')
+                                                == target_name.trim_end_matches('/')
+                                        {
                                             let point = Point::new(i as u32, 0);
                                             editor.change_selections(
                                                 SelectionEffects::default(),
