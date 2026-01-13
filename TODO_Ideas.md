@@ -1,12 +1,3 @@
-TEST from AI
-- make B key as great as in IntelliJ, do not prefill on using tab without selection, etc.
-
-improve buffer_search::Deploy",
-when in vim normal mode, and buffer search is visible, when in vim normal mode, it overrides the buffer search entered value which should never happen
-ONLY when in vim visual mode and the search is invoked, should it override the buffer search entered value
-
-TEST again for case sensitivity
-- add a new action like the file finder toggle or search recent files, in same design, it is named like `workspace::OpenFileFromDirectory` which uses `rg --files` to populate the list of files, then I want to pick one and open it. The action gets one parameter: the absolute directory, which can be ~ prefix or not
 
 
 # >>> Investigations
