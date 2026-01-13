@@ -831,7 +831,8 @@ impl PickerDelegate for DirectoryFileDelegate {
     type ListItem = ListItem;
 
     fn placeholder_text(&self, _: &mut Window, _: &mut App) -> Arc<str> {
-        Arc::from("Search files...")
+        let display_path = self.directory.compact();
+        Arc::from(format!("Open file from {}…", display_path.display()))
     }
 
     fn match_count(&self) -> usize {
