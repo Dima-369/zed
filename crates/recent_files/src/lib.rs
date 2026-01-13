@@ -815,10 +815,7 @@ impl DirectoryFileDelegate {
         match output {
             Ok(output) if output.status.success() => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                stdout
-                    .lines()
-                    .map(|line| directory.join(line))
-                    .collect()
+                stdout.lines().map(|line| directory.join(line)).collect()
             }
             _ => Vec::new(),
         }
@@ -933,9 +930,7 @@ impl PickerDelegate for DirectoryFileDelegate {
         let hit = self.matches.get(ix)?;
         let path = self.files.get(hit.candidate_id)?;
 
-        let relative_path = path
-            .strip_prefix(&self.directory)
-            .unwrap_or(path);
+        let relative_path = path.strip_prefix(&self.directory).unwrap_or(path);
         let path_string = relative_path.to_string_lossy();
         let file_name = path
             .file_name()

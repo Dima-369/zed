@@ -352,36 +352,36 @@ impl Render for ImageView {
             .key_context("ImageViewer")
             .size_full()
             .child(
-            div()
-                .flex()
-                .justify_center()
-                .items_center()
-                .w_full()
-                // TODO: In browser based Tailwind & Flex this would be h-screen and we'd use w-full
-                .h_full()
-                .child(
-                    div()
-                        .relative()
-                        .max_w_full()
-                        .max_h_full()
-                        .child(
-                            canvas(|_, _, _| (), checkered_background)
-                                .border_2()
-                                .border_color(cx.theme().styles.colors.border)
-                                .size_full()
-                                .absolute()
-                                .top_0()
-                                .left_0(),
-                        )
-                        .child(
-                            img(image)
-                                .object_fit(ObjectFit::ScaleDown)
-                                .max_w_full()
-                                .max_h_full()
-                                .id("img"),
-                        ),
-                ),
-        )
+                div()
+                    .flex()
+                    .justify_center()
+                    .items_center()
+                    .w_full()
+                    // TODO: In browser based Tailwind & Flex this would be h-screen and we'd use w-full
+                    .h_full()
+                    .child(
+                        div()
+                            .relative()
+                            .max_w_full()
+                            .max_h_full()
+                            .child(
+                                canvas(|_, _, _| (), checkered_background)
+                                    .border_2()
+                                    .border_color(cx.theme().styles.colors.border)
+                                    .size_full()
+                                    .absolute()
+                                    .top_0()
+                                    .left_0(),
+                            )
+                            .child(
+                                img(image)
+                                    .object_fit(ObjectFit::ScaleDown)
+                                    .max_w_full()
+                                    .max_h_full()
+                                    .id("img"),
+                            ),
+                    ),
+            )
     }
 }
 
