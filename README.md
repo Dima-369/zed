@@ -263,6 +263,10 @@ It displays no footer and abbreviates paths to tildes.
   - `ctrl-r` is to toggle between line (case-insensitive) and exact match (case-sensitive) mode
   - it also works in multi buffers, although the preview editor mixes lines
 
+## Buffer Search
+
+- never prefill the buffer search input field with the word under the cursor
+
 ## Hint jumping functionality
 
 ### `jump::Toggle` as a new action (this is for everything except multi buffers)

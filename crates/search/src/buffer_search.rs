@@ -873,7 +873,6 @@ impl BufferSearchBar {
             if let Some(active_item) = self.active_searchable_item.as_mut() {
                 active_item.toggle_filtered_search_ranges(filtered_search_range, window, cx);
             }
-            self.search_suggested(window, cx);
             self.smartcase(window, cx);
             self.sync_select_next_case_sensitivity(cx);
             self.replace_enabled |= deploy.replace_enabled;
