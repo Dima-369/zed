@@ -807,10 +807,12 @@ impl DirectoryFileDelegate {
     }
 
     fn list_files(directory: &Path) -> Vec<PathBuf> {
-        let output = std::process::Command::new("rg")
-            .args(["--files"])
-            .current_dir(directory)
-            .output();
+        let output = smol::block_on(
+            smol::process::Command::new("rg")
+                .args(["--files"])
+                .current_dir(directory)
+                .output(),
+        );
 
         match output {
             Ok(output) if output.status.success() => {

@@ -6051,7 +6051,7 @@ impl AcpThreadView {
         let enhanced_title: SharedString = if let Some(thread_title) = thread_title {
             format!("{} • {}", title, thread_title).into()
         } else {
-            title.into()
+            title
         };
 
         if let Some(screen_window) = cx
