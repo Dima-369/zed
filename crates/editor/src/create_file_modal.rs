@@ -45,7 +45,7 @@ impl CreateFileModal {
         let filename_editor = cx.new(|cx| Editor::multi_line(window, cx));
 
         filename_editor.update(cx, |editor, cx| {
-            editor.set_placeholder_text("Enter filename...", window, cx);
+            editor.set_placeholder_text("Enter name (end with / for directory)...", window, cx);
             editor.set_show_line_numbers(false, cx);
             editor.set_show_gutter(false, cx);
             editor.set_show_scrollbars(false, cx);
@@ -111,6 +111,8 @@ impl CreateFileModal {
             return;
         }
 
+        let is_directory = filename.ends_with('/');
+        let filename = filename.trim_end_matches('/');
         let new_file_path = self.current_directory.join(filename);
 
         if new_file_path.exists() {
@@ -136,7 +138,9 @@ impl CreateFileModal {
                     let abs_path = worktree
                         .read_with(cx, |worktree, _| worktree.absolutize(&project_path.path));
 
-                    {
+                    if is_directory {
+                        let _ = smol::fs::create_dir_all(&abs_path).await;
+                    } else {
                         let write_result = smol::fs::write(&abs_path, "").await;
                         if write_result.is_ok() {
                             let open_task = workspace.update_in(cx, |workspace, window, cx| {
@@ -193,7 +197,7 @@ impl Render for CreateFileModal {
             .border_color(cx.theme().colors().border)
             .child(
                 v_flex()
-                    .child(Label::new("Create New File").size(LabelSize::Large))
+                    .child(Label::new("Create New File or Directory").size(LabelSize::Large))
                     .child(
                         Label::new(directory_display)
                             .size(LabelSize::Small)
