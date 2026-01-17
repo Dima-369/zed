@@ -195,7 +195,6 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
   - remove the opacity animation for the tabs when waiting for a response and instead rotate a circle like Windsurf
   - add `agent::CloseActiveThreadTabOrDock`
 - Zed Agent, External Agents and text thread title summaries are now generated on every AI message received
-- estimate tokens via `tiktoken-rs` crate for ACP agents, or display ACP server token info when provided (both Gemini and Qwen do not provide it)
 - add `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
 - add `agent::DismissErrorNotification` and `agent::CopyErrorNotification`
 - change `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
