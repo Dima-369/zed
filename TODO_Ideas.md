@@ -2,14 +2,6 @@
 
 # >>> Investigations
 
-## edit predictions: Amp Tab support
-
-I tested where the author has mentioned that it is pretty much done.
-The completions are just not good! Often wants to jump to something off-screen in file and does long weird edits.
-I find `supermaven` much better.
-
-https://github.com/zed-industries/zed/pull/45724 (PR open)
-
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
 
 I fixed this in my own fork already, but let's see what Zed team says:
