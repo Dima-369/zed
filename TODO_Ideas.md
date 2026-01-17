@@ -1,5 +1,3 @@
-- fix bug that when there are only pinned tabs, that an blank unpinned tab row is incorrectly displayed
-this is only for vertical_stacking: true
 
 
 
