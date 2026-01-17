@@ -1,10 +1,6 @@
 - remove note that agent_view does not display token count for ACP anymore (TEST)
 
-- double check `/Users/dima/Developer/zed/crates/workspace/src/pane.rs` to tab settings merge
-
 - `/Users/dima/Developer/zed/crates/agent_ui/src/agent_panel.rs` is broken, check agent tabs for sumary generation, active thread display, etc. I took main parts from `main`.
-
-- `/Users/dima/Developer/zed/crates/settings_content/src/merge_from.rs` has a weird conflict?
 
 
 
