@@ -429,10 +429,15 @@ impl Focusable for RecentFiles {
 }
 
 impl Render for RecentFiles {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let viewport_size = window.viewport_size();
+        let modal_width = (viewport_size.width * 0.7).min(viewport_size.width);
+        let modal_height = (viewport_size.height * 0.7).min(viewport_size.height);
+
         v_flex()
             .key_context("RecentFiles")
-            .w(rems(48.))
+            .w(modal_width)
+            .h(modal_height)
             .child(self.picker.clone())
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                 this.picker.update(cx, |this, cx| {
@@ -772,10 +777,15 @@ impl Focusable for DirectoryFilePicker {
 }
 
 impl Render for DirectoryFilePicker {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let viewport_size = window.viewport_size();
+        let modal_width = (viewport_size.width * 0.7).min(viewport_size.width);
+        let modal_height = (viewport_size.height * 0.7).min(viewport_size.height);
+
         v_flex()
             .key_context("DirectoryFilePicker")
-            .w(rems(48.))
+            .w(modal_width)
+            .h(modal_height)
             .child(self.picker.clone())
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                 this.picker.update(cx, |this, cx| {

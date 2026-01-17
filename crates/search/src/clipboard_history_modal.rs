@@ -44,14 +44,19 @@ impl Focusable for ClipboardHistoryModal {
 }
 
 impl Render for ClipboardHistoryModal {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut key_context = KeyContext::new_with_defaults();
         key_context.add("ClipboardHistoryModal");
+
+        let viewport_size = window.viewport_size();
+        let modal_width = (viewport_size.width * 0.7).min(viewport_size.width);
+        let modal_height = (viewport_size.height * 0.7).min(viewport_size.height);
 
         v_flex()
             .key_context(key_context)
             .elevation_3(cx)
-            .w(rems(40.))
+            .w(modal_width)
+            .h(modal_height)
             .child(self.picker.clone())
     }
 }
