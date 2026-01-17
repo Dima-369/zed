@@ -1,3 +1,52 @@
+    // Whether to stack tabs vertically in multiple rows instead of horizontal scrolling.
+    // When enabled, tabs will wrap to new rows when they exceed the available width.
+    "vertical_stacking": false,
+    // Whether or not to show pinned tabs in a separate row.
+    // When enabled, pinned tabs appear in a top row and unpinned tabs in a bottom row.
+    // When disabled, all tabs appear in a single row (default behavior).
+    "show_pinned_tabs_in_separate_row": false,
+
+fix that
+
+
+- remove README mention about the markdown outline fix
+
+- test outline scrollbar if visible
+
+- remove note that agent_view does not display token count for ACP anymore (TEST)
+
+- double check `/Users/dima/Developer/zed/crates/workspace/src/pane.rs` to tab settings merge
+
+- `/Users/dima/Developer/zed/crates/agent_ui/src/agent_panel.rs` is broken, check agent tabs for sumary generation, active thread display, etc. I took main parts from `main`.
+
+- `/Users/dima/Developer/zed/crates/settings_content/src/merge_from.rs` has a weird conflict?
+
+
+
+
+ ● The code is trying to access self.history_store which doesn't exist. Looking at the AgentPanel struct, there's
+   text_thread_history instead. This code seems to be from an old version. Let me just comment out or remove this section
+   since it's trying to use a field that doesn't exist:
+
+ ● crates/agent_ui/src/agent_panel.rs - edit file
+     ⎿ Edited crates/agent_ui/src/agent_panel.rs with 8 additions and 10 removals
+         3161 -         if let Some(text_thread_editor) = text_thread_editor {
+         3162 -             self.history_store.update(cx, |store, cx| {
+         3163 -                 if let Some(path) = text_thread_editor.read(cx).text_thread().read(cx).path() {
+         3164 -                     store.push_recently_opened_entry(
+         3165 -                         agent::HistoryEntryId::TextThread(path.clone()),
+         3166 -                         cx,
+         3167 -                     )
+         3168 -                 }
+         3169 -             });
+         3170 -         }
+         3161 +         // TODO: Re-enable history tracking when HistoryEntryId is available
+         3162 +         // if let Some(text_thread_editor) = text_thread_editor {
+         3163 +         //     self.text_thread_history.update(cx, |store, cx| {
+         3164 +         //         if let Some(path) = text_thread_editor.read(cx).text_thread().read(cx).path() {
+         3165 +         //             store.push_recently_o
+
+
 
 
 # >>> Investigations
