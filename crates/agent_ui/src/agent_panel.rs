@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::ops::Range;
 use std::path::Path;
 use std::rc::Rc;
@@ -9,7 +10,7 @@ use agent_servers::AgentServer;
 use db::kvp::{Dismissable, KEY_VALUE_STORE};
 use project::{
     ExternalAgentServerName,
-    agent_server_store::{AgentServerStore, CLAUDE_CODE_NAME, CODEX_NAME, GEMINI_NAME},
+    agent_server_store::AgentServerStore,
 };
 use serde::{Deserialize, Serialize};
 use settings::{
@@ -67,9 +68,9 @@ use std::time::Duration;
 use theme::ActiveTheme;
 use theme::ThemeSettings;
 use ui::{
-    Button, ButtonCommon, ButtonStyle, Callout, Clickable, Color, CommonAnimationExt, ContextMenu,
-    ContextMenuEntry, DynamicSpacing, Icon, IconButton, IconName, IconSize, Indicator, KeyBinding, Label, LabelCommon, LabelSize,
-    PopoverMenu, PopoverMenuHandle, Severity, Tab,
+    Button, ButtonCommon, ButtonSize, ButtonStyle, Callout, Clickable, Color, CommonAnimationExt, ContextMenu,
+    ContextMenuEntry, DynamicSpacing, Icon, IconButton, IconButtonShape, IconName, IconSize, Indicator, KeyBinding, Label, LabelCommon, LabelSize,
+    PopoverMenu, PopoverMenuHandle, Severity, Tab, TabBar, TabCloseSide, TabPosition, Toggleable,
     Tooltip, Window, div, h_flex, px, rems_from_px, utils::WithRemSize, v_flex,
 };
 use util::ResultExt as _;
@@ -560,7 +561,7 @@ impl AgentPanel {
                             panel.selected_agent = selected_agent.clone();
                             panel.new_agent_thread(selected_agent, window, cx);
                             log::info!("Restore the default panel from serialized panel.");
-                            panel.remove_tab_by_id(0, window, cx);
+                            panel.remove_tab_by_id(TabId(0), window, cx);
                         }
                         cx.notify();
                     });
@@ -617,7 +618,7 @@ impl AgentPanel {
         .detach();
 
         let panel_type = AgentSettings::get_global(cx).default_view;
-        let (active_view, selected_agent) = match panel_type {
+        let (active_view, _selected_agent) = match panel_type {
             DefaultView::Thread => (
                 ActiveView::native_agent(
                     fs.clone(),
@@ -766,12 +767,16 @@ impl AgentPanel {
             selected_agent: AgentType::default(),
             loading: false,
             pending_tab_removal: None,
-            tabs: vec![AgentPanelTab::new(active_view, selected_agent)],
-            active_tab_id: 0,
+            tabs: vec![],
+            active_tab_id: TabId(0),
             tab_bar_scroll_handle: ScrollHandle::new(),
             title_edit_overlay_tab_id: None,
             show_trust_workspace_message: false,
         };
+
+        // Create the initial tab with proper ID
+        let tab_id = TabId(0);
+        panel.tabs.push(AgentPanelTab::new(tab_id, active_view));
 
         // Initial sync of agent servers from extensions
         panel.sync_agent_servers_from_extensions(cx);
@@ -845,7 +850,7 @@ impl AgentPanel {
         fn active_view(&self) -> &ActiveView {
             self.overlay_view
                 .as_ref()
-                .unwrap_or_else(|| self.active_tab().view())
+                .unwrap_or_else(|| &self.active_tab().view)
         }
 
     pub(crate) fn active_thread_view(&self) -> Option<&Entity<AcpThreadView>> {
@@ -1191,7 +1196,7 @@ impl AgentPanel {
         if self.overlay_view.is_some()
             || self.title_edit_overlay_tab_id.is_some()
             || !matches!(
-                self.tabs.get(self.active_tab_id).map(|tab| tab.view()),
+                self.tabs.iter().find(|tab| tab.id == self.active_tab_id).map(|tab| &tab.view),
                 Some(ActiveView::ExternalAgentThread { .. } | ActiveView::TextThread { .. })
             )
         {
@@ -1199,8 +1204,8 @@ impl AgentPanel {
         }
 
         self.title_edit_overlay_tab_id = Some(self.active_tab_id);
-        if let Some(tab) = self.tabs.get(self.active_tab_id) {
-            match tab.view() {
+        if let Some(tab) = self.tabs.iter().find(|tab| tab.id == self.active_tab_id) {
+            match &tab.view {
                 ActiveView::ExternalAgentThread { thread_view } => {
                     if let Some(editor) = thread_view.read(cx).title_editor() {
                         editor.focus_handle(cx).focus(window, cx);
@@ -1877,8 +1882,8 @@ impl Panel for AgentPanel {
 impl AgentPanel {
     fn render_overlay_title_editor(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let tab_id = self.title_edit_overlay_tab_id?;
-        let tab = self.tabs.get(tab_id)?;
-        let content = match tab.view() {
+        let tab = self.tabs.iter().find(|tab| tab.id == tab_id)?;
+        let content = match &tab.view {
             ActiveView::ExternalAgentThread { thread_view } => {
                 if let Some(title_editor) = thread_view.read(cx).title_editor() {
                     h_flex()
@@ -2321,38 +2326,14 @@ impl AgentPanel {
         let agent_server_store = self.project.read(cx).agent_server_store().clone();
         let focus_handle = self.focus_handle(cx);
 
-        let (selected_agent_custom_icon, selected_agent_label) =
-            if let AgentType::Custom { name, .. } = &self.selected_agent {
-                let store = agent_server_store.read(cx);
-                let icon = store.agent_icon(&ExternalAgentServerName(name.clone()));
-
-                let label = store
-                    .agent_display_name(&ExternalAgentServerName(name.clone()))
-                    .unwrap_or_else(|| self.selected_agent.label());
-                (icon, label)
-            } else {
-                (None, self.selected_agent.label())
-            };
-
         let active_thread = match self.active_view() {
-            ActiveView::TextThread {
-                text_thread_editor, ..
-            } => Some(text_thread_editor.clone()),
-            ActiveView::ExternalAgentThread { .. }
-            | ActiveView::History { .. }
-            | ActiveView::Configuration => None,
-        };
-
-        let active_acp_thread = match self.active_view() {
             ActiveView::ExternalAgentThread { thread_view } => {
-                thread_view.read(cx).thread().cloned()
+                thread_view.read(cx).as_native_thread(cx)
             }
-            ActiveView::TextThread { .. }
-            | ActiveView::History { .. }
-            | ActiveView::Configuration => None,
+            ActiveView::TextThread { .. } | ActiveView::History { .. } | ActiveView::Configuration => None,
         };
 
-        let agent_server_store_for_menu = agent_server_store.clone();
+        let new_thread_menu_store = agent_server_store.clone();
         let new_thread_menu = PopoverMenu::new("new_thread_menu")
             .trigger_with_tooltip(
                 IconButton::new("new_thread_menu_btn", IconName::Plus).icon_size(IconSize::Small),
@@ -2371,31 +2352,26 @@ impl AgentPanel {
             .anchor(Corner::TopRight)
             .with_handle(self.new_thread_menu_handle.clone())
             .menu({
-                let selected_agent = self.selected_agent.clone();
-                let is_agent_selected = move |agent_type: AgentType| selected_agent == agent_type;
-
                 let workspace = self.workspace.clone();
                 let is_via_collab = workspace
                     .update(cx, |workspace, cx| {
                         workspace.project().read(cx).is_via_collab()
                     })
                     .unwrap_or_default();
+                let agent_server_store = new_thread_menu_store.clone();
 
                 move |window, cx| {
                     telemetry::event!("New Thread Clicked");
 
                     let active_thread = active_thread.clone();
-                    let active_acp_thread = active_acp_thread.clone();
                     Some(ContextMenu::build(window, cx, |menu, _window, cx| {
                         menu.context(focus_handle.clone())
-                            // Handle native threads
+                            .header("Zed Agent")
                             .when_some(active_thread, |this, active_thread| {
-                                let text_thread = active_thread.read(cx);
-                                let thread = text_thread.text_thread();
-                                let thread = thread.read(cx);
+                                let thread = active_thread.read(cx);
 
-                                if thread.messages(cx).next().is_some() {
-                                    let session_id = agent_client_protocol::SessionId::new(thread.id().to_proto());
+                                if !thread.is_empty() {
+                                    let session_id = thread.id().clone();
                                     this.item(
                                         ContextMenuEntry::new("New From Summary")
                                             .icon(IconName::ThreadFromSummary)
@@ -2413,35 +2389,10 @@ impl AgentPanel {
                                     this
                                 }
                             })
-                            // Handle ACP threads
-                            .when_some(active_acp_thread, |this, active_acp_thread| {
-                                let thread = active_acp_thread.read(cx);
-
-                                if !thread.entries().is_empty() {
-                                    let session_id = thread.session_id().clone();
-                                    this.item(
-                                        ContextMenuEntry::new("New From Summary")
-                                            .icon(IconName::ThreadFromSummary)
-                                            .icon_color(Color::Muted)
-                                            .handler(move |window, cx| {
-                                                window.dispatch_action(
-                                                    Box::new(NewAcpThreadFromSummary {
-                                                        from_session_id: session_id.clone(),
-                                                    }),
-                                                    cx,
-                                                );
-                                            }),
-                                    )
-                                } else {
-                                    this
-                                }
-                            })
                             .item(
-                                ContextMenuEntry::new("Zed Agent")
-                                    .when(is_agent_selected(AgentType::NativeAgent) | is_agent_selected(AgentType::TextThread) , |this| {
-                                        this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                    })
-                                    .icon(IconName::ZedAgent)
+                                ContextMenuEntry::new("New Thread")
+                                    .action(NewThread.boxed_clone())
+                                    .icon(IconName::Thread)
                                     .icon_color(Color::Muted)
                                     .handler({
                                         let workspace = workspace.clone();
@@ -2465,7 +2416,7 @@ impl AgentPanel {
                                     }),
                             )
                             .item(
-                                ContextMenuEntry::new("Text Thread")
+                                ContextMenuEntry::new("New Text Thread")
                                     .action(NewTextThread.boxed_clone())
                                     .icon(IconName::TextThread)
                                     .icon_color(Color::Muted)
@@ -2478,11 +2429,7 @@ impl AgentPanel {
                                                         workspace.panel::<AgentPanel>(cx)
                                                     {
                                                         panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::TextThread,
-                                                                window,
-                                                                cx,
-                                                            );
+                                                            panel.new_text_thread(window, cx);
                                                         });
                                                     }
                                                 });
@@ -2492,102 +2439,10 @@ impl AgentPanel {
                             )
                             .separator()
                             .header("External Agents")
-                            .item(
-                                ContextMenuEntry::new("Claude Code")
-                                    .when(is_agent_selected(AgentType::ClaudeCode), |this| {
-                                        this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                    })
-                                    .icon(IconName::AiClaude)
-                                    .disabled(is_via_collab)
-                                    .icon_color(Color::Muted)
-                                    .handler({
-                                        let workspace = workspace.clone();
-                                        move |window, cx| {
-                                            if let Some(workspace) = workspace.upgrade() {
-                                                workspace.update(cx, |workspace, cx| {
-                                                    if let Some(panel) =
-                                                        workspace.panel::<AgentPanel>(cx)
-                                                    {
-                                                        panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::ClaudeCode,
-                                                                window,
-                                                                cx,
-                                                            );
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }),
-                            )
-                            .item(
-                                ContextMenuEntry::new("Codex CLI")
-                                    .when(is_agent_selected(AgentType::Codex), |this| {
-                                        this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                    })
-                                    .icon(IconName::AiOpenAi)
-                                    .disabled(is_via_collab)
-                                    .icon_color(Color::Muted)
-                                    .handler({
-                                        let workspace = workspace.clone();
-                                        move |window, cx| {
-                                            if let Some(workspace) = workspace.upgrade() {
-                                                workspace.update(cx, |workspace, cx| {
-                                                    if let Some(panel) =
-                                                        workspace.panel::<AgentPanel>(cx)
-                                                    {
-                                                        panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::Codex,
-                                                                window,
-                                                                cx,
-                                                            );
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }),
-                            )
-                            .item(
-                                ContextMenuEntry::new("Gemini CLI")
-                                    .when(is_agent_selected(AgentType::Gemini), |this| {
-                                        this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                    })
-                                    .icon(IconName::AiGemini)
-                                    .icon_color(Color::Muted)
-                                    .disabled(is_via_collab)
-                                    .handler({
-                                        let workspace = workspace.clone();
-                                        move |window, cx| {
-                                            if let Some(workspace) = workspace.upgrade() {
-                                                workspace.update(cx, |workspace, cx| {
-                                                    if let Some(panel) =
-                                                        workspace.panel::<AgentPanel>(cx)
-                                                    {
-                                                        panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::Gemini,
-                                                                window,
-                                                                cx,
-                                                            );
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }),
-                            )
                             .map(|mut menu| {
-                                let agent_server_store = agent_server_store_for_menu.read(cx);
+                                let agent_server_store = agent_server_store.read(cx);
                                 let agent_names = agent_server_store
                                     .external_agents()
-                                    .filter(|name| {
-                                        name.0 != GEMINI_NAME
-                                            && name.0 != CLAUDE_CODE_NAME
-                                            && name.0 != CODEX_NAME
-                                    })
                                     .cloned()
                                     .collect::<Vec<_>>();
 
@@ -2605,14 +2460,6 @@ impl AgentPanel {
                                         entry = entry.icon(IconName::Sparkle);
                                     }
                                     entry = entry
-                                        .when(
-                                            is_agent_selected(AgentType::Custom {
-                                                name: agent_name.0.clone(),
-                                            }),
-                                            |this| {
-                                                this.action(Box::new(NewExternalAgentThread { agent: None }))
-                                            },
-                                        )
                                         .icon_color(Color::Muted)
                                         .disabled(is_via_collab)
                                         .handler({
@@ -2666,84 +2513,67 @@ impl AgentPanel {
                 }
             });
 
-        let is_thread_loading = self
-            .active_thread_view()
-            .map(|thread| thread.read(cx).is_loading())
-            .unwrap_or(false);
-
-        let has_custom_icon = selected_agent_custom_icon.is_some();
-
-        let selected_agent = div()
-            .id("selected_agent_icon")
-            .when_some(selected_agent_custom_icon, |this, icon_path| {
-                this.px_1()
-                    .child(Icon::from_external_svg(icon_path).color(Color::Muted))
-            })
-            .when(!has_custom_icon, |this| {
-                this.when_some(self.selected_agent.icon(), |this, icon| {
-                    this.px_1().child(Icon::new(icon).color(Color::Muted))
-                })
-            })
-            .tooltip(move |_, cx| {
-                Tooltip::with_meta(selected_agent_label.clone(), None, "Selected Agent", cx)
-            });
-
-        let selected_agent = if is_thread_loading {
-            selected_agent
-                .with_animation(
-                    "pulsating-icon",
-                    Animation::new(Duration::from_secs(1))
-                        .repeat()
-                        .with_easing(pulsating_between(0.2, 0.6)),
-                    |icon, delta| icon.opacity(delta),
-                )
-                .into_any_element()
-        } else {
-            selected_agent.into_any_element()
-        };
-
         let show_history_menu = self.history_kind_for_selected_agent(cx).is_some();
 
-        h_flex()
-            .id("agent-panel-toolbar")
-            .h(Tab::container_height(cx))
-            .max_w_full()
-            .flex_none()
-            .justify_between()
-            .gap_2()
-            .bg(cx.theme().colors().tab_bar_background)
-            .border_b_1()
-            .border_color(cx.theme().colors().border)
-            .child(
-                h_flex()
-                    .size_full()
-                    .gap(DynamicSpacing::Base04.rems(cx))
-                    .pl(DynamicSpacing::Base04.rems(cx))
-                    .child(match self.active_view() {
-                        ActiveView::History { .. } | ActiveView::Configuration => {
-                            self.render_toolbar_back_button(cx).into_any_element()
-                        }
-                        _ => selected_agent.into_any_element(),
+        let tabs = self
+            .tabs
+            .iter()
+            .enumerate()
+            .map(|(ix, tab)| {
+                let tab_id = tab.id;
+                let is_active = tab_id == self.active_tab_id;
+                let label_render = self.render_tab_label(&tab.view, is_active, cx);
+
+                let close_button = IconButton::new(("close_tab", tab_id.0), IconName::Close)
+                    .shape(IconButtonShape::Square)
+                    .icon_color(Color::Muted)
+                    .size(ButtonSize::None)
+                    .icon_size(IconSize::Small)
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.remove_tab_by_id(tab_id, window, cx);
+                    }))
+                    .tooltip(Tooltip::text("Close Tab"));
+
+                Tab::new(("agent_tab", tab_id.0))
+                    .position(if ix == 0 {
+                        TabPosition::First
+                    } else if ix == self.tabs.len() - 1 {
+                        TabPosition::Last
+                    } else {
+                        TabPosition::Middle(Ordering::Equal)
                     })
-                    .child(self.render_title_view(window, cx)),
-            )
-            .child(
-                h_flex()
-                    .flex_none()
-                    .gap(DynamicSpacing::Base02.rems(cx))
-                    .pl(DynamicSpacing::Base04.rems(cx))
-                    .pr(DynamicSpacing::Base06.rems(cx))
-                    .child(new_thread_menu)
-                    .when(show_history_menu, |this| {
-                        this.child(self.render_recent_entries_menu(
-                            IconName::MenuAltTemp,
-                            Corner::TopRight,
-                            cx,
-                        ))
-                    })
-                    .child(self.render_panel_options_menu(window, cx)),
-            )
-            .into_any()
+                    .close_side(TabCloseSide::End)
+                    .toggle_state(is_active)
+                    .start_slot::<AnyElement>(label_render.icon.or(label_render.indicator))
+                    .end_slot(close_button)
+                    .child(Label::new(label_render.label))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.set_active_tab_by_id(tab_id, window, cx);
+                    }))
+            })
+            .collect::<Vec<_>>();
+
+        TabBar::new("agent-panel-tab-bar")
+            .start_children(match self.overlay_view {
+                Some(ActiveView::History { .. }) | Some(ActiveView::Configuration) => {
+                    Some(self.render_toolbar_back_button(cx))
+                }
+                _ => None,
+            })
+            .track_scroll(&self.tab_bar_scroll_handle)
+            .end_children(vec![
+                new_thread_menu.into_any_element(),
+                self.render_recent_entries_menu(
+                    IconName::MenuAltTemp,
+                    Corner::TopRight,
+                    cx,
+                )
+                .when(show_history_menu, |this| this)
+                .into_any_element(),
+                self.render_panel_options_menu(window, cx).into_any_element(),
+            ])
+            .children(tabs)
+            .into_any_element()
     }
 
     fn should_render_trial_end_upsell(&self, cx: &mut Context<Self>) -> bool {
@@ -3266,7 +3096,8 @@ impl rules_library::InlineAssistDelegate for PromptLibraryInlineAssist {
 impl AgentPanel {
     fn active_tab(&self) -> &AgentPanelTab {
         self.tabs
-            .get(self.active_tab_id)
+            .iter()
+            .find(|tab| tab.id == self.active_tab_id)
             .unwrap_or_else(|| &self.tabs[0])
     }
 
@@ -3275,10 +3106,10 @@ impl AgentPanel {
         identity: &AgentPanelTabIdentity,
         cx: &mut Context<Self>,
     ) -> Option<TabId> {
-        for (index, tab) in self.tabs.iter().enumerate() {
-            if Self::tab_view_identity(tab.view(), cx).is_some_and(|existing| existing == *identity)
+        for tab in self.tabs.iter() {
+            if Self::tab_view_identity(&tab.view, cx).is_some_and(|existing| existing == *identity)
             {
-                return Some(index);
+                return Some(tab.id);
             }
         }
         None
@@ -3286,29 +3117,23 @@ impl AgentPanel {
 
     fn set_active_tab_by_id(&mut self, new_id: TabId, window: &mut Window, cx: &mut Context<Self>) {
         // TODO: need to check the total items in the list, if it is equal to 1, we should overlay it
-        let Some((tab_agent, text_thread_editor)) = self.tabs.get(new_id).map(|tab| {
-            let editor = match tab.view() {
-                ActiveView::TextThread {
-                    text_thread_editor, ..
-                } => Some(text_thread_editor.clone()),
-                _ => None,
-            };
-            (tab.agent().clone(), editor)
-        }) else {
+        let Some(tab) = self.tabs.iter().find(|tab| tab.id == new_id) else {
             log::info!("The input new_id is not in the list views!");
             return;
+        };
+
+        let _text_thread_editor = match &tab.view {
+            ActiveView::TextThread {
+                text_thread_editor, ..
+            } => Some(text_thread_editor.clone()),
+            _ => None,
         };
 
         self.overlay_view = None;
         self.overlay_previous_tab_id = None;
         self.title_edit_overlay_tab_id = None;
         self.active_tab_id = new_id;
-        self.tab_bar_scroll_handle.scroll_to_item(new_id);
-
-        if self.selected_agent != tab_agent {
-            self.selected_agent = tab_agent;
-            self.serialize(cx);
-        }
+        self.tab_bar_scroll_handle.scroll_to_item(new_id.0);
 
         // TODO: Re-enable history tracking when HistoryEntryId is available
         // if let Some(text_thread_editor) = text_thread_editor {
@@ -3320,6 +3145,7 @@ impl AgentPanel {
         // }
 
         self.focus_handle(cx).focus(window, cx);
+        cx.notify();
     }
 
     fn set_tab_overlay_view(
@@ -3337,7 +3163,7 @@ impl AgentPanel {
     fn push_tab(
         &mut self,
         new_view: ActiveView,
-        agent: AgentType,
+        _agent: AgentType,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -3352,9 +3178,18 @@ impl AgentPanel {
 
         match &new_view {
             ActiveView::TextThread { .. } | ActiveView::ExternalAgentThread { .. } => {
-                self.tabs.push(AgentPanelTab::new(new_view, agent));
-                let new_id = self.tabs.len() - 1;
-                self.set_active_tab_by_id(new_id, window, cx);
+                // Generate a new unique tab ID
+                let new_tab_id = TabId(
+                    self.tabs
+                        .iter()
+                        .map(|tab| tab.id.0)
+                        .max()
+                        .map(|max| max + 1)
+                        .unwrap_or(0),
+                );
+
+                self.tabs.push(AgentPanelTab::new(new_tab_id, new_view));
+                self.set_active_tab_by_id(new_tab_id, window, cx);
 
                 if let Some(pending_id) = self.pending_tab_removal.take() {
                     // Now that we have more than one tab, try removing the deferred one.
@@ -3374,10 +3209,11 @@ impl AgentPanel {
     fn remove_tab_by_id(&mut self, id: TabId, window: &mut Window, cx: &mut Context<Self>) {
         // Guardrail - ensure we have at least one item in the list
         if self.tabs.len() == 1 {
-            if self.loading && self.tabs.get(id).is_some() {
+            if self.loading && self.tabs.iter().any(|tab| tab.id == id) {
                 self.pending_tab_removal = Some(id);
                 log::info!(
-                    "Deferring removal of tab {id} until another tab is available (panel loading)."
+                    "Deferring removal of tab {:?} until another tab is available (panel loading).",
+                    id.0
                 );
             } else {
                 log::info!("Failed to remove the tab! The tabs list only has one item left.");
@@ -3385,32 +3221,37 @@ impl AgentPanel {
             return;
         }
 
-        if self.tabs.get(id).is_some() {
-            let removed_id = id;
-            self.tabs.remove(removed_id);
-            let new_id = if self.active_tab_id == removed_id {
-                removed_id.min(self.tabs.len() - 1)
-            } else if self.active_tab_id > removed_id {
-                self.active_tab_id - 1
+        if let Some(tab_index) = self.tabs.iter().position(|tab| tab.id == id) {
+            self.tabs.remove(tab_index);
+
+            // Determine the new active tab
+            let new_active_tab_id = if self.active_tab_id == id {
+                // If we're removing the active tab, activate an adjacent one
+                if tab_index < self.tabs.len() {
+                    self.tabs[tab_index].id
+                } else if !self.tabs.is_empty() {
+                    self.tabs[self.tabs.len() - 1].id
+                } else {
+                    TabId(0) // Fallback, should not happen due to guardrail above
+                }
             } else {
                 self.active_tab_id
             };
 
             if let Some(edit_id) = self.title_edit_overlay_tab_id {
-                if edit_id == removed_id {
+                if edit_id == id {
                     self.title_edit_overlay_tab_id = None;
-                } else if edit_id > removed_id {
-                    self.title_edit_overlay_tab_id = Some(edit_id - 1);
                 }
             }
 
-            if new_id == self.active_tab_id {
-                self.tab_bar_scroll_handle.scroll_to_item(new_id);
+            if new_active_tab_id != self.active_tab_id {
+                self.set_active_tab_by_id(new_active_tab_id, window, cx);
             } else {
-                self.set_active_tab_by_id(new_id, window, cx);
+                self.tab_bar_scroll_handle.scroll_to_item(new_active_tab_id.0);
+                cx.notify();
             }
         } else {
-            log::info!("View id is not valid.");
+            log::info!("View id {:?} is not valid.", id.0);
         }
     }
 
@@ -3472,7 +3313,7 @@ impl AgentPanel {
                     .filter(|text| !text.is_empty())
                     .unwrap_or_else(|| thread_view.read(cx).title(cx).to_string());
 
-                let (label_text, tooltip) = Self::display_tab_label(text, is_active);
+                let (label_text, _tooltip) = Self::display_tab_label(text, is_active);
 
                 let is_generating = thread_view
                     .read(cx)
@@ -3480,23 +3321,20 @@ impl AgentPanel {
                     .map(|thread| thread.read(cx).status() == ThreadStatus::Generating)
                     .unwrap_or(false);
 
-                let label = if is_generating {
-                    Label::new(label_text)
-                        .truncate()
-                        .when(!is_active, |label| label.color(Color::Muted))
-                        .when(is_active, |label| label.color(Color::Default))
-                        .into_any_element()
+                let indicator = if is_generating {
+                    Some(
+                        Indicator::dot()
+                            .color(Color::Accent)
+                            .into_any_element()
+                    )
                 } else {
-                    Label::new(label_text)
-                        .truncate()
-                        .when(!is_active, |label| label.color(Color::Muted))
-                        .when(is_active, |label| label.color(Color::Default)) // Ensure active tabs have proper color
-                        .into_any_element()
+                    None
                 };
 
                 TabLabelRender {
-                    element: label,
-                    tooltip,
+                    label: label_text.to_string(),
+                    icon: None,
+                    indicator,
                 }
             }
             ActiveView::TextThread {
@@ -3513,25 +3351,22 @@ impl AgentPanel {
                     .messages(cx)
                     .any(|message| message.status == assistant_text_thread::MessageStatus::Pending);
 
+                let indicator = if is_generating {
+                    Some(
+                        Indicator::dot()
+                            .color(Color::Accent)
+                            .into_any_element()
+                    )
+                } else {
+                    None
+                };
+
                 match summary {
                     TextThreadSummary::Pending => {
-                        let label = if is_generating {
-                            Label::new(TextThreadSummary::DEFAULT)
-                                .truncate()
-                                .when(!is_active, |label| label.color(Color::Muted))
-                                .when(is_active, |label| label.color(Color::Default))
-                                .into_any_element()
-                        } else {
-                            Label::new(TextThreadSummary::DEFAULT)
-                                .truncate()
-                                .when(!is_active, |label| label.color(Color::Muted))
-                                .when(is_active, |label| label.color(Color::Default)) // Ensure active tabs have proper color
-                                .into_any_element()
-                        };
-
                         TabLabelRender {
-                            element: label,
-                            tooltip: None,
+                            label: TextThreadSummary::DEFAULT.to_string(),
+                            icon: None,
+                            indicator,
                         }
                     }
                     TextThreadSummary::Content(summary) => {
@@ -3540,67 +3375,42 @@ impl AgentPanel {
                             if text.is_empty() {
                                 text = summary.text.clone();
                             }
-                            let (label_text, tooltip) = Self::display_tab_label(text, is_active);
-
-                            let label = if is_generating {
-                                Label::new(label_text)
-                                    .truncate()
-                                    .when(!is_active, |label| label.color(Color::Muted))
-                                    .when(is_active, |label| label.color(Color::Default))
-                                    .into_any_element()
-                            } else {
-                                Label::new(label_text)
-                                    .truncate()
-                                    .when(!is_active, |label| label.color(Color::Muted))
-                                    .when(is_active, |label| label.color(Color::Default)) // Ensure active tabs have proper color
-                                    .into_any_element()
-                            };
+                            let (label_text, _tooltip) = Self::display_tab_label(text, is_active);
 
                             TabLabelRender {
-                                element: label,
-                                tooltip,
+                                label: label_text.to_string(),
+                                icon: None,
+                                indicator,
                             }
                         } else {
                             TabLabelRender {
-                                element: Label::new(LOADING_SUMMARY_PLACEHOLDER)
-                                    .truncate()
-                                    .color(Color::Muted)
-                                    .into_any_element(),
-                                tooltip: None,
+                                label: LOADING_SUMMARY_PLACEHOLDER.to_string(),
+                                icon: None,
+                                indicator,
                             }
                         }
                     }
                     TextThreadSummary::Error => {
                         let text = title_editor.read(cx).text(cx);
-                        let (label_text, tooltip) = Self::display_tab_label(text, is_active);
-
-                        let label = if is_generating {
-                            Label::new(label_text)
-                                .truncate()
-                                .when(!is_active, |label| label.color(Color::Muted))
-                                .when(is_active, |label| label.color(Color::Default))
-                                .into_any_element()
-                        } else {
-                            Label::new(label_text)
-                                .truncate()
-                                .when(!is_active, |label| label.color(Color::Muted))
-                                .into_any_element()
-                        };
+                        let (label_text, _tooltip) = Self::display_tab_label(text, is_active);
 
                         TabLabelRender {
-                            element: label,
-                            tooltip,
+                            label: label_text.to_string(),
+                            icon: None,
+                            indicator,
                         }
                     }
                 }
             }
             ActiveView::History { .. } => TabLabelRender {
-                element: Label::new("History").truncate().into_any_element(),
-                tooltip: None,
+                label: "History".to_string(),
+                icon: None,
+                indicator: None,
             },
             ActiveView::Configuration => TabLabelRender {
-                element: Label::new("Settings").truncate().into_any_element(),
-                tooltip: None,
+                label: "Settings".to_string(),
+                icon: None,
+                indicator: None,
             },
         }
     }
@@ -3689,12 +3499,14 @@ impl AgentPanel {
             return;
         }
 
-        let next_id = if self.active_tab_id + 1 >= self.tabs.len() {
+        let current_index = self.tabs.iter().position(|tab| tab.id == self.active_tab_id).unwrap_or(0);
+        let next_index = if current_index + 1 >= self.tabs.len() {
             0 // Wrap around to the first tab
         } else {
-            self.active_tab_id + 1
+            current_index + 1
         };
 
+        let next_id = self.tabs[next_index].id;
         self.set_active_tab_by_id(next_id, window, cx);
     }
 
@@ -3703,12 +3515,14 @@ impl AgentPanel {
             return;
         }
 
-        let prev_id = if self.active_tab_id == 0 {
+        let current_index = self.tabs.iter().position(|tab| tab.id == self.active_tab_id).unwrap_or(0);
+        let prev_index = if current_index == 0 {
             self.tabs.len() - 1 // Wrap around to the last tab
         } else {
-            self.active_tab_id - 1
+            current_index - 1
         };
 
+        let prev_id = self.tabs[prev_index].id;
         self.set_active_tab_by_id(prev_id, window, cx);
     }
 }
