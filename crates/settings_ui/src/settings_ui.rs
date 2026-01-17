@@ -15,7 +15,9 @@ use project::{Project, WorktreeId};
 use release_channel::ReleaseChannel;
 use schemars::JsonSchema;
 use serde::Deserialize;
-use settings::{Settings, SettingsContent, SettingsStore, initial_project_settings_content};
+use settings::{
+    IntoGpui, Settings, SettingsContent, SettingsStore, initial_project_settings_content,
+};
 use std::{
     any::{Any, TypeId, type_name},
     cell::RefCell,
@@ -493,6 +495,9 @@ fn init_renderers(cx: &mut App) {
         .add_basic_renderer::<settings::DisplayIn>(render_dropdown)
         .add_basic_renderer::<settings::MinimapThumb>(render_dropdown)
         .add_basic_renderer::<settings::MinimapThumbBorder>(render_dropdown)
+        .add_basic_renderer::<settings::ModeContent>(render_dropdown)
+        .add_basic_renderer::<settings::UseSystemClipboard>(render_dropdown)
+        .add_basic_renderer::<settings::VimInsertModeCursorShape>(render_dropdown)
         .add_basic_renderer::<settings::SteppingGranularity>(render_dropdown)
         .add_basic_renderer::<settings::NotifyWhenAgentWaiting>(render_dropdown)
         .add_basic_renderer::<settings::NotifyWhenAgentWaiting>(render_dropdown)
@@ -727,7 +732,7 @@ struct NavBarEntry {
 
 struct SettingsPage {
     title: &'static str,
-    items: Vec<SettingsPageItem>,
+    items: Box<[SettingsPageItem]>,
 }
 
 #[derive(PartialEq)]
@@ -1818,6 +1823,7 @@ impl SettingsWindow {
             );
 
             let fuzzy_matches = fuzzy_search_task.await;
+            let bm25_matches = bm25_task.await;
 
             _ = this
                 .update(cx, |this, cx| {
@@ -1842,37 +1848,18 @@ impl SettingsWindow {
                     //     let score = fuzzy_match.score;
                     //     eprint!("# {header} :: QUERY = {query} :: SCORE = {score}\n{title}\n{description}\n\n");
                     // }
-                    update_matches_inner(
-                        this,
-                        search_index.as_ref(),
-                        fuzzy_matches
-                            .into_iter()
-                            // MAGIC NUMBER: Was found to have right balance between not too many weird matches, but also
-                            // flexible enough to catch misspellings and <4 letter queries
-                            // More flexible is good for us here because fuzzy matches will only be used for things that don't
-                            // match using bm25
-                            .take_while(|fuzzy_match| fuzzy_match.score >= 0.3)
-                            .map(|fuzzy_match| fuzzy_match.candidate_id),
-                        cx,
-                    );
-                })
-                .ok();
+                    let fuzzy_indices = fuzzy_matches
+                        .into_iter()
+                        // MAGIC NUMBER: Was found to have right balance between not too many weird matches, but also
+                        // flexible enough to catch misspellings and <4 letter queries
+                        .take_while(|fuzzy_match| fuzzy_match.score >= 0.5)
+                        .map(|fuzzy_match| fuzzy_match.candidate_id);
+                    let bm25_indices = bm25_matches
+                        .into_iter()
+                        .map(|bm25_match| bm25_match.document.id);
+                    let merged_indices = bm25_indices.chain(fuzzy_indices);
 
-            let bm25_matches = bm25_task.await;
-
-            _ = this
-                .update(cx, |this, cx| {
-                    if bm25_matches.is_empty() {
-                        return;
-                    }
-                    update_matches_inner(
-                        this,
-                        search_index.as_ref(),
-                        bm25_matches
-                            .into_iter()
-                            .map(|bm25_match| bm25_match.document.id),
-                        cx,
-                    );
+                    update_matches_inner(this, search_index.as_ref(), merged_indices, cx);
                 })
                 .ok();
 
@@ -3221,28 +3208,45 @@ impl SettingsWindow {
                 original_window
                     .update(cx, |workspace, window, cx| {
                         workspace
-                            .with_local_workspace(window, cx, |workspace, window, cx| {
-                                let create_task = workspace.project().update(cx, |project, cx| {
-                                    project.find_or_create_worktree(
-                                        paths::config_dir().as_path(),
-                                        false,
-                                        cx,
-                                    )
-                                });
-                                let open_task = workspace.open_paths(
-                                    vec![paths::settings_file().to_path_buf()],
-                                    OpenOptions {
-                                        visible: Some(OpenVisible::None),
-                                        ..Default::default()
-                                    },
-                                    None,
-                                    window,
-                                    cx,
-                                );
+                            .with_local_or_wsl_workspace(window, cx, |workspace, window, cx| {
+                                let project = workspace.project().clone();
 
                                 cx.spawn_in(window, async move |workspace, cx| {
-                                    create_task.await.ok();
-                                    open_task.await;
+                                    let (config_dir, settings_file) =
+                                        project.update(cx, |project, cx| {
+                                            (
+                                                project.try_windows_path_to_wsl(
+                                                    paths::config_dir().as_path(),
+                                                    cx,
+                                                ),
+                                                project.try_windows_path_to_wsl(
+                                                    paths::settings_file().as_path(),
+                                                    cx,
+                                                ),
+                                            )
+                                        });
+                                    let config_dir = config_dir.await?;
+                                    let settings_file = settings_file.await?;
+                                    project
+                                        .update(cx, |project, cx| {
+                                            project.find_or_create_worktree(&config_dir, false, cx)
+                                        })
+                                        .await
+                                        .ok();
+                                    workspace
+                                        .update_in(cx, |workspace, window, cx| {
+                                            workspace.open_paths(
+                                                vec![settings_file],
+                                                OpenOptions {
+                                                    visible: Some(OpenVisible::None),
+                                                    ..Default::default()
+                                                },
+                                                None,
+                                                window,
+                                                cx,
+                                            )
+                                        })?
+                                        .await;
 
                                     workspace.update_in(cx, |_, window, cx| {
                                         window.activate_window();
@@ -3792,12 +3796,12 @@ fn render_font_picker(
         .get_value_from_file(file.to_settings(), field.pick)
         .1
         .cloned()
-        .unwrap_or_else(|| SharedString::default().into());
+        .map_or_else(|| SharedString::default(), |value| value.into_gpui());
 
     PopoverMenu::new("font-picker")
         .trigger(render_picker_trigger_button(
             "font_family_picker_trigger".into(),
-            current_value.clone().into(),
+            current_value.clone(),
         ))
         .menu(move |window, cx| {
             let file = file.clone();
@@ -3805,14 +3809,14 @@ fn render_font_picker(
 
             Some(cx.new(move |cx| {
                 font_picker(
-                    current_value.clone().into(),
+                    current_value,
                     move |font_name, cx| {
                         update_settings_file(
                             file.clone(),
                             field.json_path,
                             cx,
                             move |settings, _cx| {
-                                (field.write)(settings, Some(font_name.into()));
+                                (field.write)(settings, Some(font_name.to_string().into()));
                             },
                         )
                         .log_err(); // todo(settings_ui) don't log err
@@ -3965,7 +3969,11 @@ pub mod test {
     }
 
     fn parse(input: &'static str, window: &mut Window, cx: &mut App) -> SettingsWindow {
-        let mut pages: Vec<SettingsPage> = Vec::new();
+        struct PageBuilder {
+            title: &'static str,
+            items: Vec<SettingsPageItem>,
+        }
+        let mut page_builders: Vec<PageBuilder> = Vec::new();
         let mut expanded_pages = Vec::new();
         let mut selected_idx = None;
         let mut index = 0;
@@ -3985,23 +3993,23 @@ pub mod test {
             assert_eq!(kind.len(), 1);
             let kind = kind.chars().next().unwrap();
             if kind == 'v' {
-                let page_idx = pages.len();
+                let page_idx = page_builders.len();
                 expanded_pages.push(page_idx);
-                pages.push(SettingsPage {
+                page_builders.push(PageBuilder {
                     title,
                     items: vec![],
                 });
                 index += 1;
                 in_expanded_section = true;
             } else if kind == '>' {
-                pages.push(SettingsPage {
+                page_builders.push(PageBuilder {
                     title,
                     items: vec![],
                 });
                 index += 1;
                 in_expanded_section = false;
             } else if kind == '-' {
-                pages
+                page_builders
                     .last_mut()
                     .unwrap()
                     .items
@@ -4017,6 +4025,14 @@ pub mod test {
                 );
             }
         }
+
+        let pages: Vec<SettingsPage> = page_builders
+            .into_iter()
+            .map(|builder| SettingsPage {
+                title: builder.title,
+                items: builder.items.into_boxed_slice(),
+            })
+            .collect();
 
         let mut settings_window = SettingsWindow {
             title_bar: None,

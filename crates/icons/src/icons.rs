@@ -263,8 +263,6 @@ pub enum IconName {
     ZedAgent,
     ZedAgentTwo,
     ZedAssistant,
-    ZedBurnMode,
-    ZedBurnModeOn,
     ZedPredict,
     ZedPredictDisabled,
     ZedPredictDown,

@@ -124,7 +124,6 @@ impl OutlineView {
         let picker = cx.new(|cx| {
             Picker::uniform_list(delegate, window, cx)
                 .max_height(Some(vh(0.75, window)))
-                .track_scroll(scroll_handle.clone())
                 .show_scrollbar(true)
         });
         OutlineView { picker }
