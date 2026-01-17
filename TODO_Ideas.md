@@ -1,4 +1,4 @@
-
+the fileexplorercreatefile action should create a directory when the entered path ends with a slash
 
 
 # >>> Investigations
