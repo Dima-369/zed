@@ -1,16 +1,3 @@
-    // Whether to stack tabs vertically in multiple rows instead of horizontal scrolling.
-    // When enabled, tabs will wrap to new rows when they exceed the available width.
-    "vertical_stacking": false,
-    // Whether or not to show pinned tabs in a separate row.
-    // When enabled, pinned tabs appear in a top row and unpinned tabs in a bottom row.
-    // When disabled, all tabs appear in a single row (default behavior).
-    "show_pinned_tabs_in_separate_row": false,
-
-fix that
-
-
-- test outline scrollbar if visible
-
 - remove note that agent_view does not display token count for ACP anymore (TEST)
 
 - double check `/Users/dima/Developer/zed/crates/workspace/src/pane.rs` to tab settings merge
