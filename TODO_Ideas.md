@@ -9,8 +9,6 @@
 fix that
 
 
-- remove README mention about the markdown outline fix
-
 - test outline scrollbar if visible
 
 - remove note that agent_view does not display token count for ACP anymore (TEST)
