@@ -10,7 +10,7 @@ use editor::{MultiBufferOffset, RowHighlightOptions, SelectionEffects};
 use fuzzy::StringMatch;
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, HighlightStyle,
-    ParentElement, Point, Render, Styled, StyledText, Task, TextStyle, UniformListScrollHandle,
+    ParentElement, Point, Render, Styled, StyledText, Task, TextStyle,
     WeakEntity, Window, div, rems,
 };
 use language::{Outline, OutlineItem};
@@ -120,7 +120,6 @@ impl OutlineView {
         cx: &mut Context<Self>,
     ) -> OutlineView {
         let delegate = OutlineViewDelegate::new(cx.entity().downgrade(), outline, editor, cx);
-        let scroll_handle = UniformListScrollHandle::new();
         let picker = cx.new(|cx| {
             Picker::uniform_list(delegate, window, cx)
                 .max_height(Some(vh(0.75, window)))

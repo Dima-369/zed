@@ -8,10 +8,8 @@ use settings_macros::{MergeFrom, with_fallible_options};
 use util::serde::default_true;
 
 use crate::{
-    AllLanguageSettingsContent, DelayMs, ExtendingVec, ParseStatus, ProjectTerminalSettingsContent,
+    AllLanguageSettingsContent, DelayMs, ExtendingVec, FontFamilyName, ParseStatus, ProjectTerminalSettingsContent,
     RootUserSettings, SlashCommandSettings, fallible_options,
-    AllLanguageSettingsContent, DelayMs, ExtendingVec, FontFamilyName,
-    ProjectTerminalSettingsContent, SlashCommandSettings,
 };
 
 #[with_fallible_options]

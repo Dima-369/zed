@@ -660,6 +660,7 @@ impl ContextMenu {
             toggle: None,
             label: label.into(),
             handler: Rc::new(move |_, window, cx| handler(window, cx)),
+            secondary_handler: None,
             icon: Some(icon),
             custom_icon_path: None,
             custom_icon_svg: None,

@@ -70,14 +70,9 @@ use crate::profile_selector::{ProfileProvider, ProfileSelector};
 use crate::ui::{AgentNotification, AgentNotificationEvent};
 use crate::{
     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, AuthorizeToolCall, ClearMessageQueue,
-    CycleFavoriteModels, CycleModeSelector, ExpandMessageEditor, Follow, KeepAll, NewThread,
+    CopyErrorNotification, CycleFavoriteModels, CycleModeSelector, DismissErrorNotification, ExpandMessageEditor, Follow, KeepAll, NewThread,
     OpenAgentDiff, OpenHistory, RejectAll, RejectOnce, RemoveFirstQueuedMessage,
-    SelectPermissionGranularity, SendImmediately, SendNextQueuedMessage, ToggleProfileSelector,
-    AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, ClearMessageQueue, ContinueThread,
-    ContinueWithBurnMode, CopyErrorNotification, CycleFavoriteModels, CycleModeSelector,
-    DismissErrorNotification, ExpandMessageEditor, Follow, KeepAll, NewThread, OpenAgentDiff,
-    OpenHistory, QueueMessage, RejectAll, RejectOnce, SendNextQueuedMessage, ToggleBurnMode,
-    TogglePlan, ToggleProfileSelector,
+    SelectPermissionGranularity, SendImmediately, SendNextQueuedMessage, TogglePlan, ToggleProfileSelector,
 };
 
 const MAX_COLLAPSED_LINES: usize = 3;
@@ -962,7 +957,7 @@ impl AcpThreadView {
         } else {
             self.resume_thread_metadata
                 .as_ref()
-                .map(|metadata| metadata.id.clone())
+                .map(|metadata| metadata.session_id.clone())
         }
     }
 
@@ -3365,6 +3360,7 @@ impl AcpThreadView {
                                                 content_ix,
                                                 tool_call,
                                                 use_card_layout,
+                                                false,
                                                 false,
                                                 window,
                                                 cx,
@@ -6295,8 +6291,9 @@ impl AcpThreadView {
     }
 
     fn render_token_usage(&self, cx: &mut Context<Self>) -> Option<Div> {
-        let thread = self.thread()?;
-        let thread_read = thread.read(cx);
+        let thread = self.thread()?.read(cx);
+        let usage = thread.token_usage()?;
+        let is_generating = thread.status() != ThreadStatus::Idle;
         let show_split = self.supports_split_token_display(cx);
 
         let separator_color = Color::Custom(cx.theme().colors().text_muted.opacity(0.5));
@@ -6424,8 +6421,6 @@ impl AcpThreadView {
         if let Some(error) = &self.thread_error {
             let error_message = match error {
                 ThreadError::PaymentRequired => "Free tier exceeded. Subscribe and add payment to continue using Zed LLMs. You'll be billed at cost for tokens used.".to_string(),
-                ThreadError::ModelRequestLimitReached(_) => "Model request limit reached. Please try again later.".to_string(),
-                ThreadError::ToolUseLimitReached => "Tool use limit reached. Please try again later.".to_string(),
                 ThreadError::Refusal => "Request was refused by the model.".to_string(),
                 ThreadError::AuthenticationRequired(msg) => format!("Authentication required: {}", msg),
                 ThreadError::Other(msg) => msg.to_string(),
@@ -7002,7 +6997,7 @@ impl AcpThreadView {
 
             let buffer = project
                 .update(cx, |project, cx| {
-                    project.create_buffer(Some(markdown_language), false, cx)
+                    project.create_buffer(Some(language.clone()), false, cx)
                 })
                 .await?;
 

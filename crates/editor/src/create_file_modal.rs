@@ -126,24 +126,19 @@ impl CreateFileModal {
             let project_path = project
                 .read_with(cx, |project, cx| {
                     project.find_project_path(&new_file_path, cx)
-                })
-                .ok()
-                .flatten();
+                });
 
             if let Some(project_path) = project_path {
                 let worktree = project
                     .read_with(cx, |project, cx| {
                         project.worktree_for_id(project_path.worktree_id, cx)
-                    })
-                    .ok()
-                    .flatten();
+                    });
 
                 if let Some(worktree) = worktree {
                     let abs_path = worktree
-                        .read_with(cx, |worktree, _| worktree.absolutize(&project_path.path))
-                        .ok();
+                        .read_with(cx, |worktree, _| worktree.absolutize(&project_path.path));
 
-                    if let Some(abs_path) = abs_path {
+                    {
                         let write_result = smol::fs::write(&abs_path, "").await;
                         if write_result.is_ok() {
                             let open_task = workspace.update_in(cx, |workspace, window, cx| {

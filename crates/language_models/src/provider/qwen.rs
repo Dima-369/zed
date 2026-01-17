@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
 use ui::{ButtonLink, ConfiguredApiCard, List, ListBulletItem, prelude::*};
-use util::ResultExt;
+use util::TryFutureExt;
 
 const PROVIDER_ID: LanguageModelProviderId = LanguageModelProviderId::new("qwen");
 const PROVIDER_NAME: LanguageModelProviderName = LanguageModelProviderName::new("Qwen");
@@ -420,7 +420,7 @@ impl QwenLanguageModel {
     > {
         let http_client = self.http_client.clone();
 
-        let Ok(task) = self.state.read_with(cx, |state, cx| {
+        let task = self.state.read_with(cx, |state, cx| {
             let auth_client = state.auth_client.clone();
             let http_client = state.http_client.clone();
             cx.background_spawn(async move {
@@ -432,14 +432,12 @@ impl QwenLanguageModel {
                         (creds, base_url)
                     })
             })
-        }) else {
-            return future::ready(Err(anyhow!("App state dropped").into())).boxed();
-        };
+        });
 
         let future = self.request_limiter.stream(async move {
             let (credentials, base_url) = task
                 .await
-                .map_err(|e| LanguageModelCompletionError::Other(anyhow!(e)))?;
+                .map_err(|e: QwenError| LanguageModelCompletionError::Other(anyhow!(e)))?;
 
             let provider = PROVIDER_NAME;
             let request = open_ai::stream_completion(
@@ -616,17 +614,13 @@ impl ConfigurationView {
         let load_credentials_task = Some(cx.spawn_in(window, {
             let state = state.clone();
             async move |this, cx| {
-                if let Some(task) = state
-                    .update(cx, |state, cx| state.authenticate(cx))
-                    .log_err()
-                {
-                    let _ = task.await;
-                }
-                this.update(cx, |this, cx| {
+                let task = state
+                    .update(cx, |state, cx| state.authenticate(cx));
+                let _ = task.log_err().await;
+                let _ = this.update(cx, |this, cx| {
                     this.load_credentials_task = None;
                     cx.notify();
-                })
-                .log_err();
+                });
             }
         }));
 
@@ -650,12 +644,11 @@ impl Render for ConfigurationView {
                 .on_click(cx.listener(|this, _, window, cx| {
                     let state = this.state.clone();
                     cx.spawn_in(window, async move |_, cx| {
-                        state
+                        let _ = state
                             .update(cx, |state, _| {
                                 state.authenticated = false;
                                 state.error = None;
-                            })
-                            .log_err();
+                            });
                     })
                     .detach();
                 }))

@@ -26,7 +26,6 @@ use editor::{
     Anchor, Bias, Editor, EditorEvent, EditorSettings, HideMouseCursorOrigin, MultiBufferOffset,
     SelectionEffects,
     actions::Paste,
-    display_map::ToDisplayPoint,
     movement::{self, FindRange},
 };
 use gpui::{

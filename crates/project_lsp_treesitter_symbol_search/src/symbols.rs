@@ -157,15 +157,13 @@ impl SymbolProvider {
                                     let outline_items = cx.update(|cx| {
                                         let buffer_snapshot = buffer.read(cx).snapshot();
                                         buffer_snapshot.outline(None).items
-                                    })?;
+                                    });
                                     anyhow::Ok((path, mtime, buffer, outline_items))
                                 })
                             })
                         });
 
-                        if let Ok(task) = task {
-                            batch_tasks.push(task);
-                        }
+                        batch_tasks.push(task);
                     }
 
                     for task in batch_tasks {
@@ -198,7 +196,7 @@ impl SymbolProvider {
                         let mut progress = cache.indexing_progress.lock();
                         *progress = (processed, total_to_reindex);
                     }
-                    cx.update(|_| ()).ok();
+                    let _ = cx.update(|_| ());
                 }
 
                 // Mark indexing as complete
@@ -208,7 +206,7 @@ impl SymbolProvider {
                 }
 
                 // Notify to refresh UI
-                cx.update(|_cx| {}).ok();
+                let _ = cx.update(|_cx| {});
             }
         })
         .detach();

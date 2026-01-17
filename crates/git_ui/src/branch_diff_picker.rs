@@ -121,7 +121,7 @@ impl BranchDiffPickerDelegate {
                 })?
                 .await??;
 
-            let new_buffer_snapshot = buffer.read_with(cx, |buffer, _| buffer.snapshot())?;
+            let new_buffer_snapshot = buffer.read_with(cx, |buffer, _| buffer.snapshot());
 
             let old_buffer = cx.new(|cx| {
                 let mut buffer = Buffer::local(old_text.unwrap_or_default(), cx);
@@ -130,14 +130,14 @@ impl BranchDiffPickerDelegate {
                     buffer.set_language(Some(language.clone()), cx);
                 }
                 buffer
-            })?;
+            });
 
-            let old_buffer_snapshot = old_buffer.read_with(cx, |buffer, _| buffer.snapshot())?;
+            let old_buffer_snapshot = old_buffer.read_with(cx, |buffer, _| buffer.snapshot());
 
             let buffer_diff = cx.new(|cx| {
                 let diff = BufferDiff::new(&new_buffer_snapshot, cx);
                 diff
-            })?;
+            });
 
             let update_task = cx.update(|_, cx| {
                 buffer_diff.update(cx, |buffer_diff, cx| {
@@ -154,7 +154,7 @@ impl BranchDiffPickerDelegate {
             let update = update_task.await;
             buffer_diff.update(cx, |buffer_diff, cx| {
                 let _ = buffer_diff.set_snapshot(update, &new_buffer_snapshot, cx);
-            })?;
+            });
 
             workspace.update_in(cx, |workspace, window, cx| {
                 let diff_view = cx.new(|cx| {
@@ -460,7 +460,7 @@ impl workspace::Item for BranchFileDiffView {
 
     fn navigate(
         &mut self,
-        data: Box<dyn std::any::Any>,
+        data: Arc<dyn std::any::Any + Send>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {

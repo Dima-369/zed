@@ -1051,12 +1051,8 @@ impl TerminalView {
         self.pause_cursor_blinking(window, cx);
 
         if self.process_keystroke(&event.keystroke, cx) {
-            if term.vi_mode_enabled() {
-                    cx.notify();
-                }
-                cx.stop_propagation();
-            }
-
+            cx.stop_propagation();
+        }
     }
 
     fn focus_in(&mut self, window: &mut Window, cx: &mut Context<Self>) {

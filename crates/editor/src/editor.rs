@@ -3020,7 +3020,7 @@ impl Editor {
         cx.spawn_in(window, async move |workspace, cx| {
             let language = if let Some(language_name) = language {
                 let language_registry =
-                    project.update(cx, |project, _cx| project.languages().clone())?;
+                    project.update(cx, |project, _cx| project.languages().clone());
                 language_registry
                     .language_for_name(&language_name)
                     .await
@@ -3031,7 +3031,7 @@ impl Editor {
 
             let buffer = project.update(cx, |project, cx| {
                 project.create_local_buffer("", language, true, cx)
-            })?;
+            });
             workspace.update_in(cx, |workspace, window, cx| {
                 let editor =
                     cx.new(|cx| Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx));
@@ -3254,12 +3254,14 @@ impl Editor {
             let file_list_content_result = project
                 .update(cx, |project, cx| {
                     Self::file_explorer_get_directory_content(project, &current_dir, cx)
-                })
-                .and_then(|e| e);
+                });
 
-            let Ok((file_list_content, metadata)) = file_list_content_result else {
-                log::error!("Failed to get directory entries");
-                return;
+            let (file_list_content, metadata) = match file_list_content_result {
+                Ok(result) => result,
+                Err(_) => {
+                    log::error!("Failed to get directory entries");
+                    return;
+                }
             };
 
             // Create a buffer with the file listing
@@ -3267,13 +3269,7 @@ impl Editor {
                 project.create_local_buffer(&file_list_content, None, true, cx)
             });
 
-            let buffer = match buffer {
-                Ok(buffer) => buffer,
-                Err(e) => {
-                    log::error!("Failed to create buffer: {}", e);
-                    return;
-                }
-            };
+            // Buffer is already the correct type, no need to match
 
             let _ = workspace.update_in(cx, |workspace, window, cx| {
                 let editor = cx.new(|cx| {
@@ -3450,9 +3446,7 @@ impl Editor {
             // Open the file
             cx.spawn_in(window, async move |workspace, cx| -> anyhow::Result<()> {
                 let project_path = project
-                    .read_with(cx, |project, cx| project.find_project_path(&full_path, cx))
-                    .ok()
-                    .flatten();
+                    .read_with(cx, |project, cx| project.find_project_path(&full_path, cx));
 
                 if let Some(project_path) = project_path {
                     let is_dir = project
@@ -3467,23 +3461,26 @@ impl Editor {
                                         .unwrap_or(false)
                                 })
                                 .unwrap_or(false)
-                        })
-                        .ok()
-                        .unwrap_or(false);
+                        });
 
                     if is_dir {
-                        let directory_content = project
+                        let directory_content_result = project
                             .update(cx, |project, cx| {
                                 Self::file_explorer_get_directory_content(
                                     project,
                                     &project_path,
                                     cx,
                                 )
-                            })
-                            .ok()
-                            .and_then(|result| result.ok());
+                            });
 
-                        if let Some((content, metadata)) = directory_content {
+                        let (content, metadata) = match directory_content_result {
+                            Ok(content) => content,
+                            Err(_) => {
+                                return Err(anyhow::anyhow!("Failed to get directory content"));
+                            }
+                        };
+
+                        {
                             let _ = workspace.update_in(cx, |_workspace, window, cx| {
                                 editor.update(cx, |editor, cx| {
                                     editor.set_text(content, window, cx);
@@ -3595,19 +3592,20 @@ impl Editor {
                 let project_path = project
                     .read_with(cx, |project, cx| {
                         project.find_project_path(&PathBuf::from(&current_dir), cx)
-                    })
-                    .ok()
-                    .flatten();
+                    });
 
                 if let Some(project_path) = project_path {
-                    let directory_content = project
+                    let (content, metadata) = match project
                         .update(cx, |project, cx| {
                             Self::file_explorer_get_directory_content(project, &project_path, cx)
-                        })
-                        .ok()
-                        .and_then(|result| result.ok());
+                        }) {
+                        Ok(result) => result,
+                        Err(_) => {
+                            return;
+                        }
+                    };
 
-                    if let Some((content, metadata)) = directory_content {
+                    {
                         let _ = workspace.update_in(cx, |_workspace, window, cx| {
                             editor.update(cx, |editor, cx| {
                                 editor.set_text(content, window, cx);
@@ -3701,19 +3699,20 @@ impl Editor {
                 let project_path = project
                     .read_with(cx, |project, cx| {
                         project.find_project_path(&PathBuf::from(&parent_dir), cx)
-                    })
-                    .ok()
-                    .flatten();
+                    });
 
                 if let Some(project_path) = project_path {
-                    let directory_content = project
+                    let (content, metadata) = match project
                         .update(cx, |project, cx| {
                             Self::file_explorer_get_directory_content(project, &project_path, cx)
-                        })
-                        .ok()
-                        .and_then(|result| result.ok());
+                        }) {
+                        Ok(result) => result,
+                        Err(_) => {
+                            return;
+                        }
+                    };
 
-                    if let Some((content, metadata)) = directory_content {
+                    {
                         let _ = workspace.update_in(cx, |_workspace, window, cx| {
                             editor.update(cx, |editor, cx| {
                                 editor.set_text(content, window, cx);
@@ -3922,7 +3921,7 @@ impl Editor {
 
                 if confirmation == Some(0) {
                     // Confirmed - perform renames
-                    let fs = project.read_with(cx, |project, _| project.fs().clone())?;
+                    let fs = project.read_with(cx, |project, _| project.fs().clone());
                     let base_path = PathBuf::from(&current_dir);
 
                     for (old_name, new_name) in &renames {
@@ -3987,9 +3986,7 @@ impl Editor {
                         let project_path = project
                             .read_with(cx, |project, cx| {
                                 project.find_project_path(&PathBuf::from(&current_dir), cx)
-                            })
-                            .ok()
-                            .flatten();
+                            });
 
                         if let Some(project_path) = project_path {
                             let refresh_result = project
@@ -3999,8 +3996,7 @@ impl Editor {
                                         &project_path,
                                         cx,
                                     )
-                                })
-                                .and_then(|e| e);
+                                });
 
                             if let Ok((new_content, new_metadata)) = refresh_result {
                                 // Check if metadata is stale (still contains old names or deletions)
@@ -4121,35 +4117,31 @@ impl Editor {
             let buffer = project.update(cx, |project, cx| {
                 project.create_local_buffer(&content, None, true, cx)
             });
-            if let Ok(buffer) = buffer {
-                workspace.update_in(cx, |workspace, window, cx| {
-                    let editor = cx.new(|cx| {
-                        Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
-                    });
-                    workspace.add_item_to_active_pane(
-                        Box::new(editor.clone()),
-                        None,
-                        true,
-                        window,
+            workspace.update_in(cx, |workspace, window, cx| {
+                let editor = cx.new(|cx| {
+                    Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
+                });
+                workspace.add_item_to_active_pane(
+                    Box::new(editor.clone()),
+                    None,
+                    true,
+                    window,
+                    cx,
+                );
+                editor.update(cx, |editor, cx| {
+                    editor.set_text(content, window, cx);
+                    editor.move_to_end(&Default::default(), window, cx);
+                    editor.scroll_cursor_bottom(&ScrollCursorBottom, window, cx);
+                    editor.set_soft_wrap_mode(
+                        language::language_settings::SoftWrap::EditorWidth,
                         cx,
                     );
-                    editor.update(cx, |editor, cx| {
-                        editor.set_text(content, window, cx);
-                        editor.move_to_end(&Default::default(), window, cx);
-                        editor.scroll_cursor_bottom(&ScrollCursorBottom, window, cx);
-                        editor.set_soft_wrap_mode(
-                            language::language_settings::SoftWrap::EditorWidth,
-                            cx,
-                        );
-                    });
-                    buffer.update(cx, |buffer, cx| {
-                        buffer.did_save(buffer.version(), None, cx);
-                    });
-                    editor
-                })
-            } else {
-                Err(anyhow::anyhow!("Failed to create buffer"))
-            }
+                });
+                buffer.update(cx, |buffer, cx| {
+                    buffer.did_save(buffer.version(), None, cx);
+                });
+                editor
+            })
         })
     }
 
@@ -4166,7 +4158,7 @@ impl Editor {
         cx.spawn_in(window, async move |workspace, cx| {
             let language = if let Some(language_name) = language_name {
                 let language_registry =
-                    project.update(cx, |project, _cx| project.languages().clone())?;
+                    project.update(cx, |project, _cx| project.languages().clone());
                 language_registry
                     .language_for_name(&language_name)
                     .await
@@ -4177,7 +4169,7 @@ impl Editor {
 
             let buffer = project.update(cx, |project, cx| {
                 project.create_local_buffer(&content, language, true, cx)
-            })?;
+            });
             workspace.update_in(cx, |workspace, window, cx| {
                 let editor =
                     cx.new(|cx| Editor::for_buffer(buffer, Some(project.clone()), window, cx));
@@ -17901,119 +17893,6 @@ impl Editor {
                 },
             );
         }
-    }
-
-    pub fn move_to_start_of_larger_syntax_node(
-        &mut self,
-        _: &MoveToStartOfLargerSyntaxNode,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.move_cursors_to_syntax_nodes(window, cx, false);
-    }
-
-    pub fn move_to_end_of_larger_syntax_node(
-        &mut self,
-        _: &MoveToEndOfLargerSyntaxNode,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.move_cursors_to_syntax_nodes(window, cx, true);
-    }
-
-    fn move_cursors_to_syntax_nodes(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-        move_to_end: bool,
-    ) -> bool {
-        let old_selections: Box<[_]> = self
-            .selections
-            .all::<MultiBufferOffset>(&self.display_snapshot(cx))
-            .into();
-        if old_selections.is_empty() {
-            return false;
-        }
-
-        self.hide_mouse_cursor(HideMouseCursorOrigin::MovementAction, cx);
-
-        let display_map = self.display_map.update(cx, |map, cx| map.snapshot(cx));
-        let buffer = self.buffer.read(cx).snapshot(cx);
-
-        let mut any_cursor_moved = false;
-        let new_selections = old_selections
-            .iter()
-            .map(|selection| {
-                if !selection.is_empty() {
-                    return selection.clone();
-                }
-
-                let selection_pos = selection.head();
-                let old_range = selection_pos..selection_pos;
-
-                let mut new_pos = selection_pos;
-                let mut search_range = old_range;
-                while let Some((node, range)) = buffer.syntax_ancestor(search_range.clone()) {
-                    search_range = range.clone();
-                    if !node.is_named()
-                        || display_map.intersects_fold(range.start)
-                        || display_map.intersects_fold(range.end)
-                        // If cursor is already at the end of the syntax node, continue searching
-                        || (move_to_end && range.end == selection_pos)
-                        // If cursor is already at the start of the syntax node, continue searching
-                        || (!move_to_end && range.start == selection_pos)
-                    {
-                        continue;
-                    }
-
-                    // If we found a string_content node, find the largest parent that is still string_content
-                    // Enables us to skip to the end of strings without taking multiple steps inside the string
-                    let (_, final_range) = if node.kind() == "string_content" {
-                        let mut current_node = node;
-                        let mut current_range = range;
-                        while let Some((parent, parent_range)) =
-                            buffer.syntax_ancestor(current_range.clone())
-                        {
-                            if parent.kind() == "string_content" {
-                                current_node = parent;
-                                current_range = parent_range;
-                            } else {
-                                break;
-                            }
-                        }
-
-                        (current_node, current_range)
-                    } else {
-                        (node, range)
-                    };
-
-                    new_pos = if move_to_end {
-                        final_range.end
-                    } else {
-                        final_range.start
-                    };
-
-                    break;
-                }
-
-                any_cursor_moved |= new_pos != selection_pos;
-
-                Selection {
-                    id: selection.id,
-                    start: new_pos,
-                    end: new_pos,
-                    goal: SelectionGoal::None,
-                    reversed: false,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        self.change_selections(Default::default(), window, cx, |s| {
-            s.select(new_selections);
-        });
-        self.request_autoscroll(Autoscroll::newest(), cx);
-
-        any_cursor_moved
     }
 
     pub fn move_to_start_of_larger_syntax_node(

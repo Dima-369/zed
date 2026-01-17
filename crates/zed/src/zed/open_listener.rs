@@ -409,7 +409,7 @@ pub async fn open_paths_with_positions(
                             caret_positions.remove(path)
                         }
                     })
-                    .unwrap_or_else(|_| caret_positions.remove(path))
+                    .or_else(|| caret_positions.remove(path))
             } else {
                 caret_positions.remove(path)
             }
