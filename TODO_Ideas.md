@@ -1,4 +1,3 @@
-workspace::FileExplorerOpen when on a buffer without a file, open the directory in project root instead of doing nothing
 
 
 # >>> Investigations
