@@ -759,43 +759,6 @@ mod tests {
     }
 
     #[test]
-    fn test_improved_substring_matching() {
-        // Test that scattered character matching is prevented
-        let candidates = vec![
-            "search: toggle whole word",
-            "workspace: close",
-            "editor: close tab",
-            "project: clone",
-        ];
-
-        // "clo wo" should NOT match "search: toggle whole word"
-        // because it requires meaningful substring matches
-        let query = "clo wo";
-        let words: Vec<&str> = query.split_whitespace().collect();
-
-        for candidate_string in &candidates {
-            let candidate_lower = candidate_string.to_lowercase();
-            let mut all_words_match = true;
-
-            for word in &words {
-                let word_lower = word.to_lowercase();
-                let found_match = candidate_lower.contains(&word_lower);
-                if !found_match {
-                    all_words_match = false;
-                    break;
-                }
-            }
-
-            if *candidate_string == "search: toggle whole word" {
-                assert!(
-                    !all_words_match,
-                    "Should NOT match 'search: toggle whole word' with query 'clo wo'"
-                );
-            }
-        }
-    }
-
-    #[test]
     fn test_order_insensitive_word_matching() {
         // Create test candidates
         let candidates = vec![
@@ -904,7 +867,7 @@ mod tests {
         cx.simulate_input("bcksp");
 
         palette.read_with(cx, |palette, _| {
-            assert_eq!(palette.delegate.matches[0].string, "editor: backspace");
+            assert_eq!(palette.delegate.matches[0].name, "editor: backspace");
         });
 
         cx.simulate_keystrokes("enter");
@@ -968,7 +931,7 @@ mod tests {
 
         cx.simulate_input("Editor::    Backspace");
         palette.read_with(cx, |palette, _| {
-            assert_eq!(palette.delegate.matches[0].string, "editor: backspace");
+            assert_eq!(palette.delegate.matches[0].name, "editor: backspace");
         });
     }
 
