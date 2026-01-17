@@ -396,6 +396,7 @@ impl RecentFiles {
         let scroll_handle = UniformListScrollHandle::new();
         let picker = cx.new(|cx| {
             Picker::uniform_list(delegate, window, cx)
+                .max_height(None)
                 .track_scroll(scroll_handle.clone())
                 .show_scrollbar(true)
         });
@@ -438,7 +439,12 @@ impl Render for RecentFiles {
             .key_context("RecentFiles")
             .w(modal_width)
             .h(modal_height)
-            .child(self.picker.clone())
+            .child(
+                v_flex()
+                    .flex_1()
+                    .overflow_hidden()
+                    .child(self.picker.clone())
+            )
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                 this.picker.update(cx, |this, cx| {
                     this.cancel(&Default::default(), window, cx);
@@ -744,6 +750,7 @@ impl DirectoryFilePicker {
         let scroll_handle = UniformListScrollHandle::new();
         let picker = cx.new(|cx| {
             Picker::uniform_list(delegate, window, cx)
+                .max_height(None)
                 .track_scroll(scroll_handle.clone())
                 .show_scrollbar(true)
         });
@@ -786,7 +793,12 @@ impl Render for DirectoryFilePicker {
             .key_context("DirectoryFilePicker")
             .w(modal_width)
             .h(modal_height)
-            .child(self.picker.clone())
+            .child(
+                v_flex()
+                    .flex_1()
+                    .overflow_hidden()
+                    .child(self.picker.clone())
+            )
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                 this.picker.update(cx, |this, cx| {
                     this.cancel(&Default::default(), window, cx);

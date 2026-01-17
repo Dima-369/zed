@@ -57,7 +57,12 @@ impl Render for ClipboardHistoryModal {
             .elevation_3(cx)
             .w(modal_width)
             .h(modal_height)
-            .child(self.picker.clone())
+            .child(
+                v_flex()
+                    .flex_1()
+                    .overflow_hidden()
+                    .child(self.picker.clone())
+            )
     }
 }
 
@@ -92,7 +97,7 @@ impl ClipboardHistoryModal {
         let picker = cx.new(|cx| {
             Picker::uniform_list(delegate, window, cx)
                 .modal(false)
-                .max_height(Some(rems(20.).into()))
+                .max_height(None)
                 .track_scroll(scroll_handle.clone())
                 .show_scrollbar(true)
         });
