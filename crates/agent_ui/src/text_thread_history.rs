@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{RemoveHistory, RemoveSelectedThread};
 use assistant_text_thread::{SavedTextThreadMetadata, TextThreadStore};
 use chrono::{Datelike, Local, NaiveDate, TimeDelta, Utc};

@@ -907,7 +907,7 @@ impl AgentPanel {
         self.external_thread(
             None, // Keep the current agent type instead of forcing NativeAgent
             None,
-            Some(thread.clone()),
+            Some(thread),
             window,
             cx,
         );
@@ -2055,7 +2055,7 @@ impl AgentPanel {
 
 
     fn render_tab_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let agent_server_store = self.project.read(cx).agent_server_store().clone();
+        let agent_server_store = self.project.read(cx).agent_server_store();
         let focus_handle = self.focus_handle(cx);
 
         let active_thread = match self.active_view() {
@@ -2090,7 +2090,7 @@ impl AgentPanel {
                         workspace.project().read(cx).is_via_collab()
                     })
                     .unwrap_or_default();
-                let agent_server_store = new_thread_menu_store.clone();
+                let agent_server_store = new_thread_menu_store;
 
                 move |window, cx| {
                     telemetry::event!("New Thread Clicked");
