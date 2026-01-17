@@ -1,4 +1,3 @@
-- remove note that agent_view does not display token count for ACP anymore (TEST)
 
 
 
