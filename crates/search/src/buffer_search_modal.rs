@@ -1423,8 +1423,8 @@ impl PickerDelegate for BufferSearchDelegate {
                                 if p_start > trim_start {
                                     preview_string.push('…');
                                 }
-                                preview_string.push_str(&line_text[p_start..p_end]);
-                                if p_end < line_text.len() {
+                                preview_string.push_str(line_text[p_start..p_end].trim_end());
+                                if p_end < line_text.trim_end().len() {
                                     preview_string.push('…');
                                 }
                                 let preview_text: SharedString = preview_string.into();
