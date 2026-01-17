@@ -614,8 +614,7 @@ impl ConfigurationView {
         let load_credentials_task = Some(cx.spawn_in(window, {
             let state = state.clone();
             async move |this, cx| {
-                let task = state
-                    .update(cx, |state, cx| state.authenticate(cx));
+                let task = state.update(cx, |state, cx| state.authenticate(cx));
                 let _ = task.log_err().await;
                 let _ = this.update(cx, |this, cx| {
                     this.load_credentials_task = None;
@@ -644,11 +643,10 @@ impl Render for ConfigurationView {
                 .on_click(cx.listener(|this, _, window, cx| {
                     let state = this.state.clone();
                     cx.spawn_in(window, async move |_, cx| {
-                        let _ = state
-                            .update(cx, |state, _| {
-                                state.authenticated = false;
-                                state.error = None;
-                            });
+                        let _ = state.update(cx, |state, _| {
+                            state.authenticated = false;
+                            state.error = None;
+                        });
                     })
                     .detach();
                 }))

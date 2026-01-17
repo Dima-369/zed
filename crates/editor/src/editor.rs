@@ -3251,10 +3251,9 @@ impl Editor {
 
         cx.spawn_in(window, async move |workspace, cx| {
             // Get directory content and metadata
-            let file_list_content_result = project
-                .update(cx, |project, cx| {
-                    Self::file_explorer_get_directory_content(project, &current_dir, cx)
-                });
+            let file_list_content_result = project.update(cx, |project, cx| {
+                Self::file_explorer_get_directory_content(project, &current_dir, cx)
+            });
 
             let (file_list_content, metadata) = match file_list_content_result {
                 Ok(result) => result,
@@ -3445,33 +3444,27 @@ impl Editor {
 
             // Open the file
             cx.spawn_in(window, async move |workspace, cx| -> anyhow::Result<()> {
-                let project_path = project
-                    .read_with(cx, |project, cx| project.find_project_path(&full_path, cx));
+                let project_path =
+                    project.read_with(cx, |project, cx| project.find_project_path(&full_path, cx));
 
                 if let Some(project_path) = project_path {
-                    let is_dir = project
-                        .read_with(cx, |project, cx| {
-                            project
-                                .worktree_for_id(project_path.worktree_id, cx)
-                                .map(|worktree| {
-                                    worktree
-                                        .read(cx)
-                                        .entry_for_path(&project_path.path)
-                                        .map(|entry| entry.is_dir())
-                                        .unwrap_or(false)
-                                })
-                                .unwrap_or(false)
-                        });
+                    let is_dir = project.read_with(cx, |project, cx| {
+                        project
+                            .worktree_for_id(project_path.worktree_id, cx)
+                            .map(|worktree| {
+                                worktree
+                                    .read(cx)
+                                    .entry_for_path(&project_path.path)
+                                    .map(|entry| entry.is_dir())
+                                    .unwrap_or(false)
+                            })
+                            .unwrap_or(false)
+                    });
 
                     if is_dir {
-                        let directory_content_result = project
-                            .update(cx, |project, cx| {
-                                Self::file_explorer_get_directory_content(
-                                    project,
-                                    &project_path,
-                                    cx,
-                                )
-                            });
+                        let directory_content_result = project.update(cx, |project, cx| {
+                            Self::file_explorer_get_directory_content(project, &project_path, cx)
+                        });
 
                         let (content, metadata) = match directory_content_result {
                             Ok(content) => content,
@@ -3589,16 +3582,14 @@ impl Editor {
 
             cx.spawn_in(window, async move |workspace, cx| {
                 // Find the project path for the current directory
-                let project_path = project
-                    .read_with(cx, |project, cx| {
-                        project.find_project_path(&PathBuf::from(&current_dir), cx)
-                    });
+                let project_path = project.read_with(cx, |project, cx| {
+                    project.find_project_path(&PathBuf::from(&current_dir), cx)
+                });
 
                 if let Some(project_path) = project_path {
-                    let (content, metadata) = match project
-                        .update(cx, |project, cx| {
-                            Self::file_explorer_get_directory_content(project, &project_path, cx)
-                        }) {
+                    let (content, metadata) = match project.update(cx, |project, cx| {
+                        Self::file_explorer_get_directory_content(project, &project_path, cx)
+                    }) {
                         Ok(result) => result,
                         Err(_) => {
                             return;
@@ -3696,16 +3687,14 @@ impl Editor {
                 };
 
                 // Find the project path for the parent directory
-                let project_path = project
-                    .read_with(cx, |project, cx| {
-                        project.find_project_path(&PathBuf::from(&parent_dir), cx)
-                    });
+                let project_path = project.read_with(cx, |project, cx| {
+                    project.find_project_path(&PathBuf::from(&parent_dir), cx)
+                });
 
                 if let Some(project_path) = project_path {
-                    let (content, metadata) = match project
-                        .update(cx, |project, cx| {
-                            Self::file_explorer_get_directory_content(project, &project_path, cx)
-                        }) {
+                    let (content, metadata) = match project.update(cx, |project, cx| {
+                        Self::file_explorer_get_directory_content(project, &project_path, cx)
+                    }) {
                         Ok(result) => result,
                         Err(_) => {
                             return;
@@ -3983,20 +3972,18 @@ impl Editor {
                             break;
                         };
 
-                        let project_path = project
-                            .read_with(cx, |project, cx| {
-                                project.find_project_path(&PathBuf::from(&current_dir), cx)
-                            });
+                        let project_path = project.read_with(cx, |project, cx| {
+                            project.find_project_path(&PathBuf::from(&current_dir), cx)
+                        });
 
                         if let Some(project_path) = project_path {
-                            let refresh_result = project
-                                .update(cx, |project, cx| {
-                                    Self::file_explorer_get_directory_content(
-                                        project,
-                                        &project_path,
-                                        cx,
-                                    )
-                                });
+                            let refresh_result = project.update(cx, |project, cx| {
+                                Self::file_explorer_get_directory_content(
+                                    project,
+                                    &project_path,
+                                    cx,
+                                )
+                            });
 
                             if let Ok((new_content, new_metadata)) = refresh_result {
                                 // Check if metadata is stale (still contains old names or deletions)
@@ -4121,21 +4108,13 @@ impl Editor {
                 let editor = cx.new(|cx| {
                     Editor::for_buffer(buffer.clone(), Some(project.clone()), window, cx)
                 });
-                workspace.add_item_to_active_pane(
-                    Box::new(editor.clone()),
-                    None,
-                    true,
-                    window,
-                    cx,
-                );
+                workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
                 editor.update(cx, |editor, cx| {
                     editor.set_text(content, window, cx);
                     editor.move_to_end(&Default::default(), window, cx);
                     editor.scroll_cursor_bottom(&ScrollCursorBottom, window, cx);
-                    editor.set_soft_wrap_mode(
-                        language::language_settings::SoftWrap::EditorWidth,
-                        cx,
-                    );
+                    editor
+                        .set_soft_wrap_mode(language::language_settings::SoftWrap::EditorWidth, cx);
                 });
                 buffer.update(cx, |buffer, cx| {
                     buffer.did_save(buffer.version(), None, cx);

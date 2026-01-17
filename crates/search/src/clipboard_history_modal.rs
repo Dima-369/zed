@@ -61,7 +61,7 @@ impl Render for ClipboardHistoryModal {
                 v_flex()
                     .flex_1()
                     .overflow_hidden()
-                    .child(self.picker.clone())
+                    .child(self.picker.clone()),
             )
     }
 }

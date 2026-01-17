@@ -443,7 +443,7 @@ impl Render for RecentFiles {
                 v_flex()
                     .flex_1()
                     .overflow_hidden()
-                    .child(self.picker.clone())
+                    .child(self.picker.clone()),
             )
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                 this.picker.update(cx, |this, cx| {
@@ -797,7 +797,7 @@ impl Render for DirectoryFilePicker {
                 v_flex()
                     .flex_1()
                     .overflow_hidden()
-                    .child(self.picker.clone())
+                    .child(self.picker.clone()),
             )
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                 this.picker.update(cx, |this, cx| {

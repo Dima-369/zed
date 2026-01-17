@@ -123,16 +123,14 @@ impl CreateFileModal {
         let workspace = self.workspace.clone();
 
         cx.spawn_in(window, async move |_, cx| {
-            let project_path = project
-                .read_with(cx, |project, cx| {
-                    project.find_project_path(&new_file_path, cx)
-                });
+            let project_path = project.read_with(cx, |project, cx| {
+                project.find_project_path(&new_file_path, cx)
+            });
 
             if let Some(project_path) = project_path {
-                let worktree = project
-                    .read_with(cx, |project, cx| {
-                        project.worktree_for_id(project_path.worktree_id, cx)
-                    });
+                let worktree = project.read_with(cx, |project, cx| {
+                    project.worktree_for_id(project_path.worktree_id, cx)
+                });
 
                 if let Some(worktree) = worktree {
                     let abs_path = worktree

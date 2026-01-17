@@ -70,9 +70,10 @@ use crate::profile_selector::{ProfileProvider, ProfileSelector};
 use crate::ui::{AgentNotification, AgentNotificationEvent};
 use crate::{
     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, AuthorizeToolCall, ClearMessageQueue,
-    CopyErrorNotification, CycleFavoriteModels, CycleModeSelector, DismissErrorNotification, ExpandMessageEditor, Follow, KeepAll, NewThread,
-    OpenAgentDiff, OpenHistory, RejectAll, RejectOnce, RemoveFirstQueuedMessage,
-    SelectPermissionGranularity, SendImmediately, SendNextQueuedMessage, TogglePlan, ToggleProfileSelector,
+    CopyErrorNotification, CycleFavoriteModels, CycleModeSelector, DismissErrorNotification,
+    ExpandMessageEditor, Follow, KeepAll, NewThread, OpenAgentDiff, OpenHistory, RejectAll,
+    RejectOnce, RemoveFirstQueuedMessage, SelectPermissionGranularity, SendImmediately,
+    SendNextQueuedMessage, TogglePlan, ToggleProfileSelector,
 };
 
 const MAX_COLLAPSED_LINES: usize = 3;
@@ -7632,7 +7633,6 @@ impl AcpThreadView {
                 .dismiss_action(self.dismiss_error_button(cx)),
         )
     }
-
 
     fn agent_ui_font_size_changed(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.entry_view_state.update(cx, |entry_view_state, cx| {

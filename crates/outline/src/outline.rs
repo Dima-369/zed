@@ -10,8 +10,8 @@ use editor::{MultiBufferOffset, RowHighlightOptions, SelectionEffects};
 use fuzzy::StringMatch;
 use gpui::{
     App, Context, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, HighlightStyle,
-    ParentElement, Point, Render, Styled, StyledText, Task, TextStyle,
-    WeakEntity, Window, div, rems,
+    ParentElement, Point, Render, Styled, StyledText, Task, TextStyle, WeakEntity, Window, div,
+    rems,
 };
 use language::{Outline, OutlineItem};
 use ordered_float::OrderedFloat;

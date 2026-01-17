@@ -15,10 +15,7 @@ pub struct AgentPanelTab {
 
 impl AgentPanelTab {
     pub fn new(id: TabId, view: ActiveView) -> Self {
-        Self {
-            id,
-            view,
-        }
+        Self { id, view }
     }
 }
 
