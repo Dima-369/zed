@@ -3232,20 +3232,31 @@ impl Editor {
     ) {
         let project = workspace.project().clone();
 
-        // Get current directory from active editor
+        // Get current directory from active editor, or fall back to project root
         let active_project_path = workspace.active_project_path(cx);
-        let current_dir = active_project_path.as_ref().and_then(|project_path| {
-            project_path.path.parent().map(|parent| ProjectPath {
-                worktree_id: project_path.worktree_id,
-                path: parent.to_rel_path_buf().into(),
+        let current_dir = active_project_path
+            .as_ref()
+            .and_then(|project_path| {
+                project_path.path.parent().map(|parent| ProjectPath {
+                    worktree_id: project_path.worktree_id,
+                    path: parent.to_rel_path_buf().into(),
+                })
             })
-        });
+            .or_else(|| {
+                workspace
+                    .visible_worktrees(cx)
+                    .next()
+                    .map(|worktree| ProjectPath {
+                        worktree_id: worktree.read(cx).id(),
+                        path: Arc::from(util::rel_path::RelPath::empty()),
+                    })
+            });
 
         let file_to_select =
             active_project_path.and_then(|p| p.path.file_name().map(|name| name.to_string()));
 
         let Some(current_dir) = current_dir else {
-            log::warn!("No active editor or directory found for file explorer");
+            log::warn!("No worktree found for file explorer");
             return;
         };
 
