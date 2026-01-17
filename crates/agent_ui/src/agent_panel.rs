@@ -255,12 +255,7 @@ pub fn init(cx: &mut App) {
     .detach();
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum HistoryKind {
-    AgentThreads,
-    TextThreads,
-}
-
+#[derive(Debug)]
 pub enum ActiveView {
     ExternalAgentThread {
         thread_view: Entity<AcpThreadView>,
@@ -271,10 +266,57 @@ pub enum ActiveView {
         buffer_search_bar: Entity<BufferSearchBar>,
         _subscriptions: Vec<gpui::Subscription>,
     },
-    History {
-        kind: HistoryKind,
-    },
+    History,
     Configuration,
+}
+
+impl PartialEq for ActiveView {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ActiveView::ExternalAgentThread { thread_view: t1 }, ActiveView::ExternalAgentThread { thread_view: t2 }) => {
+                t1.entity_id() == t2.entity_id()
+            }
+            (ActiveView::TextThread { text_thread_editor: tte1, title_editor: te1, buffer_search_bar: bsb1, .. },
+             ActiveView::TextThread { text_thread_editor: tte2, title_editor: te2, buffer_search_bar: bsb2, .. }) => {
+                tte1.entity_id() == tte2.entity_id() &&
+                te1.entity_id() == te2.entity_id() &&
+                bsb1.entity_id() == bsb2.entity_id()
+            }
+            (ActiveView::History, ActiveView::History) => true,
+            (ActiveView::Configuration, ActiveView::Configuration) => true,
+            _ => false
+        }
+    }
+}
+
+impl Eq for ActiveView {}
+
+impl Clone for ActiveView {
+    fn clone(&self) -> Self {
+        match self {
+            ActiveView::ExternalAgentThread { thread_view } => {
+                ActiveView::ExternalAgentThread {
+                    thread_view: thread_view.clone(),
+                }
+            }
+            ActiveView::TextThread {
+                text_thread_editor,
+                title_editor,
+                buffer_search_bar,
+                ..
+            } => {
+                // Skip cloning _subscriptions as it doesn't implement Clone
+                ActiveView::TextThread {
+                    text_thread_editor: text_thread_editor.clone(),
+                    title_editor: title_editor.clone(),
+                    buffer_search_bar: buffer_search_bar.clone(),
+                    _subscriptions: Vec::new(), // Create a new empty vector
+                }
+            }
+            ActiveView::History => ActiveView::History,
+            ActiveView::Configuration => ActiveView::Configuration,
+        }
+    }
 }
 
 pub enum WhichFontSize {
@@ -298,25 +340,6 @@ pub enum AgentType {
 }
 
 impl AgentType {
-    fn label(&self) -> SharedString {
-        match self {
-            Self::NativeAgent | Self::TextThread => "Zed Agent".into(),
-            Self::Gemini => "Gemini CLI".into(),
-            Self::ClaudeCode => "Claude Code".into(),
-            Self::Codex => "Codex".into(),
-            Self::Custom { name, .. } => name.into(),
-        }
-    }
-
-    fn icon(&self) -> Option<IconName> {
-        match self {
-            Self::NativeAgent | Self::TextThread => None,
-            Self::Gemini => Some(IconName::AiGemini),
-            Self::ClaudeCode => Some(IconName::AiClaude),
-            Self::Codex => Some(IconName::AiOpenAi),
-            Self::Custom { .. } => Some(IconName::Sparkle),
-        }
-    }
 }
 
 impl From<ExternalAgent> for AgentType {
@@ -1070,16 +1093,16 @@ impl AgentPanel {
         }
     }
 
-    fn history_kind_for_selected_agent(&self, cx: &App) -> Option<HistoryKind> {
+    fn history_kind_for_selected_agent(&self, cx: &App) -> Option<AgentType> {
         match self.selected_agent {
-            AgentType::NativeAgent => Some(HistoryKind::AgentThreads),
-            AgentType::TextThread => Some(HistoryKind::TextThreads),
+            AgentType::NativeAgent => Some(AgentType::NativeAgent),
+            AgentType::TextThread => Some(AgentType::TextThread),
             AgentType::Gemini
             | AgentType::ClaudeCode
             | AgentType::Codex
             | AgentType::Custom { .. } => {
                 if self.acp_history.read(cx).has_session_list() {
-                    Some(HistoryKind::AgentThreads)
+                    Some(AgentType::NativeAgent) // Using NativeAgent to represent ACP threads
                 } else {
                     None
                 }
@@ -1088,23 +1111,21 @@ impl AgentPanel {
     }
 
     fn open_history(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(kind) = self.history_kind_for_selected_agent(cx) else {
+        let Some(_kind) = self.history_kind_for_selected_agent(cx) else {
             return;
         };
 
-        if let ActiveView::History { kind: active_kind } = self.active_view() {
-            if *active_kind == kind {
-                // Already showing this history, go back to previous tab
-                if let Some(previous_tab_id) = self.overlay_previous_tab_id.take() {
-                    self.active_tab_id = previous_tab_id;
-                    self.overlay_view = None;
-                    self.focus_active_panel_thread(window, cx);
-                }
-                return;
+        if matches!(self.active_view(), ActiveView::History) {
+            // Already showing history, go back to previous tab
+            if let Some(previous_tab_id) = self.overlay_previous_tab_id.take() {
+                self.active_tab_id = previous_tab_id;
+                self.overlay_view = None;
+                self.focus_active_panel_thread(window, cx);
             }
+            return;
         }
 
-        self.set_tab_overlay_view(ActiveView::History { kind }, window, cx);
+        self.set_tab_overlay_view(ActiveView::History, window, cx);
         cx.notify();
     }
 
@@ -1192,33 +1213,6 @@ impl AgentPanel {
         cx.notify();
     }
 
-    fn focus_title_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.overlay_view.is_some()
-            || self.title_edit_overlay_tab_id.is_some()
-            || !matches!(
-                self.tabs.iter().find(|tab| tab.id == self.active_tab_id).map(|tab| &tab.view),
-                Some(ActiveView::ExternalAgentThread { .. } | ActiveView::TextThread { .. })
-            )
-        {
-            return;
-        }
-
-        self.title_edit_overlay_tab_id = Some(self.active_tab_id);
-        if let Some(tab) = self.tabs.iter().find(|tab| tab.id == self.active_tab_id) {
-            match &tab.view {
-                ActiveView::ExternalAgentThread { thread_view } => {
-                    if let Some(editor) = thread_view.read(cx).title_editor() {
-                        editor.focus_handle(cx).focus(window, cx);
-                    }
-                }
-                ActiveView::TextThread { title_editor, .. } => {
-                    title_editor.focus_handle(cx).focus(window, cx);
-                }
-                ActiveView::History { .. } | ActiveView::Configuration => {}
-            }
-        }
-        cx.notify();
-    }
 
     pub fn toggle_navigation_menu(
         &mut self,
@@ -1491,58 +1485,15 @@ impl AgentPanel {
         }
     }
 
-    fn set_active_view(
-        &mut self,
-        new_view: ActiveView,
-        focus: bool,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let current_is_history = matches!(self.active_view(), ActiveView::History { .. });
-        let new_is_history = matches!(new_view, ActiveView::History { .. });
-
-        let current_is_config = matches!(self.active_view(), ActiveView::Configuration);
-        let new_is_config = matches!(new_view, ActiveView::Configuration);
-
-        let current_is_special = current_is_history || current_is_config;
-        let new_is_special = new_is_history || new_is_config;
-
-        match &new_view {
-            ActiveView::TextThread { .. } => {}
-            ActiveView::ExternalAgentThread { .. } => {}
-            ActiveView::History { .. } | ActiveView::Configuration => {}
-        }
-
-        if current_is_special && !new_is_special {
-            // Going from special view back to tab
-            if let Some(previous_tab_id) = self.overlay_previous_tab_id.take() {
-                self.active_tab_id = previous_tab_id;
-                self.overlay_view = None;
-            }
-        } else if !current_is_special && new_is_special {
-            // Going from tab to special view
-            self.overlay_previous_tab_id = Some(self.active_tab_id);
-            self.overlay_view = Some(new_view);
-        } else {
-            if !new_is_special {
-                self.overlay_previous_tab_id = None;
-            }
-            self.overlay_view = Some(new_view);
-        }
-
-        if focus {
-            self.focus_handle(cx).focus(window, cx);
-        }
-    }
 
     fn populate_recently_updated_menu_section(
         mut menu: ContextMenu,
         panel: Entity<Self>,
-        kind: HistoryKind,
+        agent_type: AgentType,
         cx: &mut Context<ContextMenu>,
     ) -> ContextMenu {
-        match kind {
-            HistoryKind::AgentThreads => {
+        match agent_type {
+            AgentType::NativeAgent => {
                 let entries = panel
                     .read(cx)
                     .acp_history
@@ -1581,7 +1532,7 @@ impl AgentPanel {
                     });
                 }
             }
-            HistoryKind::TextThreads => {
+            AgentType::TextThread => {
                 let entries = panel
                     .read(cx)
                     .text_thread_store
@@ -1613,6 +1564,46 @@ impl AgentPanel {
                                 .update(cx, move |this, cx| {
                                     this.open_saved_text_thread(path.clone(), window, cx)
                                         .detach_and_log_err(cx);
+                                })
+                                .ok();
+                        }
+                    });
+                }
+            }
+            // For other agent types, default to showing ACP history
+            AgentType::Gemini | AgentType::ClaudeCode | AgentType::Codex | AgentType::Custom { .. } => {
+                let entries = panel
+                    .read(cx)
+                    .acp_history
+                    .read(cx)
+                    .sessions()
+                    .iter()
+                    .take(RECENTLY_UPDATED_MENU_LIMIT)
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                if entries.is_empty() {
+                    return menu;
+                }
+
+                menu = menu.header("Recently Updated");
+
+                for entry in entries {
+                    let title = entry
+                        .title
+                        .as_ref()
+                        .filter(|title| !title.is_empty())
+                        .cloned()
+                        .unwrap_or_else(|| SharedString::new_static(DEFAULT_THREAD_TITLE));
+
+                    menu = menu.entry(title, None, {
+                        let panel = panel.downgrade();
+                        let entry = entry.clone();
+                        move |window, cx| {
+                            let entry = entry.clone();
+                            panel
+                                .update(cx, move |this, cx| {
+                                    this.load_agent_thread(entry.clone(), window, cx);
                                 })
                                 .ok();
                         }
@@ -1774,9 +1765,9 @@ impl Focusable for AgentPanel {
     fn focus_handle(&self, cx: &App) -> FocusHandle {
         match self.active_view() {
             ActiveView::ExternalAgentThread { thread_view, .. } => thread_view.focus_handle(cx),
-            ActiveView::History { kind } => match kind {
-                HistoryKind::AgentThreads => self.acp_history.focus_handle(cx),
-                HistoryKind::TextThreads => self.text_thread_history.focus_handle(cx),
+            ActiveView::History => {
+                // Default to focusing the ACP history when viewing the history screen
+                self.acp_history.focus_handle(cx)
             },
             ActiveView::TextThread {
                 text_thread_editor, ..
@@ -1880,115 +1871,6 @@ impl Panel for AgentPanel {
 }
 
 impl AgentPanel {
-    fn render_overlay_title_editor(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
-        let tab_id = self.title_edit_overlay_tab_id?;
-        let tab = self.tabs.iter().find(|tab| tab.id == tab_id)?;
-        let content = match &tab.view {
-            ActiveView::ExternalAgentThread { thread_view } => {
-                if let Some(title_editor) = thread_view.read(cx).title_editor() {
-                    h_flex()
-                        .flex_grow()
-                        .items_center()
-                        .child(title_editor)
-                        .into_any_element()
-                } else {
-                    h_flex()
-                        .flex_grow()
-                        .items_center()
-                        .child(
-                            Label::new(thread_view.read(cx).title(cx))
-                                .color(Color::Muted)
-                                .truncate(),
-                        )
-                        .into_any_element()
-                }
-            }
-            ActiveView::TextThread {
-                title_editor,
-                text_thread_editor,
-                ..
-            } => {
-                let summary = text_thread_editor.read(cx).text_thread().read(cx).summary();
-
-                match summary {
-                    TextThreadSummary::Pending => Label::new(TextThreadSummary::DEFAULT)
-                        .color(Color::Muted)
-                        .truncate()
-                        .into_any_element(),
-                    TextThreadSummary::Content(summary) => {
-                        if summary.done {
-                            div()
-                                .w_full()
-                                .child(title_editor.clone())
-                                .into_any_element()
-                        } else {
-                            Label::new(LOADING_SUMMARY_PLACEHOLDER)
-                                .truncate()
-                                .into_any_element()
-                        }
-                    }
-                    TextThreadSummary::Error => h_flex()
-                        .w_full()
-                        .child(title_editor.clone())
-                        .child(
-                            IconButton::new("retry-summary-generation", IconName::RotateCcw)
-                                .icon_size(IconSize::Small)
-                                .on_click({
-                                    let text_thread_editor = text_thread_editor.clone();
-                                    move |_, _window, cx| {
-                                        text_thread_editor.update(cx, |text_thread_editor, cx| {
-                                            text_thread_editor.regenerate_summary(cx);
-                                        });
-                                    }
-                                })
-                                .tooltip(move |_window, cx| {
-                                    cx.new(|_| {
-                                        Tooltip::new("Failed to generate title")
-                                            .meta("Click to try again")
-                                    })
-                                    .into()
-                                }),
-                        )
-                        .into_any_element(),
-                }
-            }
-            ActiveView::History { kind } => {
-                let title = match kind {
-                    HistoryKind::AgentThreads => "History",
-                    HistoryKind::TextThreads => "Text Threads",
-                };
-                Label::new(title).truncate().into_any_element()
-            }
-            ActiveView::Configuration => Label::new("Settings").truncate().into_any_element(),
-        };
-
-        Some(
-            h_flex()
-                .flex_grow()
-                .h(Tab::content_height(cx))
-                .px(DynamicSpacing::Base04.px(cx))
-                .gap(DynamicSpacing::Base04.rems(cx))
-                .border_0()
-                .child(h_flex().flex_grow().items_center().pl_1().child(content))
-                .child(
-                    Icon::new(IconName::Return)
-                        .size(IconSize::Small)
-                        .color(Color::Muted),
-                )
-                .pr_2()
-                .on_action(cx.listener(|this, _: &Confirm, window, cx| {
-                    if this.title_edit_overlay_tab_id.take().is_some() {
-                        this.focus_active_panel_thread(window, cx);
-                    }
-                }))
-                .on_action(cx.listener(|this, _: &Cancel, window, cx| {
-                    if this.title_edit_overlay_tab_id.take().is_some() {
-                        this.focus_active_panel_thread(window, cx);
-                    }
-                }))
-                .into_any_element(),
-        )
-    }
 
     fn handle_regenerate_thread_title(thread_view: Entity<AcpThreadView>, cx: &mut App) {
         thread_view.update(cx, |thread_view, cx| {
@@ -2193,134 +2075,6 @@ impl AgentPanel {
             })
     }
 
-    fn render_title_view(&self, _window: &mut Window, cx: &Context<Self>) -> AnyElement {
-        const LOADING_SUMMARY_PLACEHOLDER: &str = "Loading Summary…";
-
-        let content = match self.active_view() {
-            ActiveView::ExternalAgentThread { thread_view } => {
-                let is_generating_title = thread_view
-                    .read(cx)
-                    .as_native_thread(cx)
-                    .map_or(false, |t| t.read(cx).is_generating_title());
-
-                if let Some(title_editor) = thread_view.read(cx).title_editor() {
-                    let container = div()
-                        .w_full()
-                        .on_action({
-                            let thread_view = thread_view.downgrade();
-                            move |_: &menu::Confirm, window, cx| {
-                                if let Some(thread_view) = thread_view.upgrade() {
-                                    thread_view.focus_handle(cx).focus(window, cx);
-                                }
-                            }
-                        })
-                        .on_action({
-                            let thread_view = thread_view.downgrade();
-                            move |_: &editor::actions::Cancel, window, cx| {
-                                if let Some(thread_view) = thread_view.upgrade() {
-                                    thread_view.focus_handle(cx).focus(window, cx);
-                                }
-                            }
-                        })
-                        .child(title_editor);
-
-                    if is_generating_title {
-                        container
-                            .with_animation(
-                                "generating_title",
-                                Animation::new(Duration::from_secs(2))
-                                    .repeat()
-                                    .with_easing(pulsating_between(0.4, 0.8)),
-                                |div, delta| div.opacity(delta),
-                            )
-                            .into_any_element()
-                    } else {
-                        container.into_any_element()
-                    }
-                } else {
-                    Label::new(thread_view.read(cx).title(cx))
-                        .color(Color::Muted)
-                        .truncate()
-                        .into_any_element()
-                }
-            }
-            ActiveView::TextThread {
-                title_editor,
-                text_thread_editor,
-                ..
-            } => {
-                let summary = text_thread_editor.read(cx).text_thread().read(cx).summary();
-
-                match summary {
-                    TextThreadSummary::Pending => Label::new(TextThreadSummary::DEFAULT)
-                        .color(Color::Muted)
-                        .truncate()
-                        .into_any_element(),
-                    TextThreadSummary::Content(summary) => {
-                        if summary.done {
-                            div()
-                                .w_full()
-                                .child(title_editor.clone())
-                                .into_any_element()
-                        } else {
-                            Label::new(LOADING_SUMMARY_PLACEHOLDER)
-                                .truncate()
-                                .color(Color::Muted)
-                                .with_animation(
-                                    "generating_title",
-                                    Animation::new(Duration::from_secs(2))
-                                        .repeat()
-                                        .with_easing(pulsating_between(0.4, 0.8)),
-                                    |label, delta| label.alpha(delta),
-                                )
-                                .into_any_element()
-                        }
-                    }
-                    TextThreadSummary::Error => h_flex()
-                        .w_full()
-                        .child(title_editor.clone())
-                        .child(
-                            IconButton::new("retry-summary-generation", IconName::RotateCcw)
-                                .icon_size(IconSize::Small)
-                                .on_click({
-                                    let text_thread_editor = text_thread_editor.clone();
-                                    move |_, _window, cx| {
-                                        text_thread_editor.update(cx, |text_thread_editor, cx| {
-                                            text_thread_editor.regenerate_summary(cx);
-                                        });
-                                    }
-                                })
-                                .tooltip(move |_window, cx| {
-                                    cx.new(|_| {
-                                        Tooltip::new("Failed to generate title")
-                                            .meta("Click to try again")
-                                    })
-                                    .into()
-                                }),
-                        )
-                        .into_any_element(),
-                }
-            }
-            ActiveView::History { kind } => {
-                let title = match kind {
-                    HistoryKind::AgentThreads => "History",
-                    HistoryKind::TextThreads => "Text Threads",
-                };
-                Label::new(title).truncate().into_any_element()
-            }
-            ActiveView::Configuration => Label::new("Settings").truncate().into_any_element(),
-        };
-
-        h_flex()
-            .key_context("TitleEditor")
-            .id("TitleEditor")
-            .flex_grow()
-            .w_full()
-            .max_w_full()
-            .overflow_x_scroll()
-            .child(content)
-            .into_any()
-    }
 
     fn render_tab_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let agent_server_store = self.project.read(cx).agent_server_store().clone();
@@ -2989,10 +2743,7 @@ impl Render for AgentPanel {
                 ActiveView::ExternalAgentThread { thread_view, .. } => parent
                     .child(thread_view.clone())
                     .child(self.render_drag_target(cx)),
-                ActiveView::History { kind } => match kind {
-                    HistoryKind::AgentThreads => parent.child(self.acp_history.clone()),
-                    HistoryKind::TextThreads => parent.child(self.text_thread_history.clone()),
-                },
+                ActiveView::History => parent.child(self.acp_history.clone()),
                 ActiveView::TextThread {
                     text_thread_editor,
                     buffer_search_bar,
@@ -3415,84 +3166,6 @@ impl AgentPanel {
         }
     }
 
-    fn is_tab_generating(&self, view: &ActiveView, cx: &App) -> bool {
-        match view {
-            ActiveView::ExternalAgentThread { thread_view } => thread_view
-                .read(cx)
-                .thread()
-                .map(|thread| thread.read(cx).status() == ThreadStatus::Generating)
-                .unwrap_or(false),
-            ActiveView::TextThread {
-                text_thread_editor, ..
-            } => text_thread_editor
-                .read(cx)
-                .text_thread()
-                .read(cx)
-                .messages(cx)
-                .any(|message| message.status == assistant_text_thread::MessageStatus::Pending),
-            ActiveView::History { .. } | ActiveView::Configuration => false,
-        }
-    }
-
-    fn render_tab_agent_icon(
-        &self,
-        index: usize,
-        agent: &AgentType,
-        agent_server_store: &Entity<AgentServerStore>,
-        is_generating: bool,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
-        let agent_label = agent.label();
-        let tooltip_title = "Selected Agent";
-        let agent_custom_icon = if let AgentType::Custom { name, .. } = agent {
-            agent_server_store
-                .read(cx)
-                .agent_icon(&ExternalAgentServerName(name.clone()))
-        } else {
-            None
-        };
-
-        let has_custom_icon = agent_custom_icon.is_some();
-
-        let icon_element = if has_custom_icon {
-            Icon::from_path(agent_custom_icon.unwrap()).color(Color::Muted)
-        } else if let Some(icon) = agent.icon() {
-            Icon::new(icon).color(Color::Muted)
-        } else {
-            // Default to AI icon for native agent
-            Icon::new(IconName::Ai).color(Color::Muted)
-        };
-
-        // Apply rotation animation when generating
-        let icon_element = if is_generating {
-            Icon::new(IconName::LoadCircle)
-                .color(Color::Default)
-                .with_rotate_animation(2)
-                .into_any_element()
-        } else {
-            icon_element.into_any_element()
-        };
-
-        div()
-            .id(("agent-tab-agent-icon", index))
-            .px(DynamicSpacing::Base02.rems(cx))
-            .child(icon_element)
-            .tooltip(move |_window, cx| {
-                Tooltip::with_meta(agent_label.clone(), None, tooltip_title, cx)
-            })
-            .into_any_element()
-    }
-
-    fn render_agent_tab_indicator(
-        &self,
-        _index: usize,
-        _tab: &AgentPanelTab,
-        _cx: &App,
-    ) -> Option<Indicator> {
-        // For now, agent tabs don't have a concept of "dirty" like file tabs do
-        // This could be extended in the future to show indicators for unsaved changes
-        None
-    }
 
     fn activate_next_tab(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.tabs.len() <= 1 {

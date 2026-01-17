@@ -7633,58 +7633,6 @@ impl AcpThreadView {
         )
     }
 
-    fn render_usage_callout(&self, line_height: Pixels, cx: &mut Context<Self>) -> Option<Div> {
-        // Show token usage warnings for all ACP agents that have token usage data
-        let thread = self.thread()?;
-        let thread_read = thread.read(cx);
-
-        let token_usage = thread_read.token_usage()?;
-        let ratio = token_usage.ratio();
-
-        let (severity, icon, title) = match ratio {
-            acp_thread::TokenUsageRatio::Normal => {
-                return None;
-            }
-            acp_thread::TokenUsageRatio::Warning => (
-                Severity::Warning,
-                IconName::Warning,
-                "Thread reaching the token limit soon",
-            ),
-            acp_thread::TokenUsageRatio::Exceeded => (
-                Severity::Error,
-                IconName::XCircle,
-                "Thread reached the token limit",
-            ),
-        };
-
-        let used = crate::text_thread_editor::humanize_token_count(token_usage.used_tokens);
-        let max = crate::text_thread_editor::humanize_token_count(token_usage.max_tokens);
-
-        Some(
-            div()
-                .child(
-                    Callout::new()
-                        .icon(icon)
-                        .title(title)
-                        .severity(severity)
-                        .actions_slot(
-                            h_flex().gap_2().child(
-                                Button::new("new_thread", "New Thread")
-                                    .size(ButtonSize::Compact)
-                                    .style(ButtonStyle::Filled)
-                                    .on_click(cx.listener(|_, _, _window, cx| {
-                                        cx.dispatch_action(&crate::NewThread)
-                                    })),
-                            ),
-                        )
-                        .description_slot(div().child(format!(
-                            "Current thread has used {} of {} tokens.",
-                            used, max
-                        ))),
-                )
-                .line_height(line_height),
-        )
-    }
 
     fn agent_ui_font_size_changed(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.entry_view_state.update(cx, |entry_view_state, cx| {
