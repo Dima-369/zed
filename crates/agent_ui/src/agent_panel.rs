@@ -8,10 +8,6 @@ use acp_thread::{AcpThread, AgentSessionInfo, ThreadStatus};
 use agent::{ContextServerRegistry, ThreadStore};
 use agent_servers::AgentServer;
 use db::kvp::{Dismissable, KEY_VALUE_STORE};
-use project::{
-    ExternalAgentServerName,
-    agent_server_store::AgentServerStore,
-};
 use serde::{Deserialize, Serialize};
 use settings::{
     DefaultAgentView as DefaultView, LanguageModelProviderSetting, LanguageModelSelection,
@@ -35,7 +31,6 @@ use crate::{
 use crate::{
     ExpandMessageEditor,
     acp::{AcpThreadHistory, ThreadHistoryEvent},
-    text_thread_history::{TextThreadHistory, TextThreadHistoryEvent},
 };
 use crate::{
     ExternalAgent, NewAcpThreadFromSummary, NewExternalAgentThread, NewNativeAgentThreadFromSummary,
@@ -47,31 +42,29 @@ use assistant_slash_command::SlashCommandWorkingSet;
 use assistant_text_thread::{TextThread, TextThreadEvent, TextThreadSummary};
 use client::UserStore;
 use cloud_llm_client::{Plan, PlanV2};
-use editor::{Anchor, AnchorRangeExt as _, Editor, EditorEvent, MultiBuffer, actions::Cancel};
+use editor::{Anchor, AnchorRangeExt as _, Editor, EditorEvent, MultiBuffer};
 use extension::ExtensionEvents;
 use extension_host::ExtensionStore;
 use fs::Fs;
 use gpui::{
-    Action, AnyElement, Animation, AnimationExt, App, AsyncWindowContext, Corner, Div, DismissEvent, Entity, EventEmitter,
+    Action, AnyElement, App, AsyncWindowContext, Corner, Div, DismissEvent, Entity, EventEmitter,
     ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels, ScrollHandle,
-    SharedString, Subscription, Task, UpdateGlobal, WeakEntity, pulsating_between, prelude::*,
+    SharedString, Subscription, Task, UpdateGlobal, WeakEntity, prelude::*,
 };
 use language::LanguageRegistry;
 use language_model::{ConfigurationError, LanguageModelRegistry};
-use menu::Confirm;
 use project::{Project, ProjectPath, Worktree};
 use prompt_store::{PromptBuilder, PromptStore, UserPromptId};
 use rules_library::{RulesLibrary, open_rules_library};
 use search::{BufferSearchBar, buffer_search};
 use settings::{Settings, update_settings_file};
-use std::time::Duration;
 use theme::ActiveTheme;
 use theme::ThemeSettings;
 use ui::{
-    Button, ButtonCommon, ButtonSize, ButtonStyle, Callout, Clickable, Color, CommonAnimationExt, ContextMenu,
-    ContextMenuEntry, DynamicSpacing, Icon, IconButton, IconButtonShape, IconName, IconSize, Indicator, KeyBinding, Label, LabelCommon, LabelSize,
+    Button, ButtonCommon, ButtonSize, ButtonStyle, Callout, Clickable, Color, ContextMenu,
+    ContextMenuEntry, DynamicSpacing, IconButton, IconButtonShape, IconName, IconSize, Indicator, KeyBinding, Label, LabelSize,
     PopoverMenu, PopoverMenuHandle, Severity, Tab, TabBar, TabCloseSide, TabPosition, Toggleable,
-    Tooltip, Window, div, h_flex, px, rems_from_px, utils::WithRemSize, v_flex,
+    Tooltip, Window, div, px, rems_from_px, utils::WithRemSize, v_flex,
 };
 use util::ResultExt as _;
 use workspace::{
@@ -490,7 +483,6 @@ pub struct AgentPanel {
     fs: Arc<dyn Fs>,
     language_registry: Arc<LanguageRegistry>,
     acp_history: Entity<AcpThreadHistory>,
-    text_thread_history: Entity<TextThreadHistory>,
     thread_store: Entity<ThreadStore>,
     text_thread_store: Entity<assistant_text_thread::TextThreadStore>,
     prompt_store: Option<Entity<PromptStore>>,
@@ -616,25 +608,12 @@ impl AgentPanel {
 
         let thread_store = cx.new(|cx| ThreadStore::new(cx));
         let acp_history = cx.new(|cx| AcpThreadHistory::new(None, window, cx));
-        let text_thread_history =
-            cx.new(|cx| TextThreadHistory::new(text_thread_store.clone(), window, cx));
         cx.subscribe_in(
             &acp_history,
             window,
             |this, _, event, window, cx| match event {
                 ThreadHistoryEvent::Open(thread) => {
                     this.load_agent_thread(thread.clone(), window, cx);
-                }
-            },
-        )
-        .detach();
-        cx.subscribe_in(
-            &text_thread_history,
-            window,
-            |this, _, event, window, cx| match event {
-                TextThreadHistoryEvent::Open(thread) => {
-                    this.open_saved_text_thread(thread.path.clone(), window, cx)
-                        .detach_and_log_err(cx);
                 }
             },
         )
@@ -785,7 +764,6 @@ impl AgentPanel {
             pending_serialization: None,
             onboarding,
             acp_history,
-            text_thread_history,
             thread_store,
             selected_agent: AgentType::default(),
             loading: false,
