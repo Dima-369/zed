@@ -1,4 +1,7 @@
-the fileexplorercreatefile action should create a directory when the entered path ends with a slash
+the fileexplorercreatefile action should 
+Create a directory when the entered path ends with a slash in the FileExplorerCreateFile action
+
+workspace::FileExplorerOpen when on a buffer without a file, open the directory in project root instead of doing nothing
 
 
 # >>> Investigations
