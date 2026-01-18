@@ -12,7 +12,6 @@ function test() {
 But this is not because the `<?php` tag is missing. Can this be fixed?
 
 ```php
-<?php
 function test() {
 
 }
