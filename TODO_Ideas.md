@@ -1,3 +1,5 @@
+insert mode space is broken in agent panel, waits on other space input?
+
 
 
 # >>> Investigations
