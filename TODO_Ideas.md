@@ -1,16 +1,24 @@
-there is some weird behavior with inline languages in ```php markdown blocks
+There is a bug in the Markdown language buffers. Regarding ```php markdown blocks.
 
-they are never highlighted except when the start line has <?php
-is there any way to fix that? I suppose tree-sitter does not get it? maybe custom patch in <?php for highlight or so?
-
-like this should be highlighted, but currently isn't
+This is correctly highlighted, because it has the `<?php` tag:
 
 ```php
+<?php
 function test() {
 
 }
 ```
 
+But this is not because the `<?php` tag is missing. Can this be fixed?
+
+```php
+<?php
+function test() {
+
+}
+```
+
+I cloned the Zed PHP extension in this root into `php/` for you to inspect.
 
 # >>> Investigations
 
