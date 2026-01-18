@@ -1,7 +1,7 @@
-there is some weird behavior with inline languages in ```php blocks
+there is some weird behavior with inline languages in ```php markdown blocks
 
 they are never highlighted except when the start line has <?php
-is there any way to fix that?
+is there any way to fix that? I suppose tree-sitter does not get it? maybe custom patch in <?php for highlight or so?
 
 like this should be highlighted, but currently isn't
 
