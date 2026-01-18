@@ -1,4 +1,15 @@
+there is some weird behavior with inline languages in ```php blocks
 
+they are never highlighted except when the start line has <?php
+is there any way to fix that?
+
+like this should be highlighted, but currently isn't
+
+```php
+function test() {
+
+}
+```
 
 
 # >>> Investigations
