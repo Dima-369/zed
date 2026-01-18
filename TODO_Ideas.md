@@ -1,6 +1,7 @@
-There is a bug in the Markdown language buffers. Regarding ```php markdown blocks.
+There is a weird behavior in the Markdown language buffers. Regarding ```php markdown blocks.
 
 This is correctly highlighted, because it has the `<?php` tag:
+I think the treesitter expects `<?php` at start to really highlight.
 
 ```php
 <?php
