@@ -19,6 +19,9 @@ function test() {
 
 I cloned the Zed PHP extension in this root into `php/` for you to inspect.
 
+ What about still using php grammar (not the only one) BUT then patch in a `<?php` at start of string at op invisibly (not affecting buffer content) to trigger syntax highlighting?
+ Using `php_only` for ``` code blocks is NOT the solution, since I still want it to support other embedded languages.
+
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
