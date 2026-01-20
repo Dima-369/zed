@@ -174,6 +174,9 @@ impl PickerDelegate for ClipboardHistoryDelegate {
             if let Some(entry) = self.entries.get(entry_index) {
                 let text = entry.text.clone();
 
+                // Move the selected entry to the top of the history
+                ClipboardHistory::add_entry(text.clone());
+
                 // Write to clipboard first
                 cx.write_to_clipboard(ClipboardItem::new_string(text));
 
