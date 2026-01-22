@@ -30,6 +30,7 @@ I tested it out and that pane tag stack misbehaves when the buffer is edited, so
 
 check out per-tool permissions when confirming agent tool use
 test out https://github.com/zed-industries/zed/pull/46284
+see `"ctrl-alt-a": "agent::OpenPermissionDropdown",`
 
 # >>> Investigations
 
