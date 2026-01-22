@@ -1,8 +1,13 @@
+First merge `main`, then checkout:
+
 test out (User-defined slash commands) - it is behind `user-slash-commands` feature flag
 https://github.com/zed-industries/zed/pull/46815
 
 test this out (Support zooming and panning in the image viewer)
 https://github.com/zed-industries/zed/pull/43944
+
+- Agent: Added an agent.show_turn_stats setting, default to false , that shows the timer, the number of tokens, and whose turn it is. ([#46390](https://github.com/zed-industries/zed/pull/46390) )
+
 
 
 # >>> Investigations
