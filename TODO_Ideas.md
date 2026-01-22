@@ -8,6 +8,9 @@ https://github.com/zed-industries/zed/pull/43944
 
 - Agent: Added an agent.show_turn_stats setting, default to false , that shows the timer, the number of tokens, and whose turn it is. ([#46390](https://github.com/zed-industries/zed/pull/46390) )
 
+does this cause any issues?
+- Improved editor: delete to previous subword start and editor: delete to next subword end interactions around newlines. You can opt-in into the previous behavior by adding {"ignore_newlines": true}to either action's binds in your keymap. ([#46235](https://github.com/zed-industries/zed/pull/46235) ; thanks [RubenFricke](https://github.com/RubenFricke) )
+
 
 
 # >>> Investigations
