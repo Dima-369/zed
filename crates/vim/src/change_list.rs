@@ -81,6 +81,8 @@ impl Vim {
                 .change_list
                 .push_to_change_list(pop_state, new_positions.clone());
 
+            editor.push_to_global_change_list(pop_state, new_positions.clone(), cx);
+
             (new_positions, buffer)
         }) else {
             return;

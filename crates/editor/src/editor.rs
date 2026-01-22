@@ -350,6 +350,7 @@ pub enum HideMouseCursorOrigin {
 
 pub fn init(cx: &mut App) {
     cx.set_global(GlobalBlameRenderer(Arc::new(())));
+    cx.set_global(GlobalChangeList::default());
 
     workspace::register_project_item::<Editor>(cx);
     workspace::FollowableViewRegistry::register::<Editor>(cx);
@@ -370,6 +371,8 @@ pub fn init(cx: &mut App) {
             workspace.register_action(Editor::file_explorer_save_modified);
             workspace.register_action(Editor::cancel_language_server_work);
             workspace.register_action(Editor::toggle_focus);
+            workspace.register_action(Editor::go_to_next_global_change);
+            workspace.register_action(Editor::go_to_previous_global_change);
             workspace.register_action(|workspace, action, window, cx| {
                 if let Some(editor) = workspace.active_item_as::<Editor>(cx) {
                     editor.update(cx, |editor, cx| editor.count_tokens(action, window, cx))
@@ -972,6 +975,30 @@ pub struct ChangeList {
     /// Currently "selected" change.
     position: Option<usize>,
 }
+
+/// An entry in the global change list, tracking changes across all editors.
+#[derive(Clone)]
+struct GlobalChangeEntry {
+    /// Weak reference to the editor where the change occurred.
+    editor: WeakEntity<Editor>,
+    /// The project path of the buffer, if available.
+    project_path: Option<ProjectPath>,
+    /// The anchors representing the change positions.
+    anchors: Vec<Anchor>,
+    /// The points representing the change positions (for reopening closed editors).
+    points: Vec<Point>,
+}
+
+/// A global list of changes across all editors in the workspace.
+#[derive(Default)]
+struct GlobalChangeList {
+    /// All changes across all editors.
+    changes: Vec<GlobalChangeEntry>,
+    /// Currently "selected" change position.
+    position: Option<usize>,
+}
+
+impl gpui::Global for GlobalChangeList {}
 
 impl ChangeList {
     pub fn new() -> Self {
@@ -18780,6 +18807,124 @@ impl Editor {
                     point..point
                 }))
             })
+        }
+    }
+
+    /// Pushes the current change to the global change list.
+    pub fn push_to_global_change_list(&self, group: bool, anchors: Vec<Anchor>, cx: &mut Context<Self>) {
+        let project_path = self.project_path(cx);
+        let buffer = self.buffer.read(cx).snapshot(cx);
+        let points = anchors.iter().map(|a| a.to_point(&buffer)).collect();
+
+        let entry = GlobalChangeEntry {
+            editor: cx.entity().downgrade(),
+            project_path,
+            anchors,
+            points,
+        };
+
+        cx.update_global::<GlobalChangeList, _>(|list, _| {
+            list.position = None;
+            if group {
+                if let Some(last) = list.changes.last_mut() {
+                    if last.editor == entry.editor {
+                        *last = entry;
+                        return;
+                    }
+                }
+            }
+            list.changes.push(entry);
+        });
+    }
+
+    fn go_to_next_global_change(
+        workspace: &mut Workspace,
+        _: &GoToNextGlobalChange,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        Self::navigate_global_change_list(workspace, Direction::Next, window, cx);
+    }
+
+    fn go_to_previous_global_change(
+        workspace: &mut Workspace,
+        _: &GoToPreviousGlobalChange,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        Self::navigate_global_change_list(workspace, Direction::Prev, window, cx);
+    }
+
+    fn navigate_global_change_list(
+        workspace: &mut Workspace,
+        direction: Direction,
+        window: &mut Window,
+        cx: &mut Context<Workspace>,
+    ) {
+        let entry_opt = cx.update_global::<GlobalChangeList, _>(|list, _| {
+            if list.changes.is_empty() {
+                return None;
+            }
+
+            let current_position = list.position.unwrap_or(list.changes.len());
+            let new_position = match direction {
+                Direction::Next => {
+                    if current_position + 1 < list.changes.len() {
+                        current_position + 1
+                    } else {
+                        return None;
+                    }
+                }
+                Direction::Prev => {
+                    if current_position > 0 {
+                        current_position - 1
+                    } else {
+                        return None;
+                    }
+                }
+            };
+
+            list.position = Some(new_position);
+            Some(list.changes[new_position].clone())
+        });
+
+        let Some(entry) = entry_opt else {
+            return;
+        };
+
+        // Try to upgrade the editor reference
+        if let Some(editor) = entry.editor.upgrade() {
+            // Editor still exists, just activate it and navigate
+            workspace.activate_item(&editor, true, true, window, cx);
+            editor.update(cx, |editor, cx| {
+                editor.change_selections(Default::default(), window, cx, |s| {
+                    let map = s.display_snapshot();
+                    s.select_display_ranges(entry.anchors.iter().map(|a| {
+                        let point = a.to_display_point(&map);
+                        point..point
+                    }))
+                });
+            });
+        } else if let Some(project_path) = entry.project_path {
+            // Editor was closed, try to reopen the file
+            let points = entry.points.clone();
+            cx.spawn_in(window, move |workspace, mut cx| async move {
+                let item: Box<dyn ItemHandle> = workspace
+                    .update_in(&mut cx, |workspace, window, cx| {
+                        workspace.open_path(project_path.clone(), None, true, window, cx)
+                    })?
+                    .await?;
+
+                if let Some(editor) = item.downcast::<Editor>() {
+                    editor.update_in(&mut cx, |editor, window, cx| {
+                        editor.change_selections(Default::default(), window, cx, |s| {
+                            s.select_ranges(points.iter().map(|&point| point..point))
+                        });
+                    })?;
+                }
+                anyhow::Ok(())
+            })
+            .detach_and_log_err(cx);
         }
     }
 
