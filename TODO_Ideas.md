@@ -7,25 +7,6 @@ enabled slash-commands and tool-permissions in `crates/feature_flags/src/flags.r
 test out (User-defined slash commands) - it is behind `user-slash-commands` feature flag
 https://github.com/zed-industries/zed/pull/46815
 
-can this be hacked for the 2 jump system from IntelliJ?
-https://github.com/zed-industries/zed/pull/46002
-arrow left/right only jump to edits (it's fine to track when vim insert mode is entered for me)
-
-it uses those actions:
-`pane::GoToOlderTag`
-`pane::GoToNewerTag`
-
-I have this in my  `.ideavimrc`:
-```
-map <Left> <Action>(JumpToLastChange)
-map <Right> <Action>(JumpToNextChange)
-
-map 4 <Action>(Back)
-map 6 <Action>(Forward)
-```
-
-I tested it out and that pane tag stack misbehaves when the buffer is edited, so it simply can not be used for that.
-
 ---
 
 check out per-tool permissions when confirming agent tool use
