@@ -18811,7 +18811,12 @@ impl Editor {
     }
 
     /// Pushes the current change to the global change list.
-    pub fn push_to_global_change_list(&self, group: bool, anchors: Vec<Anchor>, cx: &mut Context<Self>) {
+    pub fn push_to_global_change_list(
+        &self,
+        group: bool,
+        anchors: Vec<Anchor>,
+        cx: &mut Context<Self>,
+    ) {
         let project_path = self.project_path(cx);
         let buffer = self.buffer.read(cx).snapshot(cx);
         let points = anchors.iter().map(|a| a.to_point(&buffer)).collect();
@@ -18833,6 +18838,27 @@ impl Editor {
                     }
                 }
             }
+
+            list.changes.retain(|existing| {
+                if existing.editor == entry.editor {
+                    if existing.anchors.len() == entry.anchors.len() {
+                        return !existing.anchors.iter().zip(entry.anchors.iter()).all(
+                            |(a1, a2)| {
+                                a1.to_point(&buffer).row == a2.to_point(&buffer).row
+                            },
+                        );
+                    }
+                } else if existing.project_path == entry.project_path && entry.project_path.is_some()
+                {
+                    if existing.points.len() == entry.points.len() {
+                        return !existing.points.iter().zip(entry.points.iter()).all(|(p1, p2)| {
+                            p1.row == p2.row
+                        });
+                    }
+                }
+                true
+            });
+
             list.changes.push(entry);
         });
     }
