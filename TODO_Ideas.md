@@ -1,3 +1,7 @@
+after main merge reapply the multiple tabs code diff
+
+---
+
 First merge `main`, then checkout:
 
 test out (User-defined slash commands) - it is behind `user-slash-commands` feature flag
