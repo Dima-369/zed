@@ -11,7 +11,25 @@ https://github.com/zed-industries/zed/pull/43944
 does this cause any issues?
 - Improved editor: delete to previous subword start and editor: delete to next subword end interactions around newlines. You can opt-in into the previous behavior by adding {"ignore_newlines": true}to either action's binds in your keymap. ([#46235](https://github.com/zed-industries/zed/pull/46235) ; thanks [RubenFricke](https://github.com/RubenFricke) )
 
+does this cause any issues for me?
+- Improved pane::CloseActiveItem to close center pane items even when focus is on a dock panel like the project panel or outline panel. ([#46421](https://github.com/zed-industries/zed/pull/46421) ; thanks [FloppyDisco](https://github.com/FloppyDisco) )
 
+
+can this be hacked for the 2 jump system from IntelliJ?
+https://github.com/zed-industries/zed/pull/46002
+arrow left/right only jump to edits (it's fine to track when vim insert mode is entered for me)
+
+from `.ideavimrc`:
+```
+map <Left> <Action>(JumpToLastChange)
+map <Right> <Action>(JumpToNextChange)
+
+map 4 <Action>(Back)
+map 6 <Action>(Forward)
+```
+
+check out per-tool permissions when confirming agent tool use
+test out https://github.com/zed-industries/zed/pull/46284
 
 # >>> Investigations
 
