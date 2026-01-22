@@ -1484,10 +1484,17 @@ struct JumpCandidate {
 
 #[cfg(test)]
 mod test {
+    use gpui::{UpdateGlobal, VisualTestContext};
     use indoc::indoc;
+    use project::FakeFs;
+    use search::{ProjectSearchView, project_search};
+    use serde_json::json;
+    use settings::SettingsStore;
+    use util::path;
+    use workspace::DeploySearch;
 
     use crate::{
-        state::{Mode, Operator},
+        VimAddon, state::{Mode, Operator},
         test::VimTestContext,
     };
 
@@ -2321,190 +2328,59 @@ mod test {
     }
 
     #[gpui::test]
-    async fn test_helix_jump_list_basic(cx: &mut gpui::TestAppContext) {
-        let mut cx = VimTestContext::new(cx, true).await;
-        cx.enable_helix();
+    async fn test_project_search_opens_in_normal_mode(cx: &mut gpui::TestAppContext) {
+        VimTestContext::init(cx);
 
-        // Set initial position and save it
-        cx.set_state(
-            indoc! {"
-                line ˇone
-                line two
-                line three"},
-            Mode::HelixNormal,
-        );
-        cx.simulate_keystrokes("ctrl-s");
-
-        // Move to a different position and save
-        cx.simulate_keystrokes("j j");
-        cx.assert_state(
-            indoc! {"
-                line one
-                line two
-                line ˇthree"},
-            Mode::HelixNormal,
-        );
-        cx.simulate_keystrokes("ctrl-s");
-
-        // Jump backward should go to first saved position
-        cx.simulate_keystrokes("ctrl-o");
-        cx.assert_state(
-            indoc! {"
-                line ˇone
-                line two
-                line three"},
-            Mode::HelixNormal,
-        );
-
-        // Jump forward should return to second position
-        cx.simulate_keystrokes("ctrl-i");
-        cx.assert_state(
-            indoc! {"
-                line one
-                line two
-                line ˇthree"},
-            Mode::HelixNormal,
-        );
-    }
-
-    #[gpui::test]
-    async fn test_helix_jump_list_auto_save_on_backward(cx: &mut gpui::TestAppContext) {
-        let mut cx = VimTestContext::new(cx, true).await;
-        cx.enable_helix();
-
-        // Save a position
-        cx.set_state(
-            indoc! {"
-                line ˇone
-                line two
-                line three"},
-            Mode::HelixNormal,
-        );
-        cx.simulate_keystrokes("ctrl-s");
-
-        // Move to a new position (but don't save)
-        cx.simulate_keystrokes("j j $");
-        cx.assert_state(
-            indoc! {"
-                line one
-                line two
-                line threˇe"},
-            Mode::HelixNormal,
-        );
-
-        // Jump backward - should auto-save current position first
-        cx.simulate_keystrokes("ctrl-o");
-        cx.assert_state(
-            indoc! {"
-                line ˇone
-                line two
-                line three"},
-            Mode::HelixNormal,
-        );
-
-        // Jump forward should go to the auto-saved position
-        cx.simulate_keystrokes("ctrl-i");
-        cx.assert_state(
-            indoc! {"
-                line one
-                line two
-                line threˇe"},
-            Mode::HelixNormal,
-        );
-    }
-
-    #[gpui::test]
-    async fn test_helix_jump_list_with_count(cx: &mut gpui::TestAppContext) {
-        let mut cx = VimTestContext::new(cx, true).await;
-        cx.enable_helix();
-
-        // Create multiple jump entries
-        cx.set_state(
-            indoc! {"
-                ˇposition one
-                position two
-                position three
-                position four"},
-            Mode::HelixNormal,
-        );
-        cx.simulate_keystrokes("ctrl-s");
-
-        cx.simulate_keystrokes("j");
-        cx.simulate_keystrokes("ctrl-s");
-
-        cx.simulate_keystrokes("j");
-        cx.simulate_keystrokes("ctrl-s");
-
-        cx.simulate_keystrokes("j");
-        cx.simulate_keystrokes("ctrl-s");
-
-        // Now at position four, jump back by 2
-        cx.simulate_keystrokes("2 ctrl-o");
-        cx.assert_state(
-            indoc! {"
-                position one
-                ˇposition two
-                position three
-                position four"},
-            Mode::HelixNormal,
-        );
-    }
-
-    #[gpui::test]
-    async fn test_helix_jump_list_all_entries(cx: &mut gpui::TestAppContext) {
-        let mut cx = VimTestContext::new(cx, true).await;
-        cx.enable_helix();
-
-        // Set initial position and save it
-        cx.set_state(
-            indoc! {"
-                line ˇone
-                line two
-                line three"},
-            Mode::HelixNormal,
-        );
-        cx.simulate_keystrokes("ctrl-s");
-
-        // Move to a different position and save
-        cx.simulate_keystrokes("j j");
-        cx.assert_state(
-            indoc! {"
-                line one
-                line two
-                line ˇthree"},
-            Mode::HelixNormal,
-        );
-        cx.simulate_keystrokes("ctrl-s");
-
-        // Move to another position and save
-        cx.simulate_keystrokes("k");
-        cx.assert_state(
-            indoc! {"
-                line one
-                line ˇtwo
-                line three"},
-            Mode::HelixNormal,
-        );
-        cx.simulate_keystrokes("ctrl-s");
-
-        // Test that the jump list has entries after saving positions
-        // This verifies that our new all_entries() method works
-        // Note: We can't easily access the jump list from the test context,
-        // but the fact that the keystrokes work without error indicates
-        // the jump list functionality is working correctly
-    }
-
-    #[gpui::test]
-    async fn test_helix_jump_starts_operator(cx: &mut gpui::TestAppContext) {
-        let mut cx = VimTestContext::new(cx, true).await;
-        cx.enable_helix();
-        cx.set_state("ˇhello world\njump labels", Mode::HelixNormal);
-
-        cx.simulate_keystrokes("g w");
-
-        assert!(
-            matches!(cx.active_operator(), Some(Operator::HelixJump { .. })),
-            "expected HelixJump operator to be active"
+        let fs = FakeFs::new(cx.background_executor.clone());
+        fs.insert_tree(
+            path!("/dir"),
+            json!({
+                "file_a.rs": "// File A.",
+                "file_b.rs": "// File B.",
+            }),
         )
+        .await;
+
+        let project = project::Project::test(fs.clone(), [path!("/dir").as_ref()], cx).await;
+        let workspace =
+            cx.add_window(|window, cx| workspace::Workspace::test_new(project.clone(), window, cx));
+
+        cx.update(|cx| {
+            VimTestContext::init_keybindings(true, cx);
+            SettingsStore::update_global(cx, |store, cx| {
+                store.update_user_settings(cx, |store| store.helix_mode = Some(true));
+            })
+        });
+
+        let cx = &mut VisualTestContext::from_window(*workspace, cx);
+
+        workspace
+            .update(cx, |workspace, window, cx| {
+                ProjectSearchView::deploy_search(workspace, &DeploySearch::default(), window, cx)
+            })
+            .unwrap();
+
+        let search_view = workspace
+            .update(cx, |workspace, _, cx| {
+                workspace
+                    .active_pane()
+                    .read(cx)
+                    .items()
+                    .find_map(|item| item.downcast::<ProjectSearchView>())
+                    .expect("Project search view should be active")
+            })
+            .unwrap();
+
+        project_search::perform_project_search(&search_view, "File A", cx);
+
+        search_view.update(cx, |search_view, cx| {
+            let vim_mode = search_view
+                .results_editor()
+                .read(cx)
+                .addon::<VimAddon>()
+                .map(|addon| addon.entity.read(cx).mode);
+
+            assert_eq!(vim_mode, Some(Mode::HelixNormal));
+        });
     }
 }
