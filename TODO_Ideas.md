@@ -1,17 +1,6 @@
 after main merge reapply the multiple tabs code diff
 
----
 
-enabled slash-commands and tool-permissions in `crates/feature_flags/src/flags.rs`
-
-test out (User-defined slash commands) - it is behind `user-slash-commands` feature flag
-https://github.com/zed-industries/zed/pull/46815
-
----
-
-check out per-tool permissions when confirming agent tool use
-test out https://github.com/zed-industries/zed/pull/46284
-see `"ctrl-alt-a": "agent::OpenPermissionDropdown",`
 
 # >>> Investigations
 
