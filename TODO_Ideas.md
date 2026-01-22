@@ -2,6 +2,8 @@ after main merge reapply the multiple tabs code diff
 
 ---
 
+enabled slash-commands and tool-permissions in `crates/feature_flags/src/flags.rs`
+
 test out (User-defined slash commands) - it is behind `user-slash-commands` feature flag
 https://github.com/zed-industries/zed/pull/46815
 
