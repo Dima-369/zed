@@ -1,4 +1,5 @@
-
+test out (User-defined slash commands) - it is behind `user-slash-commands` feature flag
+https://github.com/zed-industries/zed/pull/46815
 
 
 # >>> Investigations
