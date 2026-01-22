@@ -28,6 +28,10 @@ pub struct UserSlashCommandsFeatureFlag;
 
 impl FeatureFlag for UserSlashCommandsFeatureFlag {
     const NAME: &'static str = "slash-commands";
+
+    fn enabled_for_all() -> bool {
+        true
+    }
 }
 
 pub struct ToolPermissionsFeatureFlag;
