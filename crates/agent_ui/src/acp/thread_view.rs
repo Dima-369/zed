@@ -79,10 +79,6 @@ use crate::user_slash_command::{
 };
 use crate::{
     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, AuthorizeToolCall, ClearMessageQueue,
-    CopyErrorNotification, CycleFavoriteModels, CycleModeSelector, DismissErrorNotification,
-    ExpandMessageEditor, Follow, KeepAll, NewThread, OpenAgentDiff, OpenHistory, RejectAll,
-    RejectOnce, RemoveFirstQueuedMessage, SelectPermissionGranularity, SendImmediately,
-    SendNextQueuedMessage, TogglePlan, ToggleProfileSelector,
     CycleFavoriteModels, CycleModeSelector, EditFirstQueuedMessage, ExpandMessageEditor, Follow,
     KeepAll, NewThread, OpenAgentDiff, OpenHistory, RejectAll, RejectOnce,
     RemoveFirstQueuedMessage, SelectPermissionGranularity, SendImmediately, SendNextQueuedMessage,
@@ -408,9 +404,6 @@ struct LoadingView {
 }
 
 impl AcpThreadView {
-    const EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD: usize = 900;
-    const EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX: &str = "...";
-
     pub fn new(
         agent: Rc<dyn AgentServer>,
         resume_thread: Option<AgentSessionInfo>,
@@ -1016,16 +1009,6 @@ impl AcpThreadView {
             self.focus_handle.focus(window, cx)
         }
         cx.notify();
-    }
-
-    pub fn session_id(&self, cx: &App) -> Option<acp::SessionId> {
-        if let Some(thread) = self.thread() {
-            Some(thread.read(cx).session_id().clone())
-        } else {
-            self.resume_thread_metadata
-                .as_ref()
-                .map(|metadata| metadata.session_id.clone())
-        }
     }
 
     fn handle_agent_servers_updated(
@@ -3428,33 +3411,6 @@ impl AcpThreadView {
                 }
             })
             .children(tool_output_display)
-            // Show output preview for terminal tools even when collapsed
-            .when(is_terminal_tool && tool_call.content.len() > 0, |this| {
-                this.child(
-                    div()
-                        .bg(cx.theme().colors().editor_background)
-                        .child(
-                            v_flex()
-                                .children(tool_call.content.iter().enumerate().map(
-                                    |(content_ix, content)| {
-                                        div().id(("tool-call-preview", entry_ix)).child(
-                                            self.render_tool_call_content(
-                                                entry_ix,
-                                                content,
-                                                content_ix,
-                                                tool_call,
-                                                use_card_layout,
-                                                false,
-                                                false,
-                                                window,
-                                                cx,
-                                            ),
-                                        )
-                                    },
-                                )),
-                        ),
-                )
-            })
     }
 
     fn render_tool_call_label(
@@ -3622,7 +3578,6 @@ impl AcpThreadView {
                         card_layout,
                         window,
                         cx,
-                        tool_call.kind,
                     )
                 } else if let Some(image) = content.image() {
                     let location = tool_call.locations.first().cloned();
@@ -3882,57 +3837,6 @@ impl AcpThreadView {
             .child(gradient_overlay)
     }
 
-    fn prepare_execute_tool_output_from_qwen(text: &str) -> String {
-        // Find first "Output: " and remove everything before it
-        let text = if let Some(output_pos) = text.find("Output: ") {
-            &text[output_pos + 8..] // +8 to skip "Output: "
-        } else {
-            text
-        };
-
-        let processed_text = if let Some(exit_code_pos) = text.rfind("Exit Code:") {
-            let suffix = &text[exit_code_pos..];
-            if let Some(code_start) = suffix.find(|c: char| c.is_ascii_digit()) {
-                let code_end = suffix.find('\n').unwrap_or(suffix.len());
-                let exit_code = &suffix[code_start..code_end];
-                if exit_code != "0" {
-                    // Include the Exit Code for non-zero values, but remove any preceding "Error: (none)"
-                    let before_exit = &text[..exit_code_pos];
-                    let clean_content = if let Some(error_pos) = before_exit.rfind("Error:") {
-                        before_exit[..error_pos].trim_end()
-                    } else {
-                        before_exit.trim_end()
-                    };
-                    format!("{}\nExit Code: {}", clean_content, exit_code)
-                } else {
-                    // Remove the entire suffix for Exit Code: 0, including any preceding "Error: (none)"
-                    let before_exit = &text[..exit_code_pos];
-                    if let Some(error_pos) = before_exit.rfind("Error:") {
-                        before_exit[..error_pos].trim_end().to_string()
-                    } else {
-                        before_exit.trim_end().to_string()
-                    }
-                }
-            } else {
-                text.to_string()
-            }
-        } else {
-            text.to_string()
-        };
-
-        if processed_text.len() > Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD {
-            format!(
-                "{}{}",
-                Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX,
-                &processed_text[processed_text.len()
-                    - (Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_THRESHOLD
-                        - Self::EXECUTE_TOOL_OUTPUT_TRUNCATION_PREFIX.len())..]
-            )
-        } else {
-            processed_text.trim_end().to_string()
-        }
-    }
-
     fn render_markdown_output(
         &self,
         markdown: Entity<Markdown>,
@@ -3941,24 +3845,8 @@ impl AcpThreadView {
         card_layout: bool,
         window: &Window,
         cx: &Context<Self>,
-        tool_call_kind: acp::ToolKind,
     ) -> AnyElement {
         let button_id = SharedString::from(format!("tool_output-{:?}", tool_call_id));
-
-        // Handle truncation for Execute tool calls
-        let markdown_element = if tool_call_kind == acp::ToolKind::Execute {
-            let text = markdown.read(cx).source();
-            let content = Self::prepare_execute_tool_output_from_qwen(text);
-            // Create a simple text element with the content
-            div()
-                .text_color(cx.theme().colors().text)
-                .child(content)
-                .m_2()
-                .into_any_element()
-        } else {
-            self.render_markdown(markdown, default_markdown_style(false, false, window, cx))
-                .into_any_element()
-        };
 
         v_flex()
             .gap_2()
@@ -3978,7 +3866,7 @@ impl AcpThreadView {
             })
             .text_xs()
             .text_color(cx.theme().colors().text_muted)
-            .child(markdown_element)
+            .child(self.render_markdown(markdown, default_markdown_style(false, false, window, cx)))
             .when(!card_layout, |this| {
                 this.child(
                     IconButton::new(button_id, IconName::ChevronUp)
@@ -4767,19 +4655,6 @@ impl AcpThreadView {
             .entry(entry_ix)
             .and_then(|entry| entry.terminal(terminal));
 
-        // Preview output (last 1024 characters) - always show when there's output
-        let preview_content = if let Some(output) = output {
-            let content = &output.content;
-            if content.len() > 100 {
-                format!("...{}", &content[content.len() - 100..])
-            } else {
-                content.clone()
-            }
-        } else {
-            String::new()
-        };
-        let has_preview = !preview_content.is_empty();
-
         v_flex()
             .my_1p5()
             .mx_5()
@@ -4795,46 +4670,6 @@ impl AcpThreadView {
                     .text_xs()
                     .child(header)
                     .child(command_element),
-            )
-            .when(
-                has_preview && self.as_native_connection(cx).is_none(),
-                |this| {
-                    this.child(
-                        div()
-                            .pt_2()
-                            .border_t_1()
-                            .border_color(border_color)
-                            .bg(cx.theme().colors().editor_background)
-                            .rounded_b_md()
-                            .text_ui_sm(cx)
-                            .child(
-                                v_flex()
-                                    .px_3()
-                                    .pb_2()
-                                    .gap_1()
-                                    .child(
-                                        Label::new("Output Preview (last 1024 characters):")
-                                            .size(LabelSize::XSmall)
-                                            .color(Color::Muted)
-                                            .buffer_font(cx),
-                                    )
-                                    .child(
-                                        div()
-                                            .bg(cx.theme().colors().editor_background)
-                                            .rounded_md()
-                                            .px_2()
-                                            .py_1()
-                                            .text_ui_xs(cx)
-                                            .text_color(cx.theme().colors().text)
-                                            .child(
-                                                Label::new(preview_content)
-                                                    .buffer_font(cx)
-                                                    .size(LabelSize::XSmall),
-                                            ),
-                                    ),
-                            ),
-                    )
-                },
             )
             .when(is_expanded && terminal_view.is_some(), |this| {
                 this.child(
@@ -6588,37 +6423,6 @@ impl AcpThreadView {
         }
     }
 
-    fn toggle_plan(&mut self, _: &TogglePlan, _window: &mut Window, cx: &mut Context<Self>) {
-        self.plan_expanded = !self.plan_expanded;
-        cx.notify();
-    }
-
-    fn dismiss_error_notification(
-        &mut self,
-        _: &DismissErrorNotification,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.clear_thread_error(cx);
-    }
-
-    fn copy_error_notification(
-        &mut self,
-        _: &CopyErrorNotification,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        if let Some(error) = &self.thread_error {
-            let error_message = match error {
-                ThreadError::PaymentRequired => "Free tier exceeded. Subscribe and add payment to continue using Zed LLMs. You'll be billed at cost for tokens used.".to_string(),
-                ThreadError::Refusal => "Request was refused by the model.".to_string(),
-                ThreadError::AuthenticationRequired(msg) => format!("Authentication required: {}", msg),
-                ThreadError::Other(msg) => msg.to_string(),
-            };
-            cx.write_to_clipboard(ClipboardItem::new_string(error_message));
-        }
-    }
-
     fn keep_all(&mut self, _: &KeepAll, _window: &mut Window, cx: &mut Context<Self>) {
         let Some(thread) = self.thread() else {
             return;
@@ -7140,11 +6944,6 @@ impl AcpThreadView {
             .app_state()
             .languages
             .language_for_name("Markdown");
-        let plain_text_language_task = workspace
-            .read(cx)
-            .app_state()
-            .languages
-            .language_for_name("Plain Text");
 
         let (thread_title, markdown) = if let Some(thread) = self.thread() {
             let thread = thread.read(cx);
@@ -7155,46 +6954,35 @@ impl AcpThreadView {
 
         let project = workspace.read(cx).project().clone();
         window.spawn(cx, async move |cx| {
-            let language = if markdown.lines().count() < 90_000 {
-                markdown_language_task.await?
-            } else {
-                plain_text_language_task.await?
-            };
+            let markdown_language = markdown_language_task.await?;
 
             let buffer = project
                 .update(cx, |project, cx| {
-                    project.create_buffer(Some(language.clone()), false, cx)
+                    project.create_buffer(Some(markdown_language), false, cx)
                 })
                 .await?;
 
             buffer.update(cx, |buffer, cx| {
                 buffer.set_text(markdown, cx);
-                buffer.set_language(Some(language), cx);
                 buffer.set_capability(language::Capability::ReadWrite, cx);
-                buffer.did_save(buffer.version(), None, cx);
             });
 
             workspace.update_in(cx, |workspace, window, cx| {
                 let buffer = cx
                     .new(|cx| MultiBuffer::singleton(buffer, cx).with_title(thread_title.clone()));
 
-                let editor = cx.new(|cx| {
-                    let mut editor =
-                        Editor::for_multibuffer(buffer, Some(project.clone()), window, cx);
-                    editor.set_breadcrumb_header(thread_title);
-                    editor
-                });
-
-                // Position cursor at the end of the buffer
-                editor.update(cx, |editor, cx| {
-                    let buffer = editor.buffer().read(cx).snapshot(cx);
-                    let end_point = buffer.max_point();
-                    editor.change_selections(Default::default(), window, cx, |selections| {
-                        selections.select_ranges([end_point..end_point]);
-                    });
-                });
-
-                workspace.add_item_to_active_pane(Box::new(editor), None, true, window, cx);
+                workspace.add_item_to_active_pane(
+                    Box::new(cx.new(|cx| {
+                        let mut editor =
+                            Editor::for_multibuffer(buffer, Some(project.clone()), window, cx);
+                        editor.set_breadcrumb_header(thread_title);
+                        editor
+                    })),
+                    None,
+                    true,
+                    window,
+                    cx,
+                );
             })?;
             anyhow::Ok(())
         })
@@ -7315,30 +7103,20 @@ impl AcpThreadView {
     ) {
         let options = AgentNotification::window_options(screen, cx);
 
-        let project_name: Option<SharedString> = self.workspace.upgrade().and_then(|workspace| {
+        let project_name = self.workspace.upgrade().and_then(|workspace| {
             workspace
                 .read(cx)
                 .project()
                 .read(cx)
                 .visible_worktrees(cx)
                 .next()
-                .map(|worktree| worktree.read(cx).root_name_str().to_string().into())
+                .map(|worktree| worktree.read(cx).root_name_str().to_string())
         });
-
-        // Get the thread title if available
-        let thread_title = self.thread().map(|thread| thread.read(cx).title());
-
-        // Create enhanced title that includes both agent name and thread title when available
-        let enhanced_title: SharedString = if let Some(thread_title) = thread_title {
-            format!("{} • {}", title, thread_title).into()
-        } else {
-            title
-        };
 
         if let Some(screen_window) = cx
             .open_window(options, |_window, cx| {
                 cx.new(|_cx| {
-                    AgentNotification::new(enhanced_title, caption.clone(), icon, project_name)
+                    AgentNotification::new(title.clone(), caption.clone(), icon, project_name)
                 })
             })
             .log_err()
@@ -8456,9 +8234,6 @@ impl Render for AcpThreadView {
             .on_action(cx.listener(|this, _: &menu::Cancel, _, cx| {
                 this.cancel_generation(cx);
             }))
-            .on_action(cx.listener(Self::toggle_plan))
-            .on_action(cx.listener(Self::dismiss_error_notification))
-            .on_action(cx.listener(Self::copy_error_notification))
             .on_action(cx.listener(Self::keep_all))
             .on_action(cx.listener(Self::reject_all))
             .on_action(cx.listener(Self::allow_always))
