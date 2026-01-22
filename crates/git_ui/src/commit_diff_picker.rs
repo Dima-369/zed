@@ -151,7 +151,7 @@ impl CommitDiffPickerDelegate {
                     buffer_diff.update_diff(
                         new_buffer_snapshot.text.clone(),
                         Some(old_buffer_snapshot.text().into()),
-                        true,
+                        Some(true),
                         new_buffer_snapshot.language().cloned(),
                         cx,
                     )
