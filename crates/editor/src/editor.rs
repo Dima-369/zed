@@ -18908,15 +18908,11 @@ impl Editor {
         } else if let Some(project_path) = entry.project_path {
             // Editor was closed, try to reopen the file
             let points = entry.points.clone();
-            cx.spawn_in(window, move |workspace, mut cx| async move {
-                let item: Box<dyn ItemHandle> = workspace
-                    .update_in(&mut cx, |workspace, window, cx| {
-                        workspace.open_path(project_path.clone(), None, true, window, cx)
-                    })?
-                    .await?;
-
+            let open_task = workspace.open_path(project_path.clone(), None, true, window, cx);
+            cx.spawn_in(window, async move |_workspace, cx| {
+                let item = open_task.await?;
                 if let Some(editor) = item.downcast::<Editor>() {
-                    editor.update_in(&mut cx, |editor, window, cx| {
+                    editor.update_in(cx, |editor, window, cx| {
                         editor.change_selections(Default::default(), window, cx, |s| {
                             s.select_ranges(points.iter().map(|&point| point..point))
                         });
