@@ -9,6 +9,11 @@ can this be hacked for the 2 jump system from IntelliJ?
 https://github.com/zed-industries/zed/pull/46002
 arrow left/right only jump to edits (it's fine to track when vim insert mode is entered for me)
 
+it uses those actions:
+`pane::GoToOlderTag`
+`pane::GoToNewerTag`
+
+
 from `.ideavimrc`:
 ```
 map <Left> <Action>(JumpToLastChange)
