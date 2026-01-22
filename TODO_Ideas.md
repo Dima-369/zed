@@ -2,26 +2,8 @@ after main merge reapply the multiple tabs code diff
 
 ---
 
-First merge `main`, then checkout:
-
 test out (User-defined slash commands) - it is behind `user-slash-commands` feature flag
 https://github.com/zed-industries/zed/pull/46815
-
-test this out (Support zooming and panning in the image viewer)
-https://github.com/zed-industries/zed/pull/43944
-add context keybindings
-- + to zoom in/out
-key r to reset zoom
-key f to fit to view
-key s to zoom to actual size
-
-
-does this cause any issues?
-- Improved editor: delete to previous subword start and editor: delete to next subword end interactions around newlines. You can opt-in into the previous behavior by adding {"ignore_newlines": true}to either action's binds in your keymap. ([#46235](https://github.com/zed-industries/zed/pull/46235) ; thanks [RubenFricke](https://github.com/RubenFricke) )
-
-does this cause any issues for me?
-- Improved pane::CloseActiveItem to close center pane items even when focus is on a dock panel like the project panel or outline panel. ([#46421](https://github.com/zed-industries/zed/pull/46421) ; thanks [FloppyDisco](https://github.com/FloppyDisco) )
-
 
 can this be hacked for the 2 jump system from IntelliJ?
 https://github.com/zed-industries/zed/pull/46002
