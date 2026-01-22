@@ -13,8 +13,7 @@ it uses those actions:
 `pane::GoToOlderTag`
 `pane::GoToNewerTag`
 
-
-from `.ideavimrc`:
+I have this in my  `.ideavimrc`:
 ```
 map <Left> <Action>(JumpToLastChange)
 map <Right> <Action>(JumpToNextChange)
@@ -22,6 +21,10 @@ map <Right> <Action>(JumpToNextChange)
 map 4 <Action>(Back)
 map 6 <Action>(Forward)
 ```
+
+I tested it out and that pane tag stack misbehaves when the buffer is edited, so it simply can not be used for that.
+
+---
 
 check out per-tool permissions when confirming agent tool use
 test out https://github.com/zed-industries/zed/pull/46284
