@@ -1,12 +1,3 @@
-fix cmd-w in agent panel not closing tab
-
-switching between tabs in agent panel via shortcuts do not work anymore?
-the code for this is missing and it is not in the diff in `MULTIPLE-AGENT-TABS.md`
-```
-      "alt-cmd-left": "agent::ActivatePreviousTab",
-      "alt-cmd-right": "agent::ActivateNextTab",
-```
-
 ensure that `editor::GoToPreviousGlobalChange` and the `next` action always try to move cursor, sometimes it gets stuck on not moving the position
 often times I have to invoke the action like multiple times so it finally moves cursor
 
