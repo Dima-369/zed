@@ -1,4 +1,9 @@
-
+switching between tabs in agent panel via shortcuts do not work anymore?
+the code for this is missing and it is not in the diff in `MULTIPLE-AGENT-TABS.md`
+```
+      "alt-cmd-left": "agent::ActivatePreviousTab",
+      "alt-cmd-right": "agent::ActivateNextTab",
+```
 
 # >>> Investigations
 
