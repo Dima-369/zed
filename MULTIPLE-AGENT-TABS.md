@@ -7,6 +7,66 @@ Verify compilation via `cargo check`.
 
 ---
 
+Also implement this:
+
+in `crates/agent_ui/src/agent_panel.rs`
+
+you have to add those 2 new actions:
+
+```rust
+                .register_action(|workspace, _: &crate::ActivateNextTab, window, cx| {
+                    if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                        panel.update(cx, |panel, cx| panel.activate_next_tab(window, cx));
+                    }
+                })
+                .register_action(|workspace, _: &crate::ActivatePreviousTab, window, cx| {
+                    if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                        panel.update(cx, |panel, cx| panel.activate_previous_tab(window, cx));
+                    }
+                })
+                
+// those belong in impl AgentPanel
+
+    fn activate_next_tab(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
+
+        let next_id = if self.active_tab_id + 1 >= self.tabs.len() {
+            0 // Wrap around to the first tab
+        } else {
+            self.active_tab_id + 1
+        };
+
+        self.set_active_tab_by_id(next_id, window, cx);
+    }
+
+    fn activate_previous_tab(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
+
+        let prev_id = if self.active_tab_id == 0 {
+            self.tabs.len() - 1 // Wrap around to the last tab
+        } else {
+            self.active_tab_id - 1
+        };
+
+        self.set_active_tab_by_id(prev_id, window, cx);
+    }
+```
+
+in `crates/agent_ui/src/agent_ui.rs`
+
+```rust
+        /// Activates the next tab in the agent panel.
+        ActivateNextTab,
+        /// Activates the previous tab in the agent panel.
+        ActivatePreviousTab,
+```
+
+---
+
 diff --git a/crates/agent_ui/src/acp/thread_view.rs b/crates/agent_ui/src/acp/thread_view.rs
 index 3620396e0ab013..c7fb279680fe21 100644
 --- a/crates/agent_ui/src/acp/thread_view.rs
