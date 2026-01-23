@@ -5,6 +5,8 @@ the code for this is missing and it is not in the diff in `MULTIPLE-AGENT-TABS.m
       "alt-cmd-right": "agent::ActivateNextTab",
 ```
 
+ensure that `editor::GoToPreviousGlobalChange` and the `next` action always try to move cursor, sometimes it gets stuck on not moving the position
+
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
