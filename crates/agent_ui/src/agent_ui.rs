@@ -130,8 +130,6 @@ actions!(
         SendImmediately,
         /// Toggles the plan view visibility.
         TogglePlan,
-        /// Closes the currently active thread tab.
-        CloseActiveThreadTab,
         /// Closes the currently active thread tab, or closes the dock if there's only one tab.
         CloseActiveThreadTabOrDock,
         /// Activates the next tab in the agent panel.

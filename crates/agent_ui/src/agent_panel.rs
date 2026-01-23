@@ -1,12 +1,11 @@
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::ops::Range;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use acp_thread::{AcpThread, AcpThreadEvent, AgentSessionInfo, ThreadStatus};
+use acp_thread::{AcpThread, AgentSessionInfo, ThreadStatus};
 use agent::{ContextServerRegistry, ThreadStore};
 use agent_servers::AgentServer;
 use db::kvp::{Dismissable, KEY_VALUE_STORE};
@@ -23,7 +22,7 @@ use crate::ManageProfiles;
 use crate::agent_panel_tab::{AgentPanelTab, AgentPanelTabIdentity, TabId, TabLabelRender};
 use crate::ui::{AcpOnboardingModal, ClaudeCodeOnboardingModal};
 use crate::{
-    AddContextServer, AgentDiffPane, CloseActiveThreadTab, DeleteRecentlyOpenThread, Follow,
+    AddContextServer, AgentDiffPane, CloseActiveThreadTab, Follow,
     InlineAssistant, NewTextThread, NewThread, OpenActiveThreadAsMarkdown, OpenAgentDiff,
     OpenHistory, ResetTrialEndUpsell, ResetTrialUpsell, ToggleNavigationMenu, ToggleNewThreadMenu,
     ToggleOptionsMenu,
@@ -2837,7 +2836,7 @@ impl AgentPanel {
             .child(self.render_panel_options_menu(window, cx));
 
         let mut tab_bar = TabBar::new("agent-tab-bar")
-            .track_scroll(self.tab_bar_scroll_handle.clone())
+            .track_scroll(&self.tab_bar_scroll_handle)
             .end_child(end_slot);
 
         if let Some(overlay_view) = &self.overlay_view {
@@ -3118,7 +3117,7 @@ impl AgentPanel {
         cx: &mut Context<Self>,
     ) -> Div {
         let mut registrar = buffer_search::DivRegistrar::new(
-            |this, _, _cx| match &this.active_view {
+            |this, _, _cx| match this.active_view() {
                 ActiveView::TextThread {
                     buffer_search_bar, ..
                 } => Some(buffer_search_bar.clone()),
