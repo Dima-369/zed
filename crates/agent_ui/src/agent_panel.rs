@@ -231,7 +231,7 @@ pub fn init(cx: &mut App) {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum HistoryKind {
+pub(crate) enum HistoryKind {
     AgentThreads,
     TextThreads,
 }
@@ -253,7 +253,7 @@ pub enum ActiveView {
     Configuration,
 }
 
-enum WhichFontSize {
+pub(crate) enum WhichFontSize {
     AgentFont,
     BufferFont,
     None,
