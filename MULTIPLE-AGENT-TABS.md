@@ -7,8 +7,6 @@ Verify compilation via `cargo check`.
 
 ---
 
-Also implement this:
-
 in `crates/agent_ui/src/agent_panel.rs`
 
 you have to add those 2 new actions:
@@ -63,6 +61,33 @@ in `crates/agent_ui/src/agent_ui.rs`
         ActivateNextTab,
         /// Activates the previous tab in the agent panel.
         ActivatePreviousTab,
+```
+
+---
+
+in `crates/agent_ui/src/agent_ui.rs` add this:
+
+```rust
+// add this in Impl AgentPanel
+
+    pub fn close_active_thread_tab_or_dock(
+        &mut self,
+        _: &CloseActiveThreadTabOrDock,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.tabs.len() > 1 {
+            self.remove_tab_by_id(self.active_tab_id, window, cx);
+        } else if let Some(workspace) = self.workspace.upgrade() {
+            window.defer(cx, move |window, cx| {
+                workspace.update(cx, |workspace, cx| {
+                    workspace.close_panel::<Self>(window, cx);
+                });
+            });
+        }
+    }
+
+            .on_action(cx.listener(Self::close_active_thread_tab_or_dock))
 ```
 
 ---
