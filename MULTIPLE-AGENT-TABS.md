@@ -1,3 +1,5 @@
+From <https://github.com/wzulfikar/zed/pull/8>
+
 Here is a diff you need to bring into this codebase. It adds multiple tabs to the AI thread view. I want this into this codebase.
 It diverged from a recent `main` merge.
 
