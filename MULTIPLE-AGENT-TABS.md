@@ -68,6 +68,8 @@ in `crates/agent_ui/src/agent_ui.rs`
 in `crates/agent_ui/src/agent_ui.rs` add this:
 
 ```rust
+// import CloseActiveThreadTabOrDock
+
 // add this in Impl AgentPanel
 
     pub fn close_active_thread_tab_or_dock(
