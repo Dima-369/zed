@@ -18887,66 +18887,98 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Workspace>,
     ) {
-        let entry_opt = cx.update_global::<GlobalChangeList, _>(|list, _| {
-            if list.changes.is_empty() {
-                return None;
-            }
+        let current_cursor_info = workspace
+            .active_item(cx)
+            .and_then(|item| item.act_as::<Editor>(cx))
+            .map(|editor_handle| {
+                editor_handle.update(cx, |editor, cx| {
+                    let point = editor.selections.newest::<Point>(&editor.display_snapshot(cx)).head();
+                    let project_path = editor.project_path(cx);
+                    (editor_handle.clone(), project_path, point)
+                })
+            });
 
-            let current_position = list.position.unwrap_or(list.changes.len());
-            let new_position = match direction {
-                Direction::Next => {
-                    if current_position + 1 < list.changes.len() {
-                        current_position + 1
-                    } else {
-                        return None;
-                    }
+        loop {
+            let entry_opt = cx.update_global::<GlobalChangeList, _>(|list, _| {
+                if list.changes.is_empty() {
+                    return None;
                 }
-                Direction::Prev => {
-                    if current_position > 0 {
-                        current_position - 1
-                    } else {
-                        return None;
+
+                let current_position = list.position.unwrap_or(list.changes.len());
+                let new_position = match direction {
+                    Direction::Next => {
+                        if current_position + 1 < list.changes.len() {
+                            current_position + 1
+                        } else {
+                            return None;
+                        }
                     }
-                }
+                    Direction::Prev => {
+                        if current_position > 0 {
+                            current_position - 1
+                        } else {
+                            return None;
+                        }
+                    }
+                };
+
+                list.position = Some(new_position);
+                Some(list.changes[new_position].clone())
+            });
+
+            let Some(entry) = entry_opt else {
+                return;
             };
 
-            list.position = Some(new_position);
-            Some(list.changes[new_position].clone())
-        });
-
-        let Some(entry) = entry_opt else {
-            return;
-        };
-
-        // Try to upgrade the editor reference
-        if let Some(editor) = entry.editor.upgrade() {
-            // Editor still exists, just activate it and navigate
-            workspace.activate_item(&editor, true, true, window, cx);
-            editor.update(cx, |editor, cx| {
-                editor.change_selections(Default::default(), window, cx, |s| {
-                    let map = s.display_snapshot();
-                    s.select_display_ranges(entry.anchors.iter().map(|a| {
-                        let point = a.to_display_point(&map);
-                        point..point
-                    }))
-                });
-            });
-        } else if let Some(project_path) = entry.project_path {
-            // Editor was closed, try to reopen the file
-            let points = entry.points.clone();
-            let open_task = workspace.open_path(project_path.clone(), None, true, window, cx);
-            cx.spawn_in(window, async move |_workspace, cx| {
-                let item = open_task.await?;
-                if let Some(editor) = item.downcast::<Editor>() {
-                    editor.update_in(cx, |editor, window, cx| {
-                        editor.change_selections(Default::default(), window, cx, |s| {
-                            s.select_ranges(points.iter().map(|&point| point..point))
-                        });
-                    })?;
+            let cursor_already_at_entry = current_cursor_info.as_ref().is_some_and(|(active_editor, active_path, cursor_point)| {
+                if let Some(entry_editor) = entry.editor.upgrade() {
+                    if entry_editor == *active_editor {
+                        return entry.points.iter().any(|p| *p == *cursor_point);
+                    }
                 }
-                anyhow::Ok(())
-            })
-            .detach_and_log_err(cx);
+
+                if let (Some(p1), Some(p2)) = (active_path, &entry.project_path) {
+                    if p1 == p2 {
+                        return entry.points.iter().any(|p| *p == *cursor_point);
+                    }
+                }
+
+                false
+            });
+
+            if cursor_already_at_entry {
+                continue;
+            }
+
+            if let Some(editor) = entry.editor.upgrade() {
+                workspace.activate_item(&editor, true, true, window, cx);
+                editor.update(cx, |editor, cx| {
+                    editor.change_selections(Default::default(), window, cx, |s| {
+                        let map = s.display_snapshot();
+                        s.select_display_ranges(entry.anchors.iter().map(|a| {
+                            let point = a.to_display_point(&map);
+                            point..point
+                        }))
+                    });
+                });
+            } else if let Some(project_path) = entry.project_path {
+                let points = entry.points.clone();
+                let open_task = workspace.open_path(project_path.clone(), None, true, window, cx);
+                cx.spawn_in(window, async move |_workspace, cx| {
+                    let item = open_task.await?;
+                    if let Some(editor) = item.downcast::<Editor>() {
+                        editor.update_in(cx, |editor, window, cx| {
+                            editor.change_selections(Default::default(), window, cx, |s| {
+                                s.select_ranges(points.iter().map(|&point| point..point))
+                            });
+                        })?;
+                    }
+                    anyhow::Ok(())
+                })
+                .detach_and_log_err(cx);
+            }
+
+            break;
         }
     }
 
