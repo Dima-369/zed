@@ -1,5 +1,3 @@
-fix agent panel keybindings like "z n", mine do not trigger anymore?
-some precedence stuff?
 
 
 # >>> Investigations
