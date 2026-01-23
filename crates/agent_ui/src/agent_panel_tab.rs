@@ -1,28 +1,34 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::agent_panel::ActiveView;
+use crate::agent_panel::{ActiveView, AgentType};
 use agent_client_protocol as acp;
-use gpui::AnyElement;
+use gpui::{AnyElement, SharedString};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TabId(pub usize);
+pub type TabId = usize;
 
 pub struct AgentPanelTab {
-    pub id: TabId,
     pub view: ActiveView,
+    pub agent: AgentType,
 }
 
 impl AgentPanelTab {
-    pub fn new(id: TabId, view: ActiveView) -> Self {
-        Self { id, view }
+    pub fn new(view: ActiveView, agent: AgentType) -> Self {
+        Self { view, agent }
+    }
+
+    pub fn view(&self) -> &ActiveView {
+        &self.view
+    }
+
+    pub fn agent(&self) -> &AgentType {
+        &self.agent
     }
 }
 
 pub struct TabLabelRender {
-    pub label: String,
-    pub icon: Option<AnyElement>,
-    pub indicator: Option<AnyElement>,
+    pub element: AnyElement,
+    pub tooltip: Option<SharedString>,
 }
 
 #[derive(Clone, PartialEq, Eq)]
