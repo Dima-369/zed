@@ -563,8 +563,6 @@ impl AgentPanel {
         )
         .detach();
 
-        let active_view = ActiveView::Uninitialized;
-
         let weak_panel = cx.entity().downgrade();
 
         window.defer(cx, move |window, cx| {
@@ -1366,7 +1364,7 @@ impl AgentPanel {
 
         if let Some(text_thread_editor) = text_thread_editor {
             // Adapted from diff, skipping HistoryStore
-            if let Some(path) = text_thread_editor.read(cx).text_thread().read(cx).path() {
+            if let Some(_path) = text_thread_editor.read(cx).text_thread().read(cx).path() {
                 // TODO: push to recently opened entry if we have history_store
             }
         }
@@ -2538,6 +2536,7 @@ impl AgentPanel {
             _ => None,
         };
 
+        let new_thread_menu_store = agent_server_store.clone();
         let new_thread_menu = PopoverMenu::new("new_thread_menu")
             .trigger_with_tooltip(
                 IconButton::new("new_thread_menu_btn", IconName::Plus).icon_size(IconSize::Small),
@@ -2565,11 +2564,13 @@ impl AgentPanel {
                         workspace.project().read(cx).is_via_collab()
                     })
                     .unwrap_or_default();
+                let agent_server_store = new_thread_menu_store.clone();
 
                 move |window, cx| {
                     telemetry::event!("New Thread Clicked");
 
                     let active_thread = active_thread.clone();
+                    let agent_server_store = agent_server_store.clone();
                     Some(ContextMenu::build(window, cx, |menu, _window, cx| {
                         menu.context(focus_handle.clone())
                             .when_some(active_thread, |this, active_thread| {
