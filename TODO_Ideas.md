@@ -1,5 +1,7 @@
-ensure that `editor::GoToPreviousGlobalChange` and the `next` action always try to move cursor, sometimes it gets stuck on not moving the position
-often times I have to invoke the action like multiple times so it finally moves cursor
+improve `editor::GoToPreviousGlobalChange` and the `next` action:
+- I wonder if this possible to fix. In vim insert mode, when I hold Enter to insert newlines, it keeps track of every newline insertion. I wonder if this can be in any way fixed, so it only jump to END of vim insert sequence, not to every single newline. 
+because currently, when I insert like 10 newlines, and using go to previous global change, it jumps to every single newline.
+
 
 
 # >>> Investigations
