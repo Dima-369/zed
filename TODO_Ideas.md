@@ -1,3 +1,7 @@
+merge main, then see if copilot login is fixed
+
+in `MULTIPLE-AGENT-TABS.md`, at bottom, maybe add diff to have an accent circle to indicate status progress?
+
 improve `editor::GoToPreviousGlobalChange` and the `next` action:
 - I wonder if this possible to fix. In vim insert mode, when I hold Enter to insert newlines, it keeps track of every newline insertion. I wonder if this can be in any way fixed, so it only jump to END of vim insert sequence, not to every single newline. 
 because currently, when I insert like 10 newlines, and using go to previous global change, it jumps to every single newline.
