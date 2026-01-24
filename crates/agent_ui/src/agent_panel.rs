@@ -3,7 +3,6 @@ use std::ops::Range;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::Duration;
 
 use acp_thread::{AcpThread, AgentSessionInfo, ThreadStatus};
 use agent::{ContextServerRegistry, ThreadStore};
@@ -50,9 +49,9 @@ use extension::ExtensionEvents;
 use extension_host::ExtensionStore;
 use fs::Fs;
 use gpui::{
-    Action, Animation, AnimationExt, AnyElement, App, AsyncWindowContext, Corner, DismissEvent,
-    Entity, EventEmitter, ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels, ScrollHandle,
-    SharedString, Subscription, Task, UpdateGlobal, WeakEntity, prelude::*, pulsating_between,
+    Action, AnyElement, App, AsyncWindowContext, Corner, DismissEvent, Entity, EventEmitter,
+    ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels, ScrollHandle, SharedString,
+    Subscription, Task, UpdateGlobal, WeakEntity, prelude::*,
 };
 use language::LanguageRegistry;
 use language_model::{ConfigurationError, LanguageModelRegistry};
@@ -64,7 +63,7 @@ use search::{BufferSearchBar, buffer_search};
 use settings::{Settings, update_settings_file};
 use theme::ThemeSettings;
 use ui::{
-    Callout, ContextMenu, ContextMenuEntry, IconButtonShape, KeyBinding, PopoverMenu,
+    Callout, ContextMenu, ContextMenuEntry, IconButtonShape, Indicator, KeyBinding, PopoverMenu,
     PopoverMenuHandle, Tab, TabBar, TabCloseSide, TabPosition, Tooltip, prelude::*,
     utils::WithRemSize,
 };
@@ -2260,28 +2259,15 @@ impl AgentPanel {
                     .map(|thread| thread.read(cx).status() == ThreadStatus::Generating)
                     .unwrap_or(false);
 
-                let label = if is_generating {
-                    Label::new(label_text)
-                        .truncate()
-                        .when(!is_active, |label| label.color(Color::Muted))
-                        .with_animation(
-                            "pulsating-tab-label",
-                            Animation::new(Duration::from_secs(2))
-                                .repeat()
-                                .with_easing(pulsating_between(0.4, 0.8)),
-                            |label, delta| label.alpha(delta),
-                        )
-                        .into_any_element()
-                } else {
-                    Label::new(label_text)
-                        .truncate()
-                        .when(!is_active, |label| label.color(Color::Muted))
-                        .into_any_element()
-                };
+                let label = Label::new(label_text)
+                    .truncate()
+                    .when(!is_active, |label| label.color(Color::Muted))
+                    .into_any_element();
 
                 TabLabelRender {
                     element: label,
                     tooltip,
+                    is_generating,
                 }
             }
             ActiveView::TextThread {
@@ -2300,29 +2286,15 @@ impl AgentPanel {
 
                 match summary {
                     TextThreadSummary::Pending => {
-                        let label = if is_generating {
-                            Label::new(TextThreadSummary::DEFAULT)
-                                .truncate()
-                                .when(!is_active, |label| label.color(Color::Muted))
-                                .with_animation(
-                                    "pulsating-tab-label",
-                                    Animation::new(Duration::from_secs(2))
-                                        .repeat()
-                                        .with_easing(pulsating_between(0.4, 0.8)),
-                                    |label, delta| label.alpha(delta),
-                                )
-                                .into_any_element()
-                        } else {
-                            Label::new(TextThreadSummary::DEFAULT)
-                                .color(Color::Muted)
-                                .truncate()
-                                .when(!is_active, |label| label.color(Color::Muted))
-                                .into_any_element()
-                        };
+                        let label = Label::new(TextThreadSummary::DEFAULT)
+                            .truncate()
+                            .when(!is_active, |label| label.color(Color::Muted))
+                            .into_any_element();
 
                         TabLabelRender {
                             element: label,
                             tooltip: None,
+                            is_generating,
                         }
                     }
                     TextThreadSummary::Content(summary) => {
@@ -2333,28 +2305,15 @@ impl AgentPanel {
                             }
                             let (label_text, tooltip) = Self::display_tab_label(text, is_active);
 
-                            let label = if is_generating {
-                                Label::new(label_text)
-                                    .truncate()
-                                    .when(!is_active, |label| label.color(Color::Muted))
-                                    .with_animation(
-                                        "pulsating-tab-label",
-                                        Animation::new(Duration::from_secs(2))
-                                            .repeat()
-                                            .with_easing(pulsating_between(0.4, 0.8)),
-                                        |label, delta| label.alpha(delta),
-                                    )
-                                    .into_any_element()
-                            } else {
-                                Label::new(label_text)
-                                    .truncate()
-                                    .when(!is_active, |label| label.color(Color::Muted))
-                                    .into_any_element()
-                            };
+                            let label = Label::new(label_text)
+                                .truncate()
+                                .when(!is_active, |label| label.color(Color::Muted))
+                                .into_any_element();
 
                             TabLabelRender {
                                 element: label,
                                 tooltip,
+                                is_generating,
                             }
                         } else {
                             TabLabelRender {
@@ -2363,6 +2322,7 @@ impl AgentPanel {
                                     .color(Color::Muted)
                                     .into_any_element(),
                                 tooltip: None,
+                                is_generating,
                             }
                         }
                     }
@@ -2370,28 +2330,15 @@ impl AgentPanel {
                         let text = title_editor.read(cx).text(cx);
                         let (label_text, tooltip) = Self::display_tab_label(text, is_active);
 
-                        let label = if is_generating {
-                            Label::new(label_text)
-                                .truncate()
-                                .when(!is_active, |label| label.color(Color::Muted))
-                                .with_animation(
-                                    "pulsating-tab-label",
-                                    Animation::new(Duration::from_secs(2))
-                                        .repeat()
-                                        .with_easing(pulsating_between(0.4, 0.8)),
-                                    |label, delta| label.alpha(delta),
-                                )
-                                .into_any_element()
-                        } else {
-                            Label::new(label_text)
-                                .truncate()
-                                .when(!is_active, |label| label.color(Color::Muted))
-                                .into_any_element()
-                        };
+                        let label = Label::new(label_text)
+                            .truncate()
+                            .when(!is_active, |label| label.color(Color::Muted))
+                            .into_any_element();
 
                         TabLabelRender {
                             element: label,
                             tooltip,
+                            is_generating,
                         }
                     }
                 }
@@ -2399,14 +2346,17 @@ impl AgentPanel {
             ActiveView::History { .. } => TabLabelRender {
                 element: Label::new("History").truncate().into_any_element(),
                 tooltip: None,
+                is_generating: false,
             },
             ActiveView::Configuration => TabLabelRender {
                 element: Label::new("Settings").truncate().into_any_element(),
                 tooltip: None,
+                is_generating: false,
             },
             ActiveView::Uninitialized => TabLabelRender {
                 element: Label::new("Agent").truncate().into_any_element(),
                 tooltip: None,
+                is_generating: false,
             },
         }
     }
@@ -2827,7 +2777,16 @@ impl AgentPanel {
             let TabLabelRender {
                 element: tab_label,
                 tooltip,
+                is_generating,
             } = self.render_tab_label(tab.view(), is_active, cx);
+
+            let indicator = is_generating.then(|| Indicator::dot().color(Color::Accent));
+            let agent_icon =
+                self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, cx);
+            let start_slot = h_flex()
+                .gap(DynamicSpacing::Base04.rems(cx))
+                .children(indicator)
+                .child(agent_icon);
 
             let mut tab_component = Tab::new(("agent-tab", index))
                 .position(position)
@@ -2841,7 +2800,7 @@ impl AgentPanel {
                     }
                 }))
                 .child(tab_label)
-                .start_slot(self.render_tab_agent_icon(index, tab.agent(), &agent_server_store, cx))
+                .start_slot(start_slot)
                 .end_slot(
                     IconButton::new(("close-agent-tab", index), IconName::Close)
                         .shape(IconButtonShape::Square)

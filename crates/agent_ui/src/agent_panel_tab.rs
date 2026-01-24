@@ -29,6 +29,7 @@ impl AgentPanelTab {
 pub struct TabLabelRender {
     pub element: AnyElement,
     pub tooltip: Option<SharedString>,
+    pub is_generating: bool,
 }
 
 #[derive(Clone, PartialEq, Eq)]
