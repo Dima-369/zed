@@ -18989,6 +18989,8 @@ impl Editor {
                     anyhow::Ok(())
                 })
                 .detach_and_log_err(cx);
+            } else {
+                continue;
             }
 
             break;
