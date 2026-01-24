@@ -18906,21 +18906,13 @@ impl Editor {
 
                 let current_position = list.position.unwrap_or(list.changes.len());
                 let new_position = match direction {
-                    Direction::Next => {
-                        if current_position + 1 < list.changes.len() {
-                            current_position + 1
-                        } else {
-                            return None;
-                        }
-                    }
-                    Direction::Prev => {
-                        if current_position > 0 {
-                            current_position - 1
-                        } else {
-                            return None;
-                        }
-                    }
+                    Direction::Next => (current_position + 1).min(list.changes.len() - 1),
+                    Direction::Prev => current_position.saturating_sub(1),
                 };
+
+                if list.position == Some(new_position) {
+                    return None;
+                }
 
                 list.position = Some(new_position);
                 Some(list.changes[new_position].clone())
