@@ -2761,7 +2761,6 @@ impl GitPanel {
                     stop: Vec::new(),
                     temperature,
                     thinking_allowed: false,
-                    bypass_rate_limit: false,
                 };
 
                 let stream = model.stream_completion_text(request, cx);
@@ -4342,10 +4341,10 @@ impl GitPanel {
                     .child(
                         div()
                             .pr_2p5()
-                            .on_action(|&editor::actions::MoveUp, _, cx| {
+                            .on_action(|&zed_actions::editor::MoveUp, _, cx| {
                                 cx.stop_propagation();
                             })
-                            .on_action(|&editor::actions::MoveDown, _, cx| {
+                            .on_action(|&zed_actions::editor::MoveDown, _, cx| {
                                 cx.stop_propagation();
                             })
                             .child(EditorElement::new(&self.commit_editor, panel_editor_style)),

@@ -50,7 +50,7 @@ use terminal_hyperlinks::RegexSearches;
 use terminal_settings::{AlternateScroll, CursorShape, TerminalSettings};
 use theme::{ActiveTheme, Theme};
 use urlencoding;
-use util::truncate_and_trailoff;
+use util::{paths::PathStyle, truncate_and_trailoff};
 
 use std::{
     borrow::Cow,
@@ -60,14 +60,14 @@ use std::{
     path::PathBuf,
     process::ExitStatus,
     sync::Arc,
-    time::Instant,
+    time::{Duration, Instant},
 };
 use thiserror::Error;
 
 use gpui::{
-    App, AppContext as _, Bounds, ClipboardItem, Context, EventEmitter, Hsla, Keystroke, Modifiers,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Rgba,
-    ScrollWheelEvent, Size, Task, TouchPhase, Window, actions, black, px,
+    App, AppContext as _, BackgroundExecutor, Bounds, ClipboardItem, Context, EventEmitter, Hsla,
+    Keystroke, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
+    Rgba, ScrollWheelEvent, Size, Task, TouchPhase, Window, actions, black, px,
 };
 
 use crate::mappings::{colors::to_alac_rgb, keys::to_esc_str};
@@ -349,6 +349,8 @@ impl TerminalBuilder {
         alternate_scroll: AlternateScroll,
         max_scroll_history_lines: Option<usize>,
         window_id: u64,
+        background_executor: &BackgroundExecutor,
+        path_style: PathStyle,
     ) -> Result<TerminalBuilder> {
         // Create a display-only terminal (no actual PTY).
         let default_cursor_style = AlacCursorStyle::from(cursor_shape);
@@ -412,6 +414,8 @@ impl TerminalBuilder {
             },
             child_exited: None,
             event_loop_task: Task::ready(Ok(())),
+            background_executor: background_executor.clone(),
+            path_style,
         };
 
         Ok(TerminalBuilder {
@@ -435,8 +439,10 @@ impl TerminalBuilder {
         completion_tx: Option<Sender<Option<ExitStatus>>>,
         cx: &App,
         activation_script: Vec<String>,
+        path_style: PathStyle,
     ) -> Task<Result<TerminalBuilder>> {
         let version = release_channel::AppVersion::global(cx);
+        let background_executor = cx.background_executor().clone();
         let fut = async move {
             // Remove SHLVL so the spawned shell initializes it to 1, matching
             // the behavior of standalone terminal emulators like iTerm2/Kitty/Alacritty.
@@ -639,6 +645,8 @@ impl TerminalBuilder {
                 },
                 child_exited: None,
                 event_loop_task: Task::ready(Ok(())),
+                background_executor,
+                path_style,
             };
 
             if !activation_script.is_empty() && no_task {
@@ -861,6 +869,8 @@ pub struct Terminal {
     activation_script: Vec<String>,
     child_exited: Option<ExitStatus>,
     event_loop_task: Task<Result<(), anyhow::Error>>,
+    background_executor: BackgroundExecutor,
+    path_style: PathStyle,
 }
 
 struct CopyTemplate {
@@ -1180,6 +1190,7 @@ impl Terminal {
                     term,
                     point,
                     &mut self.hyperlink_regex_searches,
+                    self.path_style,
                 ) {
                     Some(hyperlink) => {
                         self.process_hyperlink(hyperlink, *open, cx);
@@ -1878,6 +1889,7 @@ impl Terminal {
                 &term_lock,
                 point,
                 &mut self.hyperlink_regex_searches,
+                self.path_style,
             );
             drop(term_lock);
 
@@ -1969,6 +1981,7 @@ impl Terminal {
                         &term_lock,
                         point,
                         &mut self.hyperlink_regex_searches,
+                        self.path_style,
                     )
                 } {
                     if mouse_down_hyperlink == mouse_up_hyperlink {
@@ -2282,6 +2295,7 @@ impl Terminal {
             None,
             cx,
             self.activation_script.clone(),
+            self.path_style,
         )
     }
 }
@@ -2357,9 +2371,18 @@ unsafe fn append_text_to_term(term: &mut Term<ZedListener>, text_lines: &[&str])
 
 impl Drop for Terminal {
     fn drop(&mut self) {
-        if let TerminalType::Pty { pty_tx, info } = &mut self.terminal_type {
-            info.kill_child_process();
+        if let TerminalType::Pty { pty_tx, mut info } =
+            std::mem::replace(&mut self.terminal_type, TerminalType::DisplayOnly)
+        {
             pty_tx.0.send(Msg::Shutdown).ok();
+
+            let timer = self.background_executor.timer(Duration::from_millis(100));
+            self.background_executor
+                .spawn(async move {
+                    timer.await;
+                    info.kill_child_process();
+                })
+                .detach();
         }
     }
 }
@@ -2502,6 +2525,15 @@ mod tests {
     use smol::channel::Receiver;
     use task::{Shell, ShellBuilder};
 
+    #[cfg(target_os = "macos")]
+    fn init_test(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            let settings_store = settings::SettingsStore::test(cx);
+            cx.set_global(settings_store);
+            theme::init(theme::LoadThemes::JustBase, cx);
+        });
+    }
+
     /// Helper to build a test terminal running a shell command.
     /// Returns the terminal entity and a receiver for the completion signal.
     async fn build_test_terminal(
@@ -2534,6 +2566,7 @@ mod tests {
                     Some(completion_tx),
                     cx,
                     vec![],
+                    PathStyle::local(),
                 )
             })
             .await
@@ -2549,9 +2582,16 @@ mod tests {
         });
 
         let terminal = cx.new(|cx| {
-            TerminalBuilder::new_display_only(CursorShape::default(), AlternateScroll::On, None, 0)
-                .unwrap()
-                .subscribe(cx)
+            TerminalBuilder::new_display_only(
+                CursorShape::default(),
+                AlternateScroll::On,
+                None,
+                0,
+                cx.background_executor(),
+                PathStyle::local(),
+            )
+            .unwrap()
+            .subscribe(cx)
         });
 
         terminal.update(cx, |terminal, cx| {
@@ -2650,6 +2690,8 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[gpui::test(iterations = 10)]
     async fn test_terminal_eof(cx: &mut TestAppContext) {
+        init_test(cx);
+
         cx.executor().allow_parking();
 
         let (completion_tx, completion_rx) = smol::channel::unbounded();
@@ -2670,6 +2712,7 @@ mod tests {
                     Some(completion_tx),
                     cx,
                     Vec::new(),
+                    PathStyle::local(),
                 )
             })
             .await
@@ -2745,6 +2788,7 @@ mod tests {
                     Some(completion_tx),
                     cx,
                     Vec::new(),
+                    PathStyle::local(),
                 )
             })
             .await
@@ -2925,9 +2969,16 @@ mod tests {
     #[gpui::test]
     async fn test_write_output_converts_lf_to_crlf(cx: &mut TestAppContext) {
         let terminal = cx.new(|cx| {
-            TerminalBuilder::new_display_only(CursorShape::default(), AlternateScroll::On, None, 0)
-                .unwrap()
-                .subscribe(cx)
+            TerminalBuilder::new_display_only(
+                CursorShape::default(),
+                AlternateScroll::On,
+                None,
+                0,
+                cx.background_executor(),
+                PathStyle::local(),
+            )
+            .unwrap()
+            .subscribe(cx)
         });
 
         // Test simple LF conversion
@@ -2966,9 +3017,16 @@ mod tests {
     #[gpui::test]
     async fn test_write_output_preserves_existing_crlf(cx: &mut TestAppContext) {
         let terminal = cx.new(|cx| {
-            TerminalBuilder::new_display_only(CursorShape::default(), AlternateScroll::On, None, 0)
-                .unwrap()
-                .subscribe(cx)
+            TerminalBuilder::new_display_only(
+                CursorShape::default(),
+                AlternateScroll::On,
+                None,
+                0,
+                cx.background_executor(),
+                PathStyle::local(),
+            )
+            .unwrap()
+            .subscribe(cx)
         });
 
         // Test that existing CRLF doesn't get doubled
@@ -3001,9 +3059,16 @@ mod tests {
     #[gpui::test]
     async fn test_write_output_preserves_bare_cr(cx: &mut TestAppContext) {
         let terminal = cx.new(|cx| {
-            TerminalBuilder::new_display_only(CursorShape::default(), AlternateScroll::On, None, 0)
-                .unwrap()
-                .subscribe(cx)
+            TerminalBuilder::new_display_only(
+                CursorShape::default(),
+                AlternateScroll::On,
+                None,
+                0,
+                cx.background_executor(),
+                PathStyle::local(),
+            )
+            .unwrap()
+            .subscribe(cx)
         });
 
         // Test that bare CR (without LF) is preserved
@@ -3211,6 +3276,7 @@ mod tests {
                         None,
                         cx,
                         vec![],
+                        PathStyle::local(),
                     )
                 })
                 .await

@@ -193,6 +193,19 @@ pub struct DeeplTranslate {
     pub formality: Option<String>,
 }
 
+pub mod editor {
+    use gpui::actions;
+    actions!(
+        editor,
+        [
+            /// Moves cursor up.
+            MoveUp,
+            /// Moves cursor down.
+            MoveDown,
+        ]
+    );
+}
+
 pub mod dev {
     use gpui::actions;
 
@@ -371,6 +384,16 @@ pub mod icon_theme_selector {
     }
 }
 
+pub mod search {
+    use gpui::actions;
+    actions!(
+        search,
+        [
+            /// Toggles searching in ignored files.
+            ToggleIncludeIgnored
+        ]
+    );
+}
 pub mod settings_profile_selector {
     use gpui::Action;
     use schemars::JsonSchema;

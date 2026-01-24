@@ -1641,8 +1641,8 @@ impl TextThreadEditor {
             > = std::collections::BTreeMap::new();
 
             for comment in comments {
-                let start = comment.anchor_range.start.to_point(&snapshot);
-                let end = comment.anchor_range.end.to_point(&snapshot);
+                let start = comment.range.start.to_point(&snapshot);
+                let end = comment.range.end.to_point(&snapshot);
                 comments_by_range
                     .entry((start, end))
                     .or_default()
@@ -3546,6 +3546,7 @@ mod tests {
     fn init_test(cx: &mut App) {
         let settings_store = SettingsStore::test(cx);
         prompt_store::init(cx);
+        editor::init(cx);
         LanguageModelRegistry::test(cx);
         cx.set_global(settings_store);
 
