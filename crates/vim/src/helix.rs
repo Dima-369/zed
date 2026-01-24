@@ -1493,10 +1493,7 @@ mod test {
     use util::path;
     use workspace::DeploySearch;
 
-    use crate::{
-        VimAddon, state::Mode,
-        test::VimTestContext,
-    };
+    use crate::{VimAddon, state::Mode, test::VimTestContext};
 
     #[gpui::test]
     async fn test_word_motions(cx: &mut gpui::TestAppContext) {

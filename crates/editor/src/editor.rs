@@ -18876,18 +18876,21 @@ impl Editor {
             list.changes.retain(|existing| {
                 if existing.editor == entry.editor {
                     if existing.anchors.len() == entry.anchors.len() {
-                        return !existing.anchors.iter().zip(entry.anchors.iter()).all(
-                            |(a1, a2)| {
-                                a1.to_point(&buffer).row == a2.to_point(&buffer).row
-                            },
-                        );
+                        return !existing
+                            .anchors
+                            .iter()
+                            .zip(entry.anchors.iter())
+                            .all(|(a1, a2)| a1.to_point(&buffer).row == a2.to_point(&buffer).row);
                     }
-                } else if existing.project_path == entry.project_path && entry.project_path.is_some()
+                } else if existing.project_path == entry.project_path
+                    && entry.project_path.is_some()
                 {
                     if existing.points.len() == entry.points.len() {
-                        return !existing.points.iter().zip(entry.points.iter()).all(|(p1, p2)| {
-                            p1.row == p2.row
-                        });
+                        return !existing
+                            .points
+                            .iter()
+                            .zip(entry.points.iter())
+                            .all(|(p1, p2)| p1.row == p2.row);
                     }
                 }
                 true
@@ -18926,7 +18929,10 @@ impl Editor {
             .and_then(|item| item.act_as::<Editor>(cx))
             .map(|editor_handle| {
                 editor_handle.update(cx, |editor, cx| {
-                    let point = editor.selections.newest::<Point>(&editor.display_snapshot(cx)).head();
+                    let point = editor
+                        .selections
+                        .newest::<Point>(&editor.display_snapshot(cx))
+                        .head();
                     let project_path = editor.project_path(cx);
                     (editor_handle.clone(), project_path, point)
                 })
@@ -18956,21 +18962,23 @@ impl Editor {
                 return;
             };
 
-            let cursor_already_at_entry = current_cursor_info.as_ref().is_some_and(|(active_editor, active_path, cursor_point)| {
-                if let Some(entry_editor) = entry.editor.upgrade() {
-                    if entry_editor == *active_editor {
-                        return entry.points.contains(cursor_point);
+            let cursor_already_at_entry = current_cursor_info.as_ref().is_some_and(
+                |(active_editor, active_path, cursor_point)| {
+                    if let Some(entry_editor) = entry.editor.upgrade() {
+                        if entry_editor == *active_editor {
+                            return entry.points.contains(cursor_point);
+                        }
                     }
-                }
 
-                if let (Some(p1), Some(p2)) = (active_path, &entry.project_path) {
-                    if p1 == p2 {
-                        return entry.points.contains(cursor_point);
+                    if let (Some(p1), Some(p2)) = (active_path, &entry.project_path) {
+                        if p1 == p2 {
+                            return entry.points.contains(cursor_point);
+                        }
                     }
-                }
 
-                false
-            });
+                    false
+                },
+            );
 
             if cursor_already_at_entry {
                 continue;

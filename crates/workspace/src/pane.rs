@@ -3547,17 +3547,14 @@ impl Pane {
                     },
                 )
             }))
-            .when(
-                !unpinned_tabs.is_empty() || !vertical_stacking,
-                |tab_bar| {
-                    tab_bar.child(self.render_unpinned_tabs_container(
-                        unpinned_tabs,
-                        tab_count,
-                        vertical_stacking,
-                        cx,
-                    ))
-                },
-            );
+            .when(!unpinned_tabs.is_empty() || !vertical_stacking, |tab_bar| {
+                tab_bar.child(self.render_unpinned_tabs_container(
+                    unpinned_tabs,
+                    tab_count,
+                    vertical_stacking,
+                    cx,
+                ))
+            });
         Self::configure_tab_bar_end(tab_bar, open_aside_right, render_aside_toggle_right)
             .into_any_element()
     }

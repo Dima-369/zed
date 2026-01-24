@@ -1440,7 +1440,8 @@ impl AgentPanel {
 
         match &new_view {
             ActiveView::TextThread { .. } | ActiveView::ExternalAgentThread { .. } => {
-                if self.tabs.len() == 1 && matches!(self.tabs[0].view(), ActiveView::Uninitialized) {
+                if self.tabs.len() == 1 && matches!(self.tabs[0].view(), ActiveView::Uninitialized)
+                {
                     self.tabs[0] = AgentPanelTab::new(new_view, agent);
                     self.set_active_tab_by_id(0, window, cx);
                 } else {
@@ -1566,7 +1567,6 @@ impl AgentPanel {
             }
         }
     }
-
 
     fn populate_recently_updated_menu_section(
         mut menu: ContextMenu,
@@ -2771,7 +2771,11 @@ impl AgentPanel {
             .pr(DynamicSpacing::Base06.rems(cx))
             .child(new_thread_menu)
             .when(show_history_menu, |this| {
-                this.child(self.render_recent_entries_menu(IconName::MenuAltTemp, Corner::TopRight, cx))
+                this.child(self.render_recent_entries_menu(
+                    IconName::MenuAltTemp,
+                    Corner::TopRight,
+                    cx,
+                ))
             })
             .child(self.render_panel_options_menu(window, cx));
 
