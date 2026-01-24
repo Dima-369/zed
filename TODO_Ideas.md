@@ -1,5 +1,3 @@
-merge main, then see if copilot login is fixed
-
 in `MULTIPLE-AGENT-TABS.md`, at bottom, maybe add diff to have an accent circle to indicate status progress?
 
 
