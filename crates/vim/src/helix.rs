@@ -1494,7 +1494,7 @@ mod test {
     use workspace::DeploySearch;
 
     use crate::{
-        VimAddon, state::{Mode, Operator},
+        VimAddon, state::Mode,
         test::VimTestContext,
     };
 

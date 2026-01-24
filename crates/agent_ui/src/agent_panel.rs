@@ -818,7 +818,7 @@ impl AgentPanel {
 
         self.push_tab(
             ActiveView::text_thread(
-                text_thread_editor.clone(),
+                text_thread_editor,
                 self.language_registry.clone(),
                 window,
                 cx,
@@ -1368,7 +1368,7 @@ impl AgentPanel {
         self.tab_bar_scroll_handle.scroll_to_item(new_id);
 
         if self.selected_agent != tab_agent {
-            self.selected_agent = tab_agent.clone();
+            self.selected_agent = tab_agent;
             self.serialize(cx);
         }
 
@@ -1926,7 +1926,7 @@ impl AgentPanel {
                     h_flex()
                         .flex_grow()
                         .items_center()
-                        .child(title_editor.clone())
+                        .child(title_editor)
                         .into_any_element()
                 } else {
                     h_flex()
@@ -2250,7 +2250,7 @@ impl AgentPanel {
                     .as_ref()
                     .map(|editor| editor.read(cx).text(cx))
                     .filter(|text| !text.is_empty())
-                    .unwrap_or_else(|| thread_view.read(cx).title(cx).to_string().into());
+                    .unwrap_or_else(|| thread_view.read(cx).title(cx).to_string());
 
                 let (label_text, tooltip) = Self::display_tab_label(text, is_active);
 
@@ -2329,7 +2329,7 @@ impl AgentPanel {
                         if summary.done {
                             let mut text = title_editor.read(cx).text(cx);
                             if text.is_empty() {
-                                text = summary.text.clone().into();
+                                text = summary.text.clone();
                             }
                             let (label_text, tooltip) = Self::display_tab_label(text, is_active);
 
@@ -2491,7 +2491,7 @@ impl AgentPanel {
                         workspace.project().read(cx).is_via_collab()
                     })
                     .unwrap_or_default();
-                let agent_server_store = new_thread_menu_store.clone();
+                let agent_server_store = new_thread_menu_store;
 
                 move |window, cx| {
                     telemetry::event!("New Thread Clicked");
