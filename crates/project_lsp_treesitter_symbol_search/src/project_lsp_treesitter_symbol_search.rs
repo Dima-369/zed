@@ -14,6 +14,7 @@ use picker::{Picker, PickerDelegate};
 use providers::SearchResult;
 use symbols::SymbolProvider;
 use ui::{Divider, HighlightedLabel, IconName, ListItem, ListItemSpacing, prelude::*};
+use ui_input::ErasedEditor;
 use util::ResultExt;
 use workspace::{ModalView, Workspace};
 
@@ -183,7 +184,7 @@ impl PickerDelegate for ProjectSymbolSearchDelegate {
 
     fn render_editor(
         &self,
-        editor: &Entity<Editor>,
+        editor: &Arc<dyn ErasedEditor>,
         _window: &mut Window,
         _cx: &mut Context<Picker<Self>>,
     ) -> Div {
@@ -194,7 +195,7 @@ impl PickerDelegate for ProjectSymbolSearchDelegate {
                     .flex_none()
                     .h_9()
                     .px_2p5()
-                    .child(editor.clone()),
+                    .child(editor.render(_window, _cx)),
             )
             .child(Divider::horizontal())
     }

@@ -26,6 +26,7 @@ use ui::{
     Button, ButtonStyle, Color, CommonAnimationExt, Divider, Icon, IconName,
     KeyBinding as UiKeyBinding, Label, ListItem, Tooltip, prelude::*,
 };
+use ui_input::ErasedEditor;
 use util::{ResultExt, paths::PathMatcher};
 use vim_mode_setting::VimModeSetting;
 use workspace::searchable::SearchableItem;
@@ -350,10 +351,10 @@ impl BufferSearchModal {
         self.picker.update(cx, |picker, cx| {
             picker.delegate.search_history_cursor = cursor;
             if let Some(query) = next_query {
-                picker.set_query(query, window, cx);
+                picker.set_query(&query, window, cx);
             } else {
                 picker.delegate.search_history_cursor.reset();
-                picker.set_query("".to_string(), window, cx);
+                picker.set_query("", window, cx);
             }
         });
     }
@@ -380,7 +381,7 @@ impl BufferSearchModal {
                 .map(|s| s.to_string())
             {
                 self.picker
-                    .update(cx, |picker, cx| picker.set_query(query, window, cx));
+                    .update(cx, |picker, cx| picker.set_query(&query, window, cx));
                 return;
             }
         }
@@ -393,7 +394,7 @@ impl BufferSearchModal {
         if let Some(query) = prev_query {
             self.picker.update(cx, |picker, cx| {
                 picker.delegate.search_history_cursor = cursor_mut;
-                picker.set_query(query, window, cx);
+                picker.set_query(&query, window, cx);
             });
         }
     }
@@ -428,7 +429,7 @@ impl BufferSearchModal {
                 modal.picker.update(cx, |picker, cx| {
                     picker.delegate.line_mode = !picker.delegate.line_mode;
                     let query = picker.delegate.current_query.clone();
-                    picker.set_query(query, window, cx);
+                    picker.set_query(&query, window, cx);
                 });
             });
         }
@@ -470,7 +471,7 @@ impl BufferSearchModal {
                 .show_scrollbar(true);
             picker.delegate.focus_handle = Some(picker.focus_handle(cx));
             if let Some(q) = initial_query {
-                picker.set_query(q, window, cx);
+                picker.set_query(&q, window, cx);
             }
             picker
         });
@@ -1011,7 +1012,7 @@ impl PickerDelegate for BufferSearchDelegate {
 
     fn render_editor(
         &self,
-        editor: &Entity<Editor>,
+        editor: &Arc<dyn ErasedEditor>,
         _window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Div {
@@ -1031,7 +1032,7 @@ impl PickerDelegate for BufferSearchDelegate {
                             .h_6()
                             .rounded_md()
                             .bg(cx.theme().colors().elevated_surface_background)
-                            .child(editor.clone())
+                            .child(editor.render(_window, cx))
                             .child(
                                 h_flex()
                                     .gap_1()
@@ -1072,7 +1073,7 @@ impl PickerDelegate for BufferSearchDelegate {
                                                 picker.delegate.line_mode =
                                                     !picker.delegate.line_mode;
                                                 let query = picker.delegate.current_query.clone();
-                                                picker.set_query(query, window, cx);
+                                                picker.set_query(&query, window, cx);
                                             }))
                                             .tooltip(|window, cx| {
                                                 Tooltip::text("Toggle Line Mode")(window, cx)

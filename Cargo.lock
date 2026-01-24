@@ -12857,6 +12857,7 @@ dependencies = [
  "picker",
  "project",
  "ui",
+ "ui_input",
  "util",
  "workspace",
 ]
@@ -14917,6 +14918,7 @@ dependencies = [
  "theme",
  "tracing",
  "ui",
+ "ui_input",
  "unicode-segmentation",
  "unindent",
  "util",
