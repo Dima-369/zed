@@ -63,6 +63,12 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 - on viewing an image, the `ImageViewer` key context is enabled, previously there was no context
 
+## Go To Global Change Actions
+
+Akin to the existing `editor::GoToPreviousChange` and `editor::GoToNextChange` actions, I implemented `editor::GoToPreviousGlobalChange` and `editor::GoToNextGlobalChange`.
+
+It should behave like in JetBrains IDEs, it's just not as good at the moment.
+
 ## Clipboard History Modal
 
 - implement a filterable clipboard history model (opened via `clipboard_history_modal::ToggleClipboardHistory`) which keeps tracks of copy text actions like `editor::Copy`. On confirming it pastes in the selected entry
