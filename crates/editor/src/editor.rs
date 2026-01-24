@@ -1001,20 +1001,12 @@ struct GlobalChangeEntry {
 const GLOBAL_CHANGE_GROUPING_THRESHOLD: Duration = Duration::from_millis(300);
 
 /// A global list of changes across all editors in the workspace.
+#[derive(Default)]
 struct GlobalChangeList {
     /// All changes across all editors.
     changes: Vec<GlobalChangeEntry>,
     /// Currently "selected" change position.
     position: Option<usize>,
-}
-
-impl Default for GlobalChangeList {
-    fn default() -> Self {
-        Self {
-            changes: Vec::new(),
-            position: None,
-        }
-    }
 }
 
 impl gpui::Global for GlobalChangeList {}
@@ -18967,13 +18959,13 @@ impl Editor {
             let cursor_already_at_entry = current_cursor_info.as_ref().is_some_and(|(active_editor, active_path, cursor_point)| {
                 if let Some(entry_editor) = entry.editor.upgrade() {
                     if entry_editor == *active_editor {
-                        return entry.points.iter().any(|p| *p == *cursor_point);
+                        return entry.points.contains(cursor_point);
                     }
                 }
 
                 if let (Some(p1), Some(p2)) = (active_path, &entry.project_path) {
                     if p1 == p2 {
-                        return entry.points.iter().any(|p| *p == *cursor_point);
+                        return entry.points.contains(cursor_point);
                     }
                 }
 
@@ -18997,7 +18989,7 @@ impl Editor {
                 });
             } else if let Some(project_path) = entry.project_path {
                 let points = entry.points.clone();
-                let open_task = workspace.open_path(project_path.clone(), None, true, window, cx);
+                let open_task = workspace.open_path(project_path, None, true, window, cx);
                 cx.spawn_in(window, async move |_workspace, cx| {
                     let item = open_task.await?;
                     if let Some(editor) = item.downcast::<Editor>() {
