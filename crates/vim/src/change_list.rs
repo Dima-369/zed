@@ -54,7 +54,7 @@ impl Vim {
             let selections = editor.selections.all_adjusted_display(&display_map);
             let buffer = editor.buffer().clone();
 
-            let pop_state = editor
+            let same_row = editor
                 .change_list
                 .last()
                 .map(|previous| {
@@ -79,9 +79,9 @@ impl Vim {
 
             editor
                 .change_list
-                .push_to_change_list(pop_state, new_positions.clone());
+                .push_to_change_list(same_row, new_positions.clone());
 
-            editor.push_to_global_change_list(pop_state, new_positions.clone(), cx);
+            editor.push_to_global_change_list(same_row, new_positions.clone(), cx);
 
             (new_positions, buffer)
         }) else {

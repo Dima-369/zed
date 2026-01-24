@@ -987,15 +987,27 @@ struct GlobalChangeEntry {
     anchors: Vec<Anchor>,
     /// The points representing the change positions (for reopening closed editors).
     points: Vec<Point>,
+    /// When the change was recorded.
+    timestamp: Instant,
 }
 
+const GLOBAL_CHANGE_GROUPING_THRESHOLD: Duration = Duration::from_millis(300);
+
 /// A global list of changes across all editors in the workspace.
-#[derive(Default)]
 struct GlobalChangeList {
     /// All changes across all editors.
     changes: Vec<GlobalChangeEntry>,
     /// Currently "selected" change position.
     position: Option<usize>,
+}
+
+impl Default for GlobalChangeList {
+    fn default() -> Self {
+        Self {
+            changes: Vec::new(),
+            position: None,
+        }
+    }
 }
 
 impl gpui::Global for GlobalChangeList {}
@@ -18820,17 +18832,26 @@ impl Editor {
         let project_path = self.project_path(cx);
         let buffer = self.buffer.read(cx).snapshot(cx);
         let points = anchors.iter().map(|a| a.to_point(&buffer)).collect();
+        let now = Instant::now();
 
         let entry = GlobalChangeEntry {
             editor: cx.entity().downgrade(),
             project_path,
             anchors,
             points,
+            timestamp: now,
         };
 
         cx.update_global::<GlobalChangeList, _>(|list, _| {
             list.position = None;
-            if group {
+
+            let should_group = group
+                || list.changes.last().is_some_and(|last| {
+                    last.editor == entry.editor
+                        && now.duration_since(last.timestamp) < GLOBAL_CHANGE_GROUPING_THRESHOLD
+                });
+
+            if should_group {
                 if let Some(last) = list.changes.last_mut() {
                     if last.editor == entry.editor {
                         *last = entry;
