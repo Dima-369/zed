@@ -67,7 +67,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 Akin to the existing `editor::GoToPreviousChange` and `editor::GoToNextChange` actions, I implemented `editor::GoToPreviousGlobalChange` and `editor::GoToNextGlobalChange`.
 
-It should behave like in JetBrains IDEs, it's just not as good at the moment. It keeps track of 'too much', making it a bit annoying to use.
+It behaves like the JetBrains IDEs actions: `Last Edit Location` and `Next Edit Location`.
 
 ## Clipboard History Modal
 
