@@ -1,9 +1,9 @@
-
+the action `vim::Paste` when already in visual mode should not override clipboard with text below, it should keep same clipboard content, so I can replace multiple occurrences
 
 
 # >>> Investigations
 
-## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
+## Fix that edit predictionuse picker::{ce: new file
 
 I fixed this in my own fork already, but let's see what Zed team says:
 
