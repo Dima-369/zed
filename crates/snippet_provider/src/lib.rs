@@ -14,7 +14,6 @@ use format::VsSnippetsFile;
 use fs::Fs;
 use futures::stream::StreamExt;
 use gpui::{App, AppContext as _, AsyncApp, Context, Entity, Task, WeakEntity};
-use log;
 pub use registry::*;
 use util::ResultExt;
 
@@ -289,14 +288,9 @@ impl SnippetProvider {
         // Spawn tasks to reload snippets from each watched directory
         for directory in directories_to_scan {
             cx.spawn(async move |this, cx| {
-                if let Err(err) =
+                if let Err(_err) =
                     initial_scan(this.clone(), Arc::from(directory.as_path()), cx.clone()).await
                 {
-                    log::error!(
-                        "Failed to reload snippets from {}: {}",
-                        directory.display(),
-                        err
-                    );
                 }
                 anyhow::Ok(())
             })
