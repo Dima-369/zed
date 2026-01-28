@@ -22,9 +22,9 @@ use futures::{StreamExt, stream::FuturesUnordered};
 use gpui::{
     Action, AnyElement, App, AsyncWindowContext, ClickEvent, ClipboardItem, Context, Corner, Div,
     DragMoveEvent, Entity, EntityId, EventEmitter, ExternalPaths, FocusHandle, FocusOutEvent,
-    Focusable, KeyContext, MouseButton,  NavigationDirection, Pixels, Point, Render,
-    ScrollHandle, Subscription, Task, WeakEntity, WeakFocusHandle, Window, actions, anchored,
-    deferred, prelude::*,
+    Focusable, KeyContext, MouseButton, NavigationDirection, Pixels, Point, Render, ScrollHandle,
+    Subscription, Task, WeakEntity, WeakFocusHandle, Window, actions, anchored, deferred,
+    prelude::*,
 };
 use itertools::Itertools;
 use language::{Capability, DiagnosticSeverity};
