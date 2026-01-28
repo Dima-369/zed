@@ -1,8 +1,3 @@
-merge main, then try out:
-(project_panel: Add bold_folder_labels setting)
-https://github.com/zed-industries/zed/pull/47631#event-22334778375
-
-fix  in `workspace::OpenFileFromDirectory` modal that on typing to further down that the index is not restored to index 0 at top, but jumps to a few below
 
 
 
