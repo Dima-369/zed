@@ -723,14 +723,7 @@ impl PickerDelegate for RecentProjectsDelegate {
         });
 
         if self.reset_selected_match_index {
-            self.selected_match_index = self
-                .matches
-                .iter()
-                .enumerate()
-                .rev()
-                .max_by_key(|(_, m)| OrderedFloat(m.score))
-                .map(|(ix, _)| ix)
-                .unwrap_or(0);
+            self.selected_match_index = 0;
         }
         self.reset_selected_match_index = true;
         Task::ready(())
@@ -1290,14 +1283,7 @@ impl PickerDelegate for RecentProjectsZoxideDelegate {
         self.matches.sort_unstable_by_key(|m| m.candidate_id);
 
         if self.reset_selected_match_index {
-            self.selected_match_index = self
-                .matches
-                .iter()
-                .enumerate()
-                .rev()
-                .max_by_key(|(_, m)| OrderedFloat(m.score))
-                .map(|(ix, _)| ix)
-                .unwrap_or(0);
+            self.selected_match_index = 0;
         }
         self.reset_selected_match_index = true;
         Task::ready(())
