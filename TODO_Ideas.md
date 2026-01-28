@@ -1,4 +1,4 @@
-the action `vim::Paste` when already in visual mode should not override clipboard with text below, it should keep same clipboard content, so I can replace multiple occurrences
+
 
 
 # >>> Investigations
