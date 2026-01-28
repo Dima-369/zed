@@ -5,7 +5,7 @@ use gpui::{
     Subscription, Task, UniformListScrollHandle, WeakEntity, Window,
 };
 use gpui::{Pixels, px};
-use ordered_float::OrderedFloat;
+
 use parking_lot::Mutex;
 use picker::{Picker, PickerDelegate};
 use std::{
@@ -534,20 +534,7 @@ impl PickerDelegate for RecentFilesDelegate {
         ));
         self.matches.sort_unstable_by_key(|m| m.candidate_id);
 
-        if self.matches.is_empty() {
-            self.selected_match_index = 0;
-        } else if query.is_empty() {
-            // When query is empty, select the first item (most recent)
-            self.selected_match_index = 0;
-        } else {
-            self.selected_match_index = self
-                .matches
-                .iter()
-                .enumerate()
-                .max_by_key(|(_, m)| OrderedFloat(m.score))
-                .map(|(ix, _)| ix)
-                .unwrap_or(0);
-        }
+        self.selected_match_index = 0;
 
         Task::ready(())
     }
