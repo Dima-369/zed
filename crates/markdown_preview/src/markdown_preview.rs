@@ -7,6 +7,8 @@ pub mod markdown_parser;
 pub mod markdown_preview_view;
 pub mod markdown_renderer;
 
+pub use zed_actions::preview::markdown::{OpenPreview, OpenPreviewToTheSide};
+
 actions!(
     markdown,
     [
@@ -28,10 +30,6 @@ actions!(
         ScrollPageLittleUp,
         /// Scrolls down by a quarter page in the markdown preview.
         ScrollPageLittleDown,
-        /// Opens a markdown preview for the current file.
-        OpenPreview,
-        /// Opens a markdown preview in a split pane.
-        OpenPreviewToTheSide,
         /// Opens a following markdown preview that syncs with the editor.
         OpenFollowingPreview
     ]

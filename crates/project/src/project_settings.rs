@@ -17,6 +17,7 @@ use rpc::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+pub use settings::BinarySettings;
 pub use settings::DirenvSettings;
 use settings::FontFamilyName;
 pub use settings::LspSettings;
