@@ -140,6 +140,10 @@ You modify the emojis in your `settings.json` like this in the root setting obje
 
 - add `"proxy_no_verify": true` support in `settings.json`
 
+## JJ
+
+- add `jjdescription` to `crates/languages/src/diff/config.toml > path_suffixes`  to change commit message description
+
 ## Git
 
 - add `blame > git_blame_font_family` setting to specify the font family for the git blame view because I am using a proportional font and the blame view misaligns otherwise

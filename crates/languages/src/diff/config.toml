@@ -1,4 +1,4 @@
 name = "Diff"
 grammar = "diff"
-path_suffixes = ["diff", "patch"]
+path_suffixes = ["diff", "patch", "jjdescription"]
 brackets = []
