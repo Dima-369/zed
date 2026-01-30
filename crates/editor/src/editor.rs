@@ -2798,7 +2798,21 @@ impl Editor {
     }
 
     pub fn display_snapshot(&self, cx: &mut App) -> DisplaySnapshot {
-        self.display_map.update(cx, |map, cx| map.snapshot(cx))
+        let has_active_selections = self.has_active_selections();
+        self.display_map.update(cx, |map, cx| {
+            map.snapshot_with_selections(has_active_selections, cx)
+        })
+    }
+
+    fn has_active_selections(&self) -> bool {
+        // Check if there are multiple cursors/selections
+        if self.selections.count() > 1 {
+            return true;
+        }
+
+        // Check if the single selection is non-empty (has selected text)
+        let newest_selection = self.selections.newest_anchor();
+        newest_selection.start != newest_selection.end
     }
 
     pub fn deploy_mouse_context_menu(
@@ -4343,7 +4357,9 @@ impl Editor {
             show_runnables: self.show_runnables,
             show_breakpoints: self.show_breakpoints,
             git_blame_gutter_max_author_length,
-            display_snapshot: self.display_map.update(cx, |map, cx| map.snapshot(cx)),
+            display_snapshot: self.display_map.update(cx, |map, cx| {
+                map.snapshot_with_selections(self.has_active_selections(), cx)
+            }),
             placeholder_display_snapshot: self
                 .placeholder_display_map
                 .as_ref()

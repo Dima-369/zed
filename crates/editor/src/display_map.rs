@@ -444,6 +444,15 @@ impl DisplayMap {
 
     #[instrument(skip_all)]
     pub fn snapshot(&mut self, cx: &mut Context<Self>) -> DisplaySnapshot {
+        self.snapshot_with_selections(false, cx)
+    }
+
+    #[instrument(skip_all)]
+    pub fn snapshot_with_selections(
+        &mut self,
+        has_active_selections: bool,
+        cx: &mut Context<Self>,
+    ) -> DisplaySnapshot {
         let (self_wrap_snapshot, self_wrap_edits) = self.sync_through_wrap(cx);
         let companion_wrap_data = self.companion.as_ref().and_then(|(companion_dm, _)| {
             companion_dm
@@ -487,6 +496,7 @@ impl DisplayMap {
             text_highlights: self.text_highlights.clone(),
             inlay_highlights: self.inlay_highlights.clone(),
             clip_at_line_ends: self.clip_at_line_ends,
+            has_active_selections,
             masked: self.masked,
             fold_placeholder: self.fold_placeholder.clone(),
         }
@@ -1552,6 +1562,7 @@ pub struct DisplaySnapshot {
     text_highlights: TextHighlights,
     inlay_highlights: InlayHighlights,
     clip_at_line_ends: bool,
+    pub has_active_selections: bool,
     masked: bool,
     diagnostics_max_severity: DiagnosticSeverity,
     pub(crate) fold_placeholder: FoldPlaceholder,
@@ -1986,7 +1997,22 @@ impl DisplaySnapshot {
     }
 
     pub fn clip_at_line_end(&self, display_point: DisplayPoint) -> DisplayPoint {
-        return display_point;
+        // This method is only called when clip_at_line_ends is true.
+        // If there are active selections (like in vim visual mode), disable virtualedit=onemore
+        // and use the original clipping behavior to avoid issues with copy/paste.
+        if self.has_active_selections {
+            let mut point = self.display_point_to_point(display_point, Bias::Left);
+
+            if point.column != self.buffer_snapshot().line_len(MultiBufferRow(point.row)) {
+                return display_point;
+            }
+            point.column = point.column.saturating_sub(1);
+            point = self.buffer_snapshot().clip_point(point, Bias::Left);
+            return self.point_to_display_point(point, Bias::Left);
+        }
+
+        // No active selections: allow virtualedit=onemore behavior
+        display_point
     }
 
     pub fn folds_in_range<T>(&self, range: Range<T>) -> impl Iterator<Item = &Fold>

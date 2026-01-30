@@ -131,7 +131,7 @@ You modify the emojis in your `settings.json` like this in the root setting obje
 
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
 - modified `vim/.../delete_motion.rs` so `vim::DeleteRight` at end of line stays on the newline character
-- made `clip_at_line_end()` in `crates/editor/src/display_map.rs` a no-op, to have an always enabled `virtualedit=onemore` mode
+- patch `clip_at_line_end()` in `crates/editor/src/display_map.rs` as a no-op when no editor selections are there, to have an always enabled `virtualedit=onemore` mode
   - this also allows mouse clicking beyond the end of the line where no characters are, to select the newline character in vim mode
 - fix bug that when in vim visual line mode and cursor is on right newline character, that the line below is incorrectly copied on `editor::Copy`. This mostly happens in my own Zed config because I mixing `editor` and `vim` actions to ensure that I can move cursor on the right newline character, and usually not in proper Zed keybindings.
 - integrate Helix jump list from https://github.com/zed-industries/zed/pull/44661 and implemented `vim::HelixOpenJumpListInMultibuffer` action

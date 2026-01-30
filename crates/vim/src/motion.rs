@@ -2137,14 +2137,33 @@ pub(crate) fn end_of_line(
     if times > 1 {
         point = map.start_of_relative_buffer_row(point, times as isize - 1);
     }
-    if display_lines {
+
+    let end_point = if display_lines {
         map.clip_point(
             DisplayPoint::new(point.row(), map.line_len(point.row())),
             Bias::Left,
         )
     } else {
         map.clip_point(map.next_line_boundary(point.to_point(map)).1, Bias::Left)
+    };
+
+    // If there are active selections (like in visual mode), position cursor at the last character
+    // instead of after it to avoid issues with copy/paste operations
+    if map.has_active_selections {
+        let buffer_point = map.display_point_to_point(end_point, Bias::Left);
+        let line_len = map
+            .buffer_snapshot()
+            .line_len(MultiBufferRow(buffer_point.row));
+
+        if buffer_point.column == line_len && line_len > 0 {
+            // Move cursor to the last character instead of after it
+            let adjusted_point = Point::new(buffer_point.row, line_len.saturating_sub(1));
+            let clipped_point = map.buffer_snapshot().clip_point(adjusted_point, Bias::Left);
+            return map.point_to_display_point(clipped_point, Bias::Left);
+        }
     }
+
+    end_point
 }
 
 pub(crate) fn sentence_backwards(
