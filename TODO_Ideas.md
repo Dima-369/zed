@@ -1,28 +1,3 @@
-in `crates/editor/src/display_map.rs` I made this a no-op:
-
-```rust
-    pub fn clip_at_line_end(&self, display_point: DisplayPoint) -> DisplayPoint {
-        return display_point;
-    }
-```
-
-previous implementation is:
-
-```rust
-    pub fn clip_at_line_end(&self, display_point: DisplayPoint) -> DisplayPoint {
-        let mut point = self.display_point_to_point(display_point, Bias::Left);
-
-        if point.column != self.buffer_snapshot().line_len(MultiBufferRow(point.row)) {
-            return display_point;
-        }
-        point.column = point.column.saturating_sub(1);
-        point = self.buffer_snapshot().clip_point(point, Bias::Left);
-        self.point_to_display_point(point, Bias::Left)
-        return display_point;
-    }
-```
-
-now my current no-op is extremely cool and emulates a vim virtualedit=onemore, BUT I want it disabled when I there is an editor selection, like when in vim visual mode (line or normal). Otherwise, when copying and pasting entire lines it will always incorrectly override one newline at selection end to o much.
 
 
 
