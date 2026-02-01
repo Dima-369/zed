@@ -15004,8 +15004,23 @@ impl Editor {
     }
 
     pub fn count_tokens(&mut self, _: &CountTokens, _window: &mut Window, cx: &mut Context<Self>) {
-        // Get the text first before accessing workspace to avoid borrowing conflicts
-        let text = self.buffer.read(cx).read(cx).text();
+        let selections = self
+            .selections
+            .all::<MultiBufferOffset>(&self.display_snapshot(cx));
+        let buffer = self.buffer.read(cx).read(cx);
+
+        let has_selection = selections.iter().any(|s| !s.is_empty());
+        let text: String = if has_selection {
+            selections
+                .iter()
+                .filter(|s| !s.is_empty())
+                .map(|s| buffer.text_for_range(s.start..s.end).collect::<String>())
+                .collect::<Vec<_>>()
+                .join("")
+        } else {
+            buffer.text()
+        };
+        drop(buffer);
 
         match o200k_base() {
             Ok(bpe) => {
@@ -15026,7 +15041,11 @@ impl Editor {
                 };
 
                 // Show notification with formatted token count
-                let message = format!("Buffer contains {} tokens", formatted_count);
+                let message = if has_selection {
+                    format!("Selection contains {} tokens", formatted_count)
+                } else {
+                    format!("Buffer contains {} tokens", formatted_count)
+                };
 
                 // Defer the notification to avoid double lease panic
                 if let Some(workspace) = self.workspace() {
