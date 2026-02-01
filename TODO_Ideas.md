@@ -1,4 +1,3 @@
-fix deepl integration not working anymore
 
 
 # >>> Investigations

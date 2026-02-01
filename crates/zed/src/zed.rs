@@ -932,7 +932,6 @@ fn deepl_translate(
     cx.spawn_in(window, async move |workspace, cx| {
         // Prepare form data
         let mut form_data = HashMap::new();
-        form_data.insert("auth_key", api_key);
         form_data.insert("text", selected_text.clone());
         form_data.insert("source_lang", source_lang);
         form_data.insert("target_lang", target_lang);
@@ -951,10 +950,11 @@ fn deepl_translate(
             .collect::<Vec<_>>()
             .join("&");
 
-        // Make the API request
+        // Make the API request with header-based authentication
         let request = http_client::Request::builder()
             .method(http_client::Method::POST)
             .uri("https://api-free.deepl.com/v2/translate")
+            .header("Authorization", format!("DeepL-Auth-Key {}", api_key))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "*/*")
             .header("User-Agent", "Zed Editor")
