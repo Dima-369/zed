@@ -2,7 +2,7 @@
 
 # >>> Investigations
 
-## Fix that edit predictionuse picker::{ce: new file
+## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
 
 I fixed this in my own fork already, but let's see what Zed team says:
 
@@ -151,7 +151,7 @@ https://github.com/zed-industries/zed/pull/43733
 I merged into my own fork without any issues, I just don't really need it. For now, I'll wait on Zed's team to merge it, and use `lazygit` in the meantime.
 
 git_ui: Implement interactive Git commit graph view
-https://github.com/zed-industries/zed/pull/45884 (PR open)
+https://github.com/zed-industries/zed/pull/45884 (PR closed)
 
 
 
