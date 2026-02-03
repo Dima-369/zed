@@ -1216,11 +1216,7 @@ impl Vim {
                     Some((point, goal))
                 })
             }
-            if (last_mode == Mode::Insert || last_mode == Mode::Replace)
-                && let Some(prior_tx) = prior_tx
-            {
-                editor.group_until_transaction(prior_tx, cx)
-            }
+
 
             editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
                 // we cheat with visual block mode and use multiple cursors.
@@ -1935,19 +1931,7 @@ impl Vim {
 
         let newest = editor.read(cx).selections.newest_anchor().clone();
         let is_multicursor = editor.read(cx).selections.count() > 1;
-        if self.mode == Mode::Insert && self.current_tx.is_some() {
-            if let Some(current_anchor) = &self.current_anchor {
-                if current_anchor != &newest
-                    && let Some(tx_id) = self.current_tx.take()
-                {
-                    self.update_editor(cx, |_, editor, cx| {
-                        editor.group_until_transaction(tx_id, cx)
-                    });
-                }
-            } else {
-                self.current_anchor = Some(newest);
-            }
-        } else if self.mode == Mode::Normal && newest.start != newest.end {
+        if self.mode == Mode::Normal && newest.start != newest.end {
             // Don't switch to visual mode for project search results editors
             let should_switch_to_visual =
                 editor.update(cx, |editor, _| !editor.in_project_search());
