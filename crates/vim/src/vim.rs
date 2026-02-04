@@ -1216,7 +1216,6 @@ impl Vim {
                 })
             }
 
-
             editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
                 // we cheat with visual block mode and use multiple cursors.
                 // the cost of this cheat is we need to convert back to a single
