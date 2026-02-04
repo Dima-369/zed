@@ -43,10 +43,6 @@ mod split;
 pub mod split_editor_view;
 pub mod tasks;
 
-// Custom highlight types for file explorer
-struct DirectoryHighlight;
-struct FileExtensionHighlight;
-
 #[cfg(test)]
 mod code_completion_tests;
 #[cfg(test)]
@@ -3272,7 +3268,8 @@ impl Editor {
 
         // Apply accent highlights for directories
         if !directory_ranges.is_empty() {
-            editor.highlight_text::<DirectoryHighlight>(
+            editor.highlight_text(
+                HighlightKey::Editor,
                 directory_ranges,
                 HighlightStyle {
                     color: Some(cx.theme().colors().text_accent),
@@ -3284,7 +3281,8 @@ impl Editor {
 
         // Apply accent highlights for file extensions
         if !extension_ranges.is_empty() {
-            editor.highlight_text::<FileExtensionHighlight>(
+            editor.highlight_text(
+                HighlightKey::Editor,
                 extension_ranges,
                 HighlightStyle {
                     color: Some(cx.theme().colors().text_accent),
@@ -4380,8 +4378,6 @@ impl Editor {
                 }
             })
             .flatten();
-
-        let display_snapshot = self.display_map.update(cx, |map, cx| map.snapshot(cx));
 
         EditorSnapshot {
             mode: self.mode.clone(),

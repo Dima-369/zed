@@ -518,8 +518,7 @@ impl JumpBar {
                     let visible_line_count = editor.visible_line_count().unwrap_or(50.0);
                     let scroll_position = editor
                         .scroll_manager
-                        .anchor()
-                        .scroll_position(&display_snapshot);
+                        .scroll_position(&display_snapshot, cx);
 
                     let visible_start_row = scroll_position.y as u32;
                     let visible_end_row = visible_start_row + visible_line_count.ceil() as u32;

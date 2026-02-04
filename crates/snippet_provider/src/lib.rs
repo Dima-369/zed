@@ -3,13 +3,13 @@ pub mod format;
 mod registry;
 
 use std::{
+    collections::{BTreeMap, BTreeSet, HashMap},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
 
 use anyhow::Result;
-use collections::{BTreeMap, BTreeSet, HashMap};
 use format::VsSnippetsFile;
 use fs::Fs;
 use futures::stream::StreamExt;

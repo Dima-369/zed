@@ -1,6 +1,6 @@
 use collections::HashMap;
 use editor::{
-    Anchor as MultiBufferAnchor, Editor, EditorEvent, EditorSettings, MultiBuffer,
+    Anchor as MultiBufferAnchor, Editor, EditorEvent, EditorSettings, HighlightKey, MultiBuffer,
     MultiBufferOffset, MultiBufferSnapshot, SelectionEffects, ToOffset, scroll::Autoscroll,
 };
 use gpui::{
@@ -283,8 +283,6 @@ impl Render for BufferSearchModal {
     }
 }
 
-enum BufferSearchHighlights {}
-
 impl BufferSearchModal {
     pub fn toggle_for_editor(
         workspace: &mut Workspace,
@@ -526,7 +524,8 @@ impl BufferSearchModal {
         });
         editor.request_autoscroll(Autoscroll::center(), cx);
 
-        editor.highlight_background::<BufferSearchHighlights>(
+        editor.highlight_background(
+            HighlightKey::BufferSearchHighlights,
             match_ranges,
             move |index, theme| {
                 if active_match_indices.contains(index) {

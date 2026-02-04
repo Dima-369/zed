@@ -428,6 +428,7 @@ impl ScrollManager {
         if let Some((anchor, top_row, state)) = update_values {
             self.set_anchor(
                 anchor,
+                &state.map,
                 top_row,
                 state.local,
                 state.autoscroll,
@@ -451,7 +452,7 @@ impl ScrollManager {
         cx: &mut Context<Editor>,
     ) -> bool {
         let ret = if self.animation_manager.is_some() && self.ongoing.try_use_anim {
-            let current = self.scroll_position(map);
+            let current = self.scroll_position(map, cx);
             let anim = Anim::new(
                 current,
                 top_row,
@@ -547,7 +548,6 @@ impl ScrollManager {
 
         if !self.try_start_anim(
             new_anchor,
-            map,
             scroll_top_buffer_point.row,
             map,
             local,
@@ -557,6 +557,7 @@ impl ScrollManager {
         ) {
             self.set_anchor(
                 new_anchor,
+                map,
                 scroll_top_buffer_point.row,
                 local,
                 autoscroll,

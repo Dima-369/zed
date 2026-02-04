@@ -594,6 +594,7 @@ impl DisplayMap {
             inlay_highlights: self.inlay_highlights.clone(),
             semantic_token_highlights: self.semantic_token_highlights.clone(),
             clip_at_line_ends: self.clip_at_line_ends,
+            has_active_selections,
             masked: self.masked,
             fold_placeholder: self.fold_placeholder.clone(),
         }
@@ -617,7 +618,7 @@ impl DisplayMap {
             inlay_highlights: self.inlay_highlights.clone(),
             semantic_token_highlights: self.semantic_token_highlights.clone(),
             clip_at_line_ends: self.clip_at_line_ends,
-            has_active_selections,
+            has_active_selections: false,
             masked: self.masked,
             fold_placeholder: self.fold_placeholder.clone(),
         }
