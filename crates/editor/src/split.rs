@@ -17,6 +17,7 @@ use ui::{
     App, Context, InteractiveElement as _, IntoElement as _, ParentElement as _, Render,
     Styled as _, Window, div,
 };
+use gpui::KeyContext;
 
 use crate::{
     display_map::CompanionExcerptPatch,
@@ -307,6 +308,22 @@ impl SplittableEditor {
 
     pub fn is_split(&self) -> bool {
         self.lhs.is_some()
+    }
+
+    pub fn is_left_side_active(&self, _cx: &App) -> bool {
+        if let Some(lhs) = &self.lhs {
+            lhs.has_latest_selection
+        } else {
+            false  // If not split, we're conceptually on the right side
+        }
+    }
+
+    pub fn is_right_side_active(&self, _cx: &App) -> bool {
+        if let Some(lhs) = &self.lhs {
+            !lhs.has_latest_selection
+        } else {
+            true  // If not split, we're conceptually on the right side
+        }
     }
 
     pub fn set_render_diff_hunk_controls(
@@ -1504,8 +1521,21 @@ impl Render for SplittableEditor {
         } else {
             self.rhs_editor.clone().into_any_element()
         };
+
+        let mut key_context = KeyContext::default();
+        key_context.add("editor_split_view");
+        if self.is_split() {
+            key_context.add("editor_is_split");
+            if self.is_left_side_active(cx) {
+                key_context.add("editor_side_left");
+            } else {
+                key_context.add("editor_side_right");
+            }
+        }
+
         div()
             .id("splittable-editor")
+            .key_context(key_context)
             .on_action(cx.listener(Self::split))
             .on_action(cx.listener(Self::unsplit))
             .on_action(cx.listener(Self::toggle_split))

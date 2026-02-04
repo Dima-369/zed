@@ -156,6 +156,10 @@ You modify the emojis in your `settings.json` like this in the root setting obje
 - make the title dynamic: if there are no files, it shows `No Changes`, otherwise it shows `Uncommitted Changes (1 file)` or `Uncommitted Changes (n files)`
 - make the icon and text foreground dynamic when the tab is not selected with the same logic as the "Recent Branches" from `crates/title_bar/src/title_bar.rs`. See `fn tab_content(&self, params: TabContentParams, _window: &Window, cx: &App) -> AnyElement`
 
+### Git Split View Navigation
+
+- Added keyboard context to allow Git split view navigating. See `crates/editor/src/split.rs`. New context strings added: `editor_split_view`, `editor_is_split`, `editor_side_left`, and `editor_side_right`.
+
 ### Git Commit Modal
 
 - move git commit modal to the right side instead of being centered, so it does not overlap the left git dock, which makes it impossible to see what files are staged on a small screen. One could lower the size of the git dock to make it fit, but then it is quite small
