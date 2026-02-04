@@ -3,7 +3,6 @@ mod agent_configuration;
 mod agent_diff;
 mod agent_model_selector;
 mod agent_panel;
-mod agent_panel_tab;
 mod agent_registry_ui;
 mod buffer_codegen;
 mod completion_provider;
@@ -84,8 +83,6 @@ actions!(
         AddContextServer,
         /// Removes the currently selected thread.
         RemoveSelectedThread,
-        /// Closes the currently active thread tab.
-        CloseActiveThreadTab,
         /// Starts a chat conversation with follow-up enabled.
         ChatWithFollow,
         /// Cycles to the next inline assist suggestion.
@@ -134,20 +131,6 @@ actions!(
         ContinueThread,
         /// Interrupts the current generation and sends the message immediately.
         SendImmediately,
-        /// Toggles the plan view visibility.
-        TogglePlan,
-        /// Closes the currently active thread tab, or closes the dock if there's only one tab.
-        CloseActiveThreadTabOrDock,
-        /// Activates the next tab in the agent panel.
-        ActivateNextTab,
-        /// Activates the previous tab in the agent panel.
-        ActivatePreviousTab,
-        /// Dismisses the error notification in the agent panel.
-        DismissErrorNotification,
-        /// Copies the error notification content to the clipboard in the agent panel.
-        CopyErrorNotification,
-        /// Queues a message to be sent when generation completes.
-        QueueMessage,
         /// Sends the next queued message immediately.
         SendNextQueuedMessage,
         /// Removes the first message from the queue (the next one to be sent).
@@ -158,8 +141,6 @@ actions!(
         ClearMessageQueue,
         /// Opens the permission granularity dropdown for the current tool call.
         OpenPermissionDropdown,
-        /// Dismisses all OS-level agent notifications.
-        DismissOsNotifications,
         /// Toggles thinking mode for models that support extended thinking.
         ToggleThinkingMode,
     ]
@@ -213,22 +194,6 @@ pub struct NewNativeAgentThreadFromSummary {
     from_session_id: agent_client_protocol::SessionId,
 }
 
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Action)]
-#[action(namespace = agent)]
-#[serde(deny_unknown_fields)]
-pub struct NewAcpThreadFromSummary {
-    from_session_id: agent_client_protocol::SessionId,
-}
-
-/// Launches a new ACP agent thread with the specified agent name.
-#[derive(Clone, PartialEq, Deserialize, JsonSchema, Action)]
-#[action(namespace = agent)]
-#[serde(deny_unknown_fields)]
-pub struct LaunchAgent {
-    /// The name of the agent to launch.
-    agent_name: SharedString,
-}
-
 // TODO unify this with AgentType
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -241,25 +206,6 @@ pub enum ExternalAgent {
 }
 
 impl ExternalAgent {
-    /// Create an ExternalAgent from a stored agent name string.
-    /// Handles both identifier names (e.g., "codex", "gemini", "claude") and
-    /// display names (e.g., "Codex", "Gemini CLI", "Claude Code") with case-insensitive matching.
-    pub fn from_agent_name(name: &str) -> Self {
-        let name_lower = name.to_lowercase();
-        match name_lower.as_str() {
-            "zed" => Self::NativeAgent,
-            // Match both identifier ("gemini") and display name ("gemini cli")
-            "gemini" | "gemini cli" => Self::Gemini,
-            // Match both identifier ("claude") and display name ("claude code")
-            "claude" | "claude code" | "claude-code" => Self::ClaudeCode,
-            // Match both identifier and display name ("codex")
-            "codex" => Self::Codex,
-            _ => Self::Custom {
-                name: name.to_string().into(),
-            },
-        }
-    }
-
     pub fn server(
         &self,
         fs: Arc<dyn fs::Fs>,
@@ -322,11 +268,6 @@ pub fn init(
     is_eval: bool,
     cx: &mut App,
 ) {
-    // Register global action to dismiss all agent notifications
-    cx.on_action(|_: &DismissOsNotifications, cx| {
-        dismiss_all_agent_notifications(cx);
-    });
-
     agent::ThreadStore::init_global(cx);
     assistant_text_thread::init(client, cx);
     rules_library::init(cx);
@@ -564,23 +505,6 @@ fn register_slash_commands(cx: &mut App) {
         }
     })
     .detach();
-}
-
-fn dismiss_all_agent_notifications(cx: &mut App) {
-    // Find all windows that contain AgentNotification and dismiss them
-    let agent_notification_windows: Vec<_> = cx
-        .windows()
-        .iter()
-        .filter_map(|window| window.downcast::<crate::ui::AgentNotification>())
-        .collect();
-
-    for window in agent_notification_windows {
-        window
-            .update(cx, |_, window, _| {
-                window.remove_window();
-            })
-            .ok();
-    }
 }
 
 #[cfg(test)]

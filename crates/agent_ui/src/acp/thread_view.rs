@@ -838,34 +838,6 @@ impl AcpServerView {
         &self.workspace
     }
 
-    pub fn thread(&self) -> Option<&Entity<AcpThread>> {
-        match &self.thread_state {
-            ThreadState::Ready { thread, .. } => Some(thread),
-            ThreadState::Unauthenticated { .. }
-            | ThreadState::Loading { .. }
-            | ThreadState::LoadError { .. } => None,
-        }
-    }
-
-    pub fn session_id(&self, cx: &App) -> Option<acp::SessionId> {
-        if let Some(thread) = self.thread() {
-            Some(thread.read(cx).session_id().clone())
-        } else {
-            self.resume_thread_metadata
-                .as_ref()
-                .map(|metadata| metadata.session_id.clone())
-        }
-    }
-
-    pub fn mode_selector(&self) -> Option<&Entity<ModeSelector>> {
-        match &self.thread_state {
-            ThreadState::Ready { mode_selector, .. } => mode_selector.as_ref(),
-            ThreadState::Unauthenticated { .. }
-            | ThreadState::Loading { .. }
-            | ThreadState::LoadError { .. } => None,
-        }
-    }
-
     pub fn title(&self, cx: &App) -> SharedString {
         match &self.server_state {
             ServerState::Connected(_) => "New Thread".into(),
