@@ -8,6 +8,8 @@ crates/agent_ui/src/agent_panel.rs
 crates/agent_ui/src/agent_ui.rs
 crates/agent_ui/src/acp/thread_view.rs
 
+I tried with https://jules.google/ and it implemented it!
+
 ---
 
 Here is a diff you need to bring into this codebase. It adds multiple tabs to the AI thread view. I want this into this codebase.
@@ -162,6 +164,58 @@ index 634a7120e1..6ccb3f0722 100644
  #[cfg(test)]
  mod tests {
      use super::*;
+```
+
+# Diff for agent::TogglePlan
+
+```diff
+diff --git a/crates/agent_ui/src/acp/thread_view.rs b/crates/agent_ui/src/acp/thread_view.rs
+index ef9dc99fe0..6c5a301f9c 100644
+--- a/crates/agent_ui/src/acp/thread_view.rs
++++ b/crates/agent_ui/src/acp/thread_view.rs
+@@ -68,7 +68,7 @@ use crate::ui::{AgentNotification, AgentNotificationEvent, BurnModeTooltip};
+ use crate::{
+     AgentDiffPane, AgentPanel, AllowAlways, AllowOnce, ContinueThread, ContinueWithBurnMode,
+     CycleFavoriteModels, CycleModeSelector, ExpandMessageEditor, Follow, KeepAll, NewThread,
+-    OpenAgentDiff, OpenHistory, RejectAll, RejectOnce, ToggleBurnMode, ToggleProfileSelector,
++    OpenAgentDiff, OpenHistory, RejectAll, RejectOnce, ToggleBurnMode, TogglePlan, ToggleProfileSelector,
+ };
+ 
+ #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+@@ -4542,6 +4542,11 @@ impl AcpThreadView {
+         });
+     }
+ 
++    fn toggle_plan(&mut self, _: &TogglePlan, _window: &mut Window, cx: &mut Context<Self>) {
++        self.plan_expanded = !self.plan_expanded;
++        cx.notify();
++    }
++
+     fn keep_all(&mut self, _: &KeepAll, _window: &mut Window, cx: &mut Context<Self>) {
+         let Some(thread) = self.thread() else {
+             return;
+@@ -6116,6 +6121,7 @@ impl Render for AcpThreadView {
+             .size_full()
+             .key_context("AcpThread")
+             .on_action(cx.listener(Self::toggle_burn_mode))
++            .on_action(cx.listener(Self::toggle_plan))
+             .on_action(cx.listener(Self::keep_all))
+             .on_action(cx.listener(Self::reject_all))
+             .on_action(cx.listener(Self::allow_always))
+diff --git a/crates/agent_ui/src/agent_ui.rs b/crates/agent_ui/src/agent_ui.rs
+index 49ecf45536..1c4557d8de 100644
+--- a/crates/agent_ui/src/agent_ui.rs
++++ b/crates/agent_ui/src/agent_ui.rs
+@@ -125,6 +125,8 @@ actions!(
+         ContinueWithBurnMode,
+         /// Toggles burn mode for faster responses.
+         ToggleBurnMode,
++        /// Toggles the plan view visibility.
++        TogglePlan,
+         /// Closes the currently active thread tab.
+         CloseActiveThreadTab,
+         /// Activates the next tab in the agent panel.
+
 ```
 
 # Diff for circle icon to designate in progress agent tabs nicer
