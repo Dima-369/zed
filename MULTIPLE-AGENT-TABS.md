@@ -12,10 +12,10 @@ I tried with https://jules.google/ and it implemented it!
 
 ---
 
-Here is a diff you need to bring into this codebase. It adds multiple tabs to the AI thread view. I want this into this codebase.
-It diverged from a recent `main` merge.
+Here are larger diffs you need to bring into this codebase.
+My branch `dima` diverged from a recent `main` merge.
 
-Those actions are missing:
+The diffs below add multiple tabs to the AI thread view and add those actions:
 
 • agent::ActivatePreviousTab
 • agent::ActivateNextTab
