@@ -13,6 +13,14 @@ crates/agent_ui/src/acp/thread_view.rs
 Here is a diff you need to bring into this codebase. It adds multiple tabs to the AI thread view. I want this into this codebase.
 It diverged from a recent `main` merge.
 
+Those actions are missing:
+
+• agent::ActivatePreviousTab
+• agent::ActivateNextTab
+• agent::CloseActiveThread TabOrDock
+• agent::TogglePlan
+• agent::DismissOsNotifications
+
 Verify compilation via `cargo check`.
 
 # Add activate next and previous tab actions
