@@ -1,4 +1,16 @@
 
+```bash
+git restore --source=main crates/agent_ui/src/agent_panel.rs crates/agent_ui/src/agent_ui.rs crates/agent_ui/src/acp/thread_view.rs
+```
+
+On restoring those files, those actions are missing. Your task is to implement them.
+
+• agent::ActivatePreviousTab
+• agent::ActivateNextTab
+• agent::TogglePlan
+• agent::DismissOsNotifications
+• agent::CloseActiveThread TabOrDock
+
 
 # >>> Investigations
 
