@@ -110,6 +110,60 @@ in `crates/agent_ui/src/agent_ui.rs` add this:
             .on_action(cx.listener(Self::close_active_thread_tab_or_dock))
 ```
 
+# Diff for the DismissOsNotifications action
+
+```diff
+diff --git a/crates/agent_ui/src/agent_ui.rs b/crates/agent_ui/src/agent_ui.rs
+index 634a7120e1..6ccb3f0722 100644
+--- a/crates/agent_ui/src/agent_ui.rs
++++ b/crates/agent_ui/src/agent_ui.rs
+@@ -145,6 +145,8 @@ actions!(
+         SendNextQueuedMessage,
+         /// Clears all messages from the queue.
+         ClearMessageQueue,
++        /// Dismisses all OS-level agent notifications.
++        DismissOsNotifications,
+     ]
+ );
+
+@@ -273,6 +275,11 @@ pub fn init(
+     is_eval: bool,
+     cx: &mut App,
+ ) {
++    // Register global action to dismiss all agent notifications
++    cx.on_action(|_: &DismissOsNotifications, cx| {
++        dismiss_all_agent_notifications(cx);
++    });
++
+     assistant_text_thread::init(client, cx);
+     rules_library::init(cx);
+     if !is_eval {
+@@ -480,6 +487,23 @@ fn register_slash_commands(cx: &mut App) {
+     .detach();
+ }
+
++fn dismiss_all_agent_notifications(cx: &mut App) {
++    // Find all windows that contain AgentNotification and dismiss them
++    let agent_notification_windows: Vec<_> = cx
++        .windows()
++        .iter()
++        .filter_map(|window| window.downcast::<crate::ui::AgentNotification>())
++        .collect();
++
++    for window in agent_notification_windows {
++        window
++            .update(cx, |_, window, _| {
++                window.remove_window();
++            })
++            .ok();
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+```
+
 # Diff for circle icon to designate in progress agent tabs nicer
 
 After you had integrated the huge diff in the Markdown heading below, also apply this. I do not want the opacity fading of the tabs, just display an `Color::Accent` circle to the left.
