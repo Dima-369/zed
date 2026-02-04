@@ -1017,7 +1017,7 @@ impl Clone for ReplayableAction {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Default, Debug)]
 pub struct SearchState {
     pub direction: Direction,
     pub count: usize,
@@ -1026,6 +1026,7 @@ pub struct SearchState {
     pub prior_operator: Option<Operator>,
     pub prior_mode: Mode,
     pub helix_select: bool,
+    pub _dismiss_subscription: Option<gpui::Subscription>,
 }
 
 impl Operator {
