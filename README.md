@@ -200,7 +200,9 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 
 ### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
 
-- add `agent::DismissOsNotifications` action to dismiss the top right OS notification from Zed Agent. With multiple tabs, I feel that gets stuck sometimes
+**Warning**: The code around this is extremely brittle, I often revert those files to the `main` version, and then only patch in a few actions.
+
+- add `agent::DismissOsNotifications` action to dismiss the top right OS notification from Zed Agent. With multiple tabs, I feel that the notifications get stuck sometimes
 - add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
   - remove the opacity animation for the tabs when waiting for a response and instead rotate a circle like Windsurf
   - add `agent::CloseActiveThreadTabOrDock`
