@@ -426,6 +426,20 @@ impl AcpThreadView {
             .thread(acp_thread.session_id(), cx)
     }
 
+    pub fn session_id(&self, cx: &App) -> Option<acp::SessionId> {
+        if let Some(thread) = self.thread() {
+            Some(thread.read(cx).session_id().clone())
+        } else {
+            self.resume_thread_metadata
+                .as_ref()
+                .map(|metadata| metadata.session_id.clone())
+        }
+    }
+
+    pub fn thread(&self) -> Option<Entity<AcpThread>> {
+        Some(self.thread.clone())
+    }
+
     pub fn current_model_id(&self, cx: &App) -> Option<String> {
         let selector = self.model_selector.as_ref()?;
         let model = selector.read(cx).active_model(cx)?;
@@ -1513,6 +1527,11 @@ impl AcpThreadView {
         self.thread_error = None;
         self.thread_error_markdown = None;
         self.token_limit_callout_dismissed = true;
+        cx.notify();
+    }
+
+    fn toggle_plan(&mut self, _: &TogglePlan, _window: &mut Window, cx: &mut Context<Self>) {
+        self.plan_expanded = !self.plan_expanded;
         cx.notify();
     }
 
@@ -6801,6 +6820,7 @@ impl Render for AcpThreadView {
             .on_action(cx.listener(|this, _: &menu::Cancel, _, cx| {
                 this.cancel_generation(cx);
             }))
+            .on_action(cx.listener(Self::toggle_plan))
             .on_action(cx.listener(Self::keep_all))
             .on_action(cx.listener(Self::reject_all))
             .on_action(cx.listener(Self::allow_always))
