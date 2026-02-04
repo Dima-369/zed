@@ -1,3 +1,9 @@
+try out Motion system to make Zed feel fluid and intentional
+https://github.com/zed-industries/zed/pull/48295 
+
+
+
+
 Restore those actions and multiple AI tabs after `main` merge:
 
 • agent::ActivatePreviousTab
