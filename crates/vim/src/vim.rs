@@ -1161,7 +1161,6 @@ impl Vim {
 
         let last_mode = self.mode;
         let prior_mode = self.last_mode;
-        let prior_tx = self.current_tx;
         self.status_label.take();
         self.last_mode = last_mode;
         self.mode = mode;
