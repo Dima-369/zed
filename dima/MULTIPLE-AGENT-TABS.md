@@ -1,17 +1,3 @@
-From <https://github.com/wzulfikar/zed/pull/8>
-
-```bash
-git restore --source=main crates/agent_ui/src/agent_panel.rs crates/agent_ui/src/agent_ui.rs crates/agent_ui/src/acp/thread_view.rs
-```
-
-crates/agent_ui/src/agent_panel.rs
-crates/agent_ui/src/agent_ui.rs
-crates/agent_ui/src/acp/thread_view.rs
-
-I tried with https://jules.google/ and it implemented it!
-
----
-
 Here are larger diffs you need to bring into this codebase.
 My branch `dima` diverged from a recent `main` merge.
 
