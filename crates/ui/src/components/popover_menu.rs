@@ -1,13 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
 use gpui::{
-    Animation, AnimationExt, AnyElement, AnyView, App, Bounds, Corner, DismissEvent,
-    DispatchPhase, Element, ElementId, Entity, Focusable as _, GlobalElementId, HitboxBehavior,
-    HitboxId, InteractiveElement, IntoElement, LayoutId, Length, ManagedView, MouseDownEvent,
-    ParentElement, Pixels, Point, Style, Window, anchored, deferred, div, ease_out_quint, point,
-    prelude::FluentBuilder, px, size,
+    AnyElement, AnyView, App, Bounds, Corner, DismissEvent, DispatchPhase, Element, ElementId,
+    Entity, Focusable as _, GlobalElementId, HitboxBehavior, HitboxId, InteractiveElement,
+    IntoElement, LayoutId, Length, ManagedView, MouseDownEvent, ParentElement, Pixels, Point,
+    Style, Window, anchored, deferred, div, point, prelude::FluentBuilder, px, size,
 };
-use settings::should_reduce_motion;
 
 use crate::prelude::*;
 
@@ -365,8 +363,6 @@ impl<M: ManagedView> Element for PopoverMenu<M> {
                 let element_state = element_state.unwrap_or_default();
                 let mut menu_layout_id = None;
 
-                let reduce_motion = should_reduce_motion(cx);
-
                 let menu_element = element_state.menu.borrow_mut().as_mut().map(|menu| {
                     let offset = self.resolved_offset(window);
                     let mut anchored = anchored()
@@ -377,28 +373,7 @@ impl<M: ManagedView> Element for PopoverMenu<M> {
                         anchored =
                             anchored.position(child_bounds.corner(self.resolved_attach()) + offset);
                     }
-                    let menu_entity_id = menu.entity_id();
-                    let menu_div = div()
-                        .relative()
-                        .occlude()
-                        .child(menu.clone());
-                    let animated_menu = if reduce_motion {
-                        menu_div.into_any()
-                    } else {
-                        menu_div
-                            .with_animation(
-                                ("popover-menu-animate", menu_entity_id),
-                                Animation::new(AnimationDuration::Fast.into())
-                                    .with_easing(ease_out_quint()),
-                                move |this, delta| {
-                                    const SLIDE_OFFSET: f32 = -6.0;
-                                    let slide = SLIDE_OFFSET * (1.0 - delta);
-                                    this.opacity(delta).top(px(slide))
-                                },
-                            )
-                            .into_any()
-                    };
-                    let mut element = deferred(anchored.child(animated_menu))
+                    let mut element = deferred(anchored.child(div().occlude().child(menu.clone())))
                         .with_priority(1)
                         .into_any();
 

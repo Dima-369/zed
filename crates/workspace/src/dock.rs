@@ -5,21 +5,18 @@ use anyhow::Context as _;
 use client::proto;
 
 use gpui::{
-    Action, Animation, AnimationExt, AnyView, App, Axis, Context, Corner, Entity, EntityId,
-    EventEmitter, FocusHandle, Focusable, IntoElement, KeyContext, MouseButton, MouseDownEvent,
-    MouseUpEvent, ParentElement, Render, SharedString, StyleRefinement, Styled, Subscription, Task,
-    WeakEntity, Window, deferred, div, ease_out_cubic, px,
+    Action, AnyView, App, Axis, Context, Corner, Entity, EntityId, EventEmitter, FocusHandle,
+    Focusable, IntoElement, KeyContext, MouseButton, MouseDownEvent, MouseUpEvent, ParentElement,
+    Render, SharedString, StyleRefinement, Styled, Subscription, WeakEntity, Window, deferred, div,
+    px,
 };
-use settings::{SettingsStore, should_reduce_motion};
+use settings::SettingsStore;
 use std::sync::Arc;
-use std::time::Duration;
 use ui::{ContextMenu, Divider, DividerColor, IconButton, Tooltip, h_flex};
 use ui::{prelude::*, right_click_menu};
 use util::ResultExt as _;
 
 pub(crate) const RESIZE_HANDLE_SIZE: Pixels = px(6.);
-const DOCK_OPEN_DURATION: Duration = Duration::from_millis(150);
-const DOCK_CLOSE_DURATION: Duration = Duration::from_millis(100);
 
 pub enum PanelEvent {
     ZoomIn,
@@ -271,14 +268,11 @@ pub struct Dock {
     panel_entries: Vec<PanelEntry>,
     workspace: WeakEntity<Workspace>,
     is_open: bool,
-    is_closing: bool,
     active_panel_index: Option<usize>,
     focus_handle: FocusHandle,
     pub(crate) serialized_dock: Option<DockData>,
     zoom_layer_open: bool,
     modal_layer: Entity<ModalLayer>,
-    animation_generation: usize,
-    _close_task: Option<Task<()>>,
     _subscriptions: [Subscription; 2],
 }
 
@@ -370,14 +364,11 @@ impl Dock {
                 panel_entries: Default::default(),
                 active_panel_index: None,
                 is_open: false,
-                is_closing: false,
                 focus_handle: focus_handle.clone(),
                 _subscriptions: [focus_subscription, zoom_subscription],
                 serialized_dock: None,
                 zoom_layer_open: false,
                 modal_layer,
-                animation_generation: 0,
-                _close_task: None,
             }
         });
 
@@ -490,48 +481,12 @@ impl Dock {
     }
 
     pub fn set_open(&mut self, open: bool, window: &mut Window, cx: &mut Context<Self>) {
-        if open {
-            if self.is_closing {
-                self._close_task = None;
-                self.is_closing = false;
-            }
-            if self.is_open {
-                return;
-            }
-            self.is_open = true;
-            // Prevents stale close tasks from clearing state after a new open/close cycle has begun.
-            self.animation_generation = self.animation_generation.wrapping_add(1);
+        if open != self.is_open {
+            self.is_open = open;
             if let Some(active_panel) = self.active_panel_entry() {
-                active_panel.panel.set_active(true, window, cx);
+                active_panel.panel.set_active(open, window, cx);
             }
-            cx.notify();
-        } else {
-            if !self.is_open {
-                return;
-            }
-            self.is_open = false;
-            if let Some(active_panel) = self.active_panel_entry() {
-                active_panel.panel.set_active(false, window, cx);
-            }
-            if !should_reduce_motion(cx) {
-                self.is_closing = true;
-                self.animation_generation = self.animation_generation.wrapping_add(1);
-                let close_generation = self.animation_generation;
-                self._close_task = Some(cx.spawn(async move |this, cx| {
-                    cx.background_executor()
-                        .timer(DOCK_CLOSE_DURATION)
-                        .await;
-                    if let Some(this) = this.upgrade() {
-                        this.update(cx, |dock, cx| {
-                            if dock.animation_generation == close_generation {
-                                dock.is_closing = false;
-                                dock._close_task = None;
-                                cx.notify();
-                            }
-                        });
-                    }
-                }));
-            }
+
             cx.notify();
         }
     }
@@ -807,8 +762,7 @@ impl Dock {
     }
 
     fn visible_entry(&self) -> Option<&PanelEntry> {
-        // Panel remains visible during close animation so it can animate out smoothly.
-        if self.is_open || self.is_closing {
+        if self.is_open {
             self.active_panel_entry()
         } else {
             None
@@ -958,11 +912,7 @@ impl Render for Dock {
                 }
             };
 
-            let is_closing = self.is_closing;
-            let animation_generation = self.animation_generation;
-            let reduce_motion = should_reduce_motion(cx);
-
-            let dock_div = div()
+            div()
                 .key_context(dispatch_context)
                 .track_focus(&self.focus_handle(cx))
                 .flex()
@@ -993,36 +943,11 @@ impl Render for Dock {
                 )
                 .when(self.resizable(cx), |this| {
                     this.child(create_resize_handle())
-                });
-
-            if reduce_motion {
-                dock_div.into_any_element()
-            } else {
-                dock_div
-                    .with_animation(
-                        ("dock-anim", animation_generation as u64),
-                        Animation::new(if is_closing { DOCK_CLOSE_DURATION } else { DOCK_OPEN_DURATION })
-                            .with_easing(ease_out_cubic),
-                        {
-                            let position = self.position;
-                            let target_size = f32::from(size);
-                            move |this, delta| {
-                                let progress = if is_closing { 1.0 - delta } else { delta };
-                                let animated_size = px(target_size * progress);
-                                match position.axis() {
-                                    Axis::Horizontal => this.w(animated_size),
-                                    Axis::Vertical => this.h(animated_size),
-                                }
-                            }
-                        },
-                    )
-                    .into_any_element()
-            }
+                })
         } else {
             div()
                 .key_context(dispatch_context)
                 .track_focus(&self.focus_handle(cx))
-                .into_any_element()
         }
     }
 }
@@ -1146,200 +1071,6 @@ impl Render for PanelButtons {
             .when(has_buttons && dock.position == DockPosition::Left, |this| {
                 this.child(Divider::vertical().color(DividerColor::Border))
             })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use super::test::TestPanel;
-    use fs::FakeFs;
-    use gpui::{TestAppContext, UpdateGlobal, VisualTestContext};
-    use project::Project;
-    use settings::SettingsStore;
-
-    fn init_test(cx: &mut TestAppContext) {
-        cx.update(|cx| {
-            let settings_store = SettingsStore::test(cx);
-            cx.set_global(settings_store);
-            theme::init(theme::LoadThemes::JustBase, cx);
-        });
-    }
-
-    fn add_dock_with_panel(
-        workspace: &Entity<crate::Workspace>,
-        cx: &mut VisualTestContext,
-    ) -> (Entity<Dock>, Entity<TestPanel>) {
-        let dock = workspace.update_in(cx, |workspace, _window, _cx| {
-            workspace.left_dock.clone()
-        });
-        let panel = cx.new(|cx| TestPanel::new(DockPosition::Left, 0, cx));
-        dock.update_in(cx, |dock, window, cx| {
-            dock.add_panel(panel.clone(), workspace.downgrade(), window, cx);
-            dock.activate_panel(0, window, cx);
-        });
-        (dock, panel)
-    }
-
-    #[gpui::test]
-    async fn test_dock_open_close_lifecycle(cx: &mut TestAppContext) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.executor());
-        let project = Project::test(fs, [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| crate::Workspace::test_new(project, window, cx));
-        let (dock, _panel) = add_dock_with_panel(&workspace, cx);
-
-        dock.update_in(cx, |dock, window, cx| {
-            dock.set_open(true, window, cx);
-            assert!(dock.is_open);
-            assert!(!dock.is_closing);
-
-            dock.set_open(false, window, cx);
-            assert!(!dock.is_open);
-        });
-    }
-
-    #[gpui::test]
-    async fn test_dock_set_open_false_with_reduce_motion(cx: &mut TestAppContext) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.executor());
-        let project = Project::test(fs, [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| crate::Workspace::test_new(project, window, cx));
-
-        cx.update(|_window, cx| {
-            SettingsStore::update_global(cx, |store: &mut SettingsStore, cx| {
-                store.update_user_settings(cx, |settings| {
-                    settings.workspace.reduce_motion = Some(settings::ReduceMotion::On);
-                });
-            });
-        });
-
-        let (dock, _panel) = add_dock_with_panel(&workspace, cx);
-
-        dock.update_in(cx, |dock, window, cx| {
-            dock.set_open(true, window, cx);
-            dock.set_open(false, window, cx);
-            assert!(!dock.is_open);
-            assert!(!dock.is_closing);
-        });
-    }
-
-    #[gpui::test]
-    async fn test_dock_close_animation_lifecycle(cx: &mut TestAppContext) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.executor());
-        let project = Project::test(fs, [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| crate::Workspace::test_new(project, window, cx));
-        let (dock, _panel) = add_dock_with_panel(&workspace, cx);
-
-        dock.update_in(cx, |dock, window, cx| {
-            dock.set_open(true, window, cx);
-            dock.set_open(false, window, cx);
-            assert!(dock.is_closing);
-            assert!(dock.visible_entry().is_some());
-        });
-
-        cx.executor().advance_clock(Duration::from_millis(150));
-        cx.executor().run_until_parked();
-
-        dock.update_in(cx, |dock, _window, _cx| {
-            assert!(!dock.is_closing);
-        });
-    }
-
-    #[gpui::test]
-    async fn test_dock_reopen_during_close_cancels_animation(cx: &mut TestAppContext) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.executor());
-        let project = Project::test(fs, [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| crate::Workspace::test_new(project, window, cx));
-        let (dock, _panel) = add_dock_with_panel(&workspace, cx);
-
-        dock.update_in(cx, |dock, window, cx| {
-            dock.set_open(true, window, cx);
-            dock.set_open(false, window, cx);
-            assert!(dock.is_closing);
-
-            dock.set_open(true, window, cx);
-            assert!(dock.is_open);
-            assert!(!dock.is_closing);
-            assert!(dock._close_task.is_none());
-        });
-    }
-
-    #[gpui::test]
-    async fn test_dock_noop_operations(cx: &mut TestAppContext) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.executor());
-        let project = Project::test(fs, [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| crate::Workspace::test_new(project, window, cx));
-        let (dock, _panel) = add_dock_with_panel(&workspace, cx);
-
-        dock.update_in(cx, |dock, window, cx| {
-            let generation_before = dock.animation_generation;
-            dock.set_open(false, window, cx);
-            assert_eq!(dock.animation_generation, generation_before);
-
-            dock.set_open(true, window, cx);
-            let generation_before = dock.animation_generation;
-            dock.set_open(true, window, cx);
-            assert_eq!(dock.animation_generation, generation_before);
-        });
-    }
-
-    #[gpui::test]
-    async fn test_dock_active_panel_set_active_on_open_close(cx: &mut TestAppContext) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.executor());
-        let project = Project::test(fs, [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| crate::Workspace::test_new(project, window, cx));
-        let (dock, panel) = add_dock_with_panel(&workspace, cx);
-
-        dock.update_in(cx, |dock, window, cx| {
-            dock.set_open(true, window, cx);
-        });
-
-        panel.read_with(cx, |panel, _| {
-            assert!(panel.active);
-        });
-
-        dock.update_in(cx, |dock, window, cx| {
-            dock.set_open(false, window, cx);
-        });
-
-        panel.read_with(cx, |panel, _| {
-            assert!(!panel.active);
-        });
-    }
-
-    #[gpui::test]
-    async fn test_dock_animation_generation_increments(cx: &mut TestAppContext) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.executor());
-        let project = Project::test(fs, [], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| crate::Workspace::test_new(project, window, cx));
-        let (dock, _panel) = add_dock_with_panel(&workspace, cx);
-
-        let generation_0 = dock.read_with(cx, |dock, _| dock.animation_generation);
-
-        dock.update_in(cx, |dock, window, cx| {
-            dock.set_open(true, window, cx);
-        });
-        let generation_1 = dock.read_with(cx, |dock, _| dock.animation_generation);
-        assert_eq!(generation_1, generation_0 + 1);
-
-        dock.update_in(cx, |dock, window, cx| {
-            dock.set_open(false, window, cx);
-        });
-        let generation_2 = dock.read_with(cx, |dock, _| dock.animation_generation);
-        assert!(generation_2 > generation_1);
     }
 }
 

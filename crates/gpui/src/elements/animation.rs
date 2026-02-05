@@ -229,11 +229,6 @@ mod easing {
         }
     }
 
-    /// The cubic ease-out function, which starts quickly and decelerates to a stop
-    pub fn ease_out_cubic(delta: f32) -> f32 {
-        1.0 - (1.0 - delta).powi(3)
-    }
-
     /// The Quint ease-out function, which starts quickly and decelerates to a stop
     pub fn ease_out_quint() -> impl Fn(f32) -> f32 {
         move |delta| 1.0 - (1.0 - delta).powi(5)
@@ -264,40 +259,5 @@ mod easing {
 
             min + (normalized_alpha * range)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_ease_out_cubic_boundaries() {
-        assert_eq!(ease_out_cubic(0.0), 0.0);
-        assert_eq!(ease_out_cubic(1.0), 1.0);
-    }
-
-    #[test]
-    fn test_ease_out_cubic_monotonically_increasing() {
-        let mut previous = 0.0f32;
-        for i in 1..=100 {
-            let t = i as f32 / 100.0;
-            let value = ease_out_cubic(t);
-            assert!(
-                value >= previous,
-                "ease_out_cubic should be monotonically increasing: f({t}) = {value} < f({}) = {previous}",
-                (i - 1) as f32 / 100.0
-            );
-            previous = value;
-        }
-    }
-
-    #[test]
-    fn test_ease_out_cubic_midpoint() {
-        let mid = ease_out_cubic(0.5);
-        assert!(
-            mid > 0.5,
-            "ease-out should be above linear at midpoint, got {mid}"
-        );
     }
 }

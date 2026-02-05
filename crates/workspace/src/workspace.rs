@@ -146,7 +146,7 @@ use crate::{
         model::{DockData, DockStructure, SerializedItem, SerializedPane, SerializedPaneGroup},
     },
     security_modal::SecurityModal,
-    utility_pane::{DraggedUtilityPane, UtilityPaneSlot, UtilityPaneState},
+    utility_pane::{DraggedUtilityPane, UtilityPaneFrame, UtilityPaneSlot, UtilityPaneState},
 };
 
 pub const SERIALIZATION_THROTTLE_TIME: Duration = Duration::from_millis(200);
@@ -7472,8 +7472,12 @@ impl Render for Workspace {
                                                         cx,
                                                     ))
                                                     .when(cx.has_flag::<AgentV2FeatureFlag>(), |this| {
-                                                        this.when_some(self.utility_pane_frame(UtilityPaneSlot::Left, cx), |this, frame| {
-                                                            this.child(frame)
+                                                        this.when_some(self.utility_pane(UtilityPaneSlot::Left), |this, pane| {
+                                                            this.when(pane.expanded(cx), |this| {
+                                                                this.child(
+                                                                    UtilityPaneFrame::new(UtilityPaneSlot::Left, pane.box_clone(), cx)
+                                                                )
+                                                            })
                                                         })
                                                     })
                                                     .child(
@@ -7518,8 +7522,12 @@ impl Render for Workspace {
                                                             ),
                                                     )
                                                     .when(cx.has_flag::<AgentV2FeatureFlag>(), |this| {
-                                                        this.when_some(self.utility_pane_frame(UtilityPaneSlot::Right, cx), |this, frame| {
-                                                            this.child(frame)
+                                                        this.when_some(self.utility_pane(UtilityPaneSlot::Right), |this, pane| {
+                                                            this.when(pane.expanded(cx), |this| {
+                                                                this.child(
+                                                                    UtilityPaneFrame::new(UtilityPaneSlot::Right, pane.box_clone(), cx)
+                                                                )
+                                                            })
                                                         })
                                                     })
                                                     .children(self.render_dock(
@@ -7553,8 +7561,12 @@ impl Render for Workspace {
                                                             .flex_1()
                                                             .children(self.render_dock(DockPosition::Left, &self.left_dock, window, cx))
                                                             .when(cx.has_flag::<AgentV2FeatureFlag>(), |this| {
-                                                                this.when_some(self.utility_pane_frame(UtilityPaneSlot::Left, cx), |this, frame| {
-                                                                    this.child(frame)
+                                                                this.when_some(self.utility_pane(UtilityPaneSlot::Left), |this, pane| {
+                                                                    this.when(pane.expanded(cx), |this| {
+                                                                        this.child(
+                                                                            UtilityPaneFrame::new(UtilityPaneSlot::Left, pane.box_clone(), cx)
+                                                                        )
+                                                                    })
                                                                 })
                                                             })
                                                             .child(
@@ -7584,8 +7596,12 @@ impl Render for Workspace {
                                                                             .when_some(paddings.1, |this, p| this.child(p.border_l_1())),
                                                                     )
                                                             )
-                                                            .when_some(self.utility_pane_frame(UtilityPaneSlot::Right, cx), |this, frame| {
-                                                                this.child(frame)
+                                                            .when_some(self.utility_pane(UtilityPaneSlot::Right), |this, pane| {
+                                                                this.when(pane.expanded(cx), |this| {
+                                                                    this.child(
+                                                                        UtilityPaneFrame::new(UtilityPaneSlot::Right, pane.box_clone(), cx)
+                                                                    )
+                                                                })
                                                             })
                                                     )
                                                     .child(
@@ -7612,8 +7628,12 @@ impl Render for Workspace {
                                                 cx,
                                             ))
                                             .when(cx.has_flag::<AgentV2FeatureFlag>(), |this| {
-                                                this.when_some(self.utility_pane_frame(UtilityPaneSlot::Left, cx), |this, frame| {
-                                                    this.child(frame)
+                                                this.when_some(self.utility_pane(UtilityPaneSlot::Left), |this, pane| {
+                                                    this.when(pane.expanded(cx), |this| {
+                                                        this.child(
+                                                            UtilityPaneFrame::new(UtilityPaneSlot::Left, pane.box_clone(), cx)
+                                                        )
+                                                    })
                                                 })
                                             })
                                             .child(
@@ -7655,8 +7675,12 @@ impl Render for Workspace {
                                                                     )
                                                             )
                                                             .when(cx.has_flag::<AgentV2FeatureFlag>(), |this| {
-                                                                this.when_some(self.utility_pane_frame(UtilityPaneSlot::Right, cx), |this, frame| {
-                                                                    this.child(frame)
+                                                                this.when_some(self.utility_pane(UtilityPaneSlot::Right), |this, pane| {
+                                                                    this.when(pane.expanded(cx), |this| {
+                                                                        this.child(
+                                                                            UtilityPaneFrame::new(UtilityPaneSlot::Right, pane.box_clone(), cx)
+                                                                        )
+                                                                    })
                                                                 })
                                                             })
                                                             .children(self.render_dock(DockPosition::Right, &self.right_dock, window, cx))
@@ -7678,8 +7702,12 @@ impl Render for Workspace {
                                                 window,
                                                 cx,
                                             ))
-                                            .when_some(self.utility_pane_frame(UtilityPaneSlot::Left, cx), |this, frame| {
-                                                this.child(frame)
+                                            .when_some(self.utility_pane(UtilityPaneSlot::Left), |this, pane| {
+                                                this.when(pane.expanded(cx), |this| {
+                                                    this.child(
+                                                        UtilityPaneFrame::new(UtilityPaneSlot::Left, pane.box_clone(), cx)
+                                                    )
+                                                })
                                             })
                                             .child(
                                                 div()
@@ -7719,8 +7747,12 @@ impl Render for Workspace {
                                                     )),
                                             )
                                             .when(cx.has_flag::<AgentV2FeatureFlag>(), |this| {
-                                                this.when_some(self.utility_pane_frame(UtilityPaneSlot::Right, cx), |this, frame| {
-                                                    this.child(frame)
+                                                this.when_some(self.utility_pane(UtilityPaneSlot::Right), |this, pane| {
+                                                    this.when(pane.expanded(cx), |this| {
+                                                        this.child(
+                                                            UtilityPaneFrame::new(UtilityPaneSlot::Right, pane.box_clone(), cx)
+                                                        )
+                                                    })
                                                 })
                                             })
                                             .children(self.render_dock(
