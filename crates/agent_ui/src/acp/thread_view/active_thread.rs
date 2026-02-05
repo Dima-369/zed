@@ -1169,6 +1169,8 @@ impl AcpThreadView {
         }
     }
 
+    }
+
     pub fn cancel_editing(&mut self, _: &ClickEvent, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(index) = self.editing_message.take()
             && let Some(editor) = &self
