@@ -9,7 +9,7 @@ They add multiple tabs to the AI thread dock and add those actions:
 - agent::TogglePlan
 - agent::DismissOsNotifications
 
-Verify compilation via `cargo check`.
+Verify compilation via `cargo check`. Note that with the diff below, there are many unused code warnings.
 
 ```diff
 diff --git a/crates/agent_ui/src/acp/thread_view/active_thread.rs b/crates/agent_ui/src/acp/thread_view/active_thread.rs
