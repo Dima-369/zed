@@ -1,5 +1,3 @@
-try out Motion system to make Zed feel fluid and intentional
-https://github.com/zed-industries/zed/pull/48295 
 
 
 
