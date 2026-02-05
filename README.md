@@ -59,6 +59,12 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - improve `editor::AcceptNextWordEditPrediction` to not insert a sole space when a space is before a word in the suggestion. Now, it inserts both the space and the word
 - patch `settings_changed()` in `crates/editor/src/editor.rs` to properly reload the buffer font family, so I can switch trivially between a monospace and proportional font (I am not sure why only my fork needs it, and `Zed.app` doesn't)
 
+## Motion system to make Zed feel fluid and intentional
+
+**Experimental**. I will see if it causes annoying merge conflicts in the future and if I like keeping those animations personally.
+
+From <https://github.com/zed-industries/zed/pull/48295>
+
 ## Images
 
 - on viewing an image, the `ImageViewer` key context is enabled, previously there was no context
