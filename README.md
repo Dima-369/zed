@@ -212,25 +212,37 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
   - their models keep sending start and end line as strings (instead as numbers as the Zed Agent requires), so I adjusted `crates/agent/src/tools/read_file_tool.rs` and the terminal tool `timeout_ms` to allow both integers and strings
   - the implementation is based on how https://github.com/RooCodeInc/Roo-Code interacts with Qwen and requires the `~/.qwen/oauth_creds.json` file to set which can be done by using the `qwen` binary and authenticating with OAuth
 
-### Agent UI changes (mainly ACP, since I am not using the Zed Agent)
+### Agent UI changes
 
 **Warning**: The code around this is extremely brittle, I very often have large merge conflicts, so I revert affected files to the `main` version. Afterwards, I let AI patch in this functionality from previous working code, but it might miss things.
 
-- add concurrent agent tabs from https://github.com/wzulfikar/zed/pull/8 (which was based on https://github.com/zed-industries/zed/pull/42387)
-- add `agent::DismissOsNotifications` action to dismiss the top right OS notification from Zed Agent. With multiple tabs, I feel that the notifications get stuck sometimes
-  - remove the opacity animation for the tabs when waiting for a response and instead rotate a circle like Windsurf
-  - add `agent::CloseActiveThreadTabOrDock`
+#### Concurrent Agent Tabs
+
+Add concurrent agent tabs from 
+<https://github.com/wzulfikar/zed/pull/8> (which was based on <https://github.com/zed-industries/zed/pull/42387>)
+
+#### New Actions
+
+- `agent::DismissOsNotifications` to dismiss the top right OS notification from Zed Agent. With multiple tabs, I feel that the notifications get stuck sometimes
+- `agent::CloseActiveThreadTabOrDock`
+- `agent::ActivateNextTab` / `agent::ActivatePreviousTab`
+- `agent::TogglePlan` to toggle the plan of the current thread
+
+These are missing in latest `dima` branch (I had them implemented at same point):
+
+- `agent::DismissErrorNotification` / `agent::CopyErrorNotification`
+- `agent::LaunchAgent` which takes an external agent name and can be bound like this:
+  - `"cmd-t": ["agent::LaunchAgent", { "agent_name": "qwen" }]`
+
+#### Other (probably missing on latest `dima` branch)
+
+- remove the opacity animation for the tabs when waiting for a response and instead display an accent color circle to indicate it's waiting for a response
 - Zed Agent, External Agents and text thread title summaries are now generated on every AI message received
-- add `agent::ActivateNextTab` and `agent::ActivatePreviousTab`
-- add `agent::DismissErrorNotification` and `agent::CopyErrorNotification`
 - change `agent::OpenActiveThreadAsMarkdown` to always open to end of buffer instead of start, and when there are more than 90k lines, open as `Plain Text` because Markdown lags hard for me, see `crates/agent_ui/src/acp/thread_view.rs`
-- add `agent::TogglePlan` which toggles the plan of the current thread
 - always allow all edits, otherwise it kepts asking for "Allow All Edits" every single time a new ACP thread is started which is just annoying. Note that it still asks for tool permissions
 - show command output for `acp::ToolKind::Execute` always below the `Run Command` view in a plain text view to preserve newlines
   - I added `prepare_execute_tool_output_from_qwen()` to strip trailing and leading information for cleaner output
 - allow `New From Summary` for ACP agents, instead of only for Zed Agent
-- add `agent::LaunchAgent` action which takes an external agent name and can be bound like this:
-  - `"cmd-t": ["agent::LaunchAgent", { "agent_name": "qwen" }]`
 
 #### Agent OS Notifications
 
