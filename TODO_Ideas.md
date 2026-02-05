@@ -3,16 +3,6 @@ https://github.com/zed-industries/zed/pull/48295
 
 
 
-
-Restore those actions and multiple AI tabs after `main` merge:
-
-• agent::ActivatePreviousTab
-• agent::ActivateNextTab
-• agent::TogglePlan
-• agent::DismissOsNotifications
-• agent::CloseActiveThread TabOrDock
-
-
 # >>> Investigations
 
 ## Fix that edit predictions do not work for buffers without files, like ones started from workspace: new file
