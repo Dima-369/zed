@@ -63,6 +63,9 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 **Experimental**. I will see if it causes annoying merge conflicts in the future and if I like keeping those animations personally.
 
+I tested out the PR and I actually dislike all implemented animations apart from the dock animation, so I only took in that animation code from the PR. Everything else, the popover/dialog/modal opening/closing and the picker animation just make Zed feel sluggish.
+I also removed the settings code for reduce motion, as I don't need it, and have it always enabled.
+
 From <https://github.com/zed-industries/zed/pull/48295>
 
 ## Images
