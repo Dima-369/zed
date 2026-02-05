@@ -544,11 +544,12 @@ impl Element for UniformList {
             window,
             cx,
             |_, window, cx| {
-                for item in &mut request_layout.items {
-                    item.paint(window, cx);
-                }
+                // Decorations paint before items so backgrounds (e.g. selection highlights) render behind item content.
                 for decoration in &mut request_layout.decorations {
                     decoration.paint(window, cx);
+                }
+                for item in &mut request_layout.items {
+                    item.paint(window, cx);
                 }
             },
         )

@@ -5,14 +5,15 @@ pub mod popover_menu;
 use anyhow::Result;
 
 use gpui::{
-    Action, AnyElement, App, Bounds, ClickEvent, Context, DismissEvent, EventEmitter, FocusHandle,
-    Focusable, Length, ListSizingBehavior, ListState, MouseButton, MouseUpEvent, Pixels, Render,
-    ScrollStrategy, Task, UniformListScrollHandle, Window, actions, canvas, div, list, prelude::*,
-    uniform_list,
+    Action, Animation, AnimationExt, AnyElement, App, Bounds, ClickEvent, Context, DismissEvent,
+    EventEmitter, FocusHandle, Focusable, Length, ListSizingBehavior, ListState, MouseButton,
+    MouseUpEvent, Pixels, Point, Render, ScrollStrategy, Task, UniformListDecoration,
+    UniformListScrollHandle, Window, actions, canvas, div, list, prelude::*, uniform_list,
 };
 use head::Head;
 use schemars::JsonSchema;
 use serde::Deserialize;
+use settings::should_reduce_motion;
 use std::{
     cell::Cell, cell::RefCell, collections::HashMap, ops::Range, rc::Rc, sync::Arc, time::Duration,
 };
@@ -33,6 +34,86 @@ enum ElementContainer {
 pub enum Direction {
     Up,
     Down,
+}
+
+const MAX_ANIMATED_DISTANCE: usize = 3;
+
+struct SelectionIndicator {
+    selected_index: usize,
+    previous_selected_index: Option<usize>,
+    generation: usize,
+    reduce_motion: bool,
+}
+
+impl SelectionIndicator {
+    fn animated_origin(&self, item_height: Pixels, visible_range: &Range<usize>) -> Option<Pixels> {
+        if self.reduce_motion {
+            return None;
+        }
+        let previous_index = self.previous_selected_index?;
+        if !visible_range.contains(&previous_index) {
+            return None;
+        }
+        let distance = self.selected_index.abs_diff(previous_index);
+        let clamped_index = if distance > MAX_ANIMATED_DISTANCE {
+            if self.selected_index > previous_index {
+                self.selected_index - MAX_ANIMATED_DISTANCE
+            } else {
+                self.selected_index + MAX_ANIMATED_DISTANCE
+            }
+        } else {
+            previous_index
+        };
+        Some(item_height * clamped_index)
+    }
+}
+
+impl UniformListDecoration for SelectionIndicator {
+    fn compute(
+        &self,
+        visible_range: Range<usize>,
+        _bounds: Bounds<Pixels>,
+        _scroll_offset: Point<Pixels>,
+        item_height: Pixels,
+        _item_count: usize,
+        _window: &mut Window,
+        cx: &mut App,
+    ) -> AnyElement {
+        let selected_top = item_height * self.selected_index;
+        let background = cx.theme().colors().ghost_element_selected;
+        let inset = DynamicSpacing::Base04.rems(cx);
+
+        let base = div()
+            .absolute()
+            .left(inset)
+            .right(inset)
+            .h(item_height)
+            .bg(background)
+            .rounded_sm();
+
+        let indicator = match self.animated_origin(item_height, &visible_range) {
+            Some(origin_top) => {
+                let generation = self.generation;
+                base.with_animation(
+                    ("sel-overlay", generation as u64),
+                    Animation::new(Duration::from_millis(150))
+                        .with_easing(gpui::ease_in_out),
+                    move |this, delta| {
+                        let offset = origin_top + (selected_top - origin_top) * delta;
+                        this.top(offset)
+                    },
+                )
+                .into_any_element()
+            }
+            None => base.top(selected_top).into_any_element(),
+        };
+
+        div()
+            .relative()
+            .size_full()
+            .child(indicator)
+            .into_any_element()
+    }
 }
 
 actions!(
@@ -76,6 +157,9 @@ pub struct Picker<D: PickerDelegate> {
     picker_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     /// Bounds tracking for items (for aside positioning) - maps item index to bounds
     item_bounds: Rc<RefCell<HashMap<usize, Bounds<Pixels>>>>,
+    previous_selected_index: Option<usize>,
+    selection_generation: usize,
+    last_visible_range: Rc<RefCell<Range<usize>>>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -342,6 +426,9 @@ impl<D: PickerDelegate> Picker<D> {
             is_modal: true,
             picker_bounds: Rc::new(Cell::new(None)),
             item_bounds: Rc::new(RefCell::new(HashMap::default())),
+            previous_selected_index: None,
+            selection_generation: 0,
+            last_visible_range: Rc::new(RefCell::new(0..0)),
         };
         this.update_matches("".to_string(), window, cx);
         // give the delegate 4ms to render the first set of suggestions.
@@ -468,6 +555,13 @@ impl<D: PickerDelegate> Picker<D> {
         let current_index = self.delegate.selected_index();
 
         if previous_index != current_index {
+            self.previous_selected_index =
+                if self.is_fully_visible(current_index, match_count) {
+                    Some(previous_index)
+                } else {
+                    None
+                };
+            self.selection_generation = self.selection_generation.wrapping_add(1);
             if let Some(action) = self.delegate.selected_index_changed(ix, window, cx) {
                 action(window, cx);
             }
@@ -475,6 +569,25 @@ impl<D: PickerDelegate> Picker<D> {
                 self.scroll_to_item_index(ix);
             }
         }
+    }
+
+    /// Returns true if the given index is fully visible (not partially
+    /// obscured at the edges of the scroll viewport). Items at the very
+    /// first or last position of the visible range may be only partially
+    /// shown, so we exclude them unless they sit at the list boundary.
+    fn is_fully_visible(&self, index: usize, match_count: usize) -> bool {
+        let visible = self.last_visible_range.borrow().clone();
+        let safe_start = if visible.start > 0 {
+            visible.start + 1
+        } else {
+            visible.start
+        };
+        let safe_end = if visible.end < match_count {
+            visible.end.saturating_sub(1)
+        } else {
+            visible.end
+        };
+        safe_start < safe_end && (safe_start..safe_end).contains(&index)
     }
 
     pub fn select_next(
@@ -724,6 +837,8 @@ impl<D: PickerDelegate> Picker<D> {
             state.reset(self.delegate.match_count());
         }
 
+        self.previous_selected_index = None;
+
         let index = self.delegate.selected_index();
         self.scroll_to_item_index(index);
         self.pending_update_matches = None;
@@ -794,12 +909,16 @@ impl<D: PickerDelegate> Picker<D> {
                     this.handle_click(ix, event.modifiers.platform, window, cx)
                 }),
             )
-            .children(self.delegate.render_match(
-                ix,
-                ix == self.delegate.selected_index(),
-                window,
-                cx,
-            ))
+            .children({
+                // When using a uniform list, the SelectionIndicator decoration
+                // handles the highlight, so individual items should not render
+                // their own selected background.
+                let has_selection_overlay =
+                    matches!(self.element_container, ElementContainer::UniformList(_));
+                let selected =
+                    ix == self.delegate.selected_index() && !has_selection_overlay;
+                self.delegate.render_match(ix, selected, window, cx)
+            })
             .when(
                 self.delegate.separators_after_indices().contains(&ix),
                 |picker| {
@@ -819,23 +938,36 @@ impl<D: PickerDelegate> Picker<D> {
         };
 
         match &self.element_container {
-            ElementContainer::UniformList(scroll_handle) => uniform_list(
-                "candidates",
-                self.delegate.match_count(),
-                cx.processor(move |picker, visible_range: Range<usize>, window, cx| {
-                    visible_range
-                        .map(|ix| picker.render_element(window, cx, ix))
-                        .collect()
-                }),
-            )
-            .with_sizing_behavior(sizing_behavior)
-            .when_some(self.widest_item, |el, widest_item| {
-                el.with_width_from_item(Some(widest_item))
-            })
-            .flex_grow()
-            .py_1()
-            .track_scroll(&scroll_handle)
-            .into_any_element(),
+            ElementContainer::UniformList(scroll_handle) => {
+                let match_count = self.delegate.match_count();
+                let last_visible_range = self.last_visible_range.clone();
+                uniform_list(
+                    "candidates",
+                    match_count,
+                    cx.processor(move |picker, visible_range: Range<usize>, window, cx| {
+                        *last_visible_range.borrow_mut() = visible_range.clone();
+                        visible_range
+                            .map(|ix| picker.render_element(window, cx, ix))
+                            .collect()
+                    }),
+                )
+                .with_sizing_behavior(sizing_behavior)
+                .when_some(self.widest_item, |el, widest_item| {
+                    el.with_width_from_item(Some(widest_item))
+                })
+                .when(match_count > 0, |el| {
+                    el.with_decoration(SelectionIndicator {
+                        selected_index: self.delegate.selected_index(),
+                        previous_selected_index: self.previous_selected_index,
+                        generation: self.selection_generation,
+                        reduce_motion: should_reduce_motion(cx),
+                    })
+                })
+                .flex_grow()
+                .py_1()
+                .track_scroll(&scroll_handle)
+                .into_any_element()
+            }
             ElementContainer::List(state) => list(
                 state.clone(),
                 cx.processor(|this, ix, window, cx| {
@@ -857,6 +989,69 @@ impl<D: PickerDelegate> Picker<D> {
                 scroll_handle.logical_scroll_top_index()
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::px;
+
+    fn make_indicator(
+        selected_index: usize,
+        previous_selected_index: Option<usize>,
+        reduce_motion: bool,
+    ) -> SelectionIndicator {
+        SelectionIndicator {
+            selected_index,
+            previous_selected_index,
+            generation: 0,
+            reduce_motion,
+        }
+    }
+
+    #[test]
+    fn test_animated_origin_returns_none() {
+        assert_eq!(make_indicator(5, Some(3), true).animated_origin(px(30.), &(0..10)), None);
+        assert_eq!(make_indicator(5, None, false).animated_origin(px(30.), &(0..10)), None);
+        assert_eq!(make_indicator(5, Some(12), false).animated_origin(px(30.), &(3..10)), None);
+    }
+
+    #[test]
+    fn test_animated_origin_computes_position() {
+        assert_eq!(make_indicator(5, Some(3), false).animated_origin(px(30.), &(0..10)), Some(px(90.)));
+        assert_eq!(make_indicator(5, Some(2), false).animated_origin(px(25.), &(0..10)), Some(px(50.)));
+        assert_eq!(make_indicator(8, Some(0), false).animated_origin(px(20.), &(0..10)), Some(px(100.)));
+        assert_eq!(make_indicator(2, Some(9), false).animated_origin(px(20.), &(0..10)), Some(px(100.)));
+    }
+
+    fn is_fully_visible(visible_range: Range<usize>, index: usize, match_count: usize) -> bool {
+        let safe_start = if visible_range.start > 0 {
+            visible_range.start + 1
+        } else {
+            visible_range.start
+        };
+        let safe_end = if visible_range.end < match_count {
+            visible_range.end.saturating_sub(1)
+        } else {
+            visible_range.end
+        };
+        safe_start < safe_end && (safe_start..safe_end).contains(&index)
+    }
+
+    #[test]
+    fn test_is_fully_visible_true_cases() {
+        assert!(is_fully_visible(2..8, 5, 20));   // mid-range
+        assert!(is_fully_visible(0..8, 0, 20));    // list start (no start clip)
+        assert!(is_fully_visible(12..20, 19, 20)); // list end (no end clip)
+    }
+
+    #[test]
+    fn test_is_fully_visible_false_cases() {
+        assert!(!is_fully_visible(2..8, 2, 20));   // at scroll boundary start
+        assert!(!is_fully_visible(2..8, 7, 20));   // at scroll boundary end
+        assert!(!is_fully_visible(5..10, 15, 20)); // outside range entirely
+        assert!(!is_fully_visible(5..5, 5, 20));   // empty range
     }
 }
 
