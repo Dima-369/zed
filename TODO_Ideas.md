@@ -1,4 +1,5 @@
-
+from the motion PR, remove the animation delay on showing dialogs
+remove the animation on picker
 
 
 # >>> Investigations
