@@ -3003,6 +3003,11 @@ impl AcpThreadView {
                 this.toggle_following(window, cx);
             }))
     }
+
+    fn toggle_plan(&mut self, _: &crate::TogglePlan, _window: &mut Window, cx: &mut Context<Self>) {
+        self.plan_expanded = !self.plan_expanded;
+        cx.notify();
+    }
 }
 
 impl AcpThreadView {
@@ -6898,6 +6903,7 @@ impl Render for AcpThreadView {
                         .update(cx, |model_selector, cx| model_selector.toggle(window, cx));
                 }
             }))
+            .on_action(cx.listener(Self::toggle_plan))
             .on_action(cx.listener(|this, _: &CycleFavoriteModels, window, cx| {
                 if let Some(config_options_view) = this.config_options_view.clone() {
                     let handled = config_options_view.update(cx, |view, cx| {

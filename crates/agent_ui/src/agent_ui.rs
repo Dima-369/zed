@@ -3,6 +3,7 @@ mod agent_configuration;
 mod agent_diff;
 mod agent_model_selector;
 mod agent_panel;
+mod agent_panel_tab;
 mod agent_registry_ui;
 mod buffer_codegen;
 mod completion_provider;
@@ -143,6 +144,18 @@ actions!(
         OpenPermissionDropdown,
         /// Toggles thinking mode for models that support extended thinking.
         ToggleThinkingMode,
+        /// Activates the next tab in the agent panel.
+        ActivateNextTab,
+        /// Activates the previous tab in the agent panel.
+        ActivatePreviousTab,
+        /// Closes the currently active thread tab.
+        CloseActiveThreadTab,
+        /// Toggles the plan view in the thread.
+        TogglePlan,
+        /// Dismisses all OS-level agent notifications.
+        DismissOsNotifications,
+        /// Closes the currently active thread tab or docks the panel if it's the last tab.
+        CloseActiveThreadTabOrDock,
     ]
 );
 
@@ -281,6 +294,11 @@ pub fn init(
     context_server_configuration::init(language_registry.clone(), fs.clone(), cx);
     TextThreadEditor::init(cx);
 
+    // Register global action to dismiss all agent notifications
+    cx.on_action(|_: &DismissOsNotifications, cx| {
+        dismiss_all_agent_notifications(cx);
+    });
+
     register_slash_commands(cx);
     inline_assistant::init(fs.clone(), prompt_builder.clone(), cx);
     terminal_inline_assistant::init(fs.clone(), prompt_builder, cx);
@@ -332,6 +350,23 @@ pub fn init(
         update_command_palette_filter(cx);
     })
     .detach();
+}
+
+fn dismiss_all_agent_notifications(cx: &mut App) {
+    // Find all windows that contain AgentNotification and dismiss them
+    let agent_notification_windows: Vec<_> = cx
+        .windows()
+        .iter()
+        .filter_map(|window| window.downcast::<crate::ui::AgentNotification>())
+        .collect();
+
+    for window in agent_notification_windows {
+        window
+            .update(cx, |_, window, _| {
+                window.remove_window();
+            })
+            .ok();
+    }
 }
 
 fn update_command_palette_filter(cx: &mut App) {
