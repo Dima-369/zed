@@ -1,8 +1,4 @@
-use std::path::Path;
-use std::sync::Arc;
-
 use crate::agent_panel::{ActiveView, AgentType};
-use agent_client_protocol as acp;
 use gpui::{AnyElement, SharedString};
 
 pub type TabId = usize;
@@ -30,10 +26,4 @@ pub struct TabLabelRender {
     pub element: AnyElement,
     pub tooltip: Option<SharedString>,
     pub is_generating: bool,
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub enum AgentPanelTabIdentity {
-    AcpThread(acp::SessionId),
-    TextThread(Arc<Path>),
 }
