@@ -963,7 +963,8 @@ impl Editor {
         ) {
             self.scroll_manager.set_anchor(
                 scroll_anchor,
-                &display_map,top_row,
+                &display_map,
+                top_row,
                 true,
                 false,
                 workspace_id,
@@ -1004,7 +1005,7 @@ impl Editor {
         ) {
             self.scroll_manager.set_anchor(
                 scroll_anchor,
-            &display_map,
+                &display_map,
                 top_row,
                 false,
                 false,

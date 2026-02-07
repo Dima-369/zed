@@ -3,6 +3,7 @@ use std::ops::{Bound, Range, RangeInclusive};
 use buffer_diff::{BufferDiff, BufferDiffSnapshot};
 use collections::HashMap;
 use feature_flags::{FeatureFlag, FeatureFlagAppExt as _};
+use gpui::KeyContext;
 use gpui::{Action, AppContext as _, Entity, EventEmitter, Focusable, Subscription, WeakEntity};
 use itertools::Itertools;
 use language::{Buffer, Capability};
@@ -17,7 +18,6 @@ use ui::{
     App, Context, InteractiveElement as _, IntoElement as _, ParentElement as _, Render,
     Styled as _, Window, div,
 };
-use gpui::KeyContext;
 
 use crate::{
     display_map::CompanionExcerptPatch,
@@ -318,7 +318,7 @@ impl SplittableEditor {
         if let Some(lhs) = &self.lhs {
             lhs.has_latest_selection
         } else {
-            false  // If not split, we're conceptually on the right side
+            false // If not split, we're conceptually on the right side
         }
     }
 
@@ -326,7 +326,7 @@ impl SplittableEditor {
         if let Some(lhs) = &self.lhs {
             !lhs.has_latest_selection
         } else {
-            true  // If not split, we're conceptually on the right side
+            true // If not split, we're conceptually on the right side
         }
     }
 

@@ -5,7 +5,7 @@ use gpui::{
 use picker::{Picker, PickerDelegate};
 use project::{Project, ProjectPath};
 use std::{collections::HashSet, sync::Arc};
-use ui::{prelude::*, ListItem, ListItemSpacing};
+use ui::{ListItem, ListItemSpacing, prelude::*};
 use util::paths::PathExt;
 use workspace::{ModalView, Workspace};
 use zed_actions::workspace::CopyFilePaths;

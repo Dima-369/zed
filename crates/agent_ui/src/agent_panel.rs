@@ -16,6 +16,7 @@ use settings::{LanguageModelProviderSetting, LanguageModelSelection};
 use zed_actions::agent::{OpenClaudeCodeOnboardingModal, ReauthenticateAgent};
 
 use crate::ManageProfiles;
+use crate::agent_panel_tab::{AgentPanelTab, TabId};
 use crate::ui::{AcpOnboardingModal, ClaudeCodeOnboardingModal};
 use crate::{
     AddContextServer, AgentDiffPane, CopyThreadToClipboard, Follow, InlineAssistant,
@@ -37,7 +38,6 @@ use crate::{
     ExternalAgent, ExternalAgentInitialContent, NewExternalAgentThread,
     NewNativeAgentThreadFromSummary,
 };
-use crate::agent_panel_tab::{AgentPanelTab, TabId};
 use agent_settings::AgentSettings;
 use ai_onboarding::AgentPanelOnboarding;
 use anyhow::{Result, anyhow};
@@ -51,8 +51,9 @@ use extension_host::ExtensionStore;
 use fs::Fs;
 use gpui::{
     Action, Animation, AnimationExt, AnyElement, App, AsyncWindowContext, ClipboardItem, Corner,
-    DismissEvent, Empty, Entity, EventEmitter, ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels,
-    ScrollHandle, Subscription, Task, UpdateGlobal, WeakEntity, prelude::*, pulsating_between,
+    DismissEvent, Empty, Entity, EventEmitter, ExternalPaths, FocusHandle, Focusable, KeyContext,
+    Pixels, ScrollHandle, Subscription, Task, UpdateGlobal, WeakEntity, prelude::*,
+    pulsating_between,
 };
 use language::LanguageRegistry;
 use language_model::{ConfigurationError, LanguageModelRegistry};
@@ -61,10 +62,12 @@ use prompt_store::{PromptBuilder, PromptStore, UserPromptId};
 use rules_library::{RulesLibrary, open_rules_library};
 use search::{BufferSearchBar, buffer_search};
 use settings::{Settings, update_settings_file};
+use std::cmp::Ordering;
 use theme::ThemeSettings;
 use ui::{
-    Callout, ContextMenu, ContextMenuEntry, IconButtonShape, KeyBinding, PopoverMenu, PopoverMenuHandle, Tab,
-    TabBar, TabCloseSide, TabPosition, Tooltip, prelude::*, utils::WithRemSize,
+    Callout, ContextMenu, ContextMenuEntry, IconButtonShape, KeyBinding, PopoverMenu,
+    PopoverMenuHandle, Tab, TabBar, TabCloseSide, TabPosition, Tooltip, prelude::*,
+    utils::WithRemSize,
 };
 use util::ResultExt as _;
 use workspace::{
@@ -78,7 +81,6 @@ use zed_actions::{
     },
     assistant::{OpenRulesLibrary, ToggleFocus},
 };
-use std::cmp::Ordering;
 
 const AGENT_PANEL_KEY: &str = "agent_panel";
 const RECENTLY_UPDATED_MENU_LIMIT: usize = 6;
@@ -134,11 +136,15 @@ pub fn init(cx: &mut App) {
                         panel.update(cx, |panel, cx| panel.activate_previous_tab(window, cx));
                     }
                 })
-                .register_action(|workspace, action: &crate::CloseActiveThreadTabOrDock, window, cx| {
-                    if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
-                        panel.update(cx, |panel, cx| panel.close_active_thread_tab_or_dock(action, window, cx));
-                    }
-                })
+                .register_action(
+                    |workspace, action: &crate::CloseActiveThreadTabOrDock, window, cx| {
+                        if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                            panel.update(cx, |panel, cx| {
+                                panel.close_active_thread_tab_or_dock(action, window, cx)
+                            });
+                        }
+                    },
+                )
                 .register_action(|workspace, _: &OpenHistory, window, cx| {
                     if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
                         workspace.focus_panel::<AgentPanel>(window, cx);
@@ -283,7 +289,6 @@ pub enum ActiveView {
     },
     Configuration,
 }
-
 
 enum WhichFontSize {
     AgentFont,
@@ -1525,12 +1530,13 @@ impl AgentPanel {
             // New thread view - push as a new tab
             self.overlay_view.take();
             self.overlay_previous_tab_id.take();
-            
+
             let agent = self.selected_agent.clone();
             let tab = AgentPanelTab::new(new_view, agent);
             self.tabs.push(tab);
             self.active_tab_id = self.tabs.len() - 1;
-            self.tab_bar_scroll_handle.scroll_to_item(self.active_tab_id);
+            self.tab_bar_scroll_handle
+                .scroll_to_item(self.active_tab_id);
         }
 
         if focus {
@@ -1539,12 +1545,7 @@ impl AgentPanel {
         cx.notify();
     }
 
-    fn set_active_tab_by_id(
-        &mut self,
-        tab_id: TabId,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn set_active_tab_by_id(&mut self, tab_id: TabId, window: &mut Window, cx: &mut Context<Self>) {
         if tab_id < self.tabs.len() {
             self.overlay_view = None;
             self.overlay_previous_tab_id = None;
@@ -1555,12 +1556,7 @@ impl AgentPanel {
         }
     }
 
-    fn remove_tab_by_id(
-        &mut self,
-        tab_id: TabId,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn remove_tab_by_id(&mut self, tab_id: TabId, window: &mut Window, cx: &mut Context<Self>) {
         if self.tabs.len() <= 1 {
             // If there's only one tab, close the panel instead
             if let Some(workspace) = self.workspace.upgrade() {
@@ -1581,7 +1577,8 @@ impl AgentPanel {
                 self.active_tab_id = self.active_tab_id.saturating_sub(1);
             }
 
-            self.tab_bar_scroll_handle.scroll_to_item(self.active_tab_id);
+            self.tab_bar_scroll_handle
+                .scroll_to_item(self.active_tab_id);
             self.focus_handle(cx).focus(window, cx);
             cx.notify();
         }
@@ -1624,10 +1621,10 @@ impl AgentPanel {
     ) {
         let tab = AgentPanelTab::new(view, agent);
         self.tabs.push(tab);
-        
+
         // Set the newly added tab as active
         self.active_tab_id = self.tabs.len() - 1;
-        
+
         // Update the active view to match the new tab
         // We'll just notify that the UI needs to update
         cx.notify();
@@ -1889,7 +1886,12 @@ impl AgentPanel {
             )
         });
 
-        self.set_active_view(ActiveView::ExternalAgentThread { thread_view }, true, window, cx);
+        self.set_active_view(
+            ActiveView::ExternalAgentThread { thread_view },
+            true,
+            window,
+            cx,
+        );
     }
 }
 
@@ -2364,7 +2366,9 @@ impl AgentPanel {
             };
 
         let active_thread = match &self.active_view() {
-            ActiveView::ExternalAgentThread { thread_view } => thread_view.read(cx).as_native_thread(cx),
+            ActiveView::ExternalAgentThread { thread_view } => {
+                thread_view.read(cx).as_native_thread(cx)
+            }
             ActiveView::Uninitialized
             | ActiveView::TextThread { .. }
             | ActiveView::History { .. }
@@ -3116,12 +3120,11 @@ impl AgentPanel {
         cx: &Context<Self>,
     ) -> crate::agent_panel_tab::TabLabelRender {
         let is_generating = match tab {
-            ActiveView::ExternalAgentThread { thread_view } => thread_view
-                .read(cx)
-                .as_active_thread()
-                .map_or(false, |t| {
+            ActiveView::ExternalAgentThread { thread_view } => {
+                thread_view.read(cx).as_active_thread().map_or(false, |t| {
                     t.read(cx).thread.read(cx).status() == acp_thread::ThreadStatus::Generating
-                }),
+                })
+            }
             ActiveView::TextThread {
                 text_thread_editor, ..
             } => text_thread_editor
@@ -3136,9 +3139,7 @@ impl AgentPanel {
         };
 
         let title = match tab {
-            ActiveView::ExternalAgentThread { thread_view } => {
-                thread_view.read(cx).title(cx)
-            }
+            ActiveView::ExternalAgentThread { thread_view } => thread_view.read(cx).title(cx),
             ActiveView::TextThread {
                 text_thread_editor, ..
             } => {
@@ -3370,9 +3371,11 @@ impl Render for AgentPanel {
             .on_action(cx.listener(Self::go_back))
             .on_action(cx.listener(Self::toggle_navigation_menu))
             .on_action(cx.listener(Self::toggle_options_menu))
-            .on_action(cx.listener(|this, _: &crate::CloseActiveThreadTab, window, cx| {
-                this.remove_tab_by_id(this.active_tab_id, window, cx);
-            }))
+            .on_action(
+                cx.listener(|this, _: &crate::CloseActiveThreadTab, window, cx| {
+                    this.remove_tab_by_id(this.active_tab_id, window, cx);
+                }),
+            )
             .on_action(cx.listener(Self::increase_font_size))
             .on_action(cx.listener(Self::decrease_font_size))
             .on_action(cx.listener(Self::reset_font_size))

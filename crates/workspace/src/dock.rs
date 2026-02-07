@@ -517,9 +517,7 @@ impl Dock {
             self.animation_generation = self.animation_generation.wrapping_add(1);
             let close_generation = self.animation_generation;
             self._close_task = Some(cx.spawn(async move |this, cx| {
-                cx.background_executor()
-                    .timer(DOCK_CLOSE_DURATION)
-                    .await;
+                cx.background_executor().timer(DOCK_CLOSE_DURATION).await;
                 if let Some(this) = this.upgrade() {
                     this.update(cx, |dock, cx| {
                         if dock.animation_generation == close_generation {
@@ -993,8 +991,12 @@ impl Render for Dock {
                 })
                 .with_animation(
                     ("dock-anim", animation_generation as u64),
-                    Animation::new(if is_closing { DOCK_CLOSE_DURATION } else { DOCK_OPEN_DURATION })
-                        .with_easing(ease_out_cubic),
+                    Animation::new(if is_closing {
+                        DOCK_CLOSE_DURATION
+                    } else {
+                        DOCK_OPEN_DURATION
+                    })
+                    .with_easing(ease_out_cubic),
                     {
                         let position = self.position;
                         let target_size = f32::from(size);

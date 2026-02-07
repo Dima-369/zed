@@ -334,12 +334,7 @@ impl RenderOnce for UtilityPaneFrame {
             .when(self.slot == UtilityPaneSlot::Right, |this| {
                 this.border_l_1()
             })
-            .child(
-                div()
-                    .min_w(width)
-                    .h_full()
-                    .child(self.handle.to_any()),
-            )
+            .child(div().min_w(width).h_full().child(self.handle.to_any()))
             .when(!is_closing, |this| this.child(create_resize_handle()))
             .with_animation(
                 ("utility-pane-anim", animation_generation as u64),
@@ -348,7 +343,7 @@ impl RenderOnce for UtilityPaneFrame {
                 } else {
                     UTILITY_PANE_OPEN_DURATION
                 })
-                    .with_easing(ease_out_cubic),
+                .with_easing(ease_out_cubic),
                 {
                     let target_width = f32::from(width);
                     move |this, delta| {
