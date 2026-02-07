@@ -1,11 +1,14 @@
 use collections::VecDeque;
 use gpui::{Global, SharedString};
 use parking_lot::Mutex;
+use std::time::Duration;
 use workspace::WORKSPACE_DB;
 
 const MAX_CLIPBOARD_HISTORY: usize = 300;
+const CLIPBOARD_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
 static CLIPBOARD_ENTRIES: Mutex<VecDeque<ClipboardEntry>> = Mutex::new(VecDeque::new());
+static LAST_CLIPBOARD_TEXT: Mutex<Option<String>> = Mutex::new(None);
 
 #[derive(Clone, Debug)]
 pub struct ClipboardEntry {
@@ -95,6 +98,7 @@ impl ClipboardHistory {
 
 /// Helper function to track clipboard text in history
 pub fn track_clipboard(text: &str, _cx: &mut impl gpui::BorrowAppContext) {
+    *LAST_CLIPBOARD_TEXT.lock() = Some(text.to_string());
     ClipboardHistory::add_entry(text.to_string());
 }
 
@@ -127,7 +131,7 @@ pub fn init(cx: &mut gpui::App) {
     cx.set_global(ClipboardHistory::new());
 
     // Load clipboard history from database on startup
-    cx.spawn(|_cx: &mut gpui::AsyncApp| async move {
+    cx.spawn(async move |_cx: &mut gpui::AsyncApp| {
         // Clean up duplicates in database first
         match WORKSPACE_DB.delete_duplicate_clipboard_entries().await {
             Ok(()) => {
@@ -156,6 +160,36 @@ pub fn init(cx: &mut gpui::App) {
             }
             Err(e) => {
                 log::error!("Failed to load clipboard history from database: {:?}", e);
+            }
+        }
+    })
+    .detach();
+
+    // Initialize last known clipboard text from current clipboard content
+    if let Some(item) = cx.read_from_clipboard() {
+        if let Some(text) = item.text() {
+            *LAST_CLIPBOARD_TEXT.lock() = Some(text);
+        }
+    }
+
+    // Poll the system clipboard for changes from other applications
+    cx.spawn(async move |cx: &mut gpui::AsyncApp| {
+        loop {
+            cx.background_executor()
+                .timer(CLIPBOARD_POLL_INTERVAL)
+                .await;
+
+            let clipboard_text =
+                cx.update(|cx| cx.read_from_clipboard().and_then(|item| item.text()));
+
+            if let Some(text) = clipboard_text {
+                let mut last = LAST_CLIPBOARD_TEXT.lock();
+                let is_new = last.as_ref() != Some(&text);
+                if is_new {
+                    *last = Some(text.clone());
+                    drop(last);
+                    ClipboardHistory::add_entry(text);
+                }
             }
         }
     })

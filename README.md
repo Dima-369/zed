@@ -84,6 +84,8 @@ It behaves like the JetBrains IDEs actions: `Last Edit Location` and `Next Edit 
   - inspired from `Choose Content to Paste` from JetBrains IDEs
   - in `crates/workspace/src/persistence.rs` there is own SQL table `clipboard_history`, so the recent entries is remembered across restarts
 
+Every 500ms the system clipboard is monitored for any new changes, to react on external application changes.
+
 ## Open directory listing as a Editor (relatively basic file explorer)
 
 This is inspired by `oil.nvim` for Neovim (https://github.com/stevearc/oil.nvim) or `vinegar` for Vim (https://github.com/tpope/vim-vinegar).
