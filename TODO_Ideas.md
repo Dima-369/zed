@@ -1,5 +1,6 @@
 Try out
 https://github.com/zed-industries/zed/pull/42889
+https://github.com/zed-industries/zed/pull/49150
 (Add search_on_input setting to Project Search)
 since I already have custom code to it with an eye icon
 
