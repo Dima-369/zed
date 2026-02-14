@@ -1,4 +1,11 @@
+Try out
+https://github.com/zed-industries/zed/pull/42889
+(Add search_on_input setting to Project Search)
+since I already have custom code to it with an eye icon
 
+Try out
+git_graph: Add basic keyboard navigation
+https://github.com/zed-industries/zed/pull/49051
 
 
 # >>> Investigations
