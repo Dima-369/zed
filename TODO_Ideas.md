@@ -1,8 +1,4 @@
-when pasting in vim mode, this should be an own transaction
-currently, one can type in fast, then paste in something and then doing UNDO, undos the paste + the characters before which is not what I want
-
-
-Try out
+WAIT until officially released, then merge and try out
 https://github.com/zed-industries/zed/pull/42889
 https://github.com/zed-industries/zed/pull/49150
 (Add search_on_input setting to Project Search)
