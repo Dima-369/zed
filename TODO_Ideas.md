@@ -1,3 +1,7 @@
+when pasting in vim mode, this should be an own transaction
+currently, one can type in fast, then paste in something and then doing UNDO, undos the paste + the characters before which is not what I want
+
+
 Try out
 https://github.com/zed-industries/zed/pull/42889
 https://github.com/zed-industries/zed/pull/49150
