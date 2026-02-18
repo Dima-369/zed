@@ -1,3 +1,6 @@
+on next main merge, TEST and then remove this mention from my README
+https://github.com/zed-industries/zed/pull/49102
+
 WAIT until officially released, then merge and try out
 https://github.com/zed-industries/zed/pull/42889
 https://github.com/zed-industries/zed/pull/49150
