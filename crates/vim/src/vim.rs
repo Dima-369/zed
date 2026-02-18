@@ -951,7 +951,12 @@ impl Vim {
                         vim.paste(&VimPaste::default(), window, cx);
                     }
                     _ => {
-                        vim.update_editor(cx, |_, editor, cx| editor.paste(&Paste, window, cx));
+                        vim.update_editor(cx, |_, editor, cx| {
+                            editor.finalize_last_transaction(cx);
+                            editor.paste(&Paste, window, cx);
+                            editor.finalize_last_transaction(cx);
+                        });
+                        vim.current_tx.take();
                     }
                 },
             );

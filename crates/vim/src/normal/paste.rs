@@ -36,6 +36,7 @@ impl Vim {
         Vim::take_forced_motion(cx);
 
         self.update_editor(cx, |vim, editor, cx| {
+            editor.finalize_last_transaction(cx);
             let text_layout_details = editor.text_layout_details(window, cx);
             editor.transact(window, cx, |editor, window, cx| {
                 editor.set_clip_at_line_ends(false, cx);
@@ -227,7 +228,9 @@ impl Vim {
                     });
                 })
             });
+            editor.finalize_last_transaction(cx);
         });
+        self.current_tx.take();
 
         if HelixModeSetting::get_global(cx).0 {
             self.switch_mode(Mode::HelixNormal, true, window, cx);
