@@ -944,6 +944,43 @@ impl Vim {
             Vim::action(
                 editor,
                 cx,
+                |vim, _: &editor::actions::Newline, window, cx| {
+                    vim.update_editor(cx, |_, editor, cx| {
+                        editor.finalize_last_transaction(cx);
+                        editor.newline(&editor::actions::Newline, window, cx);
+                        editor.finalize_last_transaction(cx);
+                    });
+                    vim.current_tx.take();
+                },
+            );
+            Vim::action(
+                editor,
+                cx,
+                |vim, _: &editor::actions::NewlineBelow, window, cx| {
+                    vim.update_editor(cx, |_, editor, cx| {
+                        editor.finalize_last_transaction(cx);
+                        editor.newline_below(&editor::actions::NewlineBelow, window, cx);
+                        editor.finalize_last_transaction(cx);
+                    });
+                    vim.current_tx.take();
+                },
+            );
+            Vim::action(
+                editor,
+                cx,
+                |vim, _: &editor::actions::NewlineAbove, window, cx| {
+                    vim.update_editor(cx, |_, editor, cx| {
+                        editor.finalize_last_transaction(cx);
+                        editor.newline_above(&editor::actions::NewlineAbove, window, cx);
+                        editor.finalize_last_transaction(cx);
+                    });
+                    vim.current_tx.take();
+                },
+            );
+
+            Vim::action(
+                editor,
+                cx,
                 |vim, _: &editor::actions::Paste, window, cx| match vim.mode {
                     Mode::Replace => vim.paste_replace(window, cx),
                     Mode::Visual | Mode::VisualLine | Mode::VisualBlock => {

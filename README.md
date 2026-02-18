@@ -142,7 +142,7 @@ You modify the emojis in your `settings.json` like this in the root setting obje
 
 - add `vim_visual` context which can be set to `normal`, `line` or `block` for more fine-grained keybindings
 - disabled vim insert mode grouping (`crates/vim/src/vim.rs`) and made newlines always break undo grouping (`crates/editor/src/editor.rs`) for more fine-grained undo
-- paste (`vim::Paste` and `editor::Paste`) in vim mode now creates its own undo transaction, so undoing a paste no longer also undoes prior typed characters
+- paste (`vim::Paste` and `editor::Paste`), newline (`editor::Newline`), newline below (`editor::NewlineBelow`) and newline above (`editor::NewlineAbove`) in vim mode now each create their own undo transaction, so undoing them no longer also undoes prior typed characters
 - modified `vim/.../delete_motion.rs` so `vim::DeleteRight` at end of line stays on the newline character
 - patch `clip_at_line_end()` in `crates/editor/src/display_map.rs` as a no-op when no editor selections are there, to have an always enabled `virtualedit=onemore` mode
   - this also allows mouse clicking beyond the end of the line where no characters are, to select the newline character in vim mode
