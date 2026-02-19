@@ -5,6 +5,10 @@ on next main merge
 remove this mention from my README about the feature flag being always enabled
 - Added support for viewing diffs in split ("side by side") mode. ([#48912](https://github.com/zed-industries/zed/pull/48912) )
 
+Remove this note from README since https://github.com/zed-industries/zed/pull/49102 fixed it:
+Is my code diff the same or not?
+- buffers without files like ones from `workspace: new file`
+
 WAIT until officially released, then merge and try out
 https://github.com/zed-industries/zed/pull/42889
 https://github.com/zed-industries/zed/pull/49150
