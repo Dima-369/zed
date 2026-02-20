@@ -1,3 +1,5 @@
+try out Sweep AI edit predictions since they have 1k free each month
+
 on next main merge, TEST and then remove this mention from my README
 https://github.com/zed-industries/zed/pull/49102
 
