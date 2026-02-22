@@ -1,7 +1,9 @@
 try out Sweep AI edit predictions since they have 1k free each month
+once Mercury free 1 month runs out!
 
 on next main merge, TEST and then remove this mention from my README
-https://github.com/zed-industries/zed/pull/49102
+https://github.com/zed-industries/zed/pull/49102 (ep: Fix edit predictions not showing in new buffer)
+does my diff modify the code exactly the same?
 
 on next main merge
 remove this mention from my README about the feature flag being always enabled
