@@ -1194,6 +1194,7 @@ impl Editor {
             let snapshot = this.buffer.read(cx).read(cx);
             let empty_str: Arc<str> = Arc::default();
             let mut markers_inserted = Vec::new();
+            let mut line_mode_anchors = Vec::new();
             let line_mode = this.selections.line_mode();
 
             for selection in &mut selections {
@@ -1254,54 +1255,85 @@ impl Editor {
                 let mut prefix_range = start_point..start_point;
                 let mut suffix_range = end_point..end_point;
 
-                // Find rightmost /* at or before the selection end
-                if let Some(prefix_pos) = region_bytes[..end_byte.min(region_bytes.len())]
+                let set_comment_ranges = |prefix_pos: usize,
+                                          suffix_pos: usize,
+                                          prefix_range: &mut Range<Point>,
+                                          suffix_range: &mut Range<Point>| {
+                    let prefix_pt = snapshot.offset_to_point(region_start_offset + prefix_pos);
+                    let suffix_pt = snapshot.offset_to_point(region_start_offset + suffix_pos);
+                    *prefix_range = prefix_pt
+                        ..Point::new(prefix_pt.row, prefix_pt.column + prefix_needle.len() as u32);
+                    *suffix_range = suffix_pt
+                        ..Point::new(suffix_pt.row, suffix_pt.column + suffix_needle.len() as u32);
+                };
+
+                let surrounding_prefix_search_end = start_byte
+                    .saturating_add(prefix_needle.len())
+                    .min(region_bytes.len());
+                if let Some(prefix_pos) = region_bytes[..surrounding_prefix_search_end]
                     .windows(prefix_needle.len())
                     .rposition(|w| w == prefix_needle)
                 {
                     let after_prefix = prefix_pos + prefix_needle.len();
-
-                    // Find the first */ after that /*
                     if let Some(suffix_pos) = region_bytes[after_prefix..]
                         .windows(suffix_needle.len())
                         .position(|w| w == suffix_needle)
                         .map(|p| p + after_prefix)
                     {
                         let suffix_end = suffix_pos + suffix_needle.len();
-
-                        // Case 1: /* ... */ surrounds the selection
-                        let markers_surround = prefix_pos <= start_byte
-                            && suffix_end >= end_byte
-                            && start_byte < suffix_end;
-
-                        // Case 2: selection contains /* ... */ (only whitespace padding)
-                        let selection_contains = start_byte <= prefix_pos
-                            && suffix_end <= end_byte
-                            && region_bytes[start_byte..prefix_pos]
-                                .iter()
-                                .all(|&b| b.is_ascii_whitespace())
-                            && region_bytes[suffix_end..end_byte]
-                                .iter()
-                                .all(|&b| b.is_ascii_whitespace());
-
-                        if markers_surround || selection_contains {
+                        if suffix_end >= end_byte && start_byte < suffix_end {
                             is_commented = true;
-                            let prefix_pt =
-                                snapshot.offset_to_point(region_start_offset + prefix_pos);
-                            let suffix_pt =
-                                snapshot.offset_to_point(region_start_offset + suffix_pos);
-                            prefix_range = prefix_pt
-                                ..Point::new(
-                                    prefix_pt.row,
-                                    prefix_pt.column + prefix_needle.len() as u32,
-                                );
-                            suffix_range = suffix_pt
-                                ..Point::new(
-                                    suffix_pt.row,
-                                    suffix_pt.column + suffix_needle.len() as u32,
-                                );
+                            set_comment_ranges(
+                                prefix_pos,
+                                suffix_pos,
+                                &mut prefix_range,
+                                &mut suffix_range,
+                            );
                         }
                     }
+                }
+
+                if !is_commented {
+                    let selection_end = end_byte.min(region_bytes.len());
+                    if start_byte < selection_end {
+                        if let Some(prefix_pos) = region_bytes[start_byte..selection_end]
+                            .windows(prefix_needle.len())
+                            .position(|w| w == prefix_needle)
+                            .map(|p| p + start_byte)
+                        {
+                            let after_prefix = prefix_pos + prefix_needle.len();
+                            if let Some(suffix_pos) = region_bytes[after_prefix..selection_end]
+                                .windows(suffix_needle.len())
+                                .position(|w| w == suffix_needle)
+                                .map(|p| p + after_prefix)
+                            {
+                                let suffix_end = suffix_pos + suffix_needle.len();
+                                if region_bytes[start_byte..prefix_pos]
+                                    .iter()
+                                    .all(|&b| b.is_ascii_whitespace())
+                                    && region_bytes[suffix_end..selection_end]
+                                        .iter()
+                                        .all(|&b| b.is_ascii_whitespace())
+                                {
+                                    is_commented = true;
+                                    set_comment_ranges(
+                                        prefix_pos,
+                                        suffix_pos,
+                                        &mut prefix_range,
+                                        &mut suffix_range,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if line_mode {
+                    line_mode_anchors.push((
+                        selection.id,
+                        snapshot.anchor_before(start_point),
+                        snapshot.anchor_after(end_point),
+                    ));
                 }
 
                 if is_commented {
@@ -1387,7 +1419,22 @@ impl Editor {
             let mut selections = this
                 .selections
                 .all::<MultiBufferPoint>(&this.display_snapshot(cx));
+            let snapshot = this.buffer.read(cx).read(cx);
             for selection in &mut selections {
+                selection.start = snapshot.clip_point(selection.start, Bias::Left);
+                selection.end = snapshot.clip_point(selection.end, Bias::Right);
+
+                if line_mode {
+                    if let Some((_, start_anchor, end_anchor)) = line_mode_anchors
+                        .iter()
+                        .find(|(id, _, _)| *id == selection.id)
+                    {
+                        selection.start = snapshot.clip_point(start_anchor.to_point(&snapshot), Bias::Left);
+                        selection.end = snapshot.clip_point(end_anchor.to_point(&snapshot), Bias::Right);
+                    }
+                    continue;
+                }
+
                 if let Some((_, prefix_len, suffix_len, was_empty, suffix_row)) = markers_inserted
                     .iter()
                     .find(|(id, _, _, _, _)| *id == selection.id)
@@ -1406,6 +1453,7 @@ impl Editor {
                     }
                 }
             }
+            drop(snapshot);
             this.change_selections(Default::default(), _window, cx, |s| s.select(selections));
         });
     }

@@ -2069,6 +2069,83 @@ async fn test_toggle_block_comments(cx: &mut gpui::TestAppContext) {
     );
 }
 
+#[gpui::test]
+async fn test_toggle_block_comments_with_symmetric_markers_in_visual_line_mode(
+    cx: &mut gpui::TestAppContext,
+) {
+    let mut cx = VimTestContext::new(cx, true).await;
+
+    let language = Arc::new(Language::new(
+        LanguageConfig {
+            block_comment: Some(language::BlockCommentConfig {
+                start: "\"\"\"".into(),
+                prefix: "".into(),
+                end: "\"\"\"".into(),
+                tab_size: 1,
+            }),
+            ..Default::default()
+        },
+        None,
+    ));
+    cx.update_buffer(|buffer, cx| buffer.set_language(Some(language), cx));
+
+    cx.set_state(
+        indoc! {"
+        from PIL import Image
+        import sys
+
+        ˇimg = Image.open(sys.argv[1])
+        size = int(sys.argv[2])
+        print(size)
+        "},
+        Mode::Normal,
+    );
+    cx.simulate_keystrokes("shift-v j");
+
+    cx.dispatch_action(EditorToggleBlockComments);
+    assert_eq!(
+        cx.buffer_text(),
+        indoc! {r#"
+        from PIL import Image
+        import sys
+
+        """
+        img = Image.open(sys.argv[1])
+        size = int(sys.argv[2])
+        """
+        print(size)
+        "#}
+    );
+
+    cx.dispatch_action(EditorToggleBlockComments);
+    assert_eq!(
+        cx.buffer_text(),
+        indoc! {"
+        from PIL import Image
+        import sys
+
+        img = Image.open(sys.argv[1])
+        size = int(sys.argv[2])
+        print(size)
+        "}
+    );
+
+    cx.dispatch_action(EditorToggleBlockComments);
+    assert_eq!(
+        cx.buffer_text(),
+        indoc! {r#"
+        from PIL import Image
+        import sys
+
+        """
+        img = Image.open(sys.argv[1])
+        size = int(sys.argv[2])
+        """
+        print(size)
+        "#}
+    );
+}
+
 #[perf]
 #[gpui::test]
 async fn test_find_multibyte(cx: &mut gpui::TestAppContext) {
