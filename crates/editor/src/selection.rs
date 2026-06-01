@@ -761,12 +761,10 @@ impl Editor {
                                 if start_byte < end_byte {
                                     let node_start_byte = node.start_byte();
                                     let node_start = node_range.start.0;
-                                    let content_start = MultiBufferOffset(
-                                        node_start + (start_byte - node_start_byte) as usize,
-                                    );
-                                    let content_end = MultiBufferOffset(
-                                        node_start + (end_byte - node_start_byte) as usize,
-                                    );
+                                    let content_start =
+                                        MultiBufferOffset(node_start + (start_byte - node_start_byte));
+                                    let content_end =
+                                        MultiBufferOffset(node_start + (end_byte - node_start_byte));
                                     let content_range = content_start..content_end;
                                     let current_length = (new_range.end.0 as isize
                                         - new_range.start.0 as isize)
