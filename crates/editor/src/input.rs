@@ -1194,14 +1194,27 @@ impl Editor {
             let snapshot = this.buffer.read(cx).read(cx);
             let empty_str: Arc<str> = Arc::default();
             let mut markers_inserted = Vec::new();
+            let line_mode = this.selections.line_mode();
 
             for selection in &mut selections {
-                let start_point = selection.start;
-                let end_point = selection.end;
+                let selection_start = selection.start;
+                let selection_end = selection.end;
+                let max_point = snapshot.max_point();
+                let (start_point, end_point) = if line_mode {
+                    let line_start = Point::new(selection_start.row, 0);
+                    let line_end = if selection_end.column == 0 && selection_end > selection_start {
+                        selection_end
+                    } else if selection_end.row < max_point.row {
+                        Point::new(selection_end.row + 1, 0)
+                    } else {
+                        max_point
+                    };
+                    (line_start, line_end)
+                } else {
+                    (selection_start, selection_end)
+                };
 
-                let Some(language) =
-                    snapshot.language_scope_at(Point::new(start_point.row, start_point.column))
-                else {
+                let Some(language) = snapshot.language_scope_at(start_point) else {
                     continue;
                 };
 
@@ -1219,10 +1232,14 @@ impl Editor {
 
                 // Collect full lines spanning the selection as the search region
                 let region_start = Point::new(start_point.row, 0);
-                let region_end = Point::new(
-                    end_point.row,
-                    snapshot.line_len(MultiBufferRow(end_point.row)),
-                );
+                let region_end = if line_mode {
+                    end_point
+                } else {
+                    Point::new(
+                        end_point.row,
+                        snapshot.line_len(MultiBufferRow(end_point.row)),
+                    )
+                };
                 let region_bytes: Vec<u8> = snapshot
                     .bytes_in_range(region_start..region_end)
                     .flatten()
@@ -1297,6 +1314,15 @@ impl Editor {
                     {
                         prefix_range.end.column += 1;
                     }
+                    if line_mode
+                        && snapshot
+                            .bytes_in_range(prefix_range.end..snapshot.max_point())
+                            .flatten()
+                            .next()
+                            == Some(&b'\n')
+                    {
+                        prefix_range.end = Point::new(prefix_range.end.row + 1, 0);
+                    }
                     if suffix_range.start.column > 0 {
                         let before =
                             Point::new(suffix_range.start.row, suffix_range.start.column - 1);
@@ -1309,16 +1335,33 @@ impl Editor {
                             suffix_range.start.column -= 1;
                         }
                     }
+                    if line_mode
+                        && snapshot
+                            .bytes_in_range(suffix_range.end..snapshot.max_point())
+                            .flatten()
+                            .next()
+                            == Some(&b'\n')
+                    {
+                        suffix_range.end = Point::new(suffix_range.end.row + 1, 0);
+                    }
 
                     edits.push((prefix_range, empty_str.clone()));
                     edits.push((suffix_range, empty_str.clone()));
                 } else {
-                    let prefix: Arc<str> = if comment_start.ends_with(' ') {
+                    let prefix: Arc<str> = if line_mode {
+                        format!("{}\n", comment_start).into()
+                    } else if comment_start.ends_with(' ') {
                         comment_start.clone()
                     } else {
                         format!("{} ", comment_start).into()
                     };
-                    let suffix: Arc<str> = if comment_end.starts_with(' ') {
+                    let suffix: Arc<str> = if line_mode {
+                        if end_point.column == 0 && end_point < max_point {
+                            format!("{}\n", comment_end).into()
+                        } else {
+                            format!("\n{}", comment_end).into()
+                        }
+                    } else if comment_end.starts_with(' ') {
                         comment_end.clone()
                     } else {
                         format!(" {}", comment_end).into()
