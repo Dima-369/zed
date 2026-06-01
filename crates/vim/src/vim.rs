@@ -1812,7 +1812,6 @@ impl Vim {
         });
     }
 
-
     pub(crate) fn handle_helix_jump_input(
         &mut self,
         operator: Operator,

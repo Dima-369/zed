@@ -1058,14 +1058,15 @@ impl Vim {
                             };
 
                             let line_start = Point::new(start_point.row, 0);
-                            let line_end = if end_point.column == 0 && start_point.row < end_point.row {
-                                end_point
-                            } else {
-                                Point::new(
-                                    end_point.row,
-                                    snapshot.line_len(MultiBufferRow(end_point.row)),
-                                )
-                            };
+                            let line_end =
+                                if end_point.column == 0 && start_point.row < end_point.row {
+                                    end_point
+                                } else {
+                                    Point::new(
+                                        end_point.row,
+                                        snapshot.line_len(MultiBufferRow(end_point.row)),
+                                    )
+                                };
 
                             edits.push((
                                 line_start..line_start,

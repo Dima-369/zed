@@ -366,9 +366,7 @@ async fn test_toggle_block_comments_line_mode_roundtrip_for_symmetric_markers(
 }
 
 #[gpui::test]
-async fn test_toggle_block_comments_line_mode_multiple_cursors_roundtrip(
-    cx: &mut TestAppContext,
-) {
+async fn test_toggle_block_comments_line_mode_multiple_cursors_roundtrip(cx: &mut TestAppContext) {
     let mut cx = setup_python_context(cx).await;
 
     cx.set_state(indoc! {"

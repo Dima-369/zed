@@ -1255,17 +1255,24 @@ impl Editor {
                 let mut prefix_range = start_point..start_point;
                 let mut suffix_range = end_point..end_point;
 
-                let set_comment_ranges = |prefix_pos: usize,
-                                          suffix_pos: usize,
-                                          prefix_range: &mut Range<Point>,
-                                          suffix_range: &mut Range<Point>| {
-                    let prefix_pt = snapshot.offset_to_point(region_start_offset + prefix_pos);
-                    let suffix_pt = snapshot.offset_to_point(region_start_offset + suffix_pos);
-                    *prefix_range = prefix_pt
-                        ..Point::new(prefix_pt.row, prefix_pt.column + prefix_needle.len() as u32);
-                    *suffix_range = suffix_pt
-                        ..Point::new(suffix_pt.row, suffix_pt.column + suffix_needle.len() as u32);
-                };
+                let set_comment_ranges =
+                    |prefix_pos: usize,
+                     suffix_pos: usize,
+                     prefix_range: &mut Range<Point>,
+                     suffix_range: &mut Range<Point>| {
+                        let prefix_pt = snapshot.offset_to_point(region_start_offset + prefix_pos);
+                        let suffix_pt = snapshot.offset_to_point(region_start_offset + suffix_pos);
+                        *prefix_range = prefix_pt
+                            ..Point::new(
+                                prefix_pt.row,
+                                prefix_pt.column + prefix_needle.len() as u32,
+                            );
+                        *suffix_range = suffix_pt
+                            ..Point::new(
+                                suffix_pt.row,
+                                suffix_pt.column + suffix_needle.len() as u32,
+                            );
+                    };
 
                 let surrounding_prefix_search_end = start_byte
                     .saturating_add(prefix_needle.len())
@@ -1429,8 +1436,10 @@ impl Editor {
                         .iter()
                         .find(|(id, _, _)| *id == selection.id)
                     {
-                        selection.start = snapshot.clip_point(start_anchor.to_point(&snapshot), Bias::Left);
-                        selection.end = snapshot.clip_point(end_anchor.to_point(&snapshot), Bias::Right);
+                        selection.start =
+                            snapshot.clip_point(start_anchor.to_point(&snapshot), Bias::Left);
+                        selection.end =
+                            snapshot.clip_point(end_anchor.to_point(&snapshot), Bias::Right);
                     }
                     continue;
                 }
