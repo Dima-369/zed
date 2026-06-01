@@ -98,7 +98,12 @@ impl Editor {
             .disjoint_anchors()
             .iter()
             .map(|selection| selection.id)
-            .chain(self.selections.pending_anchor().iter().map(|selection| selection.id))
+            .chain(
+                self.selections
+                    .pending_anchor()
+                    .iter()
+                    .map(|selection| selection.id),
+            )
             .collect()
     }
 
@@ -111,7 +116,12 @@ impl Editor {
             .disjoint_anchors()
             .iter()
             .map(|selection| selection.id)
-            .chain(self.selections.pending_anchor().iter().map(|selection| selection.id))
+            .chain(
+                self.selections
+                    .pending_anchor()
+                    .iter()
+                    .map(|selection| selection.id),
+            )
             .collect();
 
         if old_ids == new_ids.as_slice() {
@@ -752,10 +762,10 @@ impl Editor {
                                     let node_start_byte = node.start_byte();
                                     let node_start = node_range.start.0;
                                     let content_start = MultiBufferOffset(
-                                        node_start + (start_byte - node_start_byte) as usize,
+                                        node_start + (start_byte - node_start_byte),
                                     );
                                     let content_end = MultiBufferOffset(
-                                        node_start + (end_byte - node_start_byte) as usize,
+                                        node_start + (end_byte - node_start_byte),
                                     );
                                     let content_range = content_start..content_end;
                                     let current_length = (new_range.end.0 as isize
