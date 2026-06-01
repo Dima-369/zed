@@ -218,7 +218,10 @@ impl SymbolProvider {
 
     pub fn indexing_progress_percent(&self) -> usize {
         let (processed, total) = *self.cache.indexing_progress.lock();
-        processed.saturating_mul(100).checked_div(total).unwrap_or(0)
+        processed
+            .saturating_mul(100)
+            .checked_div(total)
+            .unwrap_or(0)
     }
 
     pub fn search(
