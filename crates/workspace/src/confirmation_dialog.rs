@@ -101,7 +101,6 @@ impl Focusable for ConfirmationDialog {
 impl Render for ConfirmationDialog {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let focus_handle = self.focus_handle.clone();
-        let key_h_button_index = self.key_h_button_index;
 
         v_flex()
             .key_context("ConfirmationDialog")
