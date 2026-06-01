@@ -1945,9 +1945,11 @@ async fn test_toggle_block_comments(cx: &mut gpui::TestAppContext) {
     cx.simulate_keystrokes("shift-v j g b");
     cx.assert_state(
         indoc! {"
-        /* ˇone
-        two */
-        three
+        /* 
+        one
+        two
+        */threeˇ
+
         "},
         Mode::Normal,
     );

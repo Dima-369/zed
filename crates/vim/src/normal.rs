@@ -127,7 +127,6 @@ pub(crate) fn register(editor: &mut Editor, cx: &mut Context<Vim>) {
     Vim::action(editor, cx, Vim::yank_line);
     Vim::action(editor, cx, Vim::yank_to_end_of_line);
     Vim::action(editor, cx, Vim::toggle_comments);
-    Vim::action(editor, cx, Vim::toggle_block_comments);
     Vim::action(editor, cx, Vim::paste);
     Vim::action(editor, cx, Vim::show_location);
 
@@ -1029,7 +1028,7 @@ impl Vim {
         }
     }
 
-    fn toggle_block_comments(
+    pub(crate) fn toggle_block_comments(
         &mut self,
         _: &ToggleBlockComments,
         window: &mut Window,
@@ -1046,9 +1045,16 @@ impl Vim {
                         s.move_with(&mut |map, selection| {
                             let start_row = selection.start.to_point(map).row;
                             let end_row = selection.end.to_point(map).row;
-                            let end_col = map.buffer_snapshot().line_len(MultiBufferRow(end_row));
+                            let end_col = if end_row + 1 < map.buffer_snapshot().max_point().row {
+                                0
+                            } else if selection.end.column() == 0 && start_row < end_row {
+                                0
+                            } else {
+                                map.buffer_snapshot().line_len(MultiBufferRow(end_row))
+                            };
                             selection.start = Point::new(start_row, 0).to_display_point(map);
-                            selection.end = Point::new(end_row, end_col).to_display_point(map);
+                            selection.end = Point::new(end_row + (end_col == 0) as u32, end_col)
+                                .to_display_point(map);
                         });
                     });
                 }
