@@ -930,6 +930,8 @@ actions!(
         SaveLocation,
         /// Flash navigation - highlights all occurrences of character 'a' with overlay hints.
         Flash
+        /// Toggles breadcrumbs display.
+        ToggleBreadcrumb,
     ]
 );
 
