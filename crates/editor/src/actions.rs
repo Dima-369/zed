@@ -929,7 +929,7 @@ actions!(
         /// Saves the current location to navigation history.
         SaveLocation,
         /// Flash navigation - highlights all occurrences of character 'a' with overlay hints.
-        Flash
+        Flash,
         /// Toggles breadcrumbs display.
         ToggleBreadcrumb,
     ]
