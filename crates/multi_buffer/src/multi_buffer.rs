@@ -5025,28 +5025,72 @@ impl MultiBufferSnapshot {
         MBD::TextDimension: Sub<Output = MBD::TextDimension> + Ord,
         I: 'a + IntoIterator<Item = &'a Anchor>,
     {
-        let mut anchors = anchors.into_iter().peekable();
+        // Collect anchors with their original indices so we can call the
+        // callback in the same order they were passed in.
+        let anchors: Vec<_> = anchors.into_iter().enumerate().collect();
+        if anchors.is_empty() {
+            return;
+        }
+
+        // Prepare a results slot for each anchor.
+        let mut results: Vec<Option<MBD>> = vec![None; anchors.len()];
+
+        // Process Min and Max anchors immediately (they don't use the cursor).
+        for &(index, anchor) in &anchors {
+            match anchor {
+                Anchor::Min => results[index] = Some(MBD::default()),
+                Anchor::Max => results[index] = Some(MBD::from_summary(&self.text_summary())),
+                Anchor::Excerpt(_) => {}
+            }
+        }
+
+        // Collect Excerpt anchors with their sort keys (Schwartzian transform).
+        // We seek a cursor once per anchor to get its position summary, then
+        // sort by those summaries. This is O(N log N) comparisons on cheap
+        // summaries rather than O(N log N) expensive cursor seeks.
+        let mut sort_cursor = self.excerpts.cursor::<ExcerptSummary>(());
+        let mut excerpt_anchors_with_keys: Vec<_> = anchors
+            .iter()
+            .filter_map(|&(index, anchor)| match anchor {
+                Anchor::Excerpt(ea) => {
+                    let target = Anchor::Excerpt(*ea).seek_target(self);
+                    sort_cursor.seek(&target, Bias::Left);
+                    let summary = sort_cursor.start().clone();
+                    Some((index, *ea, summary))
+                }
+                _ => None,
+            })
+            .collect();
+
+        // Sort by cursor position first (path_key, text.len), then by the
+        // ExcerptAnchor's own ordering which compares text_anchors within
+        // the same buffer using the buffer snapshot. This guarantees that
+        // both the main cursor and diff_transforms_cursor only move forward.
+        excerpt_anchors_with_keys.sort_by(|(_, a_ea, a_key), (_, b_ea, b_key)| {
+            match Ord::cmp(&a_key.path_key, &b_key.path_key) {
+                cmp::Ordering::Equal => match a_key.text.len.cmp(&b_key.text.len) {
+                    cmp::Ordering::Equal => a_ea.cmp(b_ea, self),
+                    order => order,
+                },
+                order => order,
+            }
+        });
+
         let mut cursor = self.excerpts.cursor::<ExcerptSummary>(());
         let mut diff_transforms_cursor = self
             .diff_transforms
             .cursor::<Dimensions<ExcerptDimension<MBD>, OutputDimension<MBD>>>(());
         diff_transforms_cursor.next();
 
-        while let Some(anchor) = anchors.peek() {
-            let target = anchor.seek_target(self);
-            let excerpt_anchor = match anchor {
-                Anchor::Min => {
-                    cb(MBD::default());
-                    anchors.next();
-                    continue;
-                }
-                Anchor::Excerpt(excerpt_anchor) => excerpt_anchor,
-                Anchor::Max => {
-                    cb(MBD::from_summary(&self.text_summary()));
-                    anchors.next();
-                    continue;
-                }
-            };
+        let mut excerpt_iter = excerpt_anchors_with_keys
+            .into_iter()
+            .map(|(index, ea, _)| (index, ea))
+            .peekable();
+
+        while let Some((index, excerpt_anchor)) = excerpt_iter.peek() {
+            let index = *index;
+            let excerpt_anchor = *excerpt_anchor;
+            let target = Anchor::Excerpt(excerpt_anchor).seek_target(self);
 
             cursor.seek_forward(&target, Bias::Left);
 
@@ -5054,14 +5098,14 @@ impl MultiBufferSnapshot {
             if let Some(excerpt) = cursor.item() {
                 let buffer_snapshot = excerpt.buffer_snapshot(self);
                 if !excerpt.contains(&excerpt_anchor, self) {
-                    diff_transforms_cursor.seek_forward(&excerpt_start_position, Bias::Left);
+                    diff_transforms_cursor.seek(&excerpt_start_position, Bias::Left);
                     let position = self.summary_for_excerpt_position_without_hunks(
                         Bias::Left,
                         excerpt_start_position,
                         &mut diff_transforms_cursor,
                     );
-                    cb(position);
-                    anchors.next();
+                    results[index] = Some(position);
+                    excerpt_iter.next();
                     continue;
                 }
                 let excerpt_buffer_start = excerpt
@@ -5074,16 +5118,29 @@ impl MultiBufferSnapshot {
                     .context
                     .end
                     .summary::<MBD::TextDimension>(buffer_snapshot);
-                for (buffer_summary, excerpt_anchor) in buffer_snapshot
-                    .summaries_for_anchors_with_payload::<MBD::TextDimension, _, _>(
-                        std::iter::from_fn(|| {
-                            let excerpt_anchor = anchors.peek()?.excerpt_anchor()?;
-                            if !excerpt.contains(&excerpt_anchor, self) {
-                                return None;
-                            }
-                            anchors.next();
-                            Some((excerpt_anchor.text_anchor(), excerpt_anchor))
-                        }),
+
+                // Consume consecutive excerpt anchors that belong to this same excerpt.
+                let mut batch = Vec::new();
+                while let Some(&(idx, ea)) = excerpt_iter.peek() {
+                    if excerpt.contains(&ea, self) {
+                        batch.push((idx, ea.text_anchor(), ea));
+                        excerpt_iter.next();
+                    } else {
+                        break;
+                    }
+                }
+
+                let batch_items: Vec<_> = batch
+                    .iter()
+                    .map(|&(_, text_anchor, ea)| (text_anchor, ea))
+                    .collect();
+                for ((orig_idx, _, _), (buffer_summary, ea)) in batch
+                    .into_iter()
+                    .zip(
+                        buffer_snapshot
+                            .summaries_for_anchors_with_payload::<MBD::TextDimension, _, _>(
+                                batch_items.into_iter(),
+                            ),
                     )
                 {
                     let summary = cmp::min(excerpt_buffer_end, buffer_summary);
@@ -5096,23 +5153,28 @@ impl MultiBufferSnapshot {
                         diff_transforms_cursor.seek_forward(&position, Bias::Left);
                     }
 
-                    cb(self.summary_for_anchor_with_excerpt_position(
-                        excerpt_anchor,
+                    let position = self.summary_for_anchor_with_excerpt_position(
+                        ea,
                         position,
                         &mut diff_transforms_cursor,
                         &buffer_snapshot,
-                    ));
+                    );
+                    results[orig_idx] = Some(position);
                 }
             } else {
-                diff_transforms_cursor.seek_forward(&excerpt_start_position, Bias::Left);
+                diff_transforms_cursor.seek(&excerpt_start_position, Bias::Left);
                 let position = self.summary_for_excerpt_position_without_hunks(
                     Bias::Right,
                     excerpt_start_position,
                     &mut diff_transforms_cursor,
                 );
-                cb(position);
-                anchors.next();
+                results[index] = Some(position);
+                excerpt_iter.next();
             }
+        }
+
+        for result in results {
+            cb(result.expect("all anchors should have a result"));
         }
     }
 
