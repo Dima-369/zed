@@ -254,6 +254,12 @@ The last big `main` UI upgrade introduced the `Threads Sidebar` which allows mul
 
 - `agent::TogglePlan` to toggle the plan of the current thread (untested since last `main` merge)
 
+#### Follow-up messages
+
+Inspired by `pi agent` which has steering and follow-up messages.
+
+New action is named `agent::ChatWithFollow`: queue a message as a **FollowUp** instead of sending immediately.
+
 #### Other (probably missing on latest `dima` branch, I had those implemented at same point)
 
 - `agent::DismissOsNotifications` to dismiss the top right OS notification from Zed Agent. With multiple tabs, I feel that the notifications get stuck sometimes
