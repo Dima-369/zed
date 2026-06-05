@@ -966,6 +966,9 @@ pub struct Thread {
     /// Flag indicating the UI has a queued message waiting to be sent.
     /// Used to signal that the turn should end at the next message boundary.
     has_queued_message: bool,
+    /// Flag indicating the UI has a steering message waiting to be sent.
+    /// Steering messages are sent at turn boundaries during active generation.
+    has_steering_message: bool,
     pending_message: Option<AgentMessage>,
     pub(crate) tools: BTreeMap<SharedString, Arc<dyn AnyAgentTool>>,
     request_token_usage: HashMap<UserMessageId, language_model::TokenUsage>,
@@ -1094,6 +1097,7 @@ impl Thread {
             user_store: project.read(cx).user_store(),
             running_turn: None,
             has_queued_message: false,
+            has_steering_message: false,
             pending_message: None,
             tools: BTreeMap::default(),
             request_token_usage: HashMap::default(),
@@ -1438,6 +1442,7 @@ impl Thread {
             user_store: project.read(cx).user_store(),
             running_turn: None,
             has_queued_message: false,
+            has_steering_message: false,
             pending_message: None,
             tools: BTreeMap::default(),
             request_token_usage: db_thread.request_token_usage.clone(),
@@ -1805,6 +1810,14 @@ impl Thread {
 
     pub fn has_queued_message(&self) -> bool {
         self.has_queued_message
+    }
+
+    pub fn set_has_steering_message(&mut self, has_steering: bool) {
+        self.has_steering_message = has_steering;
+    }
+
+    pub fn has_steering_message(&self) -> bool {
+        self.has_steering_message
     }
 
     fn update_token_usage(&mut self, update: language_model::TokenUsage, cx: &mut Context<Self>) {
@@ -2262,9 +2275,14 @@ impl Thread {
             } else if end_turn {
                 return Ok(());
             } else {
+                let has_steering = this.update(cx, |this, _| this.has_steering_message())?;
+                if has_steering {
+                    log::debug!("Steering message found, ending turn at message boundary");
+                    return Ok(());
+                }
                 let has_queued = this.update(cx, |this, _| this.has_queued_message())?;
                 if has_queued {
-                    log::debug!("Queued message found, ending turn at message boundary");
+                    log::debug!("Follow-up message found, ending turn at message boundary");
                     return Ok(());
                 }
                 intent = CompletionIntent::ToolResults;
