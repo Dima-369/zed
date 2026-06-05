@@ -1914,10 +1914,8 @@ impl ThreadView {
     pub fn sync_queue_flag_to_native_thread(&self, cx: &mut Context<Self>) {
         if let Some(native_thread) = self.as_native_thread(cx) {
             let has_steering = self.local_queued_messages.iter().any(|m| m.message_type == QueuedMessageType::Steering);
-            let has_follow_up = self.local_queued_messages.iter().any(|m| m.message_type == QueuedMessageType::FollowUp);
             native_thread.update(cx, |thread, _| {
                 thread.set_has_steering_message(has_steering);
-                thread.set_has_queued_message(has_follow_up);
             });
         }
     }

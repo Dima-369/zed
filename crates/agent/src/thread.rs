@@ -963,9 +963,6 @@ pub struct Thread {
     /// Survives across multiple requests as the model performs tool calls and
     /// we run tools, report their results.
     running_turn: Option<RunningTurn>,
-    /// Flag indicating the UI has a queued message waiting to be sent.
-    /// Used to signal that the turn should end at the next message boundary.
-    has_queued_message: bool,
     /// Flag indicating the UI has a steering message waiting to be sent.
     /// Steering messages are sent at turn boundaries during active generation.
     has_steering_message: bool,
@@ -1096,7 +1093,6 @@ impl Thread {
             messages: Vec::new(),
             user_store: project.read(cx).user_store(),
             running_turn: None,
-            has_queued_message: false,
             has_steering_message: false,
             pending_message: None,
             tools: BTreeMap::default(),
@@ -1441,7 +1437,6 @@ impl Thread {
             messages: db_thread.messages,
             user_store: project.read(cx).user_store(),
             running_turn: None,
-            has_queued_message: false,
             has_steering_message: false,
             pending_message: None,
             tools: BTreeMap::default(),
@@ -1802,14 +1797,6 @@ impl Thread {
             })
             .ok();
         })
-    }
-
-    pub fn set_has_queued_message(&mut self, has_queued: bool) {
-        self.has_queued_message = has_queued;
-    }
-
-    pub fn has_queued_message(&self) -> bool {
-        self.has_queued_message
     }
 
     pub fn set_has_steering_message(&mut self, has_steering: bool) {
@@ -2278,11 +2265,6 @@ impl Thread {
                 let has_steering = this.update(cx, |this, _| this.has_steering_message())?;
                 if has_steering {
                     log::debug!("Steering message found, ending turn at message boundary");
-                    return Ok(());
-                }
-                let has_queued = this.update(cx, |this, _| this.has_queued_message())?;
-                if has_queued {
-                    log::debug!("Follow-up message found, ending turn at message boundary");
                     return Ok(());
                 }
                 intent = CompletionIntent::ToolResults;

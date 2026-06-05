@@ -1598,16 +1598,13 @@ impl ConversationView {
                             active.user_interrupted_generation = false;
                             false
                         } else {
-                            // Only auto-send follow-up messages when the agent fully stops.
-                            // Steering messages are handled at turn boundaries by the native thread.
-                            let has_follow_up = active.local_queued_messages.iter()
-                                .any(|m| m.message_type == QueuedMessageType::FollowUp);
+                            let has_queued = !active.local_queued_messages.is_empty();
                             // Don't auto-send if the first message editor is currently focused
                             let is_first_editor_focused = active
                                 .queued_message_editors
                                 .first()
                                 .is_some_and(|editor| editor.focus_handle(cx).is_focused(window));
-                            has_follow_up && !is_first_editor_focused
+                            has_queued && !is_first_editor_focused
                         }
                     })
                 } else {
@@ -1630,14 +1627,7 @@ impl ConversationView {
                         cx,
                     );
                 } else {
-                    // Find and send the first follow-up message in the queue
-                    if let Some(active) = self.root_thread_view() {
-                        let follow_up_index = active.read(cx).local_queued_messages.iter()
-                            .position(|m| m.message_type == QueuedMessageType::FollowUp);
-                        if let Some(index) = follow_up_index {
-                            self.send_queued_message_at_index(index, false, window, cx);
-                        }
-                    }
+                    self.send_queued_message_at_index(0, false, window, cx);
                 }
             }
             AcpThreadEvent::Refusal => {
