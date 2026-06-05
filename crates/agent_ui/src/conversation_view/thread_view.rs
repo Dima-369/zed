@@ -3202,6 +3202,26 @@ impl ThreadView {
                     .gap_1()
                     .child(Disclosure::new("queue_disclosure", self.queue_expanded))
                     .child(Label::new(title).size(LabelSize::Small).color(Color::Muted))
+                    .when_some(self.local_queued_messages.first(), |this, first| {
+                        let (icon, color, label) = match first.message_type {
+                            QueuedMessageType::Steering => {
+                                (IconName::Send, Color::Default, "Steer")
+                            }
+                            QueuedMessageType::FollowUp => {
+                                (IconName::Quote, Color::Muted, "Follow Up")
+                            }
+                        };
+                        this.child(
+                            h_flex()
+                                .gap_1()
+                                .child(
+                                    Icon::new(icon)
+                                        .size(IconSize::XSmall)
+                                        .color(color),
+                                )
+                                .child(Label::new(label).size(LabelSize::XSmall).color(color)),
+                        )
+                    })
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.queue_expanded = !this.queue_expanded;
                         cx.notify();
@@ -3876,10 +3896,28 @@ impl ThreadView {
                     .enumerate()
                     .map(|(index, editor)| {
                         let is_next = index == 0;
-                        let (icon_color, tooltip_text) = if is_next {
-                            (Color::Accent, "Next in Queue")
+                        let message_type = self
+                            .local_queued_messages
+                            .get(index)
+                            .map(|m| m.message_type);
+
+                        let (icon_name, icon_color, tooltip_text) = match message_type {
+                            Some(QueuedMessageType::Steering) => (
+                                IconName::Send,
+                                Color::Default,
+                                "Steers the agent at next turn boundary",
+                            ),
+                            Some(QueuedMessageType::FollowUp) => (
+                                IconName::Quote,
+                                Color::Muted,
+                                "Sent after the agent finishes",
+                            ),
+                            None => (IconName::Circle, Color::Muted, "In Queue"),
+                        };
+                        let tooltip_text = if is_next {
+                            tooltip_text
                         } else {
-                            (Color::Muted, "In Queue")
+                            "In Queue"
                         };
 
                         let editor_focused = editor.focus_handle(cx).is_focused(_window);
@@ -3899,7 +3937,7 @@ impl ThreadView {
                                 div()
                                     .id("next_in_queue")
                                     .child(
-                                        Icon::new(IconName::Circle)
+                                        Icon::new(icon_name)
                                             .size(IconSize::Small)
                                             .color(icon_color),
                                     )
