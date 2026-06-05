@@ -5134,15 +5134,11 @@ impl MultiBufferSnapshot {
                     .iter()
                     .map(|&(_, text_anchor, ea)| (text_anchor, ea))
                     .collect();
-                for ((orig_idx, _, _), (buffer_summary, ea)) in batch
-                    .into_iter()
-                    .zip(
-                        buffer_snapshot
-                            .summaries_for_anchors_with_payload::<MBD::TextDimension, _, _>(
-                                batch_items.into_iter(),
-                            ),
-                    )
-                {
+                for ((orig_idx, _, _), (buffer_summary, ea)) in batch.into_iter().zip(
+                    buffer_snapshot.summaries_for_anchors_with_payload::<MBD::TextDimension, _, _>(
+                        batch_items,
+                    ),
+                ) {
                     let summary = cmp::min(excerpt_buffer_end, buffer_summary);
                     let mut position = excerpt_start_position;
                     if summary > excerpt_buffer_start {
