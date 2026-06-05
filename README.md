@@ -34,6 +34,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 
 ## General/editor changes
 
+- fix crash in `summaries_for_anchors_cb` (commit `866dc22f01dc`): `seek_forward` panicked with "cannot seek backward" when callers passed anchors out of order (e.g. selections from `selections_collection.rs`). Fixed by sorting excerpt anchors using a Schwartzian transform: compute cursor position summaries once in O(N), then sort by `(path_key, text.len, ExcerptAnchor::cmp)` to guarantee both the main cursor and `diff_transforms_cursor` only move forward
 - add many defaults in `project_settings.rs` to not crash on startup (not sure if that is only from my code)
 - add `bundle-mac-without-licenses` which is faster than generating licenses, and skips the `sentry-cli` at end
 - try to fix panic in `anchor_at_offset` when buffer has Umlaute, seems to work, no idea if my fix has other consequences
