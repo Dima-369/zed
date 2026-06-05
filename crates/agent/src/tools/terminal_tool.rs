@@ -402,7 +402,10 @@ fn working_dir(
     cx: &mut App,
 ) -> Result<Option<PathBuf>> {
     let project = project.read(cx);
-    let cd = input.cd.as_ref().expect("cd is validated before calling working_dir");
+    let cd = input
+        .cd
+        .as_ref()
+        .expect("cd is validated before calling working_dir");
 
     let input_path = Path::new(cd);
 
