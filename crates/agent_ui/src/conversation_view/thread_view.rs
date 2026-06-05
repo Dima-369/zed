@@ -14,6 +14,8 @@ use cloud_api_types::{SubmitAgentThreadFeedbackBody, SubmitAgentThreadFeedbackCo
 use editor::actions::OpenExcerpts;
 use feature_flags::AcpBetaFeatureFlag;
 
+use crate::ChatWithFollow;
+
 use crate::completion_provider::AvailableSkill;
 use crate::message_editor::SharedSessionCapabilities;
 
@@ -992,6 +994,7 @@ impl ThreadView {
             MessageEditorEvent::Focus
                 | MessageEditorEvent::SlashAutocompleteOpened
                 | MessageEditorEvent::Send
+                | MessageEditorEvent::SendFollowUp
         ) {
             if let Some(connection) = self.as_native_connection(cx) {
                 connection.ensure_skills_scan_started(cx);
@@ -1000,6 +1003,7 @@ impl ThreadView {
 
         match event {
             MessageEditorEvent::Send => self.send(window, cx),
+            MessageEditorEvent::SendFollowUp => self.follow_up(window, cx),
             MessageEditorEvent::SendImmediately => self.interrupt_and_send(window, cx),
             MessageEditorEvent::Cancel => self.cancel_generation(cx),
             MessageEditorEvent::Focus => {
@@ -1139,6 +1143,11 @@ impl ThreadView {
             }
             ViewEvent::MessageEditorEvent(_editor, MessageEditorEvent::SendImmediately) => {}
             ViewEvent::MessageEditorEvent(editor, MessageEditorEvent::Send) => {
+                if !self.is_subagent() {
+                    self.regenerate(event.entry_index, editor.clone(), window, cx);
+                }
+            }
+            ViewEvent::MessageEditorEvent(editor, MessageEditorEvent::SendFollowUp) => {
                 if !self.is_subagent() {
                     self.regenerate(event.entry_index, editor.clone(), window, cx);
                 }
@@ -1329,7 +1338,7 @@ impl ThreadView {
 
         if is_generating {
             cx.emit(AcpThreadViewEvent::Interacted);
-            self.queue_message(message_editor, window, cx);
+            self.queue_message(message_editor, QueuedMessageType::Steering, window, cx);
             return;
         }
 
@@ -1368,6 +1377,38 @@ impl ThreadView {
                 cx.notify();
                 return;
             }
+        }
+
+        cx.emit(AcpThreadViewEvent::Interacted);
+        self.send_impl(message_editor, window, cx)
+    }
+
+    /// Queue or send a follow-up message, delivered only after the agent fully stops.
+    pub fn follow_up(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let message_editor = self.message_editor.clone();
+
+        if self.is_loading_contents {
+            return;
+        }
+
+        let is_editor_empty = message_editor.read(cx).is_empty(cx);
+        if is_editor_empty {
+            return;
+        }
+
+        let is_generating = self.thread.read(cx).status() != ThreadStatus::Idle;
+        if is_generating {
+            cx.emit(AcpThreadViewEvent::Interacted);
+            self.queue_message(message_editor, QueuedMessageType::FollowUp, window, cx);
+            return;
+        }
+
+        let text = message_editor.read(cx).text(cx);
+        let text = text.trim();
+        if text == "/login" || text == "/logout" {
+            // Reuse the same login/logout handling from send()
+            self.send(window, cx);
+            return;
         }
 
         cx.emit(AcpThreadViewEvent::Interacted);
@@ -1808,6 +1849,7 @@ impl ThreadView {
     fn queue_message(
         &mut self,
         message_editor: Entity<MessageEditor>,
+        message_type: QueuedMessageType,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -1828,7 +1870,7 @@ impl ThreadView {
             }
 
             this.update_in(cx, |this, window, cx| {
-                this.add_to_queue(content, tracked_buffers, cx);
+                this.add_to_queue(content, tracked_buffers, message_type, cx);
                 this.can_fast_track_queue = true;
                 message_editor.update(cx, |message_editor, cx| {
                     message_editor.clear(window, cx);
@@ -1844,11 +1886,13 @@ impl ThreadView {
         &mut self,
         content: Vec<acp::ContentBlock>,
         tracked_buffers: Vec<Entity<Buffer>>,
+        message_type: QueuedMessageType,
         cx: &mut Context<Self>,
     ) {
         self.local_queued_messages.push(QueuedMessage {
             content,
             tracked_buffers,
+            message_type,
         });
         self.sync_queue_flag_to_native_thread(cx);
     }
@@ -1869,9 +1913,12 @@ impl ThreadView {
 
     pub fn sync_queue_flag_to_native_thread(&self, cx: &mut Context<Self>) {
         if let Some(native_thread) = self.as_native_thread(cx) {
-            let has_queued = self.has_queued_messages();
+            let has_steering = self
+                .local_queued_messages
+                .iter()
+                .any(|m| m.message_type == QueuedMessageType::Steering);
             native_thread.update(cx, |thread, _| {
-                thread.set_has_queued_message(has_queued);
+                thread.set_has_steering_message(has_steering);
             });
         }
     }
@@ -3158,6 +3205,22 @@ impl ThreadView {
                     .gap_1()
                     .child(Disclosure::new("queue_disclosure", self.queue_expanded))
                     .child(Label::new(title).size(LabelSize::Small).color(Color::Muted))
+                    .when_some(self.local_queued_messages.first(), |this, first| {
+                        let (icon, color, label) = match first.message_type {
+                            QueuedMessageType::Steering => {
+                                (IconName::Send, Color::Default, "Steer")
+                            }
+                            QueuedMessageType::FollowUp => {
+                                (IconName::Quote, Color::Muted, "Follow Up")
+                            }
+                        };
+                        this.child(
+                            h_flex()
+                                .gap_1()
+                                .child(Icon::new(icon).size(IconSize::XSmall).color(color))
+                                .child(Label::new(label).size(LabelSize::XSmall).color(color)),
+                        )
+                    })
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.queue_expanded = !this.queue_expanded;
                         cx.notify();
@@ -3832,11 +3895,25 @@ impl ThreadView {
                     .enumerate()
                     .map(|(index, editor)| {
                         let is_next = index == 0;
-                        let (icon_color, tooltip_text) = if is_next {
-                            (Color::Accent, "Next in Queue")
-                        } else {
-                            (Color::Muted, "In Queue")
+                        let message_type = self
+                            .local_queued_messages
+                            .get(index)
+                            .map(|m| m.message_type);
+
+                        let (icon_name, icon_color, tooltip_text) = match message_type {
+                            Some(QueuedMessageType::Steering) => (
+                                IconName::Send,
+                                Color::Default,
+                                "Steers the agent at next turn boundary",
+                            ),
+                            Some(QueuedMessageType::FollowUp) => (
+                                IconName::Quote,
+                                Color::Muted,
+                                "Sent after the agent finishes",
+                            ),
+                            None => (IconName::Circle, Color::Muted, "In Queue"),
                         };
+                        let tooltip_text = if is_next { tooltip_text } else { "In Queue" };
 
                         let editor_focused = editor.focus_handle(cx).is_focused(_window);
                         let keybinding_size = rems_from_px(12.);
@@ -3855,7 +3932,7 @@ impl ThreadView {
                                 div()
                                     .id("next_in_queue")
                                     .child(
-                                        Icon::new(IconName::Circle)
+                                        Icon::new(icon_name)
                                             .size(IconSize::Small)
                                             .color(icon_color),
                                     )
@@ -4617,8 +4694,19 @@ impl ThreadView {
                                     h_flex()
                                         .gap_2()
                                         .justify_between()
-                                        .child(Label::new("Queue and Send"))
+                                        .child(Label::new("Steer"))
                                         .child(KeyBinding::for_action_in(&Chat, &focus_handle, cx)),
+                                )
+                                .child(
+                                    h_flex()
+                                        .gap_2()
+                                        .justify_between()
+                                        .child(Label::new("Follow Up"))
+                                        .child(KeyBinding::for_action_in(
+                                            &ChatWithFollow,
+                                            &focus_handle,
+                                            cx,
+                                        )),
                                 )
                                 .child(
                                     h_flex()

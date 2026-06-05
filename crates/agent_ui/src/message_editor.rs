@@ -201,6 +201,7 @@ pub enum InputAttempt {
 #[derive(Clone, Debug)]
 pub enum MessageEditorEvent {
     Send,
+    SendFollowUp,
     SendImmediately,
     Cancel,
     Focus,
@@ -1021,7 +1022,12 @@ impl MessageEditor {
             })
             .log_err();
 
-        self.send(cx);
+        if !self.is_empty(cx) {
+            self.editor.update(cx, |editor, cx| {
+                editor.clear_inlay_hints(cx);
+            });
+        }
+        cx.emit(MessageEditorEvent::SendFollowUp);
     }
 
     fn cancel(&mut self, _: &editor::actions::Cancel, _: &mut Window, cx: &mut Context<Self>) {

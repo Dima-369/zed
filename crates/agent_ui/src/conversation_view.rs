@@ -109,9 +109,20 @@ pub(crate) const DRAFT_PROMPT_PERSIST_DEBOUNCE: Duration = Duration::from_millis
 mod thread_view;
 pub use thread_view::*;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum QueuedMessageType {
+    /// Delivered after the current tool-call turn finishes, but the agent keeps working.
+    /// This is like "steering" the agent mid-generation.
+    #[default]
+    Steering,
+    /// Delivered only after the agent finishes all work (fully stopped).
+    FollowUp,
+}
+
 pub struct QueuedMessage {
     pub content: Vec<acp::ContentBlock>,
     pub tracked_buffers: Vec<Entity<Buffer>>,
+    pub message_type: QueuedMessageType,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -2384,9 +2395,11 @@ impl ConversationView {
         match self.root_thread_view() {
             Some(thread) => thread.update(cx, |thread, _cx| {
                 if index < thread.local_queued_messages.len() {
+                    let message_type = thread.local_queued_messages[index].message_type;
                     thread.local_queued_messages[index] = QueuedMessage {
                         content,
                         tracked_buffers,
+                        message_type,
                     };
                     true
                 } else {
@@ -3600,6 +3613,7 @@ pub(crate) mod tests {
                     "queued".to_string(),
                 ))],
                 vec![],
+                QueuedMessageType::FollowUp,
                 cx,
             );
         });
@@ -8410,6 +8424,7 @@ pub(crate) mod tests {
                     "queued message".to_string(),
                 ))],
                 vec![],
+                QueuedMessageType::FollowUp,
                 cx,
             );
             // Main editor must be empty for this path — it is by default, but
@@ -8458,6 +8473,7 @@ pub(crate) mod tests {
                     "queued message".to_string(),
                 ))],
                 vec![],
+                QueuedMessageType::FollowUp,
                 cx,
             );
             thread.move_queued_message_to_main_editor(0, None, None, window, cx);
@@ -8550,6 +8566,7 @@ pub(crate) mod tests {
                     "queued message".to_string(),
                 ))],
                 vec![],
+                QueuedMessageType::FollowUp,
                 cx,
             );
         });

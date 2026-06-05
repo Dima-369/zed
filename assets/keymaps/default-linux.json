@@ -377,6 +377,7 @@
     "use_key_equivalents": true,
     "bindings": {
       "enter": "agent::Chat",
+      "alt-enter": "agent::ChatWithFollow",
     },
   },
   {
@@ -384,6 +385,7 @@
     "use_key_equivalents": true,
     "bindings": {
       "ctrl-enter": "agent::Chat",
+      "alt-enter": "agent::ChatWithFollow",
       "enter": "editor::Newline",
     },
   },
