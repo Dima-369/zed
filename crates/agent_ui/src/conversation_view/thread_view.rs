@@ -1913,7 +1913,10 @@ impl ThreadView {
 
     pub fn sync_queue_flag_to_native_thread(&self, cx: &mut Context<Self>) {
         if let Some(native_thread) = self.as_native_thread(cx) {
-            let has_steering = self.local_queued_messages.iter().any(|m| m.message_type == QueuedMessageType::Steering);
+            let has_steering = self
+                .local_queued_messages
+                .iter()
+                .any(|m| m.message_type == QueuedMessageType::Steering);
             native_thread.update(cx, |thread, _| {
                 thread.set_has_steering_message(has_steering);
             });
@@ -3214,11 +3217,7 @@ impl ThreadView {
                         this.child(
                             h_flex()
                                 .gap_1()
-                                .child(
-                                    Icon::new(icon)
-                                        .size(IconSize::XSmall)
-                                        .color(color),
-                                )
+                                .child(Icon::new(icon).size(IconSize::XSmall).color(color))
                                 .child(Label::new(label).size(LabelSize::XSmall).color(color)),
                         )
                     })
@@ -3914,11 +3913,7 @@ impl ThreadView {
                             ),
                             None => (IconName::Circle, Color::Muted, "In Queue"),
                         };
-                        let tooltip_text = if is_next {
-                            tooltip_text
-                        } else {
-                            "In Queue"
-                        };
+                        let tooltip_text = if is_next { tooltip_text } else { "In Queue" };
 
                         let editor_focused = editor.focus_handle(cx).is_focused(_window);
                         let keybinding_size = rems_from_px(12.);
@@ -4707,7 +4702,11 @@ impl ThreadView {
                                         .gap_2()
                                         .justify_between()
                                         .child(Label::new("Follow Up"))
-                                        .child(KeyBinding::for_action_in(&ChatWithFollow, &focus_handle, cx)),
+                                        .child(KeyBinding::for_action_in(
+                                            &ChatWithFollow,
+                                            &focus_handle,
+                                            cx,
+                                        )),
                                 )
                                 .child(
                                     h_flex()
