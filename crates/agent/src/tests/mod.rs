@@ -322,7 +322,7 @@ async fn test_terminal_tool_timeout_kills_handle(cx: &mut TestAppContext) {
         tool.run(
             ToolInput::resolved(crate::TerminalToolInput {
                 command: "sleep 1000".to_string(),
-                cd: ".".to_string(),
+                cd: Some(".".to_string()),
                 timeout_ms: Some(5),
                 ..Default::default()
             }),
@@ -390,7 +390,7 @@ async fn test_terminal_tool_without_timeout_does_not_kill_handle(cx: &mut TestAp
         tool.run(
             ToolInput::resolved(crate::TerminalToolInput {
                 command: "sleep 1000".to_string(),
-                cd: ".".to_string(),
+                cd: Some(".".to_string()),
                 timeout_ms: None,
                 ..Default::default()
             }),
@@ -4896,7 +4896,7 @@ async fn test_terminal_tool_permission_rules(cx: &mut TestAppContext) {
             tool.run(
                 ToolInput::resolved(crate::TerminalToolInput {
                     command: "rm -rf /".to_string(),
-                    cd: ".".to_string(),
+                    cd: Some(".".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -4949,7 +4949,7 @@ async fn test_terminal_tool_permission_rules(cx: &mut TestAppContext) {
             tool.run(
                 ToolInput::resolved(crate::TerminalToolInput {
                     command: "echo hello".to_string(),
-                    cd: ".".to_string(),
+                    cd: Some(".".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -5008,7 +5008,7 @@ async fn test_terminal_tool_permission_rules(cx: &mut TestAppContext) {
             tool.run(
                 ToolInput::resolved(crate::TerminalToolInput {
                     command: "sudo rm file".to_string(),
-                    cd: ".".to_string(),
+                    cd: Some(".".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -5056,7 +5056,7 @@ async fn test_terminal_tool_permission_rules(cx: &mut TestAppContext) {
             tool.run(
                 ToolInput::resolved(crate::TerminalToolInput {
                     command: "echo hello".to_string(),
-                    cd: ".".to_string(),
+                    cd: Some(".".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),

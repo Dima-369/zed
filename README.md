@@ -229,6 +229,8 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 
 ## AI
 
+- terminal tool `cd` parameter: made it `Option<String>` with `#[serde(default)]` so when the AI omits it, a clear natural-language error message is returned ("The `cd` parameter is required...") instead of a cryptic serde deserialization failure. Also relaxed the working directory constraint to accept any path, not just project worktree roots. Free models like `big-pickle` or the `owl-alpha` often forget it.
+
 - allow AI edit predictions in the following places:
   - Zed's `settings.json`
   - Zed's `keymap.json`

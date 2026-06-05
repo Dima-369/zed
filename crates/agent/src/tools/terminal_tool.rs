@@ -46,9 +46,11 @@ pub struct TerminalToolInput {
     ///
     /// REMINDER: read-only git commands (`git log`, `git diff`, `git show`, `git blame`) MUST include `--no-pager` (e.g. `git --no-pager log`). Git commands that may open an editor (`git rebase`, `git commit`, `git merge`, `git tag`) MUST be prefixed with `GIT_EDITOR=true ` (e.g. `GIT_EDITOR=true git rebase origin/main`). Otherwise the terminal will hang.
     pub command: String,
-    /// Working directory for the command. This must be one of the root directories of the project.
-    pub cd: String,
+    /// Working directory for the command. Required.
+    #[serde(default)]
+    pub cd: Option<String>,
     /// Optional maximum runtime (in milliseconds). If exceeded, the running terminal task is killed.
+    #[serde(default)]
     pub timeout_ms: Option<u64>,
     /// Request network access for this command.
     ///
@@ -125,6 +127,13 @@ impl AgentTool for TerminalTool {
     ) -> Task<Result<Self::Output, Self::Output>> {
         cx.spawn(async move |cx| {
             let input = input.recv().await.map_err(|e| e.to_string())?;
+
+            if input.cd.as_deref().unwrap_or("").trim().is_empty() {
+                return Err(
+                    "The `cd` parameter is required for the terminal tool. \
+                    Set it to the working directory for the command.".to_string()
+                );
+            }
 
             let (working_dir, authorize, sandboxing) = cx.update(|cx| {
                 let working_dir =
@@ -393,39 +402,40 @@ fn working_dir(
     cx: &mut App,
 ) -> Result<Option<PathBuf>> {
     let project = project.read(cx);
-    let cd = &input.cd;
+    let cd = input.cd.as_ref().expect("cd is validated before calling working_dir");
 
-    if cd == "." || cd.is_empty() {
-        // Accept "." or "" as meaning "the one worktree" if we only have one worktree.
+    let input_path = Path::new(cd);
+
+    if input_path.is_absolute() {
+        return Ok(Some(input_path.into()));
+    }
+
+    if cd == "." {
+        // Accept "." as meaning "the one worktree" if we only have one worktree.
         let mut worktrees = project.worktrees(cx);
 
         match worktrees.next() {
             Some(worktree) => {
                 anyhow::ensure!(
                     worktrees.next().is_none(),
-                    "'.' is ambiguous in multi-root workspaces. Please specify a root directory explicitly.",
+                    "'.' is ambiguous in multi-root workspaces. Please specify a directory path explicitly.",
                 );
-                Ok(Some(worktree.read(cx).abs_path().to_path_buf()))
+                return Ok(Some(worktree.read(cx).abs_path().to_path_buf()));
             }
-            None => Ok(None),
+            None => return Ok(None),
         }
-    } else {
-        let input_path = Path::new(cd);
-
-        if input_path.is_absolute() {
-            // Absolute paths are allowed, but only if they're in one of the project's worktrees.
-            if project
-                .worktrees(cx)
-                .any(|worktree| input_path.starts_with(&worktree.read(cx).abs_path()))
-            {
-                return Ok(Some(input_path.into()));
-            }
-        } else if let Some(worktree) = project.worktree_for_root_name(cd, cx) {
-            return Ok(Some(worktree.read(cx).abs_path().to_path_buf()));
-        }
-
-        anyhow::bail!("`cd` directory {cd:?} was not in any of the project's worktrees.");
     }
+
+    if let Some(worktree) = project.worktree_for_root_name(cd, cx) {
+        return Ok(Some(worktree.read(cx).abs_path().to_path_buf()));
+    }
+
+    // Treat relative names as paths relative to the first worktree.
+    if let Some(worktree) = project.worktrees(cx).next() {
+        return Ok(Some(worktree.read(cx).abs_path().join(cd)));
+    }
+
+    Ok(None)
 }
 
 #[cfg(test)]
@@ -437,7 +447,7 @@ mod tests {
         let input = TerminalToolInput {
             command: "(nix run nixpkgs#hello > /tmp/nix-server.log 2>&1 &)\nsleep 5\ncat /tmp/nix-server.log\npkill -f \"node.*index.js\" || echo \"No server process found\""
                 .to_string(),
-            cd: ".".to_string(),
+            cd: Some(".".to_string()),
             timeout_ms: None,
                     ..Default::default()
         };
@@ -497,7 +507,7 @@ mod tests {
         for cmd in dangerous_commands {
             let input = TerminalToolInput {
                 command: cmd.to_string(),
-                cd: ".".to_string(),
+                cd: Some(".".to_string()),
                 timeout_ms: None,
                 ..Default::default()
             };
@@ -535,7 +545,7 @@ mod tests {
     fn test_initial_title_single_line_command() {
         let input = TerminalToolInput {
             command: "echo 'hello world'".to_string(),
-            cd: ".".to_string(),
+            cd: Some(".".to_string()),
             timeout_ms: None,
             ..Default::default()
         };
@@ -565,7 +575,7 @@ mod tests {
 
         let input = TerminalToolInput {
             command: long_command,
-            cd: ".".to_string(),
+            cd: Some(".".to_string()),
             timeout_ms: None,
             ..Default::default()
         };
@@ -772,7 +782,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "echo $HOME".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -840,7 +850,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "echo $HOME".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -902,7 +912,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "echo $(rm -rf /)".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -972,7 +982,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "PAGER=blah git log --oneline".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -1046,7 +1056,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "PAGER=blah git log".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -1154,7 +1164,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: command.to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -1322,7 +1332,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "echo $(whoami)".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -1395,7 +1405,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "PAGER=other git log".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -1462,7 +1472,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "A=1 B=2 git log".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
@@ -1540,7 +1550,7 @@ mod tests {
             tool.run(
                 crate::ToolInput::resolved(TerminalToolInput {
                     command: "PAGER=\"less -R\" git log".to_string(),
-                    cd: "root".to_string(),
+                    cd: Some("root".to_string()),
                     timeout_ms: None,
                     ..Default::default()
                 }),
