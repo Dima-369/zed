@@ -256,9 +256,9 @@ The last big `main` UI upgrade introduced the `Threads Sidebar` which allows mul
 
 #### Follow-up messages
 
-Inspired by `pi agent` which has steering and follow-up messages.
+Inspired by the `pi agent` which supports steering and follow-up messages, `agent::ChatWithFollow` is implemented for follow-up messages.
 
-New action is named `agent::ChatWithFollow`: queue a message as a **FollowUp** instead of sending immediately.
+Instead of sending a message immediately, the message is sent once agent is fully settled.
 
 #### Other (probably missing on latest `dima` branch, I had those implemented at same point)
 
