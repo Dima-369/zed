@@ -58,6 +58,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - styled the edit prediction "Jump to Edit" line popover to 50% opacity, removed "Jump to Edit" text, lowered padding, and decreased font size
 - exclude unnamed/scratch buffers (tabs without a file) from project search results (`crates/project/src/project_search.rs`)
 - patch `settings_changed()` in `crates/editor/src/editor.rs` to properly reload the buffer font family, so I can switch trivially between a monospace and proportional font (I am not sure why only my fork needs it, and `Zed.app` doesn't)
+- restore last file finder query when reopening the file finder modal, so the previous search text is pre-filled (similar to JetBrains IDEs' behavior)
 
 ## Smooth animated cursor with trail (not in terminal)
 
