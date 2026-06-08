@@ -164,7 +164,7 @@ impl FileFinder {
                 }
             })
             .collect::<Vec<_>>();
-        let last_query = workspace.last_file_finder_query.clone();
+        let restored_query = workspace.last_file_finder_query.clone();
         cx.spawn_in(window, async move |workspace, cx| {
             let history_items = join_all(history_items).await.into_iter().flatten();
 
@@ -180,7 +180,7 @@ impl FileFinder {
                             currently_opened_path,
                             history_items.collect(),
                             separate_history,
-                            last_query,
+                            restored_query,
                             window,
                             cx,
                         );
@@ -192,25 +192,19 @@ impl FileFinder {
         })
     }
 
-    fn new(delegate: FileFinderDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
+    fn new(mut delegate: FileFinderDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let restored_query = delegate.restored_query.take();
+        let picker = cx.new(|cx| {
+            let picker = Picker::uniform_list(delegate, window, cx);
+            if let Some(query) = restored_query {
+                picker.set_query(&query, window, cx);
+            }
+            picker
+        });
         let picker_focus_handle = picker.focus_handle(cx);
         picker.update(cx, |picker, _| {
             picker.delegate.focus_handle = picker_focus_handle.clone();
         });
-        let has_last_query = picker.read(cx).delegate.last_query.is_some();
-        if has_last_query {
-            let weak_picker = picker.downgrade();
-            window.defer(cx, move |window, cx| {
-                if let Some(picker) = weak_picker.upgrade() {
-                    picker.update(cx, |picker, cx| {
-                        if let Some(last_query) = picker.delegate.last_query.take() {
-                            picker.set_query(&last_query, window, cx);
-                        }
-                    });
-                }
-            });
-        }
         Self {
             picker,
             picker_focus_handle,
@@ -440,7 +434,8 @@ pub struct FileFinderDelegate {
     history_items: Vec<FoundPath>,
     separate_history: bool,
     first_update: bool,
-    last_query: Option<String>,
+    restored_query: Option<String>,
+    current_query: String,
     filter_popover_menu_handle: PopoverMenuHandle<ContextMenu>,
     split_popover_menu_handle: PopoverMenuHandle<ContextMenu>,
     focus_handle: FocusHandle,
@@ -944,7 +939,7 @@ impl FileFinderDelegate {
         currently_opened_path: Option<FoundPath>,
         history_items: Vec<FoundPath>,
         separate_history: bool,
-        last_query: Option<String>,
+        restored_query: Option<String>,
         window: &mut Window,
         cx: &mut Context<FileFinder>,
     ) -> Self {
@@ -971,7 +966,8 @@ impl FileFinderDelegate {
             history_items,
             separate_history,
             first_update: true,
-            last_query,
+            restored_query,
+            current_query: String::new(),
             filter_popover_menu_handle: PopoverMenuHandle::default(),
             split_popover_menu_handle: PopoverMenuHandle::default(),
             focus_handle: cx.focus_handle(),
@@ -1704,6 +1700,7 @@ impl PickerDelegate for FileFinderDelegate {
         window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Task<()> {
+        self.current_query = raw_query.clone();
         let raw_query = raw_query.trim();
 
         let raw_query = match &raw_query.get(0..2) {
@@ -1806,16 +1803,10 @@ impl PickerDelegate for FileFinderDelegate {
     }
 
     fn dismissed(&mut self, _: &mut Window, cx: &mut Context<Picker<FileFinderDelegate>>) {
-        if let Some(query) = self
-            .file_finder
-            .read_with(cx, |file_finder, cx| file_finder.picker.read(cx).query(cx))
-            .log_err()
-        {
-            if let Some(workspace) = self.workspace.upgrade() {
-                workspace.update(cx, |workspace, _| {
-                    workspace.last_file_finder_query = Some(query);
-                });
-            }
+        if let Some(workspace) = self.workspace.upgrade() {
+            workspace.update(cx, |workspace, _| {
+                workspace.last_file_finder_query = Some(self.current_query.clone());
+            });
         }
 
         self.file_finder
