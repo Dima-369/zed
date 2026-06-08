@@ -195,12 +195,22 @@ impl FileFinder {
     fn new(delegate: FileFinderDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
         let picker_focus_handle = picker.focus_handle(cx);
-        picker.update(cx, |picker, cx| {
+        picker.update(cx, |picker, _| {
             picker.delegate.focus_handle = picker_focus_handle.clone();
-            if let Some(last_query) = &picker.delegate.last_query {
-                picker.set_query(last_query, window, cx);
-            }
         });
+        let has_last_query = picker.read(cx).delegate.last_query.is_some();
+        if has_last_query {
+            let weak_picker = picker.downgrade();
+            window.defer(cx, move |window, cx| {
+                if let Some(picker) = weak_picker.upgrade() {
+                    picker.update(cx, |picker, cx| {
+                        if let Some(last_query) = picker.delegate.last_query.take() {
+                            picker.set_query(&last_query, window, cx);
+                        }
+                    });
+                }
+            });
+        }
         Self {
             picker,
             picker_focus_handle,
