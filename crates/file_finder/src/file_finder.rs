@@ -164,6 +164,7 @@ impl FileFinder {
                 }
             })
             .collect::<Vec<_>>();
+        let last_query = workspace.last_file_finder_query.clone();
         cx.spawn_in(window, async move |workspace, cx| {
             let history_items = join_all(history_items).await.into_iter().flatten();
 
@@ -179,6 +180,7 @@ impl FileFinder {
                             currently_opened_path,
                             history_items.collect(),
                             separate_history,
+                            last_query,
                             window,
                             cx,
                         );
@@ -193,8 +195,11 @@ impl FileFinder {
     fn new(delegate: FileFinderDelegate, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let picker = cx.new(|cx| Picker::uniform_list(delegate, window, cx));
         let picker_focus_handle = picker.focus_handle(cx);
-        picker.update(cx, |picker, _| {
+        picker.update(cx, |picker, cx| {
             picker.delegate.focus_handle = picker_focus_handle.clone();
+            if let Some(last_query) = &picker.delegate.last_query {
+                picker.set_query(last_query, window, cx);
+            }
         });
         Self {
             picker,
@@ -425,6 +430,7 @@ pub struct FileFinderDelegate {
     history_items: Vec<FoundPath>,
     separate_history: bool,
     first_update: bool,
+    last_query: Option<String>,
     filter_popover_menu_handle: PopoverMenuHandle<ContextMenu>,
     split_popover_menu_handle: PopoverMenuHandle<ContextMenu>,
     focus_handle: FocusHandle,
@@ -928,6 +934,7 @@ impl FileFinderDelegate {
         currently_opened_path: Option<FoundPath>,
         history_items: Vec<FoundPath>,
         separate_history: bool,
+        last_query: Option<String>,
         window: &mut Window,
         cx: &mut Context<FileFinder>,
     ) -> Self {
@@ -954,6 +961,7 @@ impl FileFinderDelegate {
             history_items,
             separate_history,
             first_update: true,
+            last_query,
             filter_popover_menu_handle: PopoverMenuHandle::default(),
             split_popover_menu_handle: PopoverMenuHandle::default(),
             focus_handle: cx.focus_handle(),
@@ -1788,6 +1796,18 @@ impl PickerDelegate for FileFinderDelegate {
     }
 
     fn dismissed(&mut self, _: &mut Window, cx: &mut Context<Picker<FileFinderDelegate>>) {
+        if let Some(query) = self
+            .file_finder
+            .read_with(cx, |file_finder, cx| file_finder.picker.read(cx).query(cx))
+            .log_err()
+        {
+            if let Some(workspace) = self.workspace.upgrade() {
+                workspace.update(cx, |workspace, _| {
+                    workspace.last_file_finder_query = Some(query);
+                });
+            }
+        }
+
         self.file_finder
             .update(cx, |_, cx| cx.emit(DismissEvent))
             .log_err();
