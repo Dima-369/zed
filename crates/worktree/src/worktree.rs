@@ -3171,7 +3171,7 @@ impl BackgroundScannerState {
     fn unwatch_path(
         &mut self,
         watcher: &dyn Watcher,
-        path: &RelPath,
+        _path: &RelPath,
         removed_descendant_abs_paths: Vec<PathBuf>,
         preserve_repository_watches: bool,
     ) {
@@ -3189,19 +3189,6 @@ impl BackgroundScannerState {
             }
             watcher.remove(&removed_dir_abs_path).log_err();
         }
-
-        self.snapshot
-            .external_canonical_to_relative
-            .retain(|canonical, relative| {
-                if relative.starts_with(path) {
-                    if !repository_watches_to_preserve.contains(canonical.as_ref()) {
-                        watcher.remove(canonical.as_ref()).log_err();
-                    }
-                    false
-                } else {
-                    true
-                }
-            });
     }
 
     fn remove_path_from_snapshot(&mut self, path: &RelPath) -> Vec<PathBuf> {
