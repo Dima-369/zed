@@ -449,16 +449,17 @@ impl ScrollManager {
     ) -> bool {
         let ret = if self.ongoing.try_use_anim {
             let current = self.scroll_position(map, cx);
-            let anim = Anim::new(
-                current,
-                top_row,
-                new_anchor,
-                map.clone(),
-                workspace_id,
-                local,
-                autoscroll,
-            );
             if let Some(animation_manager) = self.animation_manager.as_mut() {
+                let anim = Anim::new(
+                    current,
+                    top_row,
+                    new_anchor,
+                    map.clone(),
+                    workspace_id,
+                    local,
+                    autoscroll,
+                    animation_manager.scroll_duration(),
+                );
                 animation_manager.start(anim);
                 cx.notify();
                 true
