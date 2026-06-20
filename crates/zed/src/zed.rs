@@ -3395,7 +3395,7 @@ mod tests {
         assert_eq!(cx.update(|cx| cx.windows().len()), 1);
 
         // The window is successfully closed after the user dismisses the prompt.
-        cx.simulate_prompt_answer("Don't Save");
+        click_modal_button(&window, "Don't Save", cx);
         executor.run_until_parked();
         assert_eq!(cx.update(|cx| cx.windows().len()), 0);
     }
