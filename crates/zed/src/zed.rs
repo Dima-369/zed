@@ -5525,9 +5525,11 @@ mod tests {
                 "channel_modal",
                 "cli",
                 "client",
+                "clipboard_history_modal",
                 "collab",
                 "collab_panel",
                 "command_palette",
+                "confirmation_dialog",
                 "console",
                 "context_server",
                 "copilot",
@@ -5538,6 +5540,7 @@ mod tests {
                 "diagnostics",
                 "edit_prediction",
                 "editor",
+                "emoji_picker_modal",
                 "encoding_selector",
                 "feedback",
                 "file_explorer",
@@ -5771,6 +5774,7 @@ mod tests {
 
             gpui_tokio::init(cx);
             AppState::set_global(app_state.clone(), cx);
+            client::Client::set_global(app_state.client.clone(), cx);
             theme_settings::init(theme::LoadThemes::JustBase, cx);
             audio::init(cx);
             channel::init(&app_state.client, app_state.user_store.clone(), cx);
