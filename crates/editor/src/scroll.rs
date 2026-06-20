@@ -503,7 +503,7 @@ impl ScrollManager {
         snapshot: &DisplaySnapshot,
         cx: &App,
     ) -> gpui::Point<ScrollOffset> {
-        if let Some(target_anchor) = self
+        let mut pos = if let Some(target_anchor) = self
             .animation_manager
             .as_ref()
             .and_then(|m| m.target_anchor())
@@ -511,7 +511,11 @@ impl ScrollManager {
             target_anchor.scroll_position(snapshot)
         } else {
             self.scroll_position(snapshot, cx)
+        };
+        if let Some(max_x) = self.scroll_max_x {
+            pos.x = pos.x.min(max_x);
         }
+        pos
     }
 
     fn set_scroll_position(
@@ -967,6 +971,18 @@ impl Editor {
         self.scroll_manager.scroll_position(&display_map, cx)
     }
 
+    /// The scroll position the editor is heading toward. When a smooth-scroll
+    /// animation is in flight, this is the destination of that animation
+    /// rather than the current visual position. Callers that accumulate
+    /// additional scroll distance on top of the previous request (e.g.
+    /// repeated `PageDown` key events) should base their next target on this
+    /// rather than on `scroll_position`, otherwise the un-animated remainder
+    /// gets discarded on every event and scroll feels throttled.
+    pub fn target_scroll_position(&self, cx: &mut Context<Self>) -> gpui::Point<ScrollOffset> {
+        let display_map = self.display_map.update(cx, |map, cx| map.snapshot(cx));
+        self.scroll_manager.target_scroll_position(&display_map, cx)
+    }
+
     pub fn set_scroll_anchor(
         &mut self,
         scroll_anchor: ScrollAnchor,
@@ -1064,7 +1080,7 @@ impl Editor {
             return;
         }
 
-        let mut current_position = self.scroll_position(cx);
+        let mut current_position = self.target_scroll_position(cx);
         let Some(visible_line_count) = self.visible_line_count() else {
             return;
         };
