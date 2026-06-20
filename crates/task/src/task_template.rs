@@ -1166,7 +1166,7 @@ mod tests {
             ..TaskContext::default()
         };
         let resolved = task.resolve_task(TEST_ID_BASE, &context).unwrap();
-        assert_eq!(resolved.resolved.args, vec![path.clone()]);
+        assert_eq!(resolved.resolved.args, vec![path]);
         assert!(
             resolved
                 .substituted_variables()

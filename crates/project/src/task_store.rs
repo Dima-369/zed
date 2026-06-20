@@ -389,7 +389,7 @@ async fn write_buffer_to_temp_file(
         if !selected.trim().is_empty() {
             selected
         } else {
-            buffer.text().to_string()
+            buffer.text()
         }
     });
     if content.is_empty() {
