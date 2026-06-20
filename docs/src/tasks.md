@@ -94,6 +94,7 @@ These variables allow you to pull information from the current editor and use it
 - `ZED_STEM`: stem (filename without extension) of the currently opened file (e.g. `main`)
 - `ZED_SYMBOL`: currently selected symbol; should match the last symbol shown in a symbol breadcrumb (e.g. `mod tests > fn test_task_contexts`)
 - `ZED_SELECTED_TEXT`: currently selected text
+- `ZED_BUFFER_FILE`: path to a temporary file containing the active buffer's text (or selection, if non-empty). Set only when there is content to write.
 - `ZED_LANGUAGE`: language of the currently opened buffer (e.g. `Rust`, `Python`, `Shell Script`)
 - `ZED_WORKTREE_ROOT`: absolute path to the root of the current worktree. (e.g. `/Users/my-user/path/to/project`)
 - `ZED_MAIN_GIT_WORKTREE`: absolute path to the main git worktree's working directory. For normal checkouts this equals `ZED_WORKTREE_ROOT`; for linked git worktrees this is the original repository's working directory.
@@ -164,6 +165,19 @@ Set default values to such variables to have such tasks always displayed:
   "command": "echo \"${ZED_SELECTED_TEXT:no text selected}\""
 }
 ```
+
+## Piping buffer content via a temp file
+
+`$ZED_BUFFER_FILE` expands to the path of a temporary file containing the active buffer's text. If a non-empty selection exists, the selection is written instead of the full buffer. Use it whenever a command needs the buffer's content as input — this avoids the shell-quoting pitfalls of `< "$ZED_SELECTED_TEXT"` (which fails because `$ZED_SELECTED_TEXT` is the raw text, not a file path) and works for arbitrarily large buffers without bloating the shell environment.
+
+```json [tasks]
+{
+  "label": "merge with yek",
+  "command": "yek-file-merger --copy-to-clipboard < \"$ZED_BUFFER_FILE\""
+}
+```
+
+The variable is only set when there is buffer content to write; tasks that reference it without a buffer open should provide a default (`${ZED_BUFFER_FILE:-/dev/stdin}`) or accept failure. The temp file is created on demand when the task is resolved and is not cleaned up automatically — it lingers in the system temp directory until the OS purges it.
 
 ## Oneshot tasks
 

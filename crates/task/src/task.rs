@@ -174,6 +174,11 @@ pub enum VariableName {
     Column,
     /// Text from the latest selection.
     SelectedText,
+    /// Path to a temporary file containing the active buffer's content (or the
+    /// selection, when non-empty). The file is created on demand when a task
+    /// context is built. Useful for piping buffer content into shell commands
+    /// without shell-escaping the text.
+    BufferFile,
     /// The language of the currently opened buffer (e.g., "Rust", "Python").
     Language,
     /// The symbol selected by the symbol tagging system, specifically the @run capture in a runnables.scm
@@ -225,6 +230,7 @@ impl FromStr for VariableName {
             "SYMBOL" => Self::Symbol,
             "RUNNABLE_SYMBOL" => Self::RunnableSymbol,
             "SELECTED_TEXT" => Self::SelectedText,
+            "BUFFER_FILE" => Self::BufferFile,
             "LANGUAGE" => Self::Language,
             "ROW" => Self::Row,
             "COLUMN" => Self::Column,
@@ -265,6 +271,7 @@ impl std::fmt::Display for VariableName {
             Self::Row => write!(f, "{ZED_VARIABLE_NAME_PREFIX}ROW"),
             Self::Column => write!(f, "{ZED_VARIABLE_NAME_PREFIX}COLUMN"),
             Self::SelectedText => write!(f, "{ZED_VARIABLE_NAME_PREFIX}SELECTED_TEXT"),
+            Self::BufferFile => write!(f, "{ZED_VARIABLE_NAME_PREFIX}BUFFER_FILE"),
             Self::Language => write!(f, "{ZED_VARIABLE_NAME_PREFIX}LANGUAGE"),
             Self::RunnableSymbol => write!(f, "{ZED_VARIABLE_NAME_PREFIX}RUNNABLE_SYMBOL"),
             Self::PickProcessId => write!(f, "{ZED_VARIABLE_NAME_PREFIX}PICK_PID"),
