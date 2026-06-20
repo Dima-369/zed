@@ -3329,7 +3329,7 @@ mod tests {
             .unwrap();
         executor.run_until_parked();
 
-        cx.simulate_prompt_answer("Don't Save");
+        click_modal_button(&window, "Don't Save", cx);
         close.await.unwrap();
 
         // Advance the clock to ensure that the item has been serialized and dropped from the queue
@@ -4210,7 +4210,7 @@ mod tests {
             })
             .unwrap();
         cx.background_executor.run_until_parked();
-        cx.simulate_prompt_answer("Overwrite");
+        click_modal_button(&window, "Overwrite", cx);
         save_task.await.unwrap();
         window
             .update(cx, |_, _, cx| {
@@ -4536,7 +4536,7 @@ mod tests {
             close_pinned: false,
         });
         cx.background_executor.run_until_parked();
-        cx.simulate_prompt_answer("Don't Save");
+        click_modal_button(&window, "Don't Save", &mut *cx);
         cx.background_executor.run_until_parked();
 
         workspace.read_with(cx, |workspace, cx| {
@@ -5761,6 +5761,51 @@ mod tests {
         init_test_with_state(cx, cx.update(AppState::test))
     }
 
+    /// Returns true if the given window's workspace has an active `ConfirmationDialog` modal.
+    /// Test-only helper for replacing `has_pending_prompt` after prompts were migrated to modals.
+    fn has_confirmation_modal(
+        window: &WindowHandle<MultiWorkspace>,
+        cx: &mut TestAppContext,
+    ) -> bool {
+        window
+            .read_with(cx, |multi_workspace, _| {
+                multi_workspace
+                    .workspace()
+                    .read_with(cx, |workspace, cx| {
+                        workspace
+                            .active_modal::<workspace::confirmation_dialog::ConfirmationDialog>(cx)
+                            .is_some()
+                    })
+            })
+            .unwrap_or(false)
+    }
+
+    /// Clicks the button with the given label on the active `ConfirmationDialog` modal
+    /// in the given window. Test-only helper for replacing `simulate_prompt_answer`
+    /// after save/quit prompts were migrated to GPUI modals.
+    fn click_modal_button(
+        window: &WindowHandle<MultiWorkspace>,
+        button_label: &str,
+        cx: &mut TestAppContext,
+    ) {
+        let modal = window
+            .read_with(cx, |multi_workspace, _| {
+                multi_workspace.workspace().read_with(cx, |workspace, cx| {
+                    workspace.active_modal::<workspace::confirmation_dialog::ConfirmationDialog>(cx)
+                })
+            })
+            .ok()
+            .flatten()
+            .expect("expected an active ConfirmationDialog modal");
+        let label = button_label.to_string();
+        modal.update(cx, |modal, cx| {
+            let index = modal.button_index(&label).unwrap_or_else(|| {
+                panic!("ConfirmationDialog has no button labeled {:?}", label)
+            });
+            modal.click_button(index, cx);
+        });
+    }
+
     fn init_test_with_state(
         cx: &mut TestAppContext,
         mut app_state: Arc<AppState>,
@@ -6393,11 +6438,11 @@ mod tests {
         cx.run_until_parked();
 
         assert!(
-            cx.has_pending_prompt(),
+            has_confirmation_modal(&window1, cx),
             "Case 1: Should prompt to save dirty item in active workspace"
         );
 
-        cx.simulate_prompt_answer("Cancel");
+        click_modal_button(&window1, "Cancel", cx);
         cx.run_until_parked();
 
         assert_eq!(
@@ -6417,7 +6462,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        cx.simulate_prompt_answer("Don't Save");
+        click_modal_button(&window1, "Don't Save", cx);
         close_task.await.ok();
         cx.run_until_parked();
 
@@ -6470,11 +6515,11 @@ mod tests {
             .unwrap();
 
         assert!(
-            cx.has_pending_prompt(),
+            has_confirmation_modal(&window1, cx),
             "Case 2: Should prompt to save dirty item in non-active workspace"
         );
 
-        cx.simulate_prompt_answer("Cancel");
+        click_modal_button(&window1, "Cancel", cx);
         cx.run_until_parked();
 
         assert_eq!(
@@ -6494,7 +6539,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        cx.simulate_prompt_answer("Don't Save");
+        click_modal_button(&window1, "Don't Save", cx);
         close_task.await.ok();
         cx.run_until_parked();
 
@@ -6554,11 +6599,11 @@ mod tests {
         );
 
         assert!(
-            cx.has_pending_prompt(),
+            has_confirmation_modal(&window2, cx),
             "Case 3: Should prompt to save dirty item in non-active window"
         );
 
-        cx.simulate_prompt_answer("Cancel");
+        click_modal_button(&window2, "Cancel", cx);
         cx.run_until_parked();
 
         assert_eq!(

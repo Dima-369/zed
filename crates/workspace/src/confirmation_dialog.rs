@@ -63,6 +63,25 @@ impl ConfirmationDialog {
         }
     }
 
+    /// Simulates clicking the button at the given index. Test-only helper.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn click_button(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index < self.buttons.len() {
+            self.selected_button = index;
+            cx.notify();
+        }
+        if let Some(sender) = self.result_sender.take() {
+            let _ = sender.send(self.selected_button);
+        }
+        cx.emit(DismissEvent);
+    }
+
+    /// Returns the index of the button with the given label, if any. Test-only helper.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn button_index(&self, label: &str) -> Option<usize> {
+        self.buttons.iter().position(|b| b == label)
+    }
+
     fn confirm_selection(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if let Some(sender) = self.result_sender.take() {
             let _ = sender.send(self.selected_button);
