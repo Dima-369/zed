@@ -5769,13 +5769,11 @@ mod tests {
     ) -> bool {
         window
             .read_with(cx, |multi_workspace, _| {
-                multi_workspace
-                    .workspace()
-                    .read_with(cx, |workspace, cx| {
-                        workspace
-                            .active_modal::<workspace::confirmation_dialog::ConfirmationDialog>(cx)
-                            .is_some()
-                    })
+                multi_workspace.workspace().read_with(cx, |workspace, cx| {
+                    workspace
+                        .active_modal::<workspace::confirmation_dialog::ConfirmationDialog>(cx)
+                        .is_some()
+                })
             })
             .unwrap_or(false)
     }
@@ -5799,9 +5797,9 @@ mod tests {
             .expect("expected an active ConfirmationDialog modal");
         let label = button_label.to_string();
         modal.update(cx, |modal, cx| {
-            let index = modal.button_index(&label).unwrap_or_else(|| {
-                panic!("ConfirmationDialog has no button labeled {:?}", label)
-            });
+            let index = modal
+                .button_index(&label)
+                .unwrap_or_else(|| panic!("ConfirmationDialog has no button labeled {:?}", label));
             modal.click_button(index, cx);
         });
     }
