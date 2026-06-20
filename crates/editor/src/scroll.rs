@@ -449,17 +449,16 @@ impl ScrollManager {
     ) -> bool {
         let ret = if self.ongoing.try_use_anim {
             let current = self.scroll_position(map, cx);
+            let anim = Anim::new(
+                current,
+                top_row,
+                new_anchor,
+                map.clone(),
+                workspace_id,
+                local,
+                autoscroll,
+            );
             if let Some(animation_manager) = self.animation_manager.as_mut() {
-                let anim = Anim::new(
-                    current,
-                    top_row,
-                    new_anchor,
-                    map.clone(),
-                    workspace_id,
-                    local,
-                    autoscroll,
-                    animation_manager.scroll_duration(),
-                );
                 animation_manager.start(anim);
                 cx.notify();
                 true
@@ -487,6 +486,32 @@ impl ScrollManager {
             pos.x = pos.x.min(max_x);
         }
         pos
+    }
+
+    /// Returns the scroll position the editor is heading toward.
+    ///
+    /// If a smooth-scroll animation is in flight, this is the destination
+    /// of that animation (which the animation has not yet reached). Otherwise
+    /// it is the current visual position.
+    ///
+    /// Callers accumulating new scroll deltas should add them to this
+    /// position rather than to `scroll_position`, otherwise the un-animated
+    /// distance between the visual position and the previous target gets
+    /// discarded on every event and scroll feels throttled.
+    pub fn target_scroll_position(
+        &self,
+        snapshot: &DisplaySnapshot,
+        cx: &App,
+    ) -> gpui::Point<ScrollOffset> {
+        if let Some(target_anchor) = self
+            .animation_manager
+            .as_ref()
+            .and_then(|m| m.target_anchor())
+        {
+            target_anchor.scroll_position(snapshot)
+        } else {
+            self.scroll_position(snapshot, cx)
+        }
     }
 
     fn set_scroll_position(
