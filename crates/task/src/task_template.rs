@@ -1167,9 +1167,11 @@ mod tests {
         };
         let resolved = task.resolve_task(TEST_ID_BASE, &context).unwrap();
         assert_eq!(resolved.resolved.args, vec![path.clone()]);
-        assert!(resolved
-            .substituted_variables()
-            .contains(&VariableName::BufferFile));
+        assert!(
+            resolved
+                .substituted_variables()
+                .contains(&VariableName::BufferFile)
+        );
     }
 
     #[test]

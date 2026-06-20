@@ -359,8 +359,8 @@ fn local_task_context_for_location(
         // The ceiling: we don't track the temp file for cleanup; it will linger in /tmp
         // until the OS purges it. The upgrade path is to register a cleanup callback on
         // task completion (needs plumbing through `TaskStatus`).
-        let buffer_file_path = write_buffer_to_temp_file(&buffer_for_tempfile, &range_for_tempfile, cx)
-            .await;
+        let buffer_file_path =
+            write_buffer_to_temp_file(&buffer_for_tempfile, &range_for_tempfile, cx).await;
         if let Some(path) = buffer_file_path {
             task_variables.insert(VariableName::BufferFile, path);
         }
@@ -382,17 +382,16 @@ async fn write_buffer_to_temp_file(
     range: &std::ops::Range<language::Anchor>,
     cx: &AsyncApp,
 ) -> Option<String> {
-    let content = cx
-        .update(|cx| {
-            let buffer = buffer.read(cx);
-            let snapshot = buffer.snapshot();
-            let selected = snapshot.chars_for_range(range.clone()).collect::<String>();
-            if !selected.trim().is_empty() {
-                selected
-            } else {
-                buffer.text().to_string()
-            }
-        });
+    let content = cx.update(|cx| {
+        let buffer = buffer.read(cx);
+        let snapshot = buffer.snapshot();
+        let selected = snapshot.chars_for_range(range.clone()).collect::<String>();
+        if !selected.trim().is_empty() {
+            selected
+        } else {
+            buffer.text().to_string()
+        }
+    });
     if content.is_empty() {
         return None;
     }
