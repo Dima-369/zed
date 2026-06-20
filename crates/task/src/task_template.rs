@@ -1151,4 +1151,39 @@ mod tests {
             ],
         );
     }
+
+    #[test]
+    fn test_buffer_file_variable_substitutes_into_command() {
+        let task = TaskTemplate {
+            label: "use buffer file".to_string(),
+            command: "cat".to_string(),
+            args: vec!["$ZED_BUFFER_FILE".to_string()],
+            ..TaskTemplate::default()
+        };
+        let path = "/tmp/zed-buffer-1-2.txt".to_string();
+        let context = TaskContext {
+            task_variables: TaskVariables::from_iter([(VariableName::BufferFile, path.clone())]),
+            ..TaskContext::default()
+        };
+        let resolved = task.resolve_task(TEST_ID_BASE, &context).unwrap();
+        assert_eq!(resolved.resolved.args, vec![path]);
+        assert!(
+            resolved
+                .substituted_variables()
+                .contains(&VariableName::BufferFile)
+        );
+    }
+
+    #[test]
+    fn test_buffer_file_default_used_when_unset() {
+        let task = TaskTemplate {
+            label: "use buffer file with fallback".to_string(),
+            command: "cat".to_string(),
+            args: vec!["${ZED_BUFFER_FILE:-/dev/stdin}".to_string()],
+            ..TaskTemplate::default()
+        };
+        let context = TaskContext::default();
+        let resolved = task.resolve_task(TEST_ID_BASE, &context).unwrap();
+        assert_eq!(resolved.resolved.args, vec!["/dev/stdin".to_string()]);
+    }
 }

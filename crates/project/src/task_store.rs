@@ -321,6 +321,11 @@ fn local_task_context_for_location(
         .and_then(|worktree_id| worktree_store.read(cx).worktree_for_id(worktree_id, cx))
         .and_then(|worktree| worktree.read(cx).root_dir());
     let fs = worktree_store.read(cx).fs();
+    // ponytail: Clone the buffer/selection before they're consumed by `combine_task_variables`,
+    // so we can write the buffer content to a temp file and expose its path as the
+    // `$ZED_BUFFER_FILE` task variable.
+    let buffer_for_tempfile = location.buffer.clone();
+    let range_for_tempfile = location.range.clone();
 
     cx.spawn(async move |cx| {
         let project_env = environment
@@ -347,12 +352,59 @@ fn local_task_context_for_location(
         // Remove all custom entries starting with _, as they're not intended for use by the end user.
         task_variables.sweep();
 
+        // ponytail: Write the buffer content (or selection, if non-empty) to a temp file
+        // and expose its path via the `$ZED_BUFFER_FILE` variable. The temp file is the
+        // simplest way to feed large buffer content to a shell command without quoting
+        // headaches — the user's task just does `< "$ZED_BUFFER_FILE"`.
+        // The ceiling: we don't track the temp file for cleanup; it will linger in /tmp
+        // until the OS purges it. The upgrade path is to register a cleanup callback on
+        // task completion (needs plumbing through `TaskStatus`).
+        let buffer_file_path =
+            write_buffer_to_temp_file(&buffer_for_tempfile, &range_for_tempfile, cx).await;
+        if let Some(path) = buffer_file_path {
+            task_variables.insert(VariableName::BufferFile, path);
+        }
+
         Ok(Some(TaskContext {
             project_env: project_env.unwrap_or_default(),
             cwd: worktree_abs_path.map(|p| p.to_path_buf()),
             task_variables,
         }))
     })
+}
+
+// ponytail: Write the active buffer's text (selection if non-empty, otherwise the
+// full buffer) to a unique temp file and return its path. Returns `None` if the
+// buffer is empty or the write fails — callers should treat that as "variable
+// not set" so tasks without a buffer still resolve cleanly.
+async fn write_buffer_to_temp_file(
+    buffer: &Entity<language::Buffer>,
+    range: &std::ops::Range<language::Anchor>,
+    cx: &AsyncApp,
+) -> Option<String> {
+    let content = cx.update(|cx| {
+        let buffer = buffer.read(cx);
+        let snapshot = buffer.snapshot();
+        let selected = snapshot.chars_for_range(range.clone()).collect::<String>();
+        if !selected.trim().is_empty() {
+            selected
+        } else {
+            buffer.text()
+        }
+    });
+    if content.is_empty() {
+        return None;
+    }
+    let temp_path = std::env::temp_dir().join(format!(
+        "zed-buffer-{}-{}.txt",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    std::fs::write(&temp_path, content.as_bytes()).ok()?;
+    Some(temp_path.to_string_lossy().into_owned())
 }
 
 fn remote_task_context_for_location(

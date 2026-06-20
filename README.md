@@ -60,6 +60,10 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 - patch `settings_changed()` in `crates/editor/src/editor.rs` to properly reload the buffer font family, so I can switch trivially between a monospace and proportional font (I am not sure why only my fork needs it, and `Zed.app` doesn't)
 - restore last file finder query when reopening the file finder modal, so the previous search text is pre-filled (similar to JetBrains IDEs' behavior)
 
+## Tasks (tasks.json)
+
+- add `$ZED_BUFFER_FILE` task variable pointing to a temp file with the active buffer's text (or selection, if non-empty). Lets you pipe buffer content to a command with `< "$ZED_BUFFER_FILE"` without shell-escaping the text or fighting `isatty(stdin)`. Implemented in `local_task_context_for_location` (`crates/project/src/task_store.rs`); the temp file lives in `std::env::temp_dir()` and is not auto-cleaned
+
 ## Smooth animated cursor with trail (not in terminal)
 
 Based on the `smooth-cursor` branch from <https://github.com/NVSRahul/zedmod> with several tweaks.
