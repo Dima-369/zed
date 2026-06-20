@@ -533,23 +533,35 @@ impl EditorElement {
                         editor.update(cx, |editor, cx| {
                             let line_height = position_map.line_height;
                             let glyph_width = position_map.em_layout_width;
-                            let (delta, axis) = match delta {
+                            let (delta, axis, try_use_anim) = match delta {
                                 gpui::ScrollDelta::Pixels(mut pixels) => {
-                                    //Trackpad
+                                    // Trackpad. macOS already produces high-frequency,
+                                    // inertia-corrected deltas, so applying our own
+                                    // smooth-scroll animation on top adds input lag and
+                                    // fights the native feel. Snap straight to the new
+                                    // position instead.
                                     let axis =
                                         position_map.snapshot.ongoing_scroll.filter(&mut pixels);
-                                    (pixels, axis)
+                                    (pixels, axis, false)
                                 }
 
                                 gpui::ScrollDelta::Lines(lines) => {
-                                    //Not trackpad
+                                    // Not trackpad. Animate for the discrete-wheel feel.
                                     let pixels =
                                         point(lines.x * glyph_width, lines.y * line_height);
-                                    (pixels, None)
+                                    (pixels, None, true)
                                 }
                             };
 
-                            let current_scroll_position = position_map.snapshot.scroll_position();
+                            // Add the delta to the *target* position so that an
+                            // in-flight animation's un-reached distance isn't
+                            // discarded on every event. Without this the new
+                            // target is computed from the current visual position
+                            // and each event drops the un-animated remainder,
+                            // throttling scroll speed.
+                            let current_scroll_position = editor
+                                .scroll_manager
+                                .target_scroll_position(&position_map.snapshot, cx);
                             let x = (current_scroll_position.x
                                 * ScrollPixelOffset::from(glyph_width)
                                 - ScrollPixelOffset::from(delta.x * scroll_sensitivity))
@@ -567,7 +579,7 @@ impl EditorElement {
                             }
 
                             if scroll_position != current_scroll_position {
-                                editor.scroll(scroll_position, axis, true, window, cx);
+                                editor.scroll(scroll_position, axis, try_use_anim, window, cx);
                                 cx.stop_propagation();
                             } else if y < 0. {
                                 // Due to clamping, we may fail to detect cases of overscroll to the top;

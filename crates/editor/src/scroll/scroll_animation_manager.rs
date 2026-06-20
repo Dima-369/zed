@@ -98,6 +98,14 @@ impl ScrollAnimationManager {
         self.anim.as_ref().map(|v| v.state.clone())
     }
 
+    /// Returns the destination anchor of the in-flight animation, if any.
+    /// Used by the scroll input handler to accumulate new deltas onto the
+    /// target position rather than the current visual position, so that
+    /// un-animated distance isn't dropped between events.
+    pub(crate) fn target_anchor(&self) -> Option<ScrollAnchor> {
+        self.anim.as_ref().map(|a| a.destination_anchor)
+    }
+
     fn make_final_results(
         &self,
         intermediate_scroll_top: f64,
