@@ -369,7 +369,7 @@ fn local_task_context_for_location(
             .get(&VariableName::File)
             .or_else(|| task_variables.get(&VariableName::WorktreeRoot))
             .map(str::to_string)
-            .or(scratch_worktree_root.clone())
+            .or(scratch_worktree_root)
         {
             task_variables.insert(VariableName::FileOrWorktreeRoot, path);
         }
