@@ -26,10 +26,12 @@ Proceed to commit the worktree changes, if there are any changes to commit.
 
 Then if the git branch is not pushed yet, use `git push` to push it to the remote repository.
 
-Next, create a GitHub pull request using the `gh pr create` command with a title and description.
+Next, create a GitHub pull request using the `gh pr create` command and invoke the CI checks and merge commands in one go:
 
 ```bash
 # --fill automates title/body
+# take note of the PR number
 gh pr create --base dima --fill --repo Dima-369/zed
-gh pr checks --watch && gh pr merge --squash --delete-branch
+
+gh pr checks {PR number from above}--watch && gh pr merge --squash --delete-branch
 ```
