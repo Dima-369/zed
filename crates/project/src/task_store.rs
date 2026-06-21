@@ -321,7 +321,13 @@ fn local_task_context_for_location(
         .and_then(|worktree_id| worktree_store.read(cx).worktree_for_id(worktree_id, cx))
         .and_then(|worktree| worktree.read(cx).root_dir());
     let fs = worktree_store.read(cx).fs();
-    // ponytail: Clone the buffer/selection before they're consumed by `combine_task_variables`,
+    // For scratch/unsaved buffers `buffer.file()` is `None`, so
+    // `WorktreeRoot` is never populated by `BasicContextProvider` in that case.
+    // Pre-resolve the fallback path (first visible worktree root) so the
+    // `$ZED_FILE_OR_WORKTREE_ROOT` variable still resolves for tasks like yazi
+    // that need *some* path even when no real file is open.
+    let scratch_worktree_root = first_visible_worktree_root(&worktree_store, cx);
+    // Clone the buffer/selection before they're consumed by `combine_task_variables`,
     // so we can write the buffer content to a temp file and expose its path as the
     // `$ZED_BUFFER_FILE` task variable.
     let buffer_for_tempfile = location.buffer.clone();
@@ -352,7 +358,23 @@ fn local_task_context_for_location(
         // Remove all custom entries starting with _, as they're not intended for use by the end user.
         task_variables.sweep();
 
-        // ponytail: Write the buffer content (or selection, if non-empty) to a temp file
+        // Derive `$ZED_FILE_OR_WORKTREE_ROOT` from the already-built
+        // `$ZED_FILE` (when the buffer maps to a local file) or the
+        // `$ZED_WORKTREE_ROOT` fallback (when the buffer is unsaved/scratch).
+        // Useful for tools like `yazi` that want a path to hand to the shell
+        // regardless of whether a real file is open — `ZED_FILE` is empty for
+        // scratch buffers, which is exactly the workflow where you most want
+        // a sensible default.
+        if let Some(path) = task_variables
+            .get(&VariableName::File)
+            .or_else(|| task_variables.get(&VariableName::WorktreeRoot))
+            .map(str::to_string)
+            .or(scratch_worktree_root)
+        {
+            task_variables.insert(VariableName::FileOrWorktreeRoot, path);
+        }
+
+        // Write the buffer content (or selection, if non-empty) to a temp file
         // and expose its path via the `$ZED_BUFFER_FILE` variable. The temp file is the
         // simplest way to feed large buffer content to a shell command without quoting
         // headaches — the user's task just does `< "$ZED_BUFFER_FILE"`.
@@ -373,7 +395,7 @@ fn local_task_context_for_location(
     })
 }
 
-// ponytail: Write the active buffer's text (selection if non-empty, otherwise the
+// Write the active buffer's text (selection if non-empty, otherwise the
 // full buffer) to a unique temp file and return its path. Returns `None` if the
 // buffer is empty or the write fails — callers should treat that as "variable
 // not set" so tasks without a buffer still resolve cleanly.
@@ -405,6 +427,24 @@ async fn write_buffer_to_temp_file(
     ));
     std::fs::write(&temp_path, content.as_bytes()).ok()?;
     Some(temp_path.to_string_lossy().into_owned())
+}
+
+// Returns the first visible worktree's root path, or `None` if the project has
+// no visible worktrees. Used as a last-resort fallback for
+// `$ZED_FILE_OR_WORKTREE_ROOT` when the active buffer has no associated file
+// (scratch/unsaved): `BasicContextProvider` derives `ZED_WORKTREE_ROOT` from
+// `buffer.file()`, which is `None` in that case, so without this fallback the
+// variable would be unset for the exact workflow that motivated it.
+fn first_visible_worktree_root(worktree_store: &Entity<WorktreeStore>, cx: &App) -> Option<String> {
+    worktree_store
+        .read(cx)
+        .visible_worktrees(cx)
+        .find_map(|worktree| {
+            let worktree = worktree.read(cx);
+            worktree
+                .root_dir()
+                .map(|p| p.to_string_lossy().into_owned())
+        })
 }
 
 fn remote_task_context_for_location(

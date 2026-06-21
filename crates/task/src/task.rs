@@ -166,6 +166,13 @@ pub enum VariableName {
     Stem,
     /// An absolute path of the currently opened worktree, that contains the file.
     WorktreeRoot,
+    /// Path to the current file when it is backed by a file on disk, or the
+    /// worktree root otherwise. Useful for tasks that need a path to feed into
+    /// a shell command regardless of whether a real file is open — e.g. when
+    /// working with a scratch/unsaved buffer (such as a yazi file picker
+    /// result), `ZED_FILE` is empty and `ZED_WORKTREE_ROOT` is the only
+    /// sensible fallback.
+    FileOrWorktreeRoot,
     /// A symbol text, that contains latest cursor/selection position.
     Symbol,
     /// A row with the latest cursor/selection position.
@@ -227,6 +234,7 @@ impl FromStr for VariableName {
             "DIRNAME" => Self::Dirname,
             "STEM" => Self::Stem,
             "WORKTREE_ROOT" => Self::WorktreeRoot,
+            "FILE_OR_WORKTREE_ROOT" => Self::FileOrWorktreeRoot,
             "SYMBOL" => Self::Symbol,
             "RUNNABLE_SYMBOL" => Self::RunnableSymbol,
             "SELECTED_TEXT" => Self::SelectedText,
@@ -267,6 +275,9 @@ impl std::fmt::Display for VariableName {
             Self::Dirname => write!(f, "{ZED_VARIABLE_NAME_PREFIX}DIRNAME"),
             Self::Stem => write!(f, "{ZED_VARIABLE_NAME_PREFIX}STEM"),
             Self::WorktreeRoot => write!(f, "{ZED_VARIABLE_NAME_PREFIX}WORKTREE_ROOT"),
+            Self::FileOrWorktreeRoot => {
+                write!(f, "{ZED_VARIABLE_NAME_PREFIX}FILE_OR_WORKTREE_ROOT")
+            }
             Self::Symbol => write!(f, "{ZED_VARIABLE_NAME_PREFIX}SYMBOL"),
             Self::Row => write!(f, "{ZED_VARIABLE_NAME_PREFIX}ROW"),
             Self::Column => write!(f, "{ZED_VARIABLE_NAME_PREFIX}COLUMN"),

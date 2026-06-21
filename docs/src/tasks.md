@@ -97,6 +97,7 @@ These variables allow you to pull information from the current editor and use it
 - `ZED_BUFFER_FILE`: path to a temporary file containing the active buffer's text (or selection, if non-empty). Set only when there is content to write.
 - `ZED_LANGUAGE`: language of the currently opened buffer (e.g. `Rust`, `Python`, `Shell Script`)
 - `ZED_WORKTREE_ROOT`: absolute path to the root of the current worktree. (e.g. `/Users/my-user/path/to/project`)
+- `ZED_FILE_OR_WORKTREE_ROOT`: absolute path of the currently opened file, falling back to the worktree root when no file is open (e.g. when working with an unsaved/scratch buffer). Lets tools like `yazi` get a usable path in either case.
 - `ZED_MAIN_GIT_WORKTREE`: absolute path to the main git worktree's working directory. For normal checkouts this equals `ZED_WORKTREE_ROOT`; for linked git worktrees this is the original repository's working directory.
 - `ZED_CUSTOM_RUST_PACKAGE`: (Rust-specific) name of the parent package of $ZED_FILE source file.
 
