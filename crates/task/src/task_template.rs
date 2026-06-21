@@ -1186,4 +1186,46 @@ mod tests {
         let resolved = task.resolve_task(TEST_ID_BASE, &context).unwrap();
         assert_eq!(resolved.resolved.args, vec!["/dev/stdin".to_string()]);
     }
+
+    #[test]
+    fn test_file_or_worktree_root_variable_substitutes_into_command() {
+        let task = TaskTemplate {
+            label: "use file or worktree root".to_string(),
+            command: "yazi".to_string(),
+            args: vec!["$ZED_FILE_OR_WORKTREE_ROOT".to_string()],
+            ..TaskTemplate::default()
+        };
+        // When only the worktree root is set (scratch/unsaved buffer
+        // case), `$ZED_FILE_OR_WORKTREE_ROOT` still resolves — this is the
+        // entire point of the variable. `ZED_FILE` being empty must not
+        // produce an empty argument.
+        let worktree_root = "/home/user/project".to_string();
+        let context = TaskContext {
+            task_variables: TaskVariables::from_iter([(
+                VariableName::WorktreeRoot,
+                worktree_root.clone(),
+            )]),
+            ..TaskContext::default()
+        };
+        let resolved = task.resolve_task(TEST_ID_BASE, &context).unwrap();
+        assert_eq!(resolved.resolved.args, vec![worktree_root]);
+        assert!(
+            resolved
+                .substituted_variables()
+                .contains(&VariableName::FileOrWorktreeRoot)
+        );
+    }
+
+    #[test]
+    fn test_file_or_worktree_root_variable_name_round_trips() {
+        // The full `$ZED_FILE_OR_WORKTREE_ROOT` string must parse back into
+        // the same variant — otherwise task templates referencing it would
+        // silently fail to substitute.
+        let parsed: VariableName = "$ZED_FILE_OR_WORKTREE_ROOT".parse().unwrap();
+        assert_eq!(parsed, VariableName::FileOrWorktreeRoot);
+        assert_eq!(
+            VariableName::FileOrWorktreeRoot.template_value(),
+            "$ZED_FILE_OR_WORKTREE_ROOT"
+        );
+    }
 }

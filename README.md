@@ -63,6 +63,7 @@ https://github.com/zed-industries/zed/compare/main...Dima-369:zed:dima
 ## Tasks (tasks.json)
 
 - add `$ZED_BUFFER_FILE` task variable pointing to a temp file with the active buffer's text (or selection, if non-empty). Lets you pipe buffer content to a command with `< "$ZED_BUFFER_FILE"` without shell-escaping the text or fighting `isatty(stdin)`. Implemented in `local_task_context_for_location` (`crates/project/src/task_store.rs`); the temp file lives in `std::env::temp_dir()` and is not auto-cleaned
+- add `$ZED_FILE_OR_WORKTREE_ROOT` task variable: the current file's absolute path when a real file is open, falling back to the worktree root otherwise. Resolves the gap where `ZED_FILE` is empty for scratch/unsaved buffers (e.g. a yazi file picker landing in a new buffer) and you just need *some* path to hand to a shell command. Derived in `local_task_context_for_location` after `combine_task_variables`; no new plumbing required because both source variables are already populated by `BasicContextProvider`
 
 ## Smooth animated cursor with trail (not in terminal)
 
