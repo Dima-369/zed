@@ -435,16 +435,15 @@ async fn write_buffer_to_temp_file(
 // (scratch/unsaved): `BasicContextProvider` derives `ZED_WORKTREE_ROOT` from
 // `buffer.file()`, which is `None` in that case, so without this fallback the
 // variable would be unset for the exact workflow that motivated it.
-fn first_visible_worktree_root(
-    worktree_store: &Entity<WorktreeStore>,
-    cx: &App,
-) -> Option<String> {
+fn first_visible_worktree_root(worktree_store: &Entity<WorktreeStore>, cx: &App) -> Option<String> {
     worktree_store
         .read(cx)
         .visible_worktrees(cx)
         .find_map(|worktree| {
             let worktree = worktree.read(cx);
-            worktree.root_dir().map(|p| p.to_string_lossy().into_owned())
+            worktree
+                .root_dir()
+                .map(|p| p.to_string_lossy().into_owned())
         })
 }
 

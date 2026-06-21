@@ -540,7 +540,10 @@ mod tests {
                     (VariableName::Dirname, path!("/dir/rust").into()),
                     (VariableName::Stem, "b".into()),
                     (VariableName::WorktreeRoot, path!("/dir").into()),
-                    (VariableName::FileOrWorktreeRoot, path!("/dir/rust/b.rs").into()),
+                    (
+                        VariableName::FileOrWorktreeRoot,
+                        path!("/dir/rust/b.rs").into()
+                    ),
                     (VariableName::Row, "1".into()),
                     (VariableName::Column, "1".into()),
                     (VariableName::Language, "Rust".into()),
@@ -574,7 +577,10 @@ mod tests {
                     (VariableName::Dirname, path!("/dir/rust").into()),
                     (VariableName::Stem, "b".into()),
                     (VariableName::WorktreeRoot, path!("/dir").into()),
-                    (VariableName::FileOrWorktreeRoot, path!("/dir/rust/b.rs").into()),
+                    (
+                        VariableName::FileOrWorktreeRoot,
+                        path!("/dir/rust/b.rs").into()
+                    ),
                     (VariableName::Row, "1".into()),
                     (VariableName::Column, "15".into()),
                     (VariableName::SelectedText, "is_i".into()),
