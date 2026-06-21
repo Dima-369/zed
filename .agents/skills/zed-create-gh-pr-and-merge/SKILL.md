@@ -33,5 +33,5 @@ Next, create a GitHub pull request using the `gh pr create` command and invoke t
 # take note of the PR number
 gh pr create --base dima --fill --repo Dima-369/zed
 
-gh pr checks {PR number from above}--watch && gh pr merge --squash --delete-branch
+gh pr checks {PR number from above} --watch && gh pr merge --squash --delete-branch
 ```
