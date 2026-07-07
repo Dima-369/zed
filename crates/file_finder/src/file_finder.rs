@@ -198,6 +198,7 @@ impl FileFinder {
             let picker = Picker::uniform_list(delegate, window, cx);
             if let Some(query) = restored_query {
                 picker.set_query(&query, window, cx);
+                picker.select_all(window, cx);
             }
             picker
         });

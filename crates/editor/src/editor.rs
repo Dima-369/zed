@@ -13099,6 +13099,14 @@ impl ui_input::ErasedEditor for ErasedEditorImpl {
         });
     }
 
+    fn select_all(&self, window: &mut Window, cx: &mut App) {
+        self.0.update(cx, |editor, cx| {
+            editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
+                s.select_ranges(vec![Anchor::Min..Anchor::Max]);
+            });
+        });
+    }
+
     fn subscribe(
         &self,
         mut callback: Box<dyn FnMut(ui_input::ErasedEditorEvent, &mut Window, &mut App) + 'static>,
