@@ -14,6 +14,7 @@ use language::{
 
 use settings::SettingsStore;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
+use supermaven::{Supermaven, SupermavenEditPredictionDelegate};
 use ui::Window;
 
 pub fn init(client: Arc<Client>, user_store: Entity<UserStore>, cx: &mut App) {
@@ -116,6 +117,7 @@ fn edit_prediction_provider_config_for_settings(cx: &App) -> Option<EditPredicti
     match provider {
         EditPredictionProvider::None => None,
         EditPredictionProvider::Copilot => Some(EditPredictionProviderConfig::Copilot),
+        EditPredictionProvider::Supermaven => Some(EditPredictionProviderConfig::Supermaven),
         EditPredictionProvider::Zed => {
             Some(EditPredictionProviderConfig::Zed(EditPredictionModel::Zeta))
         }
@@ -174,6 +176,7 @@ fn infer_prompt_format(model: &str) -> Option<EditPredictionPromptFormat> {
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum EditPredictionProviderConfig {
     Copilot,
+    Supermaven,
     Codestral,
     Zed(EditPredictionModel),
 }
@@ -182,6 +185,7 @@ impl EditPredictionProviderConfig {
     fn name(&self) -> &'static str {
         match self {
             EditPredictionProviderConfig::Copilot => "Copilot",
+            EditPredictionProviderConfig::Supermaven => "Supermaven",
             EditPredictionProviderConfig::Codestral => "Codestral",
             EditPredictionProviderConfig::Zed(model) => match model {
                 EditPredictionModel::Zeta => "Zeta",
@@ -267,6 +271,12 @@ fn assign_edit_prediction_provider(
                     });
                 }
                 let provider = cx.new(|_| CopilotEditPredictionDelegate::new(copilot));
+                editor.set_edit_prediction_provider(Some(provider), window, cx);
+            }
+        }
+        Some(EditPredictionProviderConfig::Supermaven) => {
+            if let Some(supermaven) = Supermaven::global(cx) {
+                let provider = cx.new(|_| SupermavenEditPredictionDelegate::new(supermaven));
                 editor.set_edit_prediction_provider(Some(provider), window, cx);
             }
         }

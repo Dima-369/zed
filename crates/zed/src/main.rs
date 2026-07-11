@@ -688,6 +688,7 @@ fn main() {
         );
 
         copilot_ui::init(&app_state, cx);
+        supermaven::init(app_state.client.clone(), cx);
         language_model::init(cx);
         RefreshLlmTokenListener::register(
             app_state.client.clone(),

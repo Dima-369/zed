@@ -83,6 +83,7 @@ pub enum EditPredictionProvider {
     None,
     #[default]
     Copilot,
+    Supermaven,
     Zed,
     Codestral,
     Ollama,
@@ -96,6 +97,7 @@ impl EditPredictionProvider {
             EditPredictionProvider::Zed => true,
             EditPredictionProvider::None
             | EditPredictionProvider::Copilot
+            | EditPredictionProvider::Supermaven
             | EditPredictionProvider::Codestral
             | EditPredictionProvider::Ollama
             | EditPredictionProvider::OpenAiCompatibleApi
@@ -107,6 +109,7 @@ impl EditPredictionProvider {
         match self {
             EditPredictionProvider::Zed => Some("Zed AI"),
             EditPredictionProvider::Copilot => Some("GitHub Copilot"),
+            EditPredictionProvider::Supermaven => Some("Supermaven"),
             EditPredictionProvider::Codestral => Some("Codestral"),
             EditPredictionProvider::Mercury => Some("Mercury"),
             EditPredictionProvider::None => None,

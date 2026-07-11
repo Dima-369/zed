@@ -200,6 +200,8 @@ members = [
     "crates/sqlez_macros",
     "crates/streaming_diff",
     "crates/sum_tree",
+    "crates/supermaven",
+    "crates/supermaven_api",
     "crates/svg_preview",
     "crates/system_specs",
     "crates/syntax_theme",
@@ -469,6 +471,8 @@ sqlez = { path = "crates/sqlez" }
 sqlez_macros = { path = "crates/sqlez_macros" }
 streaming_diff = { path = "crates/streaming_diff" }
 sum_tree = { path = "crates/sum_tree" }
+supermaven = { path = "crates/supermaven" }
+supermaven_api = { path = "crates/supermaven_api" }
 codestral = { path = "crates/codestral" }
 system_specs = { path = "crates/system_specs" }
 syntax_theme = { path = "crates/syntax_theme" }
@@ -986,6 +990,7 @@ session = { codegen-units = 1 }
 sidebar = { codegen-units = 1 }
 snippet = { codegen-units = 1 }
 snippets_ui = { codegen-units = 1 }
+supermaven_api = { codegen-units = 1 }
 telemetry_events = { codegen-units = 1 }
 theme_selector = { codegen-units = 1 }
 time_format = { codegen-units = 1 }
