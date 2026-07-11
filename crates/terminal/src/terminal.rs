@@ -2225,9 +2225,8 @@ impl Terminal {
                             // NVIDIA_API_KEY=…, --token=/…key=… args). Ceiling: a bare positional
                             // secret arg with no `=` isn't detected.
                             .map(|fpi| {
-                                let process_name =
-                                    Self::sanitized_argv_title(&fpi.name, &fpi.argv)
-                                        .unwrap_or_else(|| fpi.name.clone());
+                                let process_name = Self::sanitized_argv_title(&fpi.name, &fpi.argv)
+                                    .unwrap_or_else(|| fpi.name.clone());
                                 if truncate {
                                     truncate_and_trailoff(&process_name, MAX_CHARS)
                                 } else {
@@ -2257,7 +2256,10 @@ impl Terminal {
         }
         Some(format!(
             "{name} {}",
-            kept.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ")
+            kept.iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join(" ")
         ))
     }
 
@@ -3838,14 +3840,24 @@ mod tests {
         // env-assignment tokens are dropped, harmless args kept
         let t = Terminal::sanitized_argv_title(
             "bash",
-            &["bash".into(), "NVIDIA_API_KEY=nvapi-leak".into(), "rg".into(), "foo".into()],
+            &[
+                "bash".into(),
+                "NVIDIA_API_KEY=nvapi-leak".into(),
+                "rg".into(),
+                "foo".into(),
+            ],
         );
         assert_eq!(t.as_deref(), Some("bash rg foo"));
 
         // secret-looking flag args are dropped; normal flags kept
         let t = Terminal::sanitized_argv_title(
             "curl",
-            &["curl".into(), "--color=auto".into(), "--token=s3cr3t".into(), "https://x".into()],
+            &[
+                "curl".into(),
+                "--color=auto".into(),
+                "--token=s3cr3t".into(),
+                "https://x".into(),
+            ],
         );
         assert_eq!(t.as_deref(), Some("curl --color=auto https://x"));
 
