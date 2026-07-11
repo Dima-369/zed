@@ -224,6 +224,7 @@ timeout 15s bash -c 'cat README.md | target/debug/cli --zed target/debug/zed --s
 
 - remove abbreviated `cwd` display in terminal title
 - add `terminal::OpenScrollbackBuffer` action to open the scrollback buffer in a new buffer. It positions the cursor at the end
+- respect the OSC title an app sets (e.g. `pi` emits `π - dotfiles`) for the terminal tab. Zed only stored it in `breadcrumb_text` and the tab fell back to the raw foreground-process argv, so the tab never showed the running app and instead dumped the whole command line — which leaked secrets like env assignments (`NVIDIA_API_KEY=…`) and flag args (`--token=…`). `title()` now prefers task > `title_override` > OSC title (`breadcrumb_text`) > sanitized process argv > `"Terminal"`, matching Kitty/iTerm; the OSC `Title`/`ResetTitle` handlers also emit `TitleChanged` so the tab repaints on a title change. The argv fallback is sanitized (`sanitized_argv_title` / `token_carries_secret`): it drops `NAME=value` tokens and `…key=/token=/…` flag args, keeps harmless args like `--color=auto`, and falls back to the bare process name when only secrets remain. Ceiling: a bare positional secret arg without `=` is not detected. See `crates/terminal/src/terminal.rs`
 
 ### Vi Mode
 
