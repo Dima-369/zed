@@ -966,10 +966,14 @@ impl Terminal {
 
                 self.breadcrumb_text = title;
                 cx.emit(Event::BreadcrumbsChanged);
+                // Repaint the tab too: title() prefers an app-set OSC title over the bare
+                // process name (e.g. pi's "π - dotfiles").
+                cx.emit(Event::TitleChanged);
             }
             AlacTermEvent::ResetTitle => {
                 self.breadcrumb_text = String::new();
                 cx.emit(Event::BreadcrumbsChanged);
+                cx.emit(Event::TitleChanged);
             }
             AlacTermEvent::ClipboardStore(_, data) => {
                 cx.write_to_clipboard(ClipboardItem::new_string(data))
@@ -2198,36 +2202,84 @@ impl Terminal {
                     task_state.spawned_task.full_label.clone()
                 }
             }
-            None => self
-                .title_override
-                .as_ref()
-                .map(|title_override| title_override.to_string())
-                .unwrap_or_else(|| match &self.terminal_type {
-                    TerminalType::Pty { info, .. } => info
-                        .current
-                        .read()
-                        .as_ref()
-                        .map(|fpi| {
-                            let argv = fpi.argv.as_slice();
-                            let process_name = format!(
-                                "{}{}",
-                                fpi.name,
-                                if !argv.is_empty() {
-                                    format!(" {}", (argv[1..]).join(" "))
+            None => {
+                if let Some(title_override) = &self.title_override {
+                    title_override.to_string()
+                } else if !self.breadcrumb_text.trim().is_empty() {
+                    // An app set an OSC title (e.g. pi emits "π - dotfiles"). Prefer it for the
+                    // tab — matching Kitty/iTerm — instead of the bare process name.
+                    let t = self.breadcrumb_text.clone();
+                    if truncate {
+                        truncate_and_trailoff(&t, MAX_CHARS)
+                    } else {
+                        t
+                    }
+                } else {
+                    match &self.terminal_type {
+                        TerminalType::Pty { info, .. } => info
+                            .current
+                            .read()
+                            .as_ref()
+                            // ponytail: fallback title = sanitized process argv (no OSC title was
+                            // set). Drops tokens that can leak secrets (env assignments like
+                            // NVIDIA_API_KEY=…, --token=/…key=… args). Ceiling: a bare positional
+                            // secret arg with no `=` isn't detected.
+                            .map(|fpi| {
+                                let process_name =
+                                    Self::sanitized_argv_title(&fpi.name, &fpi.argv)
+                                        .unwrap_or_else(|| fpi.name.clone());
+                                if truncate {
+                                    truncate_and_trailoff(&process_name, MAX_CHARS)
                                 } else {
-                                    "".to_string()
+                                    process_name
                                 }
-                            );
-                            if truncate {
-                                truncate_and_trailoff(&process_name, MAX_CHARS)
-                            } else {
-                                process_name
-                            }
-                        })
-                        .unwrap_or_else(|| "Terminal".to_string()),
-                    TerminalType::DisplayOnly => "Terminal".to_string(),
-                }),
+                            })
+                            .unwrap_or_else(|| "Terminal".to_string()),
+                        TerminalType::DisplayOnly => "Terminal".to_string(),
+                    }
+                }
+            }
         }
+    }
+
+    /// Build a tab title from a foreground process's argv, dropping tokens that can
+    /// carry secrets: shell env-assignments (`NAME=…`) and any `key=value` token whose
+    /// name contains a secret keyword (`--token=…`, `…api_key=…`). Harmless flags like
+    /// `--color=auto` are kept. Returns `None` when only the program name remains.
+    fn sanitized_argv_title(name: &str, argv: &[String]) -> Option<String> {
+        let kept: Vec<&String> = argv
+            .iter()
+            .skip(1)
+            .filter(|a| !Self::token_carries_secret(a))
+            .collect();
+        if kept.is_empty() {
+            return None;
+        }
+        Some(format!(
+            "{name} {}",
+            kept.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ")
+        ))
+    }
+
+    /// True for argv tokens that may carry a secret: shell env-assignments
+    /// (`NAME=value`) or any `key=value` token whose text contains a secret keyword.
+    fn token_carries_secret(token: &str) -> bool {
+        let Some(eq) = token.find('=') else {
+            return false;
+        };
+        let var = &token[..eq];
+        let is_identifier = var
+            .bytes()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic() || c == b'_')
+            && var.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_');
+        if is_identifier {
+            return true;
+        }
+        let low = token.to_ascii_lowercase();
+        ["key", "token", "secret", "passw", "auth", "cred", "apikey"]
+            .iter()
+            .any(|k| low.contains(k))
     }
 
     pub fn kill_active_task(&mut self) {
@@ -3778,5 +3830,30 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_sanitized_argv_title_strips_secrets() {
+        use super::Terminal;
+        // env-assignment tokens are dropped, harmless args kept
+        let t = Terminal::sanitized_argv_title(
+            "bash",
+            &["bash".into(), "NVIDIA_API_KEY=nvapi-leak".into(), "rg".into(), "foo".into()],
+        );
+        assert_eq!(t.as_deref(), Some("bash rg foo"));
+
+        // secret-looking flag args are dropped; normal flags kept
+        let t = Terminal::sanitized_argv_title(
+            "curl",
+            &["curl".into(), "--color=auto".into(), "--token=s3cr3t".into(), "https://x".into()],
+        );
+        assert_eq!(t.as_deref(), Some("curl --color=auto https://x"));
+
+        // only the program name remains -> None (caller falls back to bare name)
+        let t = Terminal::sanitized_argv_title(
+            "bash",
+            &["bash".into(), "NVIDIA_API_KEY=nvapi-leak".into()],
+        );
+        assert_eq!(t, None);
     }
 }
