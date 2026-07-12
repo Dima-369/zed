@@ -142,7 +142,7 @@ impl ResolvedTask {
 
     /// A human-readable label to display in the UI.
     pub fn display_label(&self) -> &str {
-        self.resolved.label.as_str()
+        &self.resolved_label
     }
 }
 
@@ -162,6 +162,9 @@ pub enum VariableName {
     Filename,
     /// The path to a parent directory of a currently opened file.
     Dirname,
+    /// The last component of the parent directory (basename of dirname).
+    /// For a file at `/home/project/src/index.php`, this is `src`.
+    DirnameBase,
     /// Stem (filename without extension) of the currently opened file.
     Stem,
     /// An absolute path of the currently opened worktree, that contains the file.
@@ -232,6 +235,7 @@ impl FromStr for VariableName {
             "RELATIVE_FILE" => Self::RelativeFile,
             "RELATIVE_DIR" => Self::RelativeDir,
             "DIRNAME" => Self::Dirname,
+            "DIRNAME_BASE" => Self::DirnameBase,
             "STEM" => Self::Stem,
             "WORKTREE_ROOT" => Self::WorktreeRoot,
             "FILE_OR_WORKTREE_ROOT" => Self::FileOrWorktreeRoot,
@@ -273,6 +277,7 @@ impl std::fmt::Display for VariableName {
             Self::RelativeFile => write!(f, "{ZED_VARIABLE_NAME_PREFIX}RELATIVE_FILE"),
             Self::RelativeDir => write!(f, "{ZED_VARIABLE_NAME_PREFIX}RELATIVE_DIR"),
             Self::Dirname => write!(f, "{ZED_VARIABLE_NAME_PREFIX}DIRNAME"),
+            Self::DirnameBase => write!(f, "{ZED_VARIABLE_NAME_PREFIX}DIRNAME_BASE"),
             Self::Stem => write!(f, "{ZED_VARIABLE_NAME_PREFIX}STEM"),
             Self::WorktreeRoot => write!(f, "{ZED_VARIABLE_NAME_PREFIX}WORKTREE_ROOT"),
             Self::FileOrWorktreeRoot => {

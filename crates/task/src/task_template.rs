@@ -24,6 +24,11 @@ use crate::{
 pub struct TaskTemplate {
     /// Human readable name of the task to display in the UI.
     pub label: String,
+    /// Optional label for the terminal tab title. Supports the same variable
+    /// substitution as [`label`]. When set, the tab shows this instead of
+    /// [`label`], while [`label`] is still used for the command palette.
+    #[serde(default)]
+    pub editor_tab_label: Option<String>,
     /// Executable command to spawn.
     pub command: String,
     /// Arguments to the command.
@@ -192,8 +197,21 @@ impl TaskTemplate {
             None => None,
         }
         .or(cx.cwd.clone());
-        let full_label = substitute_all_template_variables_in_str(
+        let palette_label = substitute_all_template_variables_in_str(
             &self.label,
+            &task_variables,
+            &variable_names,
+            &mut substituted_variables,
+        )?;
+
+        // Tab title: use `editor_tab_label` when set, otherwise fall back to `label`.
+        let tab_template = self
+            .editor_tab_label
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .unwrap_or(&self.label);
+        let tab_full_label = substitute_all_template_variables_in_str(
+            tab_template,
             &task_variables,
             &variable_names,
             &mut substituted_variables,
@@ -202,9 +220,9 @@ impl TaskTemplate {
         // Arbitrarily picked threshold below which we don't truncate any variables.
         const TRUNCATION_THRESHOLD: usize = 64;
 
-        let human_readable_label = if full_label.len() > TRUNCATION_THRESHOLD {
+        let human_readable_label = if tab_full_label.len() > TRUNCATION_THRESHOLD {
             substitute_all_template_variables_in_str(
-                &self.label,
+                tab_template,
                 &truncated_variables,
                 &variable_names,
                 &mut substituted_variables,
@@ -212,9 +230,9 @@ impl TaskTemplate {
         } else {
             #[allow(
                 clippy::redundant_clone,
-                reason = "We want to clone the full_label to avoid borrowing it in the fold closure"
+                reason = "We want to clone the tab_full_label to avoid borrowing it in the fold closure"
             )]
-            full_label.clone()
+            tab_full_label.clone()
         }
         .lines()
         .fold(String::new(), |mut string, line| {
@@ -272,11 +290,11 @@ impl TaskTemplate {
             id: id.clone(),
             substituted_variables,
             original_task: self.clone(),
-            resolved_label: full_label.clone(),
+            resolved_label: palette_label,
             resolved: SpawnInTerminal {
                 id,
                 cwd,
-                full_label,
+                full_label: tab_full_label,
                 label: human_readable_label,
                 command_label: args_with_substitutions.iter().fold(
                     command.clone(),

@@ -538,6 +538,7 @@ mod tests {
                     (VariableName::RelativeFile, path!("rust/b.rs").into()),
                     (VariableName::RelativeDir, "rust".into()),
                     (VariableName::Dirname, path!("/dir/rust").into()),
+                    (VariableName::DirnameBase, "rust".into()),
                     (VariableName::Stem, "b".into()),
                     (VariableName::WorktreeRoot, path!("/dir").into()),
                     (
@@ -575,6 +576,7 @@ mod tests {
                     (VariableName::RelativeFile, path!("rust/b.rs").into()),
                     (VariableName::RelativeDir, "rust".into()),
                     (VariableName::Dirname, path!("/dir/rust").into()),
+                    (VariableName::DirnameBase, "rust".into()),
                     (VariableName::Stem, "b".into()),
                     (VariableName::WorktreeRoot, path!("/dir").into()),
                     (
@@ -609,6 +611,7 @@ mod tests {
                     (VariableName::RelativeFile, "a.ts".into()),
                     (VariableName::RelativeDir, ".".into()),
                     (VariableName::Dirname, path!("/dir").into()),
+                    (VariableName::DirnameBase, "dir".into()),
                     (VariableName::Stem, "a".into()),
                     (VariableName::WorktreeRoot, path!("/dir").into()),
                     (VariableName::FileOrWorktreeRoot, path!("/dir/a.ts").into()),

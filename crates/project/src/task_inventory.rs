@@ -1072,6 +1072,14 @@ impl ContextProvider for BasicContextProvider {
                 task_variables.insert(VariableName::Dirname, dirname.into());
             }
 
+            if let Some(dirname_base) = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|s| s.to_str())
+            {
+                task_variables.insert(VariableName::DirnameBase, dirname_base.into());
+            }
+
             task_variables.insert(VariableName::File, path.to_string_lossy().into_owned());
         }
 
