@@ -50,9 +50,7 @@ use client::{
     proto::{self, ErrorCode, PanelId, PeerId},
 };
 use collections::{HashMap, HashSet, hash_map};
-use dock::{
-    Dock, DockPosition, PanelButtons, PanelHandle, RESIZE_HANDLE_SIZE,
-};
+use dock::{Dock, DockPosition, PanelButtons, PanelHandle, RESIZE_HANDLE_SIZE};
 use fs::Fs;
 use futures::{
     Future, FutureExt, StreamExt,
