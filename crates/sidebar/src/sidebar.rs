@@ -96,7 +96,7 @@ gpui::actions!(
 );
 
 const DEFAULT_WIDTH: Pixels = px(300.0);
-const MIN_WIDTH: Pixels = px(200.0);
+const MIN_WIDTH: Pixels = px(100.0);
 const MAX_WIDTH: Pixels = px(800.0);
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
