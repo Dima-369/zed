@@ -102,15 +102,26 @@ impl ModalLayer {
                 return;
             }
         }
+
+        // Capture previous focus BEFORE build_view runs, because build_view may
+        // immediately focus the new modal, which would make window.focused()
+        // return the modal's own focus handle instead of the element that
+        // previously had focus.
+        let previous_focus_handle = window.focused(cx);
         let new_modal = cx.new(|cx| build_view(window, cx));
-        self.show_modal(new_modal, window, cx);
+        self.show_modal(new_modal, previous_focus_handle, window, cx);
         cx.emit(ModalOpenedEvent);
     }
 
     /// Shows a modal and sets up subscriptions for dismiss events and focus tracking.
     /// The modal is automatically focused after being shown.
-    fn show_modal<V>(&mut self, new_modal: Entity<V>, window: &mut Window, cx: &mut Context<Self>)
-    where
+    fn show_modal<V>(
+        &mut self,
+        new_modal: Entity<V>,
+        previous_focus_handle: Option<FocusHandle>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) where
         V: ModalView,
     {
         let focus_handle = cx.focus_handle();
@@ -130,7 +141,7 @@ impl ModalLayer {
                     }
                 }),
             ],
-            previous_focus_handle: window.focused(cx),
+            previous_focus_handle,
             focus_handle,
         });
         cx.defer_in(window, move |_, window, cx| {
