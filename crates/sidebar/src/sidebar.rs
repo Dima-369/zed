@@ -50,7 +50,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use theme::ActiveTheme;
 use ui::{
-    AgentThreadStatus, CommonAnimationExt, ContextMenu, ContextMenuEntry, Divider, GradientFade,
+    AgentThreadStatus, CommonAnimationExt, ContextMenu, ContextMenuEntry, Divider,
     HighlightedLabel, KeyBinding, PopoverMenu, PopoverMenuHandle, ProjectEmptyState, ScrollAxes,
     Scrollbars, Tab, ThreadItem, ThreadItemWorktreeInfo, TintColor, Tooltip, WithScrollbar,
     prelude::*, render_modifiers,
@@ -2159,15 +2159,6 @@ impl Sidebar {
             .blend(color.element_background.opacity(0.2));
         let hover_solid = base_bg.blend(hover_base);
 
-        let group_name_for_gradient = group_name.clone();
-        let gradient_overlay = move || {
-            GradientFade::new(base_bg, hover_solid, hover_solid)
-                .width(px(64.0))
-                .right(px(-2.0))
-                .gradient_stop(0.75)
-                .group_name(group_name_for_gradient.clone())
-        };
-
         let header = h_flex()
             .id(id)
             .group(&group_name)
@@ -2247,10 +2238,8 @@ impl Sidebar {
                             ),
                     ),
             )
-            .child(gradient_overlay())
             .child(
                 h_flex()
-                    .child(gradient_overlay())
                     .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| {
                         cx.stop_propagation();
                     })
@@ -5729,7 +5718,7 @@ impl Sidebar {
                 cx.notify();
             }))
             .when(is_renaming, |this| {
-                this.is_truncated(false).title_slot(
+                this.title_slot(
                     div()
                         .h_full()
                         .min_w_0()

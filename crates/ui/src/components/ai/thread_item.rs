@@ -50,7 +50,6 @@ pub struct ThreadItem {
     focused: bool,
     hovered: bool,
     rounded: bool,
-    is_truncated: bool,
     added: Option<usize>,
     removed: Option<usize>,
     project_paths: Option<Arc<[PathBuf]>>,
@@ -84,7 +83,6 @@ impl ThreadItem {
             focused: false,
             hovered: false,
             rounded: false,
-            is_truncated: true,
             added: None,
             removed: None,
             project_paths: None,
@@ -209,11 +207,6 @@ impl ThreadItem {
         self
     }
 
-    pub fn is_truncated(mut self, is_truncated: bool) -> Self {
-        self.is_truncated = is_truncated;
-        self
-    }
-
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -258,12 +251,6 @@ impl RenderOnce for ThreadItem {
             .element_active
             .blend(color.element_background.opacity(0.2));
         let hover_bg = apparent_bg.blend(hover_color);
-
-        let gradient_overlay = GradientFade::new(base_bg, hover_bg, hover_bg)
-            .width(px(64.0))
-            .right(px(-10.0))
-            .gradient_stop(0.75)
-            .group_name("thread-item");
 
         let separator_color = Color::Custom(color.text_muted.opacity(0.4));
         let dot_separator = || {
@@ -431,7 +418,6 @@ impl RenderOnce for ThreadItem {
                             .child(icon)
                             .child(title_label),
                     )
-                    .when(self.is_truncated, |this| this.child(gradient_overlay))
                     .when(self.hovered, |this| {
                         this.when_some(self.action_slot, |this, slot| {
                             let overlay = GradientFade::new(base_bg, hover_bg, hover_bg)
