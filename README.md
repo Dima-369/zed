@@ -256,7 +256,7 @@ The last big `main` UI upgrade introduced the `Threads Sidebar` which allows mul
 #### Threads sidebar
 
 - lowered `MIN_WIDTH` from 200px to 100px (`crates/sidebar/src/sidebar.rs`), so the threads sidebar can be collapsed to half its previous minimum
-- removed the always-visible right-side `GradientFade` overlay from the threads sidebar project headers (`crates/sidebar/src/sidebar.rs`) and thread items (`crates/ui/src/components/ai/thread_item.rs`). After the 100px minimum above, this 64px gray fade ate a large chunk of narrow rows and looked bad. The hover background (`hover_solid` / `hover_color`) is unchanged; on hover the sidebar fade was already invisible because it matched the row's hover bg. The now-write-only `ThreadItem::is_truncated` field, its setter, and the default were removed along with it
+- removed the always-visible right-side `GradientFade` overlay from the threads sidebar. After the 100px minimum above, the 64px gray base fade ate a large chunk of narrow rows and looked bad. Added a `GradientFade::hover_only()` builder (`crates/ui/src/components/gradient_fade.rs`) that skips the always-visible base and only renders on group hover/active; the project headers in `crates/sidebar/src/sidebar.rs` now use it, so the hover fade that masks the title text behind the hover buttons is preserved while the idle gray fade is gone. For thread items (`crates/ui/src/components/ai/thread_item.rs`) the always-visible truncated-title fade was removed and the hover action-slot fade kept; the now-write-only `ThreadItem::is_truncated` field, its setter, and the default were removed along with it
 
 #### New Actions
 

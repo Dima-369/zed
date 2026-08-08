@@ -422,7 +422,7 @@ impl RenderOnce for ThreadItem {
                         this.when_some(self.action_slot, |this, slot| {
                             let overlay = GradientFade::new(base_bg, hover_bg, hover_bg)
                                 .width(px(80.0))
-                                .right(px(8.))
+                                .right(px(-10.))
                                 .gradient_stop(0.80)
                                 .group_name("thread-item");
 

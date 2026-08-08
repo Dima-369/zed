@@ -12,6 +12,7 @@ pub struct GradientFade {
     right: Pixels,
     gradient_stop: f32,
     group_name: Option<SharedString>,
+    hover_only: bool,
 }
 
 impl GradientFade {
@@ -24,6 +25,7 @@ impl GradientFade {
             right: px(0.0),
             gradient_stop: 0.6,
             group_name: None,
+            hover_only: false,
         }
     }
 
@@ -46,6 +48,13 @@ impl GradientFade {
         self.group_name = Some(name.into());
         self
     }
+
+    /// Skip the always-visible base gradient; only render on group hover/active.
+    /// Requires `group_name` to have any effect.
+    pub fn hover_only(mut self) -> Self {
+        self.hover_only = true;
+        self
+    }
 }
 
 impl RenderOnce for GradientFade {
@@ -65,11 +74,13 @@ impl RenderOnce for GradientFade {
             .right(self.right)
             .w(self.width)
             .h_full()
-            .bg(linear_gradient(
-                90.,
-                linear_color_stop(base_bg, stop),
-                linear_color_stop(base_bg.opacity(0.0), 0.),
-            ))
+            .when(!self.hover_only, |this| {
+                this.bg(linear_gradient(
+                    90.,
+                    linear_color_stop(base_bg, stop),
+                    linear_color_stop(base_bg.opacity(0.0), 0.),
+                ))
+            })
             .when_some(self.group_name.clone(), |element, group_name| {
                 element.group_hover(group_name, move |s| {
                     s.bg(linear_gradient(
