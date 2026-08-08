@@ -247,11 +247,16 @@ AI edit predictions also work in those buffers.
 
 Commit `f2dc71f6171c` is the large merge commit which was done based on the patch of the PR link above.
 
-### Agent UI changes (probably missing on latest `dima` branch)
+### Agent UI changes
 
 **Warning**: The code around this is extremely brittle, I very often have large merge conflicts, so I revert affected files to the `main` version.
 
 The last big `main` UI upgrade introduced the `Threads Sidebar` which allows multiple AI threads in parallel and made many of my improvements obsolete.
+
+#### Threads sidebar
+
+- lowered `MIN_WIDTH` from 200px to 100px (`crates/sidebar/src/sidebar.rs`), so the threads sidebar can be collapsed to half its previous minimum
+- removed the always-visible right-side `GradientFade` overlay from the threads sidebar. After the 100px minimum above, the 64px gray base fade ate a large chunk of narrow rows and looked bad. Added a `GradientFade::hover_only()` builder (`crates/ui/src/components/gradient_fade.rs`) that skips the always-visible base and only renders on group hover/active; the project headers in `crates/sidebar/src/sidebar.rs` now use it, so the hover fade that masks the title text behind the hover buttons is preserved while the idle gray fade is gone. For thread items (`crates/ui/src/components/ai/thread_item.rs`) the always-visible truncated-title fade was removed and the hover action-slot fade kept; the now-write-only `ThreadItem::is_truncated` field, its setter, and the default were removed along with it
 
 #### New Actions
 

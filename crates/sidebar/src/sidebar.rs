@@ -2166,6 +2166,7 @@ impl Sidebar {
                 .right(px(-2.0))
                 .gradient_stop(0.75)
                 .group_name(group_name_for_gradient.clone())
+                .hover_only()
         };
 
         let header = h_flex()
@@ -5729,7 +5730,7 @@ impl Sidebar {
                 cx.notify();
             }))
             .when(is_renaming, |this| {
-                this.is_truncated(false).title_slot(
+                this.title_slot(
                     div()
                         .h_full()
                         .min_w_0()
