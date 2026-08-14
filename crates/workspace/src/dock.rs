@@ -702,7 +702,18 @@ impl Dock {
                             .visible_panel()
                             .is_some_and(|p| p.panel_id() == Entity::entity_id(panel))
                         {
+                            let focus_center = PanelHandle::panel_focus_handle(panel, cx)
+                                .contains_focused(window, cx);
                             this.set_open(false, window, cx);
+                            if focus_center {
+                                workspace
+                                    .update(cx, |workspace, cx| {
+                                        workspace.active_pane().update(cx, |pane, cx| {
+                                            window.focus(&pane.focus_handle(cx), cx)
+                                        })
+                                    })
+                                    .ok();
+                            }
                         }
                     }
                 },
