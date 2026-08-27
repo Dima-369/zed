@@ -38,6 +38,11 @@ pub(crate) struct Anim {
 }
 
 impl Anim {
+    /// The absolute scroll distance (in display rows) this animation covers.
+    pub(crate) fn scroll_distance(&self) -> f64 {
+        self.delta.abs()
+    }
+
     pub(crate) fn new(
         from: Point<f64>,
         destination_top_row: u32,
@@ -84,6 +89,12 @@ impl ScrollAnimationManager {
 
     pub(crate) fn start(&mut self, anim: Anim) {
         self.anim = Some(anim);
+    }
+
+    /// Drops any in-flight animation, so it can't keep moving the viewport
+    /// toward a destination that has become stale (e.g. after a large edit).
+    pub(crate) fn cancel(&mut self) {
+        self.anim = None;
     }
 
     pub(crate) fn set_duration(&mut self, new_dur: f32) {

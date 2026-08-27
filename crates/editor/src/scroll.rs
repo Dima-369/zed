@@ -32,6 +32,11 @@ use workspace::{ItemId, WorkspaceId};
 
 pub const SCROLL_EVENT_SEPARATION: Duration = Duration::from_millis(28);
 const SCROLLBAR_SHOW_INTERVAL: Duration = Duration::from_secs(1);
+/// Maximum scroll distance (in viewport heights) that is animated. Larger
+/// jumps scroll instantly, otherwise autoscroll after a large edit (e.g.
+/// deleting most of the buffer) animates over thousands of rows while
+/// clamping keeps restarting it, leaving the viewport crawling for seconds.
+pub(crate) const MAX_ANIMATED_SCROLL_VIEWPORTS: f64 = 2.;
 
 pub struct WasScrolled(pub(crate) bool);
 
@@ -459,9 +464,29 @@ impl ScrollManager {
                 autoscroll,
             );
             if let Some(animation_manager) = self.animation_manager.as_mut() {
-                animation_manager.start(anim);
-                cx.notify();
-                true
+                let max_animated_distance = self
+                    .visible_line_count
+                    .map_or(f64::INFINITY, |visible_lines| {
+                        visible_lines * MAX_ANIMATED_SCROLL_VIEWPORTS
+                    });
+                let scroll_distance = anim.scroll_distance();
+                // A zero-distance animation would run for the full duration
+                // without ever moving, and its notify/frame churn can sustain
+                // itself forever when a sub-pixel clamp correction keeps
+                // re-requesting the same position every frame.
+                if scroll_distance < 0.001 {
+                    false
+                } else if scroll_distance > max_animated_distance {
+                    // Scroll instantly instead, and drop any in-flight
+                    // animation so it can't keep pulling the viewport toward
+                    // its now-stale destination.
+                    animation_manager.cancel();
+                    false
+                } else {
+                    animation_manager.start(anim);
+                    cx.notify();
+                    true
+                }
             } else {
                 false
             }

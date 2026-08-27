@@ -147,12 +147,25 @@ impl Editor {
                 scroll_position.y = 0.;
             }
         }
+        // How far the viewport was out of the legal scroll range before
+        // clamping. After a huge deletion the anchor can sit thousands of rows
+        // past the new end of the buffer.
+        let mut out_of_bounds_distance = 0.;
         if scroll_position.y > max_scroll_top {
+            out_of_bounds_distance = scroll_position.y - max_scroll_top;
             scroll_position.y = max_scroll_top;
         }
 
+        // Clamp corrections are error corrections, not user-intended scrolls:
+        // apply them instantly. Animating them lets an in-flight animation
+        // intercept the corrected anchor, so the same out-of-range position
+        // gets re-requested every frame in a self-sustaining loop.
         let editor_was_scrolled = if original_y != scroll_position.y {
-            self.set_scroll_position(scroll_position, window, cx)
+            let previous_try_use_anim = self.scroll_manager.ongoing.try_use_anim;
+            self.scroll_manager.ongoing.try_use_anim = false;
+            let was_scrolled = self.set_scroll_position(scroll_position, window, cx);
+            self.scroll_manager.ongoing.try_use_anim = previous_try_use_anim;
+            was_scrolled
         } else {
             WasScrolled(false)
         };
@@ -212,7 +225,7 @@ impl Editor {
             ((visible_lines - (target_bottom - target_top)) / 2.0).floor()
         };
 
-        let strategy = match autoscroll {
+        let mut strategy = match autoscroll {
             Autoscroll::Strategy(strategy, _) => strategy,
             Autoscroll::Next => self
                 .scroll_manager
@@ -232,9 +245,30 @@ impl Editor {
             target_bottom = target_top + 1.;
         }
 
+        // When the viewport was far outside the legal scroll range (e.g. the
+        // buffer shrank massively after a deletion), the cursor should be
+        // brought back on screen immediately at its usual margin position,
+        // rather than left wherever the clamp parked it (often at the very
+        // edge of the view).
+        let instant_recenter = out_of_bounds_distance
+            > visible_lines * crate::scroll::MAX_ANIMATED_SCROLL_VIEWPORTS;
+        if instant_recenter
+            && matches!(
+                strategy,
+                AutoscrollStrategy::Fit | AutoscrollStrategy::Newest
+            )
+        {
+            strategy = AutoscrollStrategy::Focused;
+        }
+
         let visible_sticky_headers =
             self.visible_sticky_header_count_for_point(&display_map, target_point, cx);
 
+        let previous_try_use_anim = self.scroll_manager.ongoing.try_use_anim;
+        if instant_recenter {
+            // Recentering after a huge out-of-range jump should be immediate.
+            self.scroll_manager.ongoing.try_use_anim = false;
+        }
         let was_autoscrolled = match strategy {
             AutoscrollStrategy::Fit | AutoscrollStrategy::Newest => {
                 let margin = margin.min(self.scroll_manager.vertical_scroll_margin);
@@ -284,6 +318,7 @@ impl Editor {
                 self.set_scroll_position_internal(scroll_position, local, true, window, cx)
             }
         };
+        self.scroll_manager.ongoing.try_use_anim = previous_try_use_anim;
 
         self.scroll_manager.last_autoscroll = Some((
             self.scroll_manager.offset(cx),
