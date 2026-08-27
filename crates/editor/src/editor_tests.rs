@@ -3158,6 +3158,45 @@ async fn test_exclude_overscroll_margin_clamps_scroll_position(cx: &mut TestAppC
 }
 
 #[gpui::test]
+async fn test_smooth_scroll_animates_huge_jump_to_target(cx: &mut TestAppContext) {
+    init_test(cx, |_| {});
+    update_test_editor_settings(cx, &|settings| {
+        settings.smooth_scroll = Some(true);
+    });
+
+    let mut cx = EditorTestContext::new(cx).await;
+
+    let line_height = cx.update_editor(|editor, window, cx| {
+        editor
+            .style(cx)
+            .text
+            .line_height_in_pixels(window.rem_size())
+    });
+    let window = cx.window;
+    cx.simulate_window_resize(window, size(px(1000.), 6. * line_height));
+
+    let buffer_text = (0..100)
+        .map(|line_index| format!("line {}", line_index))
+        .collect::<Vec<_>>()
+        .join("\n");
+    cx.set_state(&format!("ˇ{}", buffer_text));
+
+    cx.update_editor(|editor, window, cx| {
+        // A small scroll animates as usual.
+        editor.set_scroll_position(gpui::Point::new(0., 1.), window, cx);
+        assert!(editor.scroll_manager.requires_animation_update());
+
+        // A huge jump like gg/G to the top or bottom of a large buffer
+        // animates as well: the destination is queued and the viewport
+        // travels there over the animation duration.
+        editor.set_scroll_position(gpui::Point::new(0., 90.), window, cx);
+        assert!(editor.scroll_manager.requires_animation_update());
+        assert_eq!(editor.target_scroll_position(cx).y, 90.);
+        assert!(editor.scroll_position(cx).y < 90.);
+    });
+}
+
+#[gpui::test]
 async fn test_move_page_up_page_down(cx: &mut TestAppContext) {
     init_test(cx, |_| {});
     let mut cx = EditorTestContext::new(cx).await;
