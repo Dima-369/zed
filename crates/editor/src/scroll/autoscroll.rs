@@ -161,6 +161,13 @@ impl Editor {
         // intercept the corrected anchor, so the same out-of-range position
         // gets re-requested every frame in a self-sustaining loop.
         let editor_was_scrolled = if original_y != scroll_position.y {
+            if out_of_bounds_distance > crate::scroll::ANIMATION_CANCEL_OUT_OF_BOUNDS_ROWS {
+                // The in-flight animation is aiming at a destination computed
+                // against the pre-edit geometry; let it win and the clamp
+                // would have to correct the same out-of-range position again
+                // next frame.
+                self.scroll_manager.cancel_animation();
+            }
             let previous_try_use_anim = self.scroll_manager.ongoing.try_use_anim;
             self.scroll_manager.ongoing.try_use_anim = false;
             let was_scrolled = self.set_scroll_position(scroll_position, window, cx);
@@ -250,8 +257,8 @@ impl Editor {
         // brought back on screen immediately at its usual margin position,
         // rather than left wherever the clamp parked it (often at the very
         // edge of the view).
-        let instant_recenter = out_of_bounds_distance
-            > visible_lines * crate::scroll::MAX_ANIMATED_SCROLL_VIEWPORTS;
+        let instant_recenter =
+            out_of_bounds_distance > visible_lines * super::INSTANT_RECENTER_VIEWPORTS;
         if instant_recenter
             && matches!(
                 strategy,

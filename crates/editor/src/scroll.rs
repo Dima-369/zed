@@ -32,11 +32,15 @@ use workspace::{ItemId, WorkspaceId};
 
 pub const SCROLL_EVENT_SEPARATION: Duration = Duration::from_millis(28);
 const SCROLLBAR_SHOW_INTERVAL: Duration = Duration::from_secs(1);
-/// Maximum scroll distance (in viewport heights) that is animated. Larger
-/// jumps scroll instantly, otherwise autoscroll after a large edit (e.g.
-/// deleting most of the buffer) animates over thousands of rows while
-/// clamping keeps restarting it, leaving the viewport crawling for seconds.
-pub(crate) const MAX_ANIMATED_SCROLL_VIEWPORTS: f64 = 2.;
+/// When the viewport ends up this many viewports outside the legal scroll
+/// range (e.g. after deleting most of the buffer), the pending autoscroll
+/// brings the cursor back to its scroll margin instantly instead of leaving
+/// it wherever the clamp parked it.
+const INSTANT_RECENTER_VIEWPORTS: f64 = 2.;
+/// Clamp corrections beyond this many rows cancel any in-flight animation,
+/// which would otherwise keep pulling the viewport toward its stale
+/// destination.
+const ANIMATION_CANCEL_OUT_OF_BOUNDS_ROWS: f64 = 1.;
 
 pub struct WasScrolled(pub(crate) bool);
 
@@ -464,23 +468,11 @@ impl ScrollManager {
                 autoscroll,
             );
             if let Some(animation_manager) = self.animation_manager.as_mut() {
-                let max_animated_distance = self
-                    .visible_line_count
-                    .map_or(f64::INFINITY, |visible_lines| {
-                        visible_lines * MAX_ANIMATED_SCROLL_VIEWPORTS
-                    });
-                let scroll_distance = anim.scroll_distance();
                 // A zero-distance animation would run for the full duration
                 // without ever moving, and its notify/frame churn can sustain
                 // itself forever when a sub-pixel clamp correction keeps
                 // re-requesting the same position every frame.
-                if scroll_distance < 0.001 {
-                    false
-                } else if scroll_distance > max_animated_distance {
-                    // Scroll instantly instead, and drop any in-flight
-                    // animation so it can't keep pulling the viewport toward
-                    // its now-stale destination.
-                    animation_manager.cancel();
+                if anim.scroll_distance() < 0.001 {
                     false
                 } else {
                     animation_manager.start(anim);
@@ -812,6 +804,12 @@ impl ScrollManager {
 
     pub fn set_forbid_vertical_scroll(&mut self, forbid: bool) {
         self.forbid_vertical_scroll = forbid;
+    }
+
+    pub(crate) fn cancel_animation(&mut self) {
+        if let Some(animation_manager) = self.animation_manager.as_mut() {
+            animation_manager.cancel();
+        }
     }
 
     pub fn forbid_vertical_scroll(&self) -> bool {

@@ -3158,9 +3158,7 @@ async fn test_exclude_overscroll_margin_clamps_scroll_position(cx: &mut TestAppC
 }
 
 #[gpui::test]
-async fn test_smooth_scroll_snap_instead_of_animating_huge_distance(
-    cx: &mut TestAppContext,
-) {
+async fn test_smooth_scroll_animates_huge_jump_to_target(cx: &mut TestAppContext) {
     init_test(cx, |_| {});
     update_test_editor_settings(cx, &|settings| {
         settings.smooth_scroll = Some(true);
@@ -3188,19 +3186,13 @@ async fn test_smooth_scroll_snap_instead_of_animating_huge_distance(
         editor.set_scroll_position(gpui::Point::new(0., 1.), window, cx);
         assert!(editor.scroll_manager.requires_animation_update());
 
-        // A jump spanning many viewports (e.g. autoscroll after deleting
-        // most of the buffer) scrolls instantly and cancels the in-flight
-        // animation instead of crawling toward it.
+        // A huge jump like gg/G to the top or bottom of a large buffer
+        // animates as well: the destination is queued and the viewport
+        // travels there over the animation duration.
         editor.set_scroll_position(gpui::Point::new(0., 90.), window, cx);
-        assert!(!editor.scroll_manager.requires_animation_update());
-        assert_eq!(
-            editor.snapshot(window, cx).scroll_position(),
-            gpui::Point::new(0., 90.)
-        );
-
-        // Smooth scrolling still works afterwards.
-        editor.set_scroll_position(gpui::Point::new(0., 89.), window, cx);
         assert!(editor.scroll_manager.requires_animation_update());
+        assert_eq!(editor.target_scroll_position(cx).y, 90.);
+        assert!(editor.scroll_position(cx).y < 90.);
     });
 }
 
