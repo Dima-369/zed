@@ -3153,7 +3153,45 @@ impl BackgroundScannerState {
         self.snapshot.check_invariants(false);
     }
 
-    fn remove_path(&mut self, path: &RelPath, watcher: &dyn Watcher) {
+    fn remove_path_from_snapshot_and_unwatch(
+        &mut self,
+        path: &RelPath,
+        watcher: &dyn Watcher,
+        preserve_repository_watches: bool,
+    ) {
+        let removed_descendant_abs_paths = self.remove_path_from_snapshot(path);
+        self.unwatch_path(
+            watcher,
+            path,
+            removed_descendant_abs_paths,
+            preserve_repository_watches,
+        );
+    }
+
+    fn unwatch_path(
+        &mut self,
+        watcher: &dyn Watcher,
+        _path: &RelPath,
+        removed_descendant_abs_paths: Vec<PathBuf>,
+        preserve_repository_watches: bool,
+    ) {
+        let mut repository_watches_to_preserve = HashSet::<Arc<Path>>::default();
+        if preserve_repository_watches {
+            for repository in self.snapshot.git_repositories.values() {
+                repository_watches_to_preserve.insert(repository.common_dir_abs_path.clone());
+                repository_watches_to_preserve.insert(repository.repository_dir_abs_path.clone());
+            }
+        }
+
+        for removed_dir_abs_path in removed_descendant_abs_paths {
+            if repository_watches_to_preserve.contains(removed_dir_abs_path.as_path()) {
+                continue;
+            }
+            watcher.remove(&removed_dir_abs_path).log_err();
+        }
+    }
+
+    fn remove_path_from_snapshot(&mut self, path: &RelPath) -> Vec<PathBuf> {
         log::trace!("background scanner removing path {path:?}");
         let mut new_entries;
         let removed_entries;
@@ -3215,12 +3253,10 @@ impl BackgroundScannerState {
             .git_repositories
             .retain(|id, _| removed_ids.binary_search(id).is_err());
 
-        for removed_dir_abs_path in removed_dir_abs_paths {
-            watcher.remove(&removed_dir_abs_path).log_err();
-        }
-
         #[cfg(feature = "test-support")]
         self.snapshot.check_invariants(false);
+
+        removed_dir_abs_paths
     }
 
     async fn insert_git_repository(
@@ -4504,6 +4540,11 @@ impl BackgroundScanner {
 
             for (ix, event) in events.iter().enumerate() {
                 let abs_path = SanitizedPath::new(&event.path);
+                // TODO: this strips the root case-sensitively, so on a case-insensitive
+                // volume an event whose casing differs from the canonical root is
+                // dropped. Once `fs` exposes per-volume case-sensitivity (e.g. on the
+                // `Fs` trait, with a per-volume cache + `FakeFs` support), fold this
+                // comparison on case-insensitive volumes.
                 let relative_path = if let Ok(path) = abs_path.strip_prefix(&root_canonical_path)
                     && let Ok(path) = RelPath::new(path, PathStyle::local())
                 {
@@ -4887,10 +4928,15 @@ impl BackgroundScanner {
 
             if self.settings.is_path_excluded(&child_path) {
                 log::debug!("skipping excluded child entry {child_path:?}");
+
                 self.state
                     .lock()
                     .await
-                    .remove_path(&child_path, self.watcher.as_ref());
+                    .remove_path_from_snapshot_and_unwatch(
+                        &child_path,
+                        self.watcher.as_ref(),
+                        true,
+                    );
                 continue;
             }
 
@@ -5101,13 +5147,18 @@ impl BackgroundScanner {
         // Remove any entries for paths that no longer exist or are being recursively
         // refreshed. Do this before adding any new entries, so that renames can be
         // detected regardless of the order of the paths.
+        let mut paths_to_process = Vec::with_capacity(relative_paths.len());
         for (path, metadata) in relative_paths.iter().zip(metadata.iter()) {
-            if matches!(metadata, Ok(None)) || doing_recursive_update {
-                state.remove_path(path, self.watcher.as_ref());
-            }
+            let removed_descendant_paths = if matches!(metadata, Ok(None)) || doing_recursive_update
+            {
+                state.remove_path_from_snapshot(path)
+            } else {
+                Vec::new()
+            };
+            paths_to_process.push((path, metadata, removed_descendant_paths));
         }
 
-        for (path, metadata) in relative_paths.iter().zip(metadata) {
+        for (path, metadata, removed_descendant_abs_paths) in paths_to_process {
             let abs_path: Arc<Path> = root_abs_path.join(path.as_std_path()).into();
             match metadata {
                 Ok(Some((metadata, canonical_path))) => {
@@ -5189,9 +5240,21 @@ impl BackgroundScanner {
                 }
                 Ok(None) => {
                     self.remove_repo_path(path.clone(), &mut state.snapshot);
+                    state.unwatch_path(
+                        self.watcher.as_ref(),
+                        path,
+                        removed_descendant_abs_paths,
+                        false,
+                    );
                 }
                 Err(err) => {
                     log::error!("error reading file {abs_path:?} on event: {err:#}");
+                    state.unwatch_path(
+                        self.watcher.as_ref(),
+                        path,
+                        removed_descendant_abs_paths,
+                        false,
+                    );
                 }
             }
         }
