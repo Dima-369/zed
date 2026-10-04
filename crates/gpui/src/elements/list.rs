@@ -648,6 +648,47 @@ impl ListState {
         state.logical_scroll_top = Some(scroll_top);
     }
 
+    /// Scroll the list so the given item is centered in the viewport, like the
+    /// project panel does for revealed entries. If the item is already fully
+    /// visible, the scroll position is left untouched.
+    pub fn scroll_to_item_centered(&self, ix: usize) {
+        let state = &mut *self.0.borrow_mut();
+
+        let height = state
+            .last_layout_bounds
+            .map_or(px(0.), |bounds| bounds.size.height);
+        let padding = state.last_padding.unwrap_or_default();
+        let mut scroll_top = state.logical_scroll_top();
+
+        let mut cursor = state.items.cursor::<ListItemSummary>(());
+        cursor.seek(&Count(scroll_top.item_ix), Bias::Right);
+        // The viewport shift is `heights[0..item_ix] + offset_in_item`; the
+        // padding does not enter it, since paint places the first item at
+        // `padding.top - offset_in_item`.
+        let current_scroll = cursor.start().height + scroll_top.offset_in_item;
+
+        cursor.seek(&Count(ix), Bias::Right);
+        let item_top = cursor.start().height + padding.top;
+        cursor.seek(&Count(ix + 1), Bias::Right);
+        let item_bottom = cursor.start().height + padding.top;
+
+        if item_top >= current_scroll && item_bottom <= current_scroll + height {
+            return;
+        }
+
+        let total_height = state.items.summary().height + padding.top + padding.bottom;
+        let max_top = (total_height - height).max(px(0.));
+        let goal_top = ((item_top + item_bottom) / 2. - height / 2.)
+            .max(px(0.))
+            .min(max_top);
+
+        cursor.seek(&Height(goal_top), Bias::Left);
+        scroll_top.item_ix = cursor.start().count;
+        scroll_top.offset_in_item = goal_top - cursor.start().height;
+
+        state.logical_scroll_top = Some(scroll_top);
+    }
+
     /// Get the bounds for the given item in window coordinates, if it's
     /// been rendered.
     pub fn bounds_for_item(&self, ix: usize) -> Option<Bounds<Pixels>> {
@@ -1635,6 +1676,58 @@ mod test {
         // Scroll position should stay at the top of the list
         assert_eq!(state.logical_scroll_top().item_ix, 0);
         assert_eq!(state.logical_scroll_top().offset_in_item, px(0.));
+    }
+
+    #[gpui::test]
+    fn test_scroll_to_item_centered_with_padding(cx: &mut TestAppContext) {
+        let cx = cx.add_empty_window();
+
+        // Large overdraw so every item gets measured on the first paint and
+        // the sumtree heights are exact.
+        let state = ListState::new(10, crate::ListAlignment::Top, px(150.));
+
+        struct TestView(ListState);
+        impl Render for TestView {
+            fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+                list(self.0.clone(), |_, _, _| {
+                    div().h(px(20.)).w_full().into_any()
+                })
+                .w_full()
+                .h_full()
+                .pt(px(20.))
+                .pb(px(20.))
+            }
+        }
+
+        cx.draw(point(px(0.), px(0.)), size(px(100.), px(100.)), |_, cx| {
+            cx.new(|_| TestView(state.clone())).into_any_element()
+        });
+
+        // Item 7 spans rendered 160..180 (20px top padding + 7*20px).
+        // Centering it in the 100px viewport requires a scroll offset of
+        // 120. The scroll offset space excludes padding: padding.top must
+        // not be subtracted (seek Height(120) anchors at item 5 + 20px,
+        // which is the same 120px scroll position).
+        state.scroll_to_item_centered(7);
+        assert_eq!(state.logical_scroll_top().item_ix, 5);
+        assert_eq!(state.logical_scroll_top().offset_in_item, px(20.));
+
+        // Item 7 is fully visible now: no re-scroll.
+        state.scroll_to_item_centered(7);
+        assert_eq!(state.logical_scroll_top().item_ix, 5);
+        assert_eq!(state.logical_scroll_top().offset_in_item, px(20.));
+
+        // Centering the last item from the top would require scrolling to
+        // 160, past the scrollable maximum of 140 (content 240px - viewport
+        // 100px), so it is clamped: content bottom aligns with the viewport
+        // bottom (item 9 spans 200..220 and stays visible at 60..80).
+        state.scroll_to(gpui::ListOffset {
+            item_ix: 0,
+            offset_in_item: px(0.),
+        });
+        state.scroll_to_item_centered(9);
+        assert_eq!(state.logical_scroll_top().item_ix, 6);
+        assert_eq!(state.logical_scroll_top().offset_in_item, px(20.));
     }
 
     #[gpui::test]

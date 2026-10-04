@@ -84,6 +84,9 @@ gpui::actions!(
         NewThreadInGroup,
         /// Toggles between the thread list and the thread history.
         ToggleThreadHistory,
+        /// Toggles the collapse state of the selected or active project group, like
+        /// clicking its header, and scrolls it into view.
+        ToggleGroupCollapse,
     ]
 );
 
@@ -164,6 +167,39 @@ impl ActiveEntry {
 
     fn is_active_terminal(&self, terminal_id: TerminalId) -> bool {
         matches!(self, ActiveEntry::Terminal { terminal_id: active_terminal_id, .. } if *active_terminal_id == terminal_id)
+    }
+
+    /// Whether both handles refer to the same thread or terminal, ignoring
+    /// the workspace entity.
+    fn targets_same_entry(&self, other: &ActiveEntry) -> bool {
+        match (self, other) {
+            (
+                ActiveEntry::Thread {
+                    thread_id,
+                    session_id,
+                    ..
+                },
+                ActiveEntry::Thread {
+                    thread_id: other_thread_id,
+                    session_id: other_session_id,
+                    ..
+                },
+            ) => {
+                thread_id == other_thread_id
+                    || session_id
+                        .as_ref()
+                        .zip(other_session_id.as_ref())
+                        .is_some_and(|(a, b)| a == b)
+            }
+            (
+                ActiveEntry::Terminal { terminal_id, .. },
+                ActiveEntry::Terminal {
+                    terminal_id: other_terminal_id,
+                    ..
+                },
+            ) => terminal_id == other_terminal_id,
+            _ => false,
+        }
     }
 
     fn matches_entry(&self, entry: &ListEntry) -> bool {
@@ -1025,7 +1061,7 @@ impl Sidebar {
         .detach();
     }
 
-    fn sync_active_entry_from_active_workspace(&mut self, cx: &App) {
+    fn sync_active_entry_from_active_workspace(&mut self, cx: &mut Context<Self>) {
         let panel = self
             .active_workspace(cx)
             .and_then(|ws| ws.read(cx).panel::<AgentPanel>(cx));
@@ -1063,7 +1099,11 @@ impl Sidebar {
     ///
     /// Also resolves `pending_thread_activation` when the panel's
     /// active thread matches the pending activation.
-    fn sync_active_entry_from_panel(&mut self, agent_panel: &Entity<AgentPanel>, cx: &App) -> bool {
+    fn sync_active_entry_from_panel(
+        &mut self,
+        agent_panel: &Entity<AgentPanel>,
+        cx: &mut Context<Self>,
+    ) -> bool {
         let Some(active_workspace) = self.active_workspace(cx) else {
             return false;
         };
@@ -1094,11 +1134,14 @@ impl Sidebar {
                     workspace: active_workspace,
                 });
                 self.pending_thread_activation = None;
+                self.reveal_active_entry(cx);
                 return true;
             }
             // Pending activation not yet resolved — keep current active_entry.
             return false;
         }
+
+        let previous_entry = self.active_entry.clone();
 
         if let Some(terminal_id) = panel.active_terminal_id() {
             self.active_entry = Some(ActiveEntry::Terminal {
@@ -1120,6 +1163,17 @@ impl Sidebar {
                     workspace: active_workspace,
                 });
             }
+        }
+
+        // Only scroll when the active entry actually changed, so unrelated
+        // panel events do not yank the list around while browsing.
+        let changed = match (&previous_entry, self.active_entry.as_ref()) {
+            (Some(previous), Some(current)) => !previous.targets_same_entry(current),
+            (None, Some(_)) => true,
+            _ => false,
+        };
+        if changed {
+            self.reveal_active_entry(cx);
         }
 
         false
@@ -2003,6 +2057,54 @@ impl Sidebar {
             });
     }
 
+    /// Scrolls the list so the active entry becomes visible, including the
+    /// project header above it. Expands the active entry's group first when
+    /// it is collapsed, so newly activated threads/terminals (e.g. via
+    /// `agent::NewThread`) show up in their group again. No-op when there is
+    /// no active entry or when the entry is filtered out of the list.
+    fn reveal_active_entry(&mut self, cx: &mut Context<Self>) {
+        let Some(active) = self.active_entry.clone() else {
+            return;
+        };
+        if !self
+            .contents
+            .entries
+            .iter()
+            .any(|entry| active.matches_entry(entry))
+        {
+            if let Some(group_key) = self.active_group_key(cx)
+                && self.is_group_collapsed(&group_key, cx)
+            {
+                self.set_group_expanded(&group_key, true, cx);
+                self.update_entries(cx);
+            }
+        }
+        let Some(ix) = self
+            .contents
+            .entries
+            .iter()
+            .position(|entry| active.matches_entry(entry))
+        else {
+            return;
+        };
+        // Scroll the header first so it is not left just above the viewport.
+        if ix > 0
+            && matches!(
+                self.contents.entries.get(ix - 1),
+                Some(ListEntry::ProjectHeader { .. })
+            )
+        {
+            self.list_state.scroll_to_reveal_item(ix - 1);
+        }
+        self.list_state.scroll_to_item_centered(ix);
+    }
+
+    fn active_group_key(&self, cx: &App) -> Option<ProjectGroupKey> {
+        self.active_entry
+            .as_ref()
+            .map(|active| active.workspace().read(cx).project_group_key(cx))
+    }
+
     fn render_list_entry(
         &mut self,
         ix: usize,
@@ -2137,13 +2239,18 @@ impl Sidebar {
         let key_for_toggle = key.clone();
         let key_for_focus = key.clone();
 
+        let label_color = if is_active {
+            Color::Accent
+        } else {
+            Color::Muted
+        };
         let label = if highlight_positions.is_empty() {
             Label::new(label.clone())
-                .when(!is_active, |this| this.color(Color::Muted))
+                .color(label_color)
                 .into_any_element()
         } else {
             HighlightedLabel::new(label.clone(), highlight_positions.to_vec())
-                .when(!is_active, |this| this.color(Color::Muted))
+                .color(label_color)
                 .into_any_element()
         };
 
@@ -2303,6 +2410,11 @@ impl Sidebar {
                         cx,
                     )),
             )
+            // Prevent the sidebar root's mouse-down focus handler from running,
+            // as focus_in would otherwise move focus to the filter input.
+            .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation();
+            })
             .on_mouse_down(gpui::MouseButton::Right, {
                 let menu_handle = self
                     .project_header_menu_handles
@@ -3285,6 +3397,7 @@ impl Sidebar {
         Self::load_agent_thread_in_workspace(workspace, metadata, true, window, cx);
 
         self.update_entries(cx);
+        self.reveal_active_entry(cx);
     }
 
     fn activate_thread_in_other_window(
@@ -3325,6 +3438,7 @@ impl Sidebar {
                     });
                     sidebar.record_thread_access(&metadata_thread_id);
                     sidebar.update_entries(cx);
+                    sidebar.reveal_active_entry(cx);
                 });
             }
         }
@@ -3711,36 +3825,50 @@ impl Sidebar {
     fn toggle_selected_fold(
         &mut self,
         _: &editor::actions::ToggleFold,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(ix) = self.selection else { return };
+        self.toggle_group_collapse(&ToggleGroupCollapse, window, cx);
+    }
 
-        // Find the group header for the current selection.
-        let header_ix = match self.contents.entries.get(ix) {
-            Some(ListEntry::ProjectHeader { .. }) => Some(ix),
-            Some(ListEntry::Thread(_) | ListEntry::Terminal(_)) => (0..ix).rev().find(|&i| {
-                matches!(
-                    self.contents.entries.get(i),
-                    Some(ListEntry::ProjectHeader { .. })
-                )
+    /// Toggles the collapse state of a project group, like clicking its header:
+    /// the group of the keyboard-selected entry if any, otherwise the group of
+    /// the active thread or terminal. Then focuses the sidebar and reveals the
+    /// header, so the toggled group stays in view in long lists.
+    fn toggle_group_collapse(
+        &mut self,
+        _: &ToggleGroupCollapse,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let group_key = match self.selection.and_then(|ix| self.contents.entries.get(ix)) {
+            Some(ListEntry::ProjectHeader { key, .. }) => Some(key.clone()),
+            Some(ListEntry::Thread(_) | ListEntry::Terminal(_)) => self.selection.and_then(|ix| {
+                (0..ix)
+                    .rev()
+                    .find_map(|header_ix| match self.contents.entries.get(header_ix) {
+                        Some(ListEntry::ProjectHeader { key, .. }) => Some(key.clone()),
+                        _ => None,
+                    })
             }),
-            None => None,
+            None => self.active_group_key(cx),
+        };
+        let Some(group_key) = group_key else {
+            return;
         };
 
-        if let Some(header_ix) = header_ix {
-            if let Some(ListEntry::ProjectHeader { key, .. }) = self.contents.entries.get(header_ix)
-            {
-                let key = key.clone();
-                if self.is_group_collapsed(&key, cx) {
-                    self.set_group_expanded(&key, true, cx);
-                } else {
-                    self.selection = Some(header_ix);
-                    self.set_group_expanded(&key, false, cx);
-                }
-                self.update_entries(cx);
-            }
+        let was_collapsed = self.is_group_collapsed(&group_key, cx);
+        self.set_group_expanded(&group_key, !was_collapsed, cx);
+        self.update_entries(cx);
+
+        if let Some(header_ix) = self.contents.entries.iter().position(
+            |entry| matches!(entry, ListEntry::ProjectHeader { key, .. } if *key == group_key),
+        ) {
+            self.selection = Some(header_ix);
+            self.list_state.scroll_to_reveal_item(header_ix);
         }
+        self.focus_handle.focus(window, cx);
+        cx.notify();
     }
 
     fn fold_all(
@@ -3970,6 +4098,7 @@ impl Sidebar {
         Self::load_agent_terminal_in_workspace(workspace, &metadata, true, window, cx);
 
         self.update_entries(cx);
+        self.reveal_active_entry(cx);
     }
 
     fn open_workspace_and_activate_terminal(
@@ -4411,18 +4540,16 @@ impl Sidebar {
             .active_entry
             .as_ref()
             .is_some_and(|entry| entry.is_active_terminal(terminal_id));
-        let neighbor = self
-            .contents
-            .entries
-            .iter()
-            .position(|entry| {
-                matches!(
-                    entry,
-                    ListEntry::Terminal(terminal)
-                        if terminal.metadata.terminal_id == terminal_id
-                )
-            })
-            .and_then(|position| self.neighboring_activatable_entry(position));
+        let group_key = match workspace {
+            ThreadEntryWorkspace::Open(workspace) => workspace.read(cx).project_group_key(cx),
+            ThreadEntryWorkspace::Closed {
+                project_group_key,
+                folder_paths: _,
+            } => project_group_key.clone(),
+        };
+        // Only consider neighbors from the same project group: closing the
+        // last entry of a group must not jump to another project.
+        let neighbor = self.group_scoped_neighbor(&group_key, terminal_id);
 
         let terminal_folder_paths = metadata.folder_paths().clone();
         let roots_to_archive = self.roots_to_archive_for_paths(
@@ -4570,6 +4697,38 @@ impl Sidebar {
         }
     }
 
+    /// Finds an activatable entry within the same project group as the given
+    /// terminal, never crossing into other groups. This picks the first
+    /// other entry of the group — the closed terminal's own index is already
+    /// gone by the time panel-side closes reach us, so a truly "nearest"
+    /// neighbor cannot be recovered. The closed terminal's own row is
+    /// excluded: it may still be present when the close was
+    /// sidebar-initiated, and panel-side closes delete it from the metadata
+    /// store before the `TerminalClosed` event rebuilds the list.
+    fn group_scoped_neighbor(
+        &self,
+        group_key: &ProjectGroupKey,
+        closed_terminal_id: TerminalId,
+    ) -> Option<ActivatableEntry> {
+        let header_ix = self.contents.entries.iter().position(
+            |entry| matches!(entry, ListEntry::ProjectHeader { key, .. } if key == group_key),
+        )?;
+        let group_end = self.contents.entries[header_ix + 1..]
+            .iter()
+            .position(|entry| matches!(entry, ListEntry::ProjectHeader { .. }))
+            .map(|offset| header_ix + 1 + offset)
+            .unwrap_or(self.contents.entries.len());
+        self.contents.entries[header_ix + 1..group_end]
+            .iter()
+            .filter(|entry| {
+                !matches!(
+                    entry,
+                    ListEntry::Terminal(terminal) if terminal.metadata.terminal_id == closed_terminal_id
+                )
+            })
+            .find_map(ActivatableEntry::from_list_entry)
+    }
+
     fn close_terminal_entry(
         &mut self,
         metadata: &TerminalThreadMetadata,
@@ -4606,17 +4765,60 @@ impl Sidebar {
 
         self.start_detached_archive_worktree_task(roots_to_archive, cx);
 
+        let mut activated_neighbor = false;
         if is_active {
             self.active_entry = None;
-            if neighbor
+            activated_neighbor = neighbor
                 .as_ref()
-                .is_some_and(|neighbor| self.activate_entry(neighbor, window, cx))
-            {
-                return;
+                .is_some_and(|neighbor| self.activate_entry(neighbor, window, cx));
+            if !activated_neighbor {
+                self.sync_active_entry_from_active_workspace(cx);
             }
-            self.sync_active_entry_from_active_workspace(cx);
         }
         self.update_entries(cx);
+
+        // When the group has no entries left (not even the panel's draft
+        // placeholder), collapse it so it does not linger on "No threads
+        // yet", and return focus to the project's editor instead of
+        // jumping to another project.
+        if is_active && !activated_neighbor {
+            if let ThreadEntryWorkspace::Open(workspace) = workspace {
+                let panel_shows_content =
+                    workspace
+                        .read(cx)
+                        .panel::<AgentPanel>(cx)
+                        .is_some_and(|panel| {
+                            let panel = panel.read(cx);
+                            panel.active_view_is_new_draft(cx)
+                                || panel.active_terminal_id().is_some()
+                                || panel.active_thread_id(cx).is_some()
+                        });
+                if !panel_shows_content {
+                    let group_key = workspace.read(cx).project_group_key(cx);
+                    let group_has_entries = self.contents.entries.iter().any(|entry| {
+                        matches!(
+                            entry,
+                            ListEntry::ProjectHeader { key, has_threads, .. }
+                                if *key == group_key && *has_threads
+                        )
+                    });
+                    if !group_has_entries {
+                        self.set_group_expanded(&group_key, false, cx);
+                        self.update_entries(cx);
+                        workspace.update(cx, |workspace, cx| {
+                            // Closing the last entry leaves the panel
+                            // empty: close the agent panel dock so the
+                            // editor gets full width, and return focus to
+                            // the active pane.
+                            workspace.close_panel::<AgentPanel>(window, cx);
+                            workspace.active_pane().update(cx, |pane, cx| {
+                                window.focus(&pane.focus_handle(cx), cx);
+                            });
+                        });
+                    }
+                }
+            }
+        }
     }
 
     fn close_items_for_archived_worktrees(
@@ -7267,6 +7469,7 @@ impl Render for Sidebar {
             .on_action(cx.listener(Self::expand_selected_entry))
             .on_action(cx.listener(Self::collapse_selected_entry))
             .on_action(cx.listener(Self::toggle_selected_fold))
+            .on_action(cx.listener(Self::toggle_group_collapse))
             .on_action(cx.listener(Self::fold_all))
             .on_action(cx.listener(Self::unfold_all))
             .on_action(cx.listener(Self::cancel))

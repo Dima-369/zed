@@ -258,6 +258,21 @@ The last big `main` UI upgrade introduced the `Threads Sidebar` which allows mul
 - lowered `MIN_WIDTH` from 200px to 100px (`crates/sidebar/src/sidebar.rs`), so the threads sidebar can be collapsed to half its previous minimum
 - removed the always-visible right-side `GradientFade` overlay from the threads sidebar. After the 100px minimum above, the 64px gray base fade ate a large chunk of narrow rows and looked bad. Added a `GradientFade::hover_only()` builder (`crates/ui/src/components/gradient_fade.rs`) that skips the always-visible base and only renders on group hover/active; the project headers in `crates/sidebar/src/sidebar.rs` now use it, so the hover fade that masks the title text behind the hover buttons is preserved while the idle gray fade is gone. For thread items (`crates/ui/src/components/ai/thread_item.rs`) the always-visible truncated-title fade was removed and the hover action-slot fade kept; the now-write-only `ThreadItem::is_truncated` field, its setter, and the default were removed along with it
 
+- the active project group title is now rendered in the accent color instead of white; other (inactive) project groups stay muted as before (`crates/sidebar/src/sidebar.rs`)
+- clicking a project group header with the mouse no longer moves keyboard focus to the filter input at the top of the sidebar. The sidebar root's `track_focus` handler used to grab focus on any mouse down inside it, and `focus_in` then focused the filter input whenever no thread was selected. The project header now stops propagation of left mouse down, so clicking a project title (especially one with no threads below it) keeps focus wherever it was (`crates/sidebar/src/sidebar.rs`)
+- the sidebar now keeps the active thread/terminal in view. Previously, activating a thread from another project (via `multi_workspace::NextThread`, the project open recent modal, a mouse click, or an agent panel tab switch) would highlight the entry but leave it scrolled out of sight in long lists. Now the active entry is scrolled into view whenever it changes: centered like the project panel does for revealed entries, with its project header kept just above it. If the active entry's group is collapsed, it is expanded first — so creating a new thread via `agent::NewThread`/`agent::NewTerminalThread` in a collapsed project shows the group's threads again instead of silently updating the hidden rows. This uses a new `ListState::scroll_to_item_centered` in `crates/gpui/src/elements/list.rs` (a no-op when the entry is already fully visible, so unrelated panel events don't yank the list while browsing). Hooked into `activate_thread_locally`, `activate_terminal_in_workspace`, cross-window activation, and `sync_active_entry_from_panel` (only on actual active-entry changes) in `crates/sidebar/src/sidebar.rs`
+- new action `agents_sidebar::ToggleGroupCollapse` (`crates/sidebar/src/sidebar.rs`): toggles the collapse state of a project group like clicking its header — the keyboard-selected entry's group if any, otherwise the group of the active thread/terminal. Afterwards it focuses the sidebar, selects the group header, and scrolls it into view. The existing `editor::ToggleFold` binding (e.g. `cmd-k cmd-l`) in the sidebar context now delegates to it, so folding works without a keyboard selection too. Has no default keybinding of its own yet; bind `agents_sidebar::ToggleGroupCollapse` in `keymap.json` to use it from anywhere
+- `agent::ArchiveSelectedThread` now also works while focus is inside an agent terminal tab: the agent panel's terminal surface has a new `AgentTerminal` key context and an `ArchiveSelectedThread` handler that closes the active terminal via the same path as a shell `exit`/sidebar X (emits `TerminalClosed`, so the sidebar runs its close flow instead of force-opening a fresh draft thread) (`crates/agent_ui/src/agent_panel.rs`). Panel-side closes delete the terminal's metadata store entry before the `TerminalClosed` event reaches the sidebar, so the row is already gone and the neighbor lookup came up empty — the sidebar's close flow now finds the nearest other entry scoped to the same project group (never jumping to another project), and when the group ends up completely empty (no threads, terminals, or draft placeholder) it collapses the group, closes the agent panel dock so the editor gets full width (the threads sidebar is rendered by the multi-workspace itself and stays visible), and returns focus to the project's editor pane (`crates/sidebar/src/sidebar.rs`). No default keymap binding was added — bind it yourself in `keymap.json` to close the focused agent terminal without switching to the sidebar:
+  ```json
+  {
+    "context": "AgentTerminal",
+    "bindings": {
+      "shift-backspace": "agent::ArchiveSelectedThread"
+    }
+  }
+  ```
+- hint: `agent::NewTerminalThread` already opens a new agent-panel terminal tab in the *selected* project group of the sidebar (falling back to the active workspace), so it pairs well with the toggle action above
+
 #### New Actions
 
 - `agent::TogglePlan` to toggle the plan of the current thread (untested since last `main` merge)
@@ -383,6 +398,7 @@ Then bind the action like this:
 
 ## UI changes
 
+- in the `projects: open recent` modal, the active project's title is now rendered in the accent color (next to the existing checkmark), for the currently-open project groups as well as the active folder entry (`crates/picker/src/highlighted_match_with_paths.rs`, `crates/recent_projects/src/recent_projects.rs`)
 - use larger font size (`LabelSize::Default`) for the line/column and selection info in the bottom bar and use `text_accent` for it when a selection is active
 - lower status bar height, see `impl Render for StatusBar`
 - lower `toolbar.rs` height to save space, same in `breadcrumbs.rs` (here no padding is set). This applies for terminals, as well

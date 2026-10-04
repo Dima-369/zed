@@ -1411,10 +1411,15 @@ impl PickerDelegate for RecentProjectsDelegate {
                                         .child(
                                             h_flex()
                                                 .gap_1()
-                                                .child(HighlightedLabel::new(
-                                                    name.to_string(),
-                                                    positions,
-                                                ))
+                                                .child(
+                                                    HighlightedLabel::new(
+                                                        name.to_string(),
+                                                        positions,
+                                                    )
+                                                    .when(is_active, |this| {
+                                                        this.color(Color::Accent)
+                                                    }),
+                                                )
                                                 .when_some(branch, |this, branch| {
                                                     this.child(
                                                         Label::new(branch)

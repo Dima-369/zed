@@ -44,10 +44,11 @@ use crate::terminal_thread_metadata_store::{
 };
 use crate::thread_metadata_store::{ThreadId, ThreadMetadataStore, ThreadMetadataStoreEvent};
 use crate::{
-    AddContextServer, AgentDiffPane, ConversationView, CopyThreadToClipboard, Follow,
-    LoadThreadFromClipboard, NewTerminalThread, NewThread, OpenActiveThreadAsMarkdown,
-    OpenAgentDiff, ResetFastModeWarnings, ResetTrialEndUpsell, ResetTrialUpsell,
-    ShowAllSidebarThreadMetadata, ShowThreadMetadata, ToggleNewThreadMenu, ToggleOptionsMenu,
+    AddContextServer, AgentDiffPane, ArchiveSelectedThread, ConversationView,
+    CopyThreadToClipboard, Follow, LoadThreadFromClipboard, NewTerminalThread, NewThread,
+    OpenActiveThreadAsMarkdown, OpenAgentDiff, ResetFastModeWarnings, ResetTrialEndUpsell,
+    ResetTrialUpsell, ShowAllSidebarThreadMetadata, ShowThreadMetadata, ToggleNewThreadMenu,
+    ToggleOptionsMenu,
     agent_configuration::{AgentConfiguration, AssistantConfigurationEvent},
     conversation_view::{AcpThreadViewEvent, ThreadView, reset_fast_mode_warnings},
     ui::{AgentNotification, AgentNotificationEvent, EndTrialUpsell},
@@ -6034,7 +6035,34 @@ impl Render for AgentPanel {
                     .child(conversation_view.clone())
                     .child(self.render_drag_target(cx)),
                 VisibleSurface::Terminal(terminal_view) => parent
-                    .child(terminal_view.clone())
+                    // The AgentTerminal context lets keymaps intercept
+                    // keystrokes (e.g. shift-backspace for closing) before
+                    // they are sent to the shell. The wrapper needs
+                    // `size_full` because TerminalView sizes itself relative
+                    // to its parent, like it did as a direct child before.
+                    .child(
+                        div()
+                            .size_full()
+                            .key_context("AgentTerminal")
+                            .on_action(cx.listener(
+                                |this, _: &ArchiveSelectedThread, window, cx| {
+                                    let Some(terminal_id) = this.active_terminal_id() else {
+                                        return;
+                                    };
+                                    // Same path as when the shell exits on its
+                                    // own: emits TerminalClosed so the sidebar
+                                    // runs its close flow (neighbor activation,
+                                    // editor fallback) instead of force-opening
+                                    // a fresh draft.
+                                    this.close_terminal_from_terminal_event(
+                                        terminal_id,
+                                        window,
+                                        cx,
+                                    );
+                                },
+                            ))
+                            .child(terminal_view.clone()),
+                    )
                     .child(self.render_drag_target(cx)),
                 VisibleSurface::Configuration(configuration) => {
                     parent.children(configuration.cloned())
@@ -6179,6 +6207,18 @@ impl AgentPanel {
         );
         self.draft_thread = Some(thread.conversation_view.clone());
         self.set_base_view(thread.into(), true, window, cx);
+    }
+
+    /// Closes a terminal via the shell-exit path, mirroring what the
+    /// `AgentTerminal` ArchiveSelectedThread handler does.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn test_close_terminal_from_terminal_event(
+        &mut self,
+        terminal_id: TerminalId,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.close_terminal_from_terminal_event(terminal_id, window, cx);
     }
 
     #[cfg(any(test, feature = "test-support"))]

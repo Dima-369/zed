@@ -75,12 +75,17 @@ impl HighlightedMatchWithPaths {
 
 impl RenderOnce for HighlightedMatchWithPaths {
     fn render(mut self, _window: &mut Window, _: &mut App) -> impl IntoElement {
+        let match_label = if self.active {
+            self.match_label.clone().color(Color::Accent)
+        } else {
+            self.match_label.clone()
+        };
         v_flex()
             .min_w_0()
             .child(
                 h_flex()
                     .gap_1()
-                    .child(self.match_label.clone())
+                    .child(match_label)
                     .when_some(self.prefix.as_ref(), |this, prefix| {
                         this.child(Label::new(format!("({})", prefix)).color(Color::Muted))
                     })
