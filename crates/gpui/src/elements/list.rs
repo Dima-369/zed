@@ -1689,11 +1689,13 @@ mod test {
         struct TestView(ListState);
         impl Render for TestView {
             fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-                list(self.0.clone(), |_, _, _| div().h(px(20.)).w_full().into_any())
-                    .w_full()
-                    .h_full()
-                    .pt(px(20.))
-                    .pb(px(20.))
+                list(self.0.clone(), |_, _, _| {
+                    div().h(px(20.)).w_full().into_any()
+                })
+                .w_full()
+                .h_full()
+                .pt(px(20.))
+                .pb(px(20.))
             }
         }
 

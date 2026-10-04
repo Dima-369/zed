@@ -3810,9 +3810,7 @@ async fn test_closing_active_agent_panel_terminal_activates_neighbor(cx: &mut Te
 }
 
 #[gpui::test]
-async fn test_panel_exit_path_close_of_active_terminal_activates_neighbor(
-    cx: &mut TestAppContext,
-) {
+async fn test_panel_exit_path_close_of_active_terminal_activates_neighbor(cx: &mut TestAppContext) {
     let project = init_test_project_with_agent_panel("/my-project", cx).await;
     let (multi_workspace, cx) =
         cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
@@ -3887,7 +3885,10 @@ async fn test_panel_exit_path_close_of_sole_terminal_collapses_group(cx: &mut Te
         );
     });
     // The emptied group collapses instead of lingering on "No threads yet".
-    assert_eq!(visible_entries_as_strings(&sidebar, cx), vec!["> [my-project]"]);
+    assert_eq!(
+        visible_entries_as_strings(&sidebar, cx),
+        vec!["> [my-project]"]
+    );
 }
 
 #[gpui::test]

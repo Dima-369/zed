@@ -48,7 +48,8 @@ use crate::{
     CopyThreadToClipboard, Follow, LoadThreadFromClipboard, NewTerminalThread, NewThread,
     OpenActiveThreadAsMarkdown, OpenAgentDiff, ResetFastModeWarnings, ResetTrialEndUpsell,
     ResetTrialUpsell, ShowAllSidebarThreadMetadata, ShowThreadMetadata, ToggleNewThreadMenu,
-    ToggleOptionsMenu, agent_configuration::{AgentConfiguration, AssistantConfigurationEvent},
+    ToggleOptionsMenu,
+    agent_configuration::{AgentConfiguration, AssistantConfigurationEvent},
     conversation_view::{AcpThreadViewEvent, ThreadView, reset_fast_mode_warnings},
     ui::{AgentNotification, AgentNotificationEvent, EndTrialUpsell},
 };
@@ -6043,21 +6044,23 @@ impl Render for AgentPanel {
                         div()
                             .size_full()
                             .key_context("AgentTerminal")
-                            .on_action(cx.listener(|this, _: &ArchiveSelectedThread, window, cx| {
-                                let Some(terminal_id) = this.active_terminal_id() else {
-                                    return;
-                                };
-                                // Same path as when the shell exits on its
-                                // own: emits TerminalClosed so the sidebar
-                                // runs its close flow (neighbor activation,
-                                // editor fallback) instead of force-opening
-                                // a fresh draft.
-                                this.close_terminal_from_terminal_event(
-                                    terminal_id,
-                                    window,
-                                    cx,
-                                );
-                            }))
+                            .on_action(cx.listener(
+                                |this, _: &ArchiveSelectedThread, window, cx| {
+                                    let Some(terminal_id) = this.active_terminal_id() else {
+                                        return;
+                                    };
+                                    // Same path as when the shell exits on its
+                                    // own: emits TerminalClosed so the sidebar
+                                    // runs its close flow (neighbor activation,
+                                    // editor fallback) instead of force-opening
+                                    // a fresh draft.
+                                    this.close_terminal_from_terminal_event(
+                                        terminal_id,
+                                        window,
+                                        cx,
+                                    );
+                                },
+                            ))
                             .child(terminal_view.clone()),
                     )
                     .child(self.render_drag_target(cx)),

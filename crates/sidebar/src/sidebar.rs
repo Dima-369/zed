@@ -3843,16 +3843,14 @@ impl Sidebar {
     ) {
         let group_key = match self.selection.and_then(|ix| self.contents.entries.get(ix)) {
             Some(ListEntry::ProjectHeader { key, .. }) => Some(key.clone()),
-            Some(ListEntry::Thread(_) | ListEntry::Terminal(_)) => self
-                .selection
-                .and_then(|ix| {
-                    (0..ix).rev().find_map(|header_ix| {
-                        match self.contents.entries.get(header_ix) {
-                            Some(ListEntry::ProjectHeader { key, .. }) => Some(key.clone()),
-                            _ => None,
-                        }
+            Some(ListEntry::Thread(_) | ListEntry::Terminal(_)) => self.selection.and_then(|ix| {
+                (0..ix)
+                    .rev()
+                    .find_map(|header_ix| match self.contents.entries.get(header_ix) {
+                        Some(ListEntry::ProjectHeader { key, .. }) => Some(key.clone()),
+                        _ => None,
                     })
-                }),
+            }),
             None => self.active_group_key(cx),
         };
         let Some(group_key) = group_key else {
@@ -3863,14 +3861,9 @@ impl Sidebar {
         self.set_group_expanded(&group_key, !was_collapsed, cx);
         self.update_entries(cx);
 
-        if let Some(header_ix) = self
-            .contents
-            .entries
-            .iter()
-            .position(|entry| {
-                matches!(entry, ListEntry::ProjectHeader { key, .. } if *key == group_key)
-            })
-        {
+        if let Some(header_ix) = self.contents.entries.iter().position(
+            |entry| matches!(entry, ListEntry::ProjectHeader { key, .. } if *key == group_key),
+        ) {
             self.selection = Some(header_ix);
             self.list_state.scroll_to_reveal_item(header_ix);
         }
@@ -4790,15 +4783,16 @@ impl Sidebar {
         // jumping to another project.
         if is_active && !activated_neighbor {
             if let ThreadEntryWorkspace::Open(workspace) = workspace {
-                let panel_shows_content = workspace
-                    .read(cx)
-                    .panel::<AgentPanel>(cx)
-                    .is_some_and(|panel| {
-                        let panel = panel.read(cx);
-                        panel.active_view_is_new_draft(cx)
-                            || panel.active_terminal_id().is_some()
-                            || panel.active_thread_id(cx).is_some()
-                    });
+                let panel_shows_content =
+                    workspace
+                        .read(cx)
+                        .panel::<AgentPanel>(cx)
+                        .is_some_and(|panel| {
+                            let panel = panel.read(cx);
+                            panel.active_view_is_new_draft(cx)
+                                || panel.active_terminal_id().is_some()
+                                || panel.active_thread_id(cx).is_some()
+                        });
                 if !panel_shows_content {
                     let group_key = workspace.read(cx).project_group_key(cx);
                     let group_has_entries = self.contents.entries.iter().any(|entry| {
