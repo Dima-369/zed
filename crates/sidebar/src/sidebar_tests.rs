@@ -3810,6 +3810,129 @@ async fn test_closing_active_agent_panel_terminal_activates_neighbor(cx: &mut Te
 }
 
 #[gpui::test]
+async fn test_panel_exit_path_close_of_active_terminal_activates_neighbor(
+    cx: &mut TestAppContext,
+) {
+    let project = init_test_project_with_agent_panel("/my-project", cx).await;
+    let (multi_workspace, cx) =
+        cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
+    let (sidebar, panel) = setup_sidebar_with_agent_panel(&multi_workspace, cx);
+    let build_terminal_id = panel
+        .update_in(cx, |panel, window, cx| {
+            panel.insert_test_terminal("Build", true, window, cx)
+        })
+        .expect("build test terminal should be inserted");
+    let server_terminal_id = panel
+        .update_in(cx, |panel, window, cx| {
+            panel.insert_test_terminal("Server", true, window, cx)
+        })
+        .expect("server test terminal should be inserted");
+    cx.run_until_parked();
+
+    // Close the active terminal the way the AgentTerminal
+    // ArchiveSelectedThread binding does (shell exit path).
+    panel.update_in(cx, |panel, window, cx| {
+        panel.test_close_terminal_from_terminal_event(server_terminal_id, window, cx);
+    });
+    cx.run_until_parked();
+
+    panel.read_with(cx, |panel, _cx| {
+        assert!(!panel.has_terminal(server_terminal_id));
+        assert_eq!(
+            panel.active_terminal_id(),
+            Some(build_terminal_id),
+            "neighbor terminal should be active after panel-side close"
+        );
+    });
+    sidebar.read_with(cx, |sidebar, _cx| {
+        assert!(
+            matches!(&sidebar.active_entry, Some(ActiveEntry::Terminal { terminal_id, .. }) if *terminal_id == build_terminal_id),
+            "expected remaining terminal to become active, got {:?}",
+            sidebar.active_entry,
+        );
+    });
+    assert_eq!(
+        visible_entries_as_strings(&sidebar, cx),
+        vec!["v [my-project]", "  Build"]
+    );
+}
+
+#[gpui::test]
+async fn test_panel_exit_path_close_of_sole_terminal_collapses_group(cx: &mut TestAppContext) {
+    let project = init_test_project_with_agent_panel("/my-project", cx).await;
+    let (multi_workspace, cx) =
+        cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
+    let (sidebar, panel) = setup_sidebar_with_agent_panel(&multi_workspace, cx);
+    let terminal_id = panel
+        .update_in(cx, |panel, window, cx| {
+            panel.insert_test_terminal("Dev Server", true, window, cx)
+        })
+        .expect("test terminal should be inserted");
+    cx.run_until_parked();
+
+    panel.update_in(cx, |panel, window, cx| {
+        panel.test_close_terminal_from_terminal_event(terminal_id, window, cx);
+    });
+    cx.run_until_parked();
+
+    panel.read_with(cx, |panel, _cx| {
+        assert!(!panel.has_terminal(terminal_id));
+        assert_eq!(panel.active_terminal_id(), None);
+    });
+    sidebar.read_with(cx, |sidebar, _cx| {
+        assert!(
+            sidebar.active_entry.is_none(),
+            "closing the sole terminal must not activate another project's entry, got {:?}",
+            sidebar.active_entry,
+        );
+    });
+    // The emptied group collapses instead of lingering on "No threads yet".
+    assert_eq!(visible_entries_as_strings(&sidebar, cx), vec!["> [my-project]"]);
+}
+
+#[gpui::test]
+async fn test_new_active_entry_expands_collapsed_group(cx: &mut TestAppContext) {
+    let project = init_test_project_with_agent_panel("/my-project", cx).await;
+    let (multi_workspace, cx) =
+        cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
+    let (sidebar, panel) = setup_sidebar_with_agent_panel(&multi_workspace, cx);
+    panel
+        .update_in(cx, |panel, window, cx| {
+            panel.insert_test_terminal("Dev", true, window, cx)
+        })
+        .expect("test terminal should be inserted");
+    cx.run_until_parked();
+
+    let group_key = multi_workspace.read_with(cx, |multi_workspace, cx| {
+        multi_workspace.workspace().read(cx).project_group_key(cx)
+    });
+    sidebar.update_in(cx, |sidebar, window, cx| {
+        sidebar.toggle_collapse(&group_key, window, cx);
+    });
+    cx.run_until_parked();
+    assert_eq!(
+        visible_entries_as_strings(&sidebar, cx),
+        vec!["> [my-project]"],
+        "group should be collapsed"
+    );
+
+    // Activating a new entry (like agent::NewThread/agent::NewTerminalThread
+    // does when focus lands in the new tab) must expand the group again.
+    panel
+        .update_in(cx, |panel, window, cx| {
+            panel.insert_test_terminal("Second", true, window, cx)
+        })
+        .expect("second test terminal should be inserted");
+    cx.run_until_parked();
+
+    assert_eq!(
+        visible_entries_as_strings(&sidebar, cx),
+        vec!["v [my-project]", "  Second", "  Dev"],
+        "group should have expanded again for the new active entry"
+    );
+}
+
+#[gpui::test]
 async fn test_parallel_threads_shown_with_live_status(cx: &mut TestAppContext) {
     let project = init_test_project_with_agent_panel("/my-project", cx).await;
     let (multi_workspace, cx) =
