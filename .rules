@@ -1,3 +1,12 @@
+# Fork changes documentation
+
+This repository is a personal fork of Zed. Every user-facing or behavioral change must be documented in `README.md` under `# Fork changes`, in the matching subsection (for example `## AI` → `#### Threads sidebar`). Agents habitually forget this, so it is a hard requirement, not an optional nicety:
+
+* Add new entries at the **top** of the relevant subsection's list.
+* Rewrite or remove any existing bullet that the change makes outdated (colors, defaults, behavior descriptions).
+* Include the touched file paths in backticks.
+* Do it in the same commit/PR as the change itself — do not wait to be reminded.
+
 # Rust coding guidelines
 
 * Prioritize code correctness and clarity. Speed and efficiency are secondary priorities unless otherwise specified.
