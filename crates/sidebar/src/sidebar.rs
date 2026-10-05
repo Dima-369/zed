@@ -250,6 +250,16 @@ enum ThreadEntryWorkspace {
 }
 
 impl ThreadEntryWorkspace {
+    fn project_group_key(&self, cx: &App) -> ProjectGroupKey {
+        match self {
+            ThreadEntryWorkspace::Open(workspace) => workspace.read(cx).project_group_key(cx),
+            ThreadEntryWorkspace::Closed {
+                project_group_key,
+                ..
+            } => project_group_key.clone(),
+        }
+    }
+
     fn is_remote(&self, cx: &App) -> bool {
         match self {
             ThreadEntryWorkspace::Open(workspace) => {
@@ -2103,6 +2113,15 @@ impl Sidebar {
         self.active_entry
             .as_ref()
             .map(|active| active.workspace().read(cx).project_group_key(cx))
+    }
+
+    /// Whether this entry belongs to the group of the currently active
+    /// workspace. Entries in inactive groups render muted.
+    fn entry_group_is_active(&self, workspace: &ThreadEntryWorkspace, cx: &App) -> bool {
+        self.multi_workspace.upgrade().is_none_or(|multi_workspace| {
+            let active_workspace = multi_workspace.read(cx).workspace();
+            active_workspace.read(cx).project_group_key(cx) == workspace.project_group_key(cx)
+        })
     }
 
     fn render_list_entry(
@@ -5879,6 +5898,12 @@ impl Sidebar {
             .title_bar_background
             .blend(color.panel_background.opacity(0.25));
 
+        let title_color = if self.entry_group_is_active(&thread.workspace, cx) {
+            Color::Default
+        } else {
+            Color::Muted
+        };
+
         let timestamp: SharedString = if is_empty_draft {
             SharedString::default()
         } else {
@@ -5901,6 +5926,7 @@ impl Sidebar {
         ThreadItem::new(id, title.clone())
             .base_bg(sidebar_bg)
             .icon(icon)
+            .title_label_color(title_color)
             .when(is_draft, |this| {
                 this.icon_color(Color::Custom(cx.theme().colors().icon_muted.opacity(0.2)))
             })
@@ -6091,10 +6117,16 @@ impl Sidebar {
         let metadata = terminal.metadata.clone();
         let workspace = terminal.workspace.clone();
         let focus_handle = self.focus_handle.clone();
+        let title_color = if self.entry_group_is_active(&terminal.workspace, cx) {
+            Color::Default
+        } else {
+            Color::Muted
+        };
 
         ThreadItem::new(id, terminal.metadata.display_title())
             .base_bg(sidebar_bg)
             .icon(IconName::Terminal)
+            .title_label_color(title_color)
             .notified(terminal.has_notification)
             .highlight_positions(terminal.highlight_positions.clone())
             .selected(is_active)
