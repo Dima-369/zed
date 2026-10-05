@@ -254,8 +254,7 @@ impl ThreadEntryWorkspace {
         match self {
             ThreadEntryWorkspace::Open(workspace) => workspace.read(cx).project_group_key(cx),
             ThreadEntryWorkspace::Closed {
-                project_group_key,
-                ..
+                project_group_key, ..
             } => project_group_key.clone(),
         }
     }
@@ -2118,10 +2117,12 @@ impl Sidebar {
     /// Whether this entry belongs to the group of the currently active
     /// workspace. Entries in inactive groups render muted.
     fn entry_group_is_active(&self, workspace: &ThreadEntryWorkspace, cx: &App) -> bool {
-        self.multi_workspace.upgrade().is_none_or(|multi_workspace| {
-            let active_workspace = multi_workspace.read(cx).workspace();
-            active_workspace.read(cx).project_group_key(cx) == workspace.project_group_key(cx)
-        })
+        self.multi_workspace
+            .upgrade()
+            .is_none_or(|multi_workspace| {
+                let active_workspace = multi_workspace.read(cx).workspace();
+                active_workspace.read(cx).project_group_key(cx) == workspace.project_group_key(cx)
+            })
     }
 
     fn render_list_entry(
