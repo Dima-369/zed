@@ -2242,7 +2242,7 @@ impl Sidebar {
         let label_color = if is_active {
             Color::Accent
         } else {
-            Color::Muted
+            Color::Default
         };
         let label = if highlight_positions.is_empty() {
             Label::new(label.clone())
@@ -6083,7 +6083,6 @@ impl Sidebar {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let id = ElementId::from(format!("terminal-{}", terminal.metadata.terminal_id));
-        let timestamp = format_history_entry_timestamp(terminal.metadata.created_at);
         let is_hovered = self.hovered_thread_index == Some(ix);
         let color = cx.theme().colors();
         let sidebar_bg = color
@@ -6092,18 +6091,10 @@ impl Sidebar {
         let metadata = terminal.metadata.clone();
         let workspace = terminal.workspace.clone();
         let focus_handle = self.focus_handle.clone();
-        let worktrees = apply_worktree_label_mode(
-            terminal.worktrees.clone(),
-            cx.flag_value::<AgentThreadWorktreeLabelFlag>(),
-        );
-        let is_remote = terminal.workspace.is_remote(cx);
 
         ThreadItem::new(id, terminal.metadata.display_title())
             .base_bg(sidebar_bg)
             .icon(IconName::Terminal)
-            .is_remote(is_remote)
-            .worktrees(worktrees)
-            .timestamp(timestamp)
             .notified(terminal.has_notification)
             .highlight_positions(terminal.highlight_positions.clone())
             .selected(is_active)
