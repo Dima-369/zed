@@ -34,7 +34,8 @@ pub use dock::Panel;
 pub use multi_workspace::{
     CloseWorkspaceSidebar, DraggedSidebar, FocusWorkspaceSidebar, MoveProjectToNewWindow,
     MultiWorkspace, MultiWorkspaceEvent, NewThread, NextProject, NextThread, PreviousProject,
-    PreviousThread, ProjectGroup, ProjectGroupKey, SerializedProjectGroupState, Sidebar,
+    PreviousThread, ProjectGroup, ProjectGroupKey, RemoveActiveProject, SerializedProjectGroupState,
+    Sidebar,
     SidebarEvent, SidebarHandle, SidebarRenderState, SidebarSide, ToggleWorkspaceSidebar,
     sidebar_side_context_menu,
 };

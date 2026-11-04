@@ -53,6 +53,8 @@ actions!(
         NewThread,
         /// Moves the active project to a new window.
         MoveProjectToNewWindow,
+        /// Removes the active project from this window, like the sidebar's "Remove" menu entry.
+        RemoveActiveProject,
     ]
 );
 
@@ -2183,6 +2185,13 @@ impl Render for MultiWorkspace {
                             }
                         }),
                     )
+                    .on_action(cx.listener(
+                        |this: &mut Self, _: &RemoveActiveProject, window, cx| {
+                            let key = this.project_group_key_for_workspace(this.workspace(), cx);
+                            this.remove_project_group(&key, window, cx)
+                                .detach_and_log_err(cx);
+                        },
+                    ))
                     .when(self.project_group_keys().len() >= 2, |el| {
                         el.on_action(cx.listener(
                             |this: &mut Self, _: &MoveProjectToNewWindow, window, cx| {
