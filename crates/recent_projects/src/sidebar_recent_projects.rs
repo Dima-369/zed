@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use fuzzy_nucleo::{StringMatch, StringMatchCandidate, match_strings};
 use gpui::{
@@ -46,6 +49,7 @@ impl SidebarRecentProjects {
                 window_project_groups,
                 workspaces: Vec::new(),
                 filtered_workspaces: Vec::new(),
+                ambiguous_candidate_ids: Default::default(),
                 selected_index: 0,
                 has_any_non_local_projects: false,
                 focus_handle: cx.focus_handle(),
@@ -115,6 +119,7 @@ pub struct SidebarRecentProjectsDelegate {
     window_project_groups: Vec<ProjectGroupKey>,
     workspaces: Vec<RecentWorkspace>,
     filtered_workspaces: Vec<StringMatch>,
+    ambiguous_candidate_ids: HashSet<usize>,
     selected_index: usize,
     has_any_non_local_projects: bool,
     focus_handle: FocusHandle,
@@ -127,6 +132,26 @@ impl SidebarRecentProjectsDelegate {
             .any(|workspace| !matches!(workspace.location, SerializedWorkspaceLocation::Local));
         self.workspaces = workspaces;
     }
+}
+
+fn workspace_display_name(workspace: &RecentWorkspace) -> String {
+    workspace
+        .identity_paths
+        .ordered_paths()
+        .filter_map(|path| path.file_name())
+        .map(|name| name.to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn workspace_parent_dirs(workspace: &RecentWorkspace) -> String {
+    workspace
+        .identity_paths
+        .ordered_paths()
+        .filter_map(|path| path.parent())
+        .map(|parent| parent.compact().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 impl EventEmitter<DismissEvent> for SidebarRecentProjectsDelegate {}
@@ -227,6 +252,21 @@ impl PickerDelegate for SidebarRecentProjectsDelegate {
                 100,
             );
         }
+
+        let mut candidate_ids_by_name = HashMap::<String, Vec<usize>>::default();
+        for hit in &self.filtered_workspaces {
+            if let Some(workspace) = self.workspaces.get(hit.candidate_id) {
+                candidate_ids_by_name
+                    .entry(workspace_display_name(workspace))
+                    .or_default()
+                    .push(hit.candidate_id);
+            }
+        }
+        self.ambiguous_candidate_ids = candidate_ids_by_name
+            .into_values()
+            .filter(|candidate_ids| candidate_ids.len() > 1)
+            .flatten()
+            .collect();
 
         self.selected_index = 0;
         Task::ready(())
@@ -356,6 +396,12 @@ impl PickerDelegate for SidebarRecentProjectsDelegate {
             active: false,
         };
 
+        let parent_dirs = self
+            .ambiguous_candidate_ids
+            .contains(&hit.candidate_id)
+            .then(|| workspace_parent_dirs(workspace))
+            .filter(|parent_dirs| !parent_dirs.is_empty());
+
         let icon = icon_for_remote_connection(match &workspace.location {
             SerializedWorkspaceLocation::Local => None,
             SerializedWorkspaceLocation::Remote(options) => Some(options),
@@ -373,7 +419,19 @@ impl PickerDelegate for SidebarRecentProjectsDelegate {
                         .when(self.has_any_non_local_projects, |this| {
                             this.child(Icon::new(icon).color(Color::Muted))
                         })
-                        .child(highlighted_match.render(window, cx)),
+                        .child(
+                            h_flex()
+                                .min_w_0()
+                                .gap_1()
+                                .child(highlighted_match.render(window, cx))
+                                .when_some(parent_dirs, |this, parent_dirs| {
+                                    this.child(
+                                        Label::new(format!("({parent_dirs})"))
+                                            .color(Color::Muted)
+                                            .truncate(),
+                                    )
+                                }),
+                        ),
                 )
                 .tooltip(move |_, cx| {
                     Tooltip::with_meta(

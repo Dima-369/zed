@@ -256,6 +256,7 @@ The last big `main` UI upgrade introduced the `Threads Sidebar` which allows mul
 
 #### Threads sidebar
 
+- the "Add Folder" recent-projects popover (folder button at the bottom of the threads sidebar) now appends the muted parent directory in parens (e.g. `zed (~/Developer)`) for entries whose folder name collides with another entry in the current filtered list, so same-named checkouts can be told apart (`crates/recent_projects/src/sidebar_recent_projects.rs`)
 - thread and terminal entries belonging to an inactive project group render their title in muted color; entries in the active project's group keep the regular text color, mirroring the accent/regular split of the group headers (`crates/sidebar/src/sidebar.rs`)
 - terminal entries are now minimal single-line rows: they no longer show the metadata line underneath (the `2w`/`4d`-style timestamp and worktree chips), so a terminal row takes up only the height of its title line (`crates/sidebar/src/sidebar.rs`)
 - the active project group title renders in the accent color; inactive groups now render in regular text color instead of muted (`crates/sidebar/src/sidebar.rs`)
