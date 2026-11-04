@@ -706,6 +706,10 @@ impl Pane {
                 if let Some(weak_last_focus_handle) =
                     self.last_focus_handle_by_item.get(&active_item.item_id())
                     && let Some(focus_handle) = weak_last_focus_handle.upgrade()
+                    // The remembered handle can outlive its element, e.g. the uncommitted
+                    // changes editor stops rendering once the diff becomes empty while
+                    // focus is elsewhere. Focusing it would leave nothing focused.
+                    && self.focus_handle.contains(&focus_handle, window)
                 {
                     focus_handle.focus(window, cx);
                     return;
