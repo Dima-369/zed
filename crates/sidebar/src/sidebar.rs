@@ -7086,8 +7086,10 @@ impl Sidebar {
         let is_archive = matches!(self.view, SidebarView::Archive(..));
         let on_right = self.side(cx) == SidebarSide::Right;
 
+        // No vertical padding so the bar lines up with the status bar, which has its
+        // vertical padding removed in this fork.
         h_flex()
-            .p_1()
+            .px_1()
             .gap_1()
             .when(on_right, |this| this.flex_row_reverse())
             .border_t_1()

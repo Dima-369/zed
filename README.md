@@ -256,6 +256,7 @@ The last big `main` UI upgrade introduced the `Threads Sidebar` which allows mul
 
 #### Threads sidebar
 
+- the sidebar's bottom bar (sidebar toggle, history, add-folder buttons) no longer has vertical padding, so it is the same height as the status bar next to it, which also has its vertical padding removed in this fork (`crates/sidebar/src/sidebar.rs`)
 - new `multi_workspace::RemoveActiveProject` action: removes the active project from the window, the same as the "Remove" entry in a sidebar project group's `…` menu (which previously had no action to bind) (`crates/workspace/src/multi_workspace.rs`, `crates/workspace/src/workspace.rs`)
 - the "Add Folder" recent-projects popover (folder button at the bottom of the threads sidebar) now appends the muted parent directory in parens (e.g. `zed (~/Developer)`) for entries whose folder name collides with another entry in the current filtered list, so same-named checkouts can be told apart (`crates/recent_projects/src/sidebar_recent_projects.rs`)
 - thread and terminal entries belonging to an inactive project group render their title in muted color; entries in the active project's group keep the regular text color, mirroring the accent/regular split of the group headers (`crates/sidebar/src/sidebar.rs`)
