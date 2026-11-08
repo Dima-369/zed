@@ -949,6 +949,47 @@ async fn test_workspace_lifecycle(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+async fn test_collapsed_thread_count_ignores_empty_drafts(cx: &mut TestAppContext) {
+    let project = init_test_project("/my-project", cx).await;
+    let (multi_workspace, cx) =
+        cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
+    let sidebar = setup_sidebar(&multi_workspace, cx);
+    let project_group_key = project.read_with(cx, |project, cx| project.project_group_key(cx));
+
+    let path_list = PathList::new(&[PathBuf::from("/my-project")]);
+    save_draft_metadata_with_main_paths(
+        None,
+        path_list.clone(),
+        path_list,
+        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 1, 0, 0, 0).unwrap(),
+        cx,
+    );
+
+    sidebar.update_in(cx, |sidebar, window, cx| {
+        sidebar.toggle_collapse(&project_group_key, window, cx);
+    });
+    cx.run_until_parked();
+
+    let header_thread_count = |sidebar: &Entity<Sidebar>, cx: &mut gpui::VisualTestContext| {
+        sidebar.read_with(cx, |sidebar, _| {
+            sidebar
+                .contents
+                .entries
+                .iter()
+                .find_map(|entry| match entry {
+                    ListEntry::ProjectHeader { thread_count, .. } => Some(*thread_count),
+                    _ => None,
+                })
+        })
+    };
+    assert_eq!(header_thread_count(&sidebar, cx), Some(0));
+
+    save_n_test_threads(1, &project, cx).await;
+    cx.run_until_parked();
+    assert_eq!(header_thread_count(&sidebar, cx), Some(1));
+}
+
+#[gpui::test]
 async fn test_collapse_and_expand_group(cx: &mut TestAppContext) {
     let project = init_test_project("/my-project", cx).await;
     let (multi_workspace, cx) =
@@ -1088,6 +1129,7 @@ async fn test_visible_entries_as_strings(cx: &mut TestAppContext) {
                 has_notifications: false,
                 is_active: true,
                 has_threads: true,
+                thread_count: 1,
             },
             ListEntry::Thread(Arc::new(ThreadEntry {
                 metadata: ThreadMetadata {
@@ -1235,6 +1277,7 @@ async fn test_visible_entries_as_strings(cx: &mut TestAppContext) {
                 has_notifications: false,
                 is_active: false,
                 has_threads: false,
+                thread_count: 0,
             },
         ];
 

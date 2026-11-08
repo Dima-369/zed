@@ -1,3 +1,4 @@
+mod project_identity;
 mod thread_switcher;
 
 use acp_thread::ThreadStatus;
@@ -28,8 +29,9 @@ use feature_flags::{
 };
 use gpui::{
     Action as _, AnyElement, App, ClickEvent, Context, DismissEvent, Entity, EntityId, FocusHandle,
-    Focusable, KeyContext, ListState, Modifiers, Pixels, Render, SharedString, Task, TaskExt,
-    WeakEntity, Window, WindowHandle, linear_color_stop, linear_gradient, list, prelude::*, px,
+    Focusable, FontWeight, HighlightStyle, KeyContext, ListState, Modifiers, Pixels, Render,
+    SharedString, StyledText, Task, TaskExt, WeakEntity, Window, WindowHandle, linear_color_stop,
+    linear_gradient, list, prelude::*, px, relative,
 };
 use itertools::Itertools;
 use menu::{
@@ -52,8 +54,8 @@ use theme::ActiveTheme;
 use ui::{
     AgentThreadStatus, CommonAnimationExt, ContextMenu, ContextMenuEntry, Divider, GradientFade,
     HighlightedLabel, KeyBinding, PopoverMenu, PopoverMenuHandle, ProjectEmptyState, ScrollAxes,
-    Scrollbars, Tab, ThreadItem, ThreadItemWorktreeInfo, TintColor, Tooltip, WithScrollbar,
-    prelude::*, render_modifiers,
+    Scrollbars, ThreadItem, ThreadItemGroupStyle, ThreadItemWorktreeInfo, TintColor, Tooltip,
+    WithScrollbar, prelude::*, render_modifiers,
 };
 use util::ResultExt as _;
 use util::path_list::PathList;
@@ -69,6 +71,10 @@ use zed_actions::editor::{MoveDown, MoveUp};
 
 use zed_actions::agents_sidebar::{FocusSidebarFilter, ToggleThreadSwitcher};
 
+use crate::project_identity::{
+    ProjectColors, assign_project_hues, project_monogram, project_name_head_len,
+    split_leading_glyph,
+};
 use crate::thread_switcher::{
     ThreadSwitcher, ThreadSwitcherEntry, ThreadSwitcherEvent, ThreadSwitcherSelection,
     ThreadSwitcherTerminalEntry, ThreadSwitcherThreadEntry,
@@ -367,6 +373,7 @@ enum ListEntry {
         has_notifications: bool,
         is_active: bool,
         has_threads: bool,
+        thread_count: usize,
     },
     Thread(Arc<ThreadEntry>),
     Terminal(TerminalEntry),
@@ -480,6 +487,7 @@ struct SidebarContents {
     notified_threads: HashSet<agent_ui::ThreadId>,
     notified_terminals: HashSet<TerminalId>,
     project_header_indices: Vec<usize>,
+    project_hues: HashMap<ProjectGroupKey, f32>,
     has_open_projects: bool,
 }
 
@@ -495,9 +503,19 @@ enum EntryShape {
         // Determines whether the "No threads yet" row is rendered (only shown when
         // `!is_collapsed && !has_threads`).
         is_collapsed: bool,
+        // The first row and open groups have extra space around them.
+        is_first: bool,
+        has_rows_below: bool,
     },
-    Thread(ThreadId),
-    Terminal(TerminalId),
+    Thread {
+        thread_id: ThreadId,
+        // The last row closes its group's card with extra space below it.
+        is_last_in_group: bool,
+    },
+    Terminal {
+        terminal_id: TerminalId,
+        is_last_in_group: bool,
+    },
 }
 
 impl SidebarContents {
@@ -507,6 +525,31 @@ impl SidebarContents {
 
     fn is_terminal_notified(&self, terminal_id: TerminalId) -> bool {
         self.notified_terminals.contains(&terminal_id)
+    }
+
+    fn is_last_in_group(&self, ix: usize) -> bool {
+        !matches!(
+            self.entries.get(ix + 1),
+            Some(ListEntry::Thread(_) | ListEntry::Terminal(_))
+        )
+    }
+
+    fn group_header_index(&self, ix: usize) -> Option<usize> {
+        let headers_up_to_entry = self
+            .project_header_indices
+            .partition_point(|&header| header <= ix);
+        self.project_header_indices
+            .get(headers_up_to_entry.checked_sub(1)?)
+            .copied()
+    }
+
+    fn project_colors(&self, key: &ProjectGroupKey, is_active: bool, cx: &App) -> ProjectColors {
+        ProjectColors::for_key(
+            &self.project_hues,
+            key,
+            is_active,
+            cx.theme().appearance().is_light(),
+        )
     }
 }
 
@@ -1356,6 +1399,7 @@ impl Sidebar {
         };
 
         let groups = mw.project_groups(cx);
+        let project_hues = assign_project_hues(groups.iter().map(|group| &group.key));
         let mut live_notified_terminal_ids: HashSet<TerminalId> = HashSet::new();
         for workspace in &workspaces {
             if let Some(agent_panel) = workspace.read(cx).panel::<AgentPanel>(cx) {
@@ -1762,23 +1806,41 @@ impl Sidebar {
                 }
             }
 
-            let has_visible_rows = !threads.is_empty() || !terminals.is_empty();
-            let has_stored_thread_rows = !should_load_threads && !has_visible_rows && {
+            // Maps each stored thread of a collapsed group to whether it is an
+            // empty draft. Those are hidden once the group is expanded, so they
+            // must not count towards the number shown on the collapsed header.
+            let stored_thread_rows: HashMap<agent_ui::ThreadId, bool> = if should_load_threads {
+                HashMap::new()
+            } else {
                 let store = ThreadMetadataStore::global(cx).read(cx);
                 store
                     .entries_for_main_worktree_path(group_key.path_list(), group_host.as_ref())
-                    .any(|metadata| {
+                    .chain(store.entries_for_path(group_key.path_list(), group_host.as_ref()))
+                    .filter_map(|metadata| {
                         let workspace = resolve_workspace(metadata.folder_paths());
-                        thread_metadata_would_render_sidebar_row(metadata, &workspace, cx)
+                        thread_metadata_would_render_sidebar_row(metadata, &workspace, cx).then(
+                            || {
+                                let is_empty_draft = metadata.is_draft()
+                                    && matches!(
+                                        draft_display_label_for_thread_metadata(
+                                            metadata, &workspace, cx
+                                        ),
+                                        Some((_, DraftKind::Empty))
+                                    );
+                                (metadata.thread_id, is_empty_draft)
+                            },
+                        )
                     })
-                    || store
-                        .entries_for_path(group_key.path_list(), group_host.as_ref())
-                        .any(|metadata| {
-                            let workspace = resolve_workspace(metadata.folder_paths());
-                            thread_metadata_would_render_sidebar_row(metadata, &workspace, cx)
-                        })
+                    .collect()
             };
-            let has_threads = has_visible_rows || has_stored_thread_rows;
+            let has_threads =
+                !threads.is_empty() || !terminals.is_empty() || !stored_thread_rows.is_empty();
+            let thread_count = threads.len()
+                + terminals.len()
+                + stored_thread_rows
+                    .values()
+                    .filter(|is_empty_draft| !**is_empty_draft)
+                    .count();
 
             if !query.is_empty() {
                 let workspace_highlight_positions =
@@ -1859,6 +1921,7 @@ impl Sidebar {
                     has_notifications: has_thread_notifications || has_terminal_notifications,
                     is_active,
                     has_threads,
+                    thread_count,
                 });
 
                 Self::push_entries_by_display_time(
@@ -1905,6 +1968,7 @@ impl Sidebar {
                     has_notifications: has_thread_notifications || has_terminal_notifications,
                     is_active,
                     has_threads,
+                    thread_count,
                 });
 
                 if is_collapsed {
@@ -1935,6 +1999,7 @@ impl Sidebar {
             notified_threads,
             notified_terminals,
             project_header_indices,
+            project_hues,
             has_open_projects,
         };
     }
@@ -2001,20 +2066,35 @@ impl Sidebar {
         &'a self,
         multi_workspace: &'a MultiWorkspace,
     ) -> impl Iterator<Item = EntryShape> + 'a {
-        self.contents.entries.iter().map(move |entry| match entry {
-            ListEntry::ProjectHeader {
-                key, has_threads, ..
-            } => EntryShape::ProjectHeader {
-                key: key.clone(),
-                has_threads: *has_threads,
-                is_collapsed: multi_workspace
-                    .group_state_by_key(key)
-                    .map(|state| !state.expanded)
-                    .unwrap_or(false),
-            },
-            ListEntry::Thread(thread) => EntryShape::Thread(thread.metadata.thread_id),
-            ListEntry::Terminal(terminal) => EntryShape::Terminal(terminal.metadata.terminal_id),
-        })
+        self.contents
+            .entries
+            .iter()
+            .enumerate()
+            .map(move |(ix, entry)| {
+                let is_last_in_group = self.contents.is_last_in_group(ix);
+                match entry {
+                    ListEntry::ProjectHeader {
+                        key, has_threads, ..
+                    } => EntryShape::ProjectHeader {
+                        key: key.clone(),
+                        has_threads: *has_threads,
+                        is_collapsed: multi_workspace
+                            .group_state_by_key(key)
+                            .map(|state| !state.expanded)
+                            .unwrap_or(false),
+                        is_first: ix == 0,
+                        has_rows_below: !is_last_in_group,
+                    },
+                    ListEntry::Thread(thread) => EntryShape::Thread {
+                        thread_id: thread.metadata.thread_id,
+                        is_last_in_group,
+                    },
+                    ListEntry::Terminal(terminal) => EntryShape::Terminal {
+                        terminal_id: terminal.metadata.terminal_id,
+                        is_last_in_group,
+                    },
+                }
+            })
     }
 
     /// Re-establishes subscriptions to each visible draft's message editor
@@ -2138,9 +2218,6 @@ impl Sidebar {
         // is_selected means the keyboard selector is here.
         let is_selected = is_focused && self.selection == Some(ix);
 
-        let is_group_header_after_first =
-            ix > 0 && matches!(entry, ListEntry::ProjectHeader { .. });
-
         let is_active = self
             .active_entry
             .as_ref()
@@ -2156,6 +2233,7 @@ impl Sidebar {
                 has_notifications,
                 is_active: is_active_group,
                 has_threads,
+                thread_count,
             } => {
                 let has_active_draft = is_active
                     && self
@@ -2181,6 +2259,7 @@ impl Sidebar {
                     *is_active_group,
                     is_selected,
                     *has_threads,
+                    *thread_count,
                     has_active_draft,
                     cx,
                 )
@@ -2191,16 +2270,66 @@ impl Sidebar {
             }
         };
 
-        if is_group_header_after_first {
-            v_flex()
-                .w_full()
-                .border_t_1()
-                .border_color(cx.theme().colors().border)
-                .child(rendered)
-                .into_any_element()
-        } else {
-            rendered
-        }
+        self.render_in_group_card(ix, rendered, cx)
+    }
+
+    /// List entries are measured independently, so a group's rounded card is
+    /// assembled from slices: each row draws only its own part of it.
+    fn render_in_group_card(&self, ix: usize, rendered: AnyElement, cx: &App) -> AnyElement {
+        let Some(header_ix) = self.contents.group_header_index(ix) else {
+            return rendered;
+        };
+        let Some(ListEntry::ProjectHeader {
+            key,
+            is_active,
+            has_threads,
+            ..
+        }) = self.contents.entries.get(header_ix)
+        else {
+            return rendered;
+        };
+
+        let is_header = ix == header_ix;
+        let is_last = self.contents.is_last_in_group(ix);
+        let is_open = !self.contents.is_last_in_group(header_ix)
+            || (!self.is_group_collapsed(key, cx) && !has_threads);
+        let colors = self.contents.project_colors(key, *is_active, cx);
+        let card_background = (is_open || *is_active).then_some(colors.group_background);
+
+        div()
+            .w_full()
+            .px_1()
+            .when(ix == 0, |this| this.pt(px(5.)))
+            .when(ix > 0 && is_open && is_header, |this| this.pt(px(5.)))
+            .when(is_open && is_last, |this| this.pb(px(5.)))
+            .when(!is_open, |this| this.pb(px(1.)))
+            .child(
+                div()
+                    .w_full()
+                    .when_some(card_background, |this, background| this.bg(background))
+                    .when(is_header, |this| this.rounded_t_md())
+                    .when(is_last, |this| this.rounded_b_md())
+                    .when(is_open && is_last, |this| this.pb(px(3.)))
+                    .child(rendered),
+            )
+            .into_any_element()
+    }
+
+    fn thread_item_group_style(&self, ix: usize, cx: &App) -> Option<ThreadItemGroupStyle> {
+        let header_ix = self.contents.group_header_index(ix)?;
+        let ListEntry::ProjectHeader { key, is_active, .. } =
+            self.contents.entries.get(header_ix)?
+        else {
+            return None;
+        };
+        let colors = self.contents.project_colors(key, *is_active, cx);
+        Some(ThreadItemGroupStyle {
+            rail: colors.rail,
+            background: colors.group_background,
+            hover_background: colors.row_hover,
+            selected_background: colors.row_selected,
+            is_last: self.contents.is_last_in_group(ix),
+        })
     }
 
     fn render_remote_project_icon(
@@ -2240,6 +2369,7 @@ impl Sidebar {
         is_active: bool,
         is_focused: bool,
         has_threads: bool,
+        thread_count: usize,
         has_active_draft: bool,
         cx: &mut Context<Self>,
     ) -> AnyElement {
@@ -2259,32 +2389,111 @@ impl Sidebar {
         let key_for_toggle = key.clone();
         let key_for_focus = key.clone();
 
-        let label_color = if is_active {
-            Color::Accent
-        } else {
-            Color::Default
-        };
-        let label = if highlight_positions.is_empty() {
-            Label::new(label.clone())
-                .color(label_color)
+        let colors = self.contents.project_colors(key, is_active, cx);
+        let color = cx.theme().colors();
+        let has_rows_below = !self.contents.is_last_in_group(ix);
+        let is_open = has_rows_below || (!is_collapsed && !has_threads);
+
+        let monogram = project_monogram(label);
+        let name_label = if highlight_positions.is_empty() {
+            let head_len = project_name_head_len(label);
+            let (head_color, tail_color) = if is_active {
+                (colors.name_accent, color.text)
+            } else {
+                (color.text, color.text_muted)
+            };
+            let tail_highlight = (head_len < label.len()).then(|| {
+                (
+                    head_len..label.len(),
+                    HighlightStyle {
+                        color: Some(tail_color),
+                        ..Default::default()
+                    },
+                )
+            });
+            div()
+                .truncate()
+                .text_ui_sm(cx)
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(head_color)
+                .child(StyledText::new(label.clone()).with_highlights(tail_highlight))
                 .into_any_element()
         } else {
             HighlightedLabel::new(label.clone(), highlight_positions.to_vec())
-                .color(label_color)
+                .size(LabelSize::Small)
+                .weight(FontWeight::MEDIUM)
+                .color(if is_active {
+                    Color::Custom(colors.name_accent)
+                } else {
+                    Color::Default
+                })
+                .truncate()
                 .into_any_element()
         };
 
-        let color = cx.theme().colors();
+        let tile = div()
+            .relative()
+            .flex_none()
+            .size_4()
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(5.))
+            .bg(colors.tile_background)
+            .child(
+                div()
+                    .map(|this| {
+                        if is_focused {
+                            this.invisible()
+                        } else {
+                            this.group_hover(group_name.clone(), |style| style.invisible())
+                        }
+                    })
+                    .child(
+                        Label::new(monogram)
+                            .size(LabelSize::Custom(rems_from_px(8.5)))
+                            .weight(FontWeight::SEMIBOLD)
+                            .color(Color::Custom(colors.tile_foreground)),
+                    ),
+            )
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .when(!is_focused, |this| this.visible_on_hover(&group_name))
+                    .child(
+                        Icon::new(disclosure_icon)
+                            .size(IconSize::XSmall)
+                            .color(Color::Custom(colors.tile_foreground)),
+                    ),
+            )
+            .when(has_rows_below, |this| {
+                this.child(
+                    div()
+                        .absolute()
+                        .top_full()
+                        .left(relative(0.5))
+                        .ml(px(-1.))
+                        .w(px(2.))
+                        .h(rems_from_px(6.))
+                        .bg(colors.rail),
+                )
+            });
+
         let sidebar_base_bg = color
             .title_bar_background
             .blend(color.panel_background.opacity(0.25));
 
-        let base_bg = color.background.blend(sidebar_base_bg);
+        let base_bg = if is_open || is_active {
+            colors.group_background
+        } else {
+            color.background.blend(sidebar_base_bg)
+        };
 
-        let hover_base = color
-            .element_active
-            .blend(color.element_background.opacity(0.2));
-        let hover_solid = base_bg.blend(hover_base);
+        let hover_solid = colors.row_hover;
 
         let group_name_for_gradient = group_name.clone();
         let gradient_overlay = move || {
@@ -2301,11 +2510,11 @@ impl Sidebar {
             .group(&group_name)
             .cursor_pointer()
             .relative()
-            .h(Tab::content_height(cx))
+            .h(rems_from_px(26.5))
             .w_full()
-            .pl_2()
-            .pr_1p5()
-            .justify_between()
+            .px_1p5()
+            .gap_1p5()
+            .rounded_md()
             .border_1()
             .map(|this| {
                 if is_focused {
@@ -2315,13 +2524,14 @@ impl Sidebar {
                 }
             })
             .hover(|s| s.bg(hover_solid))
+            .child(tile)
             .child(
                 h_flex()
                     .relative()
                     .min_w_0()
-                    .w_full()
+                    .flex_1()
                     .gap_1()
-                    .child(label)
+                    .child(div().min_w_0().flex_1().child(name_label))
                     .when_some(
                         self.render_remote_project_icon(ix, host.as_ref()),
                         |this, icon| this.child(icon),
@@ -2364,20 +2574,24 @@ impl Sidebar {
                                 )
                             },
                         )
-                    })
-                    .child(
-                        div()
-                            .when(!is_focused, |this| this.visible_on_hover(&group_name))
-                            .child(
-                                Icon::new(disclosure_icon)
-                                    .size(IconSize::Small)
+                        .when(thread_count > 0, |this| {
+                            this.child(
+                                Label::new(thread_count.to_string())
+                                    .size(LabelSize::XSmall)
                                     .color(Color::Muted),
-                            ),
-                    ),
+                            )
+                        })
+                    }),
             )
             .child(gradient_overlay())
             .child(
                 h_flex()
+                    // Floats over the name so hidden buttons don't reserve width
+                    // and cause it to truncate early.
+                    .absolute()
+                    .top_0()
+                    .bottom_0()
+                    .right_1()
                     .child(gradient_overlay())
                     .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| {
                         cx.stop_propagation();
@@ -2462,13 +2676,19 @@ impl Sidebar {
                 .child(header)
                 .child(
                     h_flex()
-                        .px_2()
+                        .px_1p5()
                         .pt_1()
-                        .pb_2()
-                        .gap(px(7.))
-                        .child(Icon::new(IconName::Circle).size(IconSize::Small).color(
-                            Color::Custom(cx.theme().colors().icon_placeholder.opacity(0.1)),
-                        ))
+                        .pb_1()
+                        .gap_1p5()
+                        .child(
+                            h_flex().size_4().flex_none().justify_center().child(
+                                Icon::new(IconName::Circle).size(IconSize::Small).color(
+                                    Color::Custom(
+                                        cx.theme().colors().icon_placeholder.opacity(0.1),
+                                    ),
+                                ),
+                            ),
+                        )
                         .child(
                             Label::new("No threads yet")
                                 .size(LabelSize::Small)
@@ -2878,6 +3098,7 @@ impl Sidebar {
             has_notifications,
             is_active,
             has_threads,
+            thread_count,
         } = self.contents.entries.get(header_idx)?
         else {
             return None;
@@ -2909,6 +3130,7 @@ impl Sidebar {
             *is_active,
             is_selected,
             *has_threads,
+            *thread_count,
             has_active_draft,
             cx,
         );
@@ -2927,6 +3149,10 @@ impl Sidebar {
             })
             .unwrap_or(px(0.));
 
+        let group_background = self
+            .contents
+            .project_colors(key, *is_active, cx)
+            .group_background;
         let color = cx.theme().colors();
         let background = color
             .title_bar_background
@@ -2940,7 +3166,15 @@ impl Sidebar {
             .bg(background)
             .border_b_1()
             .border_color(color.border.opacity(0.5))
-            .child(header_element)
+            .child(
+                div().w_full().px_1().child(
+                    div()
+                        .w_full()
+                        .when(*is_active, |this| this.bg(group_background))
+                        .rounded_md()
+                        .child(header_element),
+                ),
+            )
             .shadow_xs()
             .into_any_element();
 
@@ -5926,6 +6160,9 @@ impl Sidebar {
 
         ThreadItem::new(id, title.clone())
             .base_bg(sidebar_bg)
+            .when_some(self.thread_item_group_style(ix, cx), |this, style| {
+                this.group_style(style)
+            })
             .icon(icon)
             .title_label_color(title_color)
             .when(is_draft, |this| {
@@ -6124,12 +6361,38 @@ impl Sidebar {
             Color::Muted
         };
 
-        ThreadItem::new(id, terminal.metadata.display_title())
+        let display_title = terminal.metadata.display_title();
+        let (leading_glyph, title, highlight_positions) = match split_leading_glyph(&display_title)
+        {
+            Some((glyph, title)) => {
+                let glyph_prefix_len = display_title.len() - title.len();
+                (
+                    Some(SharedString::from(glyph)),
+                    SharedString::from(title),
+                    terminal
+                        .highlight_positions
+                        .iter()
+                        .filter_map(|position| position.checked_sub(glyph_prefix_len))
+                        .collect(),
+                )
+            }
+            None => (
+                None,
+                display_title.clone(),
+                terminal.highlight_positions.clone(),
+            ),
+        };
+
+        ThreadItem::new(id, title)
             .base_bg(sidebar_bg)
+            .when_some(self.thread_item_group_style(ix, cx), |this, style| {
+                this.group_style(style)
+            })
             .icon(IconName::Terminal)
+            .when_some(leading_glyph, |this, glyph| this.leading_glyph(glyph))
             .title_label_color(title_color)
             .notified(terminal.has_notification)
-            .highlight_positions(terminal.highlight_positions.clone())
+            .highlight_positions(highlight_positions)
             .selected(is_active)
             .focused(is_focused)
             .hovered(is_hovered)
