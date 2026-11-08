@@ -1,7 +1,7 @@
 use crate::{CommonAnimationExt, DiffStat, GradientFade, HighlightedLabel, Tooltip, prelude::*};
 
 use gpui::{
-    Animation, AnimationExt, ClickEvent, Hsla, MouseButton, SharedString, pulsating_between,
+    Animation, AnimationExt, ClickEvent, Hsla, MouseButton, Pixels, SharedString, pulsating_between,
 };
 use itertools::Itertools as _;
 use std::{path::PathBuf, sync::Arc, time::Duration};
@@ -30,6 +30,20 @@ pub struct ThreadItemWorktreeInfo {
     pub highlight_positions: Vec<usize>,
     pub kind: WorktreeKind,
 }
+
+/// Draws a thread as part of a colored project group: a rail connecting its
+/// icon to the project above, and a compact row in the group's own colors.
+#[derive(Clone, Copy)]
+pub struct ThreadItemGroupStyle {
+    pub rail: Hsla,
+    pub background: Hsla,
+    pub hover_background: Hsla,
+    pub selected_background: Hsla,
+    pub is_last: bool,
+}
+
+// Keeps the icon clear of the rail segments above and below it.
+const RAIL_ICON_CLEARANCE: Pixels = px(7.);
 
 #[derive(IntoElement, RegisterComponent)]
 pub struct ThreadItem {
@@ -61,6 +75,8 @@ pub struct ThreadItem {
     on_hover: Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>,
     action_slot: Option<AnyElement>,
     base_bg: Option<Hsla>,
+    group_style: Option<ThreadItemGroupStyle>,
+    leading_glyph: Option<SharedString>,
 }
 
 impl ThreadItem {
@@ -94,6 +110,8 @@ impl ThreadItem {
             on_hover: Box::new(|_, _, _| {}),
             action_slot: None,
             base_bg: None,
+            group_style: None,
+            leading_glyph: None,
         }
     }
 
@@ -229,11 +247,22 @@ impl ThreadItem {
         self.base_bg = Some(color);
         self
     }
+
+    pub fn group_style(mut self, style: ThreadItemGroupStyle) -> Self {
+        self.group_style = Some(style);
+        self
+    }
+
+    pub fn leading_glyph(mut self, glyph: impl Into<SharedString>) -> Self {
+        self.leading_glyph = Some(glyph.into());
+        self
+    }
 }
 
 impl RenderOnce for ThreadItem {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let color = cx.theme().colors();
+        let group_style = self.group_style;
         let sidebar_base_bg = color
             .title_bar_background
             .blend(color.panel_background.opacity(0.25));
@@ -241,21 +270,39 @@ impl RenderOnce for ThreadItem {
         let raw_bg = self.base_bg.unwrap_or(sidebar_base_bg);
         let apparent_bg = color.background.blend(raw_bg);
 
-        let base_bg = if self.selected {
-            apparent_bg.blend(color.element_active)
-        } else {
-            apparent_bg
+        let selected_color =
+            group_style.map_or(color.element_active, |style| style.selected_background);
+        let base_bg = match group_style {
+            Some(style) if self.selected => style.selected_background,
+            Some(style) => style.background,
+            None if self.selected => apparent_bg.blend(color.element_active),
+            None => apparent_bg,
         };
 
-        let hover_color = color
-            .element_active
-            .blend(color.element_background.opacity(0.2));
-        let hover_bg = apparent_bg.blend(hover_color);
+        let hover_color = group_style.map_or_else(
+            || {
+                color
+                    .element_active
+                    .blend(color.element_background.opacity(0.2))
+            },
+            |style| style.hover_background,
+        );
+        let hover_bg = if group_style.is_some() {
+            hover_color
+        } else {
+            apparent_bg.blend(hover_color)
+        };
+
+        let metadata_label_size = if group_style.is_some() {
+            LabelSize::XSmall
+        } else {
+            LabelSize::Small
+        };
 
         let separator_color = Color::Custom(color.text_muted.opacity(0.4));
         let dot_separator = || {
             Label::new("•")
-                .size(LabelSize::Small)
+                .size(metadata_label_size)
                 .color(separator_color)
         };
 
@@ -269,7 +316,9 @@ impl RenderOnce for ThreadItem {
                 .justify_center()
                 .when(!icon_visible, |this| this.invisible())
         };
-        let icon_color = self.icon_color.unwrap_or(Color::Muted);
+        let icon_color = self
+            .icon_color
+            .unwrap_or_else(|| group_style.map_or(Color::Muted, |style| Color::Custom(style.rail)));
         let agent_icon = if let Some(custom_svg) = self.custom_icon_from_external_svg {
             Icon::from_external_svg(custom_svg)
                 .color(icon_color)
@@ -311,6 +360,14 @@ impl RenderOnce for ThreadItem {
                 .into_any_element()
         } else if let Some(status_icon) = status_icon {
             icon_container().child(status_icon).into_any_element()
+        } else if let Some(glyph) = self.leading_glyph {
+            icon_container()
+                .child(
+                    Label::new(glyph)
+                        .size(LabelSize::Custom(rems_from_px(10.5)))
+                        .color(icon_color),
+                )
+                .into_any_element()
         } else {
             icon_container().child(agent_icon).into_any_element()
         };
@@ -334,10 +391,12 @@ impl RenderOnce for ThreadItem {
         } else if highlight_positions.is_empty() {
             Label::new(title)
                 .when_some(self.title_label_color, |label, color| label.color(color))
+                .when(group_style.is_some(), |label| label.truncate())
                 .into_any_element()
         } else {
             HighlightedLabel::new(title, highlight_positions)
                 .when_some(self.title_label_color, |label, color| label.color(color))
+                .when(group_style.is_some(), |label| label.truncate())
                 .into_any_element()
         };
 
@@ -385,6 +444,35 @@ impl RenderOnce for ThreadItem {
             || has_diff_stats
             || has_timestamp;
 
+        let title_row_height = rems_from_px(if group_style.is_some() { 22. } else { 24. });
+        let rail_segments = group_style.map(|style| {
+            let rem_size = window.rem_size();
+            let rail_width = px(2.);
+            let icon_center_y = title_row_height.to_pixels(rem_size) / 2.;
+            let icon_center_x = rems_from_px(14.).to_pixels(rem_size);
+            let rail_left = icon_center_x - rail_width / 2.;
+            let segment = move || {
+                div()
+                    .absolute()
+                    .left(rail_left)
+                    .w(rail_width)
+                    .bg(style.rail)
+            };
+            // Absolute insets start inside the row's 1px border, so the rail has
+            // to reach back over it to join the rows above and below.
+            let border_width = px(1.);
+            (
+                segment()
+                    .top(-border_width)
+                    .h(icon_center_y - RAIL_ICON_CLEARANCE + border_width),
+                (!style.is_last).then(|| {
+                    segment()
+                        .top(icon_center_y + RAIL_ICON_CLEARANCE)
+                        .bottom(-border_width)
+                }),
+            )
+        });
+
         v_flex()
             .id(self.id.clone())
             .cursor_pointer()
@@ -393,20 +481,24 @@ impl RenderOnce for ThreadItem {
             .flex_shrink_0()
             .overflow_hidden()
             .w_full()
-            .py_1()
+            .when(group_style.is_none(), |s| s.py_1())
+            .when(group_style.is_some() && has_metadata, |s| s.pb_1())
             .px_1p5()
-            .when(self.selected, |s| s.bg(color.element_active))
+            .when_some(rail_segments, |this, (above_icon, below_icon)| {
+                this.child(above_icon).children(below_icon)
+            })
+            .when(self.selected, |s| s.bg(selected_color))
             .border_1()
             .border_color(gpui::transparent_black())
             .when(self.focused, |s| s.border_color(color.border_focused))
-            .when(self.rounded, |s| s.rounded_sm())
+            .when(self.rounded || group_style.is_some(), |s| s.rounded_sm())
             .hover(|s| s.bg(hover_color))
             .on_hover(self.on_hover)
             .child(
                 h_flex()
                     .min_w_0()
                     .w_full()
-                    .h_6()
+                    .h(title_row_height)
                     .gap_2()
                     .justify_between()
                     .child(
@@ -457,7 +549,9 @@ impl RenderOnce for ThreadItem {
                             |this| {
                                 this.when_some(self.project_name, |this, name| {
                                     this.child(
-                                        Label::new(name).size(LabelSize::Small).color(Color::Muted),
+                                        Label::new(name)
+                                            .size(metadata_label_size)
+                                            .color(Color::Muted),
                                     )
                                 })
                                 .when(
@@ -467,7 +561,7 @@ impl RenderOnce for ThreadItem {
                                 .when_some(project_paths, |this, paths| {
                                     this.child(
                                         Label::new(paths)
-                                            .size(LabelSize::Small)
+                                            .size(metadata_label_size)
                                             .color(Color::Muted),
                                     )
                                 })
@@ -479,7 +573,7 @@ impl RenderOnce for ThreadItem {
                                         let worktree_label = wt.worktree_name.clone().map(|name| {
                                             if wt.highlight_positions.is_empty() {
                                                 Label::new(name)
-                                                    .size(LabelSize::Small)
+                                                    .size(metadata_label_size)
                                                     .color(Color::Muted)
                                                     .truncate()
                                                     .into_any_element()
@@ -488,7 +582,7 @@ impl RenderOnce for ThreadItem {
                                                     name,
                                                     wt.highlight_positions.clone(),
                                                 )
-                                                .size(LabelSize::Small)
+                                                .size(metadata_label_size)
                                                 .color(Color::Muted)
                                                 .truncate()
                                                 .into_any_element()
@@ -508,7 +602,7 @@ impl RenderOnce for ThreadItem {
 
                                         let branch_label = wt.branch_name.map(|branch| {
                                             Label::new(branch)
-                                                .size(LabelSize::Small)
+                                                .size(metadata_label_size)
                                                 .color(Color::Muted)
                                                 .truncate()
                                                 .into_any_element()
@@ -531,7 +625,7 @@ impl RenderOnce for ThreadItem {
                                             .when(show_separator, |this| {
                                                 this.child(
                                                     Label::new("/")
-                                                        .size(LabelSize::Small)
+                                                        .size(metadata_label_size)
                                                         .color(separator_color)
                                                         .flex_shrink_0(),
                                                 )
@@ -557,7 +651,7 @@ impl RenderOnce for ThreadItem {
                         .when(has_timestamp, |this| {
                             this.child(
                                 Label::new(timestamp.clone())
-                                    .size(LabelSize::Small)
+                                    .size(metadata_label_size)
                                     .color(Color::Muted),
                             )
                         }),
